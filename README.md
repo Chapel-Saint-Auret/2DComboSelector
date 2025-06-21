@@ -40,10 +40,6 @@ pip install 2dcomboselector
 ```
 This will automatically install all required libraries.
 
-If you already have it installed and want to upgrade to the latest version:
-```sh
-pip install --upgrade 2dcomboselector
-```
 If you see errors, try:
 ```sh
 python -m pip install 2dcomboselector
@@ -57,7 +53,7 @@ python -m pip install 2dcomboselector
 - If you installed with the installer:  
   Download and run the latest installer from [the Releases page](https://github.com/Chapel-Saint-Auret/2dcomboselector/releases/latest).
 
-- If you installed with pip:
+- If you already have it installed with pip and want to upgrade to the latest version:
     ```sh
     pip install --upgrade 2dcomboselector
     ```
