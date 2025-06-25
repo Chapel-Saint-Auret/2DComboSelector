@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Created with Inkscape (http://www.inkscape.org/) -->
+
+<svg
+   width="13.778621mm"
+   height="13.312257mm"
+   viewBox="0 0 13.778621 13.312257"
+   version="1.1"
+   id="svg1"
+   inkscape:export-filename="close_windows.png"
+   inkscape:export-xdpi="30.528257"
+   inkscape:export-ydpi="30.528257"
+   inkscape:version="1.4 (86a8ad7, 2024-10-11)"
+   sodipodi:docname="close_windows.svg"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <sodipodi:namedview
+     id="namedview1"
+     pagecolor="#ffffff"
+     bordercolor="#000000"
+     borderopacity="0.25"
+     inkscape:showpageshadow="2"
+     inkscape:pageopacity="0.0"
+     inkscape:pagecheckerboard="0"
+     inkscape:deskcolor="#d1d1d1"
+     inkscape:document-units="mm"
+     inkscape:zoom="0.75811588"
+     inkscape:cx="-137.18219"
+     inkscape:cy="-123.33207"
+     inkscape:window-width="1920"
+     inkscape:window-height="1111"
+     inkscape:window-x="-9"
+     inkscape:window-y="-9"
+     inkscape:window-maximized="1"
+     inkscape:current-layer="layer1" />
+  <defs
+     id="defs1" />
+  <g
+     inkscape:label="Layer 1"
+     inkscape:groupmode="layer"
+     id="layer1"
+     transform="translate(-141.02292,-180.975)">
+    <g
+       id="g12"
+       transform="matrix(0.26458333,0,0,0.26458333,115.54492,169.87697)">
+      <ellipse
+         style="opacity:1;fill:#fd5754;fill-opacity:1;stroke:#eb534e;stroke-width:2.13543;stroke-opacity:1"
+         id="path9"
+         cx="122.33314"
+         cy="67.102325"
+         rx="24.970623"
+         ry="24.089306" />
+      <rect
+         style="opacity:1;fill:#7d0409;fill-opacity:1;stroke:#7d0409;stroke-width:2.13543;stroke-opacity:1"
+         id="rect12"
+         width="22.453314"
+         height="2.0200484"
+         x="122.49184"
+         y="-40.853252"
+         transform="rotate(45.337837)" />
+    </g>
+    <rect
+       style="fill:#7d0409;fill-opacity:0.50947;stroke:#7d0409;stroke-width:0.564999;stroke-opacity:1"
+       id="rect12-0"
+       width="5.9407725"
+       height="0.53447115"
+       x="23.715626"
+       y="-237.6937"
+       transform="rotate(135.33784)" />
+  </g>
+</svg>

@@ -1,0 +1,47 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "2dcomboselector"
+version = "0.2.2.dev0"
+description = "A Python tool for interactive 2D combination selection and analysis."
+readme = "README.md"
+requires-python = ">=3.8"
+license = { file = "LICENSE" }
+authors = [
+  { name="Chapel-Saint-Auret", email="jessy.saintauret@gmail.com" }
+]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "Topic :: Software Development",
+    "Topic :: Scientific/Engineering",
+]
+dependencies = [
+    "PySide6",
+    "matplotlib",
+    "numpy",
+    "pandas",
+    "scipy",
+    "seaborn",
+	"openpyxl",
+]
+
+[project.urls]
+Homepage = "https://github.com/Chapel-Saint-Auret/2dcomboselector"
+
+[project.scripts]
+combo-selector = "combo_selector.main:main"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+combo_selector = ["resources/**/*"]
