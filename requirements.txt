@@ -4,3 +4,6 @@ pandas~=2.2.3
 numpy~=2.2.3
 scipy~=1.15.2
 seaborn~=0.13.2
+openpyxl
+sphinx
+sphinx_rtd_theme
