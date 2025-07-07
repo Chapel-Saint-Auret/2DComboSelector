@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "2dcomboselector"
-version = "0.2.2.dev0"
+version = "0.2.1.beta"
 description = "A Python tool for interactive 2D combination selection and analysis."
 readme = "README.md"
 requires-python = ">=3.8"
