@@ -16,6 +16,7 @@ from PySide6.QtCore import Qt, QTimer, QSize
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_qtagg import FigureCanvas
 
+from combo_selector.utils import resource_path
 from combo_selector.core.plot_utils import PlotUtils
 from combo_selector.ui.widgets.custom_toolbar import CustomToolbar
 from combo_selector.ui.widgets.checkable_tree_list import CheckableTreeList
@@ -26,6 +27,7 @@ from combo_selector.ui.widgets.line_widget import LineWidget
 
 
 PLOT_SIZE = QSize(600, 400)
+drop_down_icon_path = resource_path("icons/drop_down_arrow.png").replace("\\", "/")
 
 
 class ExportPage(QFrame):
@@ -170,8 +172,8 @@ class ExportPage(QFrame):
         # Create the "Export data set figure" group box
         export_figure_grp = QGroupBox('Export data set figure')
 
-        export_figure_grp.setStyleSheet("""
-             QGroupBox {
+        export_figure_grp.setStyleSheet(f"""
+             QGroupBox {{
                 font-size: 14px;
                 font-weight: bold;
                 background-color: #e7e7e7;
@@ -179,44 +181,44 @@ class ExportPage(QFrame):
                 border: 1px solid #d0d4da;
                 border-radius: 12px;
                 margin-top: 25px;
-            }
-            QGroupBox::title {
+            }}
+            QGroupBox::title {{
                 subcontrol-origin: margin;
                 subcontrol-position: top left;
                 padding: 0px;
                 margin-top: -8px;
-            }
-                QPushButton {
+            }}
+                QPushButton {{
                 background-color: #d5dcf9;
                 color: #2C3346;
                 border: none;
                 border-radius: 6px;
                 padding: 8px 16px;
                 font-weight: 500;
-            }
-            QPushButton:hover {
+            }}
+            QPushButton:hover {{
                 background-color: #bcc8f5;
-            }
-            QPushButton:pressed {
+            }}
+            QPushButton:pressed {{
                 background-color: #8fa3ef;
-            }
-            QPushButton:disabled {
+            }}
+            QPushButton:disabled {{
                 background-color: #E5E9F5;
                 color: #FFFFFF;
-            }
-               QLabel {
+            }}
+               QLabel {{
             background-color: transparent;
             color: #2C3E50;
             font-family: "Segoe UI";
             font-weight: bold;
-            }
+            }}
             
-            QComboBox::drop-down {
+            QComboBox::drop-down {{
             border: none;
-            }
-            QComboBox::down-arrow {
-                image: url(./drop_down_arrow.png);
-            }
+            }}
+            QComboBox::down-arrow {{
+                image: url("{drop_down_icon_path}");
+            }}
         """)
 
 
