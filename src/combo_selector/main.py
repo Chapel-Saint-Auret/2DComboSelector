@@ -15,8 +15,6 @@ from combo_selector.ui.pages.redundancy_check_page import RedundancyCheckPage
 from combo_selector.ui.pages.results_page import ResultsPage
 from combo_selector.ui.pages.export_page import ExportPage
 
-print("CWD:", os.getcwd())
-
 class ComboSelectorMain(CustomMainWindow):
     def __init__(self):
         super().__init__()

@@ -14,6 +14,7 @@ from PySide6.QtGui import QColor
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_qtagg import FigureCanvas
 
+from combo_selector.utils import resource_path
 from combo_selector.core.workers import ResultsWorkerComputeCustomOMScore
 from combo_selector.ui.widgets.line_widget import LineWidget
 from combo_selector.ui.widgets.custom_toolbar import CustomToolbar
@@ -22,6 +23,7 @@ from combo_selector.ui.widgets.style_table import StyledTable
 from combo_selector.ui.widgets.circle_progress_bar import RoundProgressBar
 
 PLOT_SIZE = QSize(600, 400)
+drop_down_icon_path = resource_path("icons/drop_down_arrow.png").replace("\\", "/")
 
 UI_TO_MODEL_MAPPING = {
     "Suggested score": "suggested_score",
@@ -127,8 +129,8 @@ class ResultsPage(QFrame):
 
         # === Score Calculation Group ===
         orthogonality_score_group = QGroupBox("Orthogonality score calculation")
-        orthogonality_score_group.setStyleSheet("""
-            QGroupBox {
+        orthogonality_score_group.setStyleSheet(f"""
+            QGroupBox {{
                 font-size: 14px;
                 font-weight: bold;
                 background-color: #e7e7e7;
@@ -137,54 +139,55 @@ class ResultsPage(QFrame):
                 border-radius: 12px;
                 margin-top: 25px;
                 
-            }
+            }}
             
-                QPushButton {
+                QPushButton {{
                 background-color: #d5dcf9;
                 color: #2C3346;
                 border: none;
                 border-radius: 6px;
                 padding: 8px 16px;
                 font-weight: 500;
-            }
-            QPushButton:hover {
+            }}
+            QPushButton:hover {{
                 background-color: #bcc8f5;
-            }
-            QPushButton:pressed {
+            }}
+            QPushButton:pressed {{
                 background-color: #8fa3ef;
-            }
-            QPushButton:disabled {
+            }}
+            QPushButton:disabled {{
                 background-color: #E5E9F5;
                 color: #FFFFFF;
-            }
+            }}
             
-            QGroupBox::title {
+            QGroupBox::title {{
                 subcontrol-origin: margin;
                 subcontrol-position: top left;
                 padding: 0px;
                 margin-top: -8px;
-            }
-            QLabel {
+            }}
+            QLabel {{
             background-color: transparent;
             color: #2C3E50;
             font-family: "Segoe UI";
             font-weight: bold;
-            }
+            }}
             
-            QRadioButton, QCheckBox {
+            QRadioButton, QCheckBox {{
                 background-color: transparent;
             color: #2C3E50;              /* dark slate navy */
             
-            }
-            QComboBox:hover {
+            }}
+            QComboBox:hover {{
                 border: 1px solid #a6b2c0;
-            }
-            QComboBox::drop-down {
-                border: none;
-            }
-            QComboBox::down-arrow {
-                image: url(./drop_down_arrow.png);
-            }
+            }}
+            QComboBox::drop-down {{
+                border:none;
+            }}
+
+            QComboBox::down-arrow {{
+                image: url("{drop_down_icon_path}");
+            }}
         """)
 
         orthogonality_score_layout = QVBoxLayout()
@@ -204,8 +207,6 @@ class ResultsPage(QFrame):
         self.radio_button_group.addButton(self.use_suggested_btn)
         self.radio_button_group.addButton(self.use_computed_btn)
         self.radio_button_group.setExclusive(True)
-
-
 
 
         orthogonality_score_layout.addWidget(QLabel("Practical 2D peak capacity Calculation:"))
@@ -400,8 +401,6 @@ class ResultsPage(QFrame):
         self.progress_overlay.setGeometry(self.stack.geometry())
         self.progress_overlay.raise_()
 
-
-
         # === Signal Connections ===
         self.radio_button_group.buttonClicked.connect(self.set_use_suggested_om_score_flag)
         # self.filter_button_group.buttonClicked.connect(self.filter_button_clicked)
@@ -456,8 +455,8 @@ class ResultsPage(QFrame):
         logging.debug("Running ResultsWorker: populate_om_score_selector")
         self.populate_om_score_selector()
 
-        logging.debug("Running ResultsWorker: build_filtered_point")
-        self.build_filtered_point()
+        # logging.debug("Running ResultsWorker: build_filtered_point")
+        # self.build_filtered_point()
 
         logging.debug("Running ResultsWorker: update_om_selector_state")
         self.update_om_selector_state()
@@ -655,7 +654,7 @@ class ResultsPage(QFrame):
         self.update_results_table()
         #this is just to update self.filter_subset_dict with the new computed value (maybe there is a mor optimize way to do it)
         #it a lazy option
-        self.build_filtered_point()
+        # self.build_filtered_point()
         self.plot_orthogonality_vs_2d_peaks()
 
     def hide_progress_overlay(self):
@@ -674,9 +673,10 @@ class ResultsPage(QFrame):
         if not self.selected_score:
             return
 
-        if not hasattr(self, "orthogonality_score"):
-            print("[plot_orthogonality_vs_2d_peaks] Missing orthogonality_score")
-            return
+        # will be used when filtered are implemented
+        # if not hasattr(self, "orthogonality_score"):
+        #     print("[plot_orthogonality_vs_2d_peaks] Missing orthogonality_score")
+        #     return
 
         orthogonality_score_dict = self.model.get_orthogonality_score_df()
         orthogonality_score_df = pd.DataFrame.from_dict(orthogonality_score_dict, orient='index')
