@@ -656,7 +656,7 @@ class Orthogonality(QObject):
         # delete copy
         del data_frame_copy
 
-        num_columns = len(self.normalized_retention_time_df.columns) - 1
+        num_columns = len(self.normalized_retention_time_df.columns)
 
         # self.normalized_retention_time_df.insert(0, "Peak #", range(1, len(self.retention_time_df) + 1))
 
@@ -666,7 +666,7 @@ class Orthogonality(QObject):
         while current_column < num_columns:
             x_values = self.normalized_retention_time_df.iloc[:, current_column]
 
-            if current_column + 1 != num_columns:
+            if num_columns-1 >2:
                 next_column_list = list(range(current_column + 1, num_columns))
             else:
                 # the dataframe only has 2 column
