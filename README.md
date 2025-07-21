@@ -16,9 +16,6 @@ We provide a Windows installer that bundles Python and all dependencies.
 - Double-click the downloaded `.exe` file.
 - Follow the on-screen instructions.
 
-**After installation, you’ll find a shortcut to launch the tool on your Desktop or in the Start Menu.**
-
----
 
 ## **Option 2: Manual Installation via Python and pip**
 
