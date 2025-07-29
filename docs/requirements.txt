@@ -2,3 +2,5 @@
 sphinx==5.3.0
 sphinx_rtd_theme==1.1.1
 sphinx-notfound-page==1.0.2
+myst-nb
+jupyter
