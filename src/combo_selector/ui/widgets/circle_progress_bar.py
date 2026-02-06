@@ -23,7 +23,7 @@ class RoundProgressBar(QtWidgets.QWidget):
         super(RoundProgressBar, self).__init__(parent)
 
         self.setStyleSheet("background: transparent;")
-        self.setFixedSize(100,100)
+        self.setFixedSize(100, 100)
         # Inside __init__ of RoundProgressBar
         self.hide_timer = QTimer()
         self.hide_timer.setSingleShot(True)
@@ -50,11 +50,11 @@ class RoundProgressBar(QtWidgets.QWidget):
         self.rpb_direction = self.rotationFlags.Clockwise
 
         self.rpb_textType = self.textFlags.Percentage
-        self.rpb_textColor = '#154E9D'
+        self.rpb_textColor = "#154E9D"
         self.rpb_textWidth = self.rpb_Size / 8
-        self.rpb_textFont = 'Segoe UI'
-        self.rpb_textValue = '0%'
-        self.rpb_textStatus = 'Status'
+        self.rpb_textFont = "Segoe UI"
+        self.rpb_textValue = "0%"
+        self.rpb_textStatus = "Status"
         self.rpb_textRatio = 8
         self.textFactorX = 0
         self.textFactorY = 0
@@ -65,10 +65,10 @@ class RoundProgressBar(QtWidgets.QWidget):
         self.pathWidth = 10
         self.rpb_lineStyle = self.lineStyleFlags.SolidLine
         self.rpb_lineCap = self.lineCapFlags.SquareCap
-        self.lineColor = '#154E9D'
-        self.pathColor = '#e7e7e7'
+        self.lineColor = "#154E9D"
+        self.pathColor = "#e7e7e7"
 
-        self.rpb_circleColor = '#e7e7e7'
+        self.rpb_circleColor = "#e7e7e7"
         self.rpb_circleRatio = 0.8
         self.rpb_circlePosX = 0
         self.rpb_circlePosY = 0
@@ -81,7 +81,12 @@ class RoundProgressBar(QtWidgets.QWidget):
         self.rpb_value = 0
 
         if self.rpb_dynamicMin:
-            self.setMinimumSize(QSize(self.lineWidth * 6 + self.pathWidth * 6, self.lineWidth * 6 + self.pathWidth * 6))
+            self.setMinimumSize(
+                QSize(
+                    self.lineWidth * 6 + self.pathWidth * 6,
+                    self.lineWidth * 6 + self.pathWidth * 6,
+                )
+            )
 
     # ------------------------------------------------------CLASS ENUMERATORS
     class lineStyleFlags:
@@ -137,7 +142,7 @@ class RoundProgressBar(QtWidgets.QWidget):
         """
 
         if type(width) != type(5) or type(height) != type(5):
-            raise Exception('Sorry Width/Height should be an int')
+            raise Exception("Sorry Width/Height should be an int")
             return
         self.rpb_dynamicMin = False
         self.setMinimumSize(width, height)
@@ -164,7 +169,7 @@ class RoundProgressBar(QtWidgets.QWidget):
         """
 
         if type(width) != type(5) or type(height) != type(5):
-            raise Exception('Sorry Width/Height should be an int')
+            raise Exception("Sorry Width/Height should be an int")
             return
         self.rpb_dynamicMax = False
         self.setMaximumSize(width, height)
@@ -260,13 +265,13 @@ class RoundProgressBar(QtWidgets.QWidget):
         ValueError : Maximum and Minimum cannot be the Same
         """
 
-        if pos == 'North':
+        if pos == "North":
             self.startPosition = self.startPosFlags.North
-        elif pos == 'South':
+        elif pos == "South":
             self.startPosition = self.startPosFlags.South
-        elif pos == 'East':
+        elif pos == "East":
             self.startPosition = self.startPosFlags.East
-        elif pos == 'West':
+        elif pos == "West":
             self.startPosition = self.startPosFlags.West
         else:
             raise Exception("Initial Position String can be: 'South', 'North'")
@@ -364,7 +369,7 @@ class RoundProgressBar(QtWidgets.QWidget):
         """
 
         if type(width) != type(5):
-            raise Exception('Line Width should be in int')
+            raise Exception("Line Width should be in int")
             return
         if self.lineWidth != width:
             self.lineWidth = width
@@ -433,7 +438,7 @@ class RoundProgressBar(QtWidgets.QWidget):
         """
 
         if type(width) != type(5):
-            raise Exception('Path Width should be in int')
+            raise Exception("Path Width should be in int")
             return
         if self.pathWidth != width:
             self.pathWidth = width
@@ -455,12 +460,15 @@ class RoundProgressBar(QtWidgets.QWidget):
         Exception: Direction can only be: 'Clockwise' and 'AntiClockwise'
         """
 
-        if direction == 'Clockwise' or direction == -1:
+        if direction == "Clockwise" or direction == -1:
             self.rpb_direction = self.rotationFlags.Clockwise
-        elif direction == 'AntiClockwise' or direction == 1:
+        elif direction == "AntiClockwise" or direction == 1:
             self.rpb_direction = self.rotationFlags.AntiClockwise
         else:
-            raise Exception("Direction can only be: 'Clockwise' and 'AntiClockwise' and Not: " + str(direction))
+            raise Exception(
+                "Direction can only be: 'Clockwise' and 'AntiClockwise' and Not: "
+                + str(direction)
+            )
             return
         self.update()
 
@@ -480,21 +488,22 @@ class RoundProgressBar(QtWidgets.QWidget):
         Exception: Round Progress Bar has only the following styles: 'Line', 'Donet', 'Hybrid1', 'Pizza', 'Pie' and 'Hybrid2'
         """
 
-        if style == 'Donet':
+        if style == "Donet":
             self.rpb_type = self.barStyleFlags.Donet
-        elif style == 'Line':
+        elif style == "Line":
             self.rpb_type = self.barStyleFlags.Line
-        elif style == 'Pie':
+        elif style == "Pie":
             self.rpb_type = self.barStyleFlags.Pie
-        elif style == 'Pizza':
+        elif style == "Pizza":
             self.rpb_type = self.barStyleFlags.Pizza
-        elif style == 'Hybrid1':
+        elif style == "Hybrid1":
             self.rpb_type = self.barStyleFlags.Hybrid1
-        elif style == 'Hybrid2':
+        elif style == "Hybrid2":
             self.rpb_type = self.barStyleFlags.Hybrid2
         else:
             raise Exception(
-                "Round Progress Bar has only the following styles: 'Line', 'Donet', 'Hybrid1', 'Pizza', 'Pie' and 'Hybrid2'")
+                "Round Progress Bar has only the following styles: 'Line', 'Donet', 'Hybrid1', 'Pizza', 'Pie' and 'Hybrid2'"
+            )
             return
         self.update()
 
@@ -514,11 +523,11 @@ class RoundProgressBar(QtWidgets.QWidget):
         none
         """
 
-        if style == 'SolidLine':
+        if style == "SolidLine":
             self.rpb_lineStyle = self.lineStyleFlags.SolidLine
-        elif style == 'DotLine':
+        elif style == "DotLine":
             self.rpb_lineStyle = self.lineStyleFlags.DotLine
-        elif style == 'DashLine':
+        elif style == "DashLine":
             self.rpb_lineStyle = self.lineStyleFlags.DashLine
         else:
             self.rpb_lineStyle = self.lineStyleFlags.SolidLine
@@ -539,9 +548,9 @@ class RoundProgressBar(QtWidgets.QWidget):
         none
         """
 
-        if cap == 'SquareCap':
+        if cap == "SquareCap":
             self.rpb_lineCap = self.lineCapFlags.SquareCap
-        elif cap == 'RoundCap':
+        elif cap == "RoundCap":
             self.rpb_lineCap = self.lineCapFlags.RoundCap
 
     def rpb_setTextColor(self, rgb):
@@ -600,9 +609,9 @@ class RoundProgressBar(QtWidgets.QWidget):
         none
         """
 
-        if textTyp == 'Value':
+        if textTyp == "Value":
             self.rpb_textType = self.textFlags.Value
-        elif textTyp == 'Percentage':
+        elif textTyp == "Percentage":
             self.rpb_textType = self.textFlags.Percentage
         else:
             self.rpb_textType = self.textFlags.Percentage
@@ -832,11 +841,25 @@ class RoundProgressBar(QtWidgets.QWidget):
 
         """
 
-        self.rpb_value = ((value - self.rpb_minimum) / (self.rpb_maximum - self.rpb_minimum)) * 360 * 16
+        self.rpb_value = (
+            ((value - self.rpb_minimum) / (self.rpb_maximum - self.rpb_minimum))
+            * 360
+            * 16
+        )
         self.rpb_value = self.rpb_direction * self.rpb_value
         if self.rpb_textType == RoundProgressBar.textFlags.Percentage:
-            self.rpb_textValue = str(
-                round(((value - self.rpb_minimum) / (self.rpb_maximum - self.rpb_minimum)) * 100)) + "%"
+            self.rpb_textValue = (
+                str(
+                    round(
+                        (
+                            (value - self.rpb_minimum)
+                            / (self.rpb_maximum - self.rpb_minimum)
+                        )
+                        * 100
+                    )
+                )
+                + "%"
+            )
         else:
             self.rpb_textValue = str(value)
 
@@ -854,25 +877,51 @@ class RoundProgressBar(QtWidgets.QWidget):
     def rpb_textFactor(self):
         if self.dynamicText:
             self.rpb_textWidth = self.rpb_Size / self.rpb_textRatio
-        self.textFactorX = self.posFactor + (self.rpb_Size - self.sizeFactor) / 2 - self.rpb_textWidth * 0.75 * (
-                    len(self.rpb_textValue) / 2)
+        self.textFactorX = (
+            self.posFactor
+            + (self.rpb_Size - self.sizeFactor) / 2
+            - self.rpb_textWidth * 0.75 * (len(self.rpb_textValue) / 2)
+        )
         self.textFactorY = self.rpb_textWidth / 2 + self.rpb_Size / 2
 
     def rpb_circleFactor(self):
-        self.rpb_circlePosX = self.positionX + self.posFactor + ((self.rpb_Size) * (1 - self.rpb_circleRatio)) / 2
-        self.rpb_circlePosY = self.positionY + self.posFactor + ((self.rpb_Size) * (1 - self.rpb_circleRatio)) / 2
+        self.rpb_circlePosX = (
+            self.positionX
+            + self.posFactor
+            + ((self.rpb_Size) * (1 - self.rpb_circleRatio)) / 2
+        )
+        self.rpb_circlePosY = (
+            self.positionY
+            + self.posFactor
+            + ((self.rpb_Size) * (1 - self.rpb_circleRatio)) / 2
+        )
 
     def rpb_pieFactor(self):
-        self.rpb_piePosX = self.positionX + self.posFactor + ((self.rpb_Size) * (1 - self.rpb_pieRatio)) / 2
-        self.rpb_piePosY = self.positionY + self.posFactor + ((self.rpb_Size) * (1 - self.rpb_pieRatio)) / 2
+        self.rpb_piePosX = (
+            self.positionX
+            + self.posFactor
+            + ((self.rpb_Size) * (1 - self.rpb_pieRatio)) / 2
+        )
+        self.rpb_piePosY = (
+            self.positionY
+            + self.posFactor
+            + ((self.rpb_Size) * (1 - self.rpb_pieRatio)) / 2
+        )
 
     def paintEvent(self, event: QPaintEvent):
 
         # THIS BELOW CODE AMKE SURE THAT THE SIZE OF THE RoundProgressBar DOESNOT REDUCES TO ZERO WHEN THE USER RESIZES THE WINDOW
         if self.rpb_dynamicMin:
-            self.setMinimumSize(QSize(self.lineWidth * 6 + self.pathWidth * 6, self.lineWidth * 6 + self.pathWidth * 6))
+            self.setMinimumSize(
+                QSize(
+                    self.lineWidth * 6 + self.pathWidth * 6,
+                    self.lineWidth * 6 + self.pathWidth * 6,
+                )
+            )
 
-        RoundProgressBar.rpb_MinimumSize(self, self.rpb_dynamicMax, self.rpb_minimumSize, self.rpb_maximumSize)
+        RoundProgressBar.rpb_MinimumSize(
+            self, self.rpb_dynamicMax, self.rpb_minimumSize, self.rpb_maximumSize
+        )
         RoundProgressBar.geometryFactor(self)
         RoundProgressBar.rpb_textFactor(self)
         RoundProgressBar.rpb_circleFactor(self)
@@ -912,9 +961,14 @@ class RoundProgressBar(QtWidgets.QWidget):
         penLine.setCapStyle(self.rpb_lineCap)
         penLine.setJoinStyle(Qt.RoundJoin)
         linePainter.setPen(penLine)
-        linePainter.drawArc(self.positionX + self.posFactor, self.positionY + self.posFactor,
-                            self.rpb_Size - self.sizeFactor, self.rpb_Size - self.sizeFactor, self.startPosition,
-                            self.rpb_value)
+        linePainter.drawArc(
+            self.positionX + self.posFactor,
+            self.positionY + self.posFactor,
+            self.rpb_Size - self.sizeFactor,
+            self.rpb_Size - self.sizeFactor,
+            self.startPosition,
+            self.rpb_value,
+        )
         linePainter.end()
 
     def pathComponent(self):
@@ -927,8 +981,14 @@ class RoundProgressBar(QtWidgets.QWidget):
         penPath.setCapStyle(Qt.RoundCap)
         penPath.setJoinStyle(Qt.RoundJoin)
         pathPainter.setPen(penPath)
-        pathPainter.drawArc(self.positionX + self.posFactor, self.positionY + self.posFactor,
-                            self.rpb_Size - self.sizeFactor, self.rpb_Size - self.sizeFactor, 0, 360 * 16)
+        pathPainter.drawArc(
+            self.positionX + self.posFactor,
+            self.positionY + self.posFactor,
+            self.rpb_Size - self.sizeFactor,
+            self.rpb_Size - self.sizeFactor,
+            0,
+            360 * 16,
+        )
         pathPainter.end()
 
     def textComponent(self):
@@ -941,8 +1001,11 @@ class RoundProgressBar(QtWidgets.QWidget):
             fontText.setFamily(self.rpb_textFont)
             fontText.setPointSize(self.rpb_textWidth)
             textPainter.setFont(fontText)
-            textPainter.drawText(self.positionX + self.textFactorX, self.positionY + self.textFactorY,
-                                 self.rpb_textValue)
+            textPainter.drawText(
+                self.positionX + self.textFactorX,
+                self.positionY + self.textFactorY,
+                self.rpb_textValue,
+            )
             # textPainter.drawText(self.positionX + self.textFactorX, self.positionY + self.textFactorY,
             #                      self.rpb_textStatus)
             textPainter.end()
@@ -955,9 +1018,12 @@ class RoundProgressBar(QtWidgets.QWidget):
         circlePainter.setRenderHint(QPainter.Antialiasing)
         circlePainter.setPen(penCircle)
         circlePainter.setBrush(QColor(self.rpb_circleColor))
-        circlePainter.drawEllipse(self.rpb_circlePosX, self.rpb_circlePosY,
-                                  (self.rpb_Size - self.sizeFactor) * self.rpb_circleRatio,
-                                  (self.rpb_Size - self.sizeFactor) * self.rpb_circleRatio)
+        circlePainter.drawEllipse(
+            self.rpb_circlePosX,
+            self.rpb_circlePosY,
+            (self.rpb_Size - self.sizeFactor) * self.rpb_circleRatio,
+            (self.rpb_Size - self.sizeFactor) * self.rpb_circleRatio,
+        )
 
     def pieComponent(self):
         piePainter = QPainter(self)
@@ -967,8 +1033,14 @@ class RoundProgressBar(QtWidgets.QWidget):
         piePainter.setRenderHint(QPainter.Antialiasing)
         piePainter.setPen(penPie)
         piePainter.setBrush(QColor(self.rpb_pieColor))
-        piePainter.drawPie(self.rpb_piePosX, self.rpb_piePosY, (self.rpb_Size - self.sizeFactor) * self.rpb_pieRatio,
-                           (self.rpb_Size - self.sizeFactor) * self.rpb_pieRatio, self.startPosition, self.rpb_value)
+        piePainter.drawPie(
+            self.rpb_piePosX,
+            self.rpb_piePosY,
+            (self.rpb_Size - self.sizeFactor) * self.rpb_pieRatio,
+            (self.rpb_Size - self.sizeFactor) * self.rpb_pieRatio,
+            self.startPosition,
+            self.rpb_value,
+        )
 
 
 # ------------------------------------------------------
@@ -981,7 +1053,7 @@ class MyWidget(QtWidgets.QWidget):
     def __init__(self):
         QtWidgets.QWidget.__init__(self)
 
-        self.hello = 'Spiral Progress Bar'
+        self.hello = "Spiral Progress Bar"
         self.button = QtWidgets.QPushButton("Click me to change Value")
         self.text = QtWidgets.QLabel("Spiral Progress Bar")
         self.text.setAlignment(QtCore.Qt.AlignCenter)
@@ -1011,8 +1083,8 @@ class MyWidget(QtWidgets.QWidget):
         # CHANGING THE VALUE OF THE 3 DEFAULT PROGRESS BAR
         self.spb.rpb_setValue((x * 2))
 
-        out_text = 'Spiral Progress Bar: '
-        out_text = out_text + str(x) + '%, ' + str(2 * x) + '%, ' + str(3 * x) + '%'
+        out_text = "Spiral Progress Bar: "
+        out_text = out_text + str(x) + "%, " + str(2 * x) + "%, " + str(3 * x) + "%"
         self.text.setText(out_text)
 
 
@@ -1021,4 +1093,3 @@ if __name__ == "__main__":
     widget = MyWidget()
     widget.show()
     sys.exit(app.exec_())
-

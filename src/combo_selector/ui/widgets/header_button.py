@@ -2,8 +2,14 @@ from functools import partial
 
 from PySide6.QtCore import QRect, QSize, Qt, Signal
 from PySide6.QtGui import QIcon
-from PySide6.QtWidgets import (QApplication, QDialog, QHeaderView, QStyle,
-                               QToolButton, QWidget)
+from PySide6.QtWidgets import (
+    QApplication,
+    QDialog,
+    QHeaderView,
+    QStyle,
+    QToolButton,
+    QWidget,
+)
 
 from combo_selector.utils import resource_path
 
@@ -13,7 +19,10 @@ class HeaderButton(QHeaderView):
     Horizontal header that can show small filter buttons for specific sections.
     Use header.add_header_button(column_index, widget_to_show=yourDialog) to add a button for a column.
     """
-    widgetRequested = Signal(int)  # emitted when a filter button is clicked (column index)
+
+    widgetRequested = Signal(
+        int
+    )  # emitted when a filter button is clicked (column index)
 
     def __init__(self, orientation=Qt.Horizontal, parent=None):
         super().__init__(orientation, parent)
@@ -27,7 +36,7 @@ class HeaderButton(QHeaderView):
         self.setFixedHeight(30)
         self.setHighlightSections(False)
 
-        self._buttons = {}        # column_index -> QToolButton
+        self._buttons = {}  # column_index -> QToolButton
         self._button_widget = {}  # column_index -> widget (dialog or widget to show)
 
         # Reposition when sections change size or move
@@ -40,7 +49,9 @@ class HeaderButton(QHeaderView):
                 pass
         self._reposition_buttons()
 
-    def add_header_button(self, column: int, tooltip: str | None = None, widget_to_show: QWidget = None):
+    def add_header_button(
+        self, column: int, tooltip: str | None = None, widget_to_show: QWidget = None
+    ):
         """Create and attach a small header button to a header section."""
         if column in self._buttons:
             return  # already added
@@ -59,7 +70,9 @@ class HeaderButton(QHeaderView):
 
         # Connect the clicked signal properly so handler is called only on click.
         # Use a lambda to capture 'column' and ignore the 'checked' boolean the clicked signal may send.
-        btn.clicked.connect(lambda checked=False, col=column: self._on_button_clicked(col))
+        btn.clicked.connect(
+            lambda checked=False, col=column: self._on_button_clicked(col)
+        )
 
         btn.show()
         self._buttons[column] = btn
@@ -101,7 +114,9 @@ class HeaderButton(QHeaderView):
         try:
             section_count = self.count()
         except Exception:
-            section_count = self.model().columnCount() if self.model() is not None else 0
+            section_count = (
+                self.model().columnCount() if self.model() is not None else 0
+            )
 
         for col, btn in list(self._buttons.items()):
             if col < 0 or col >= section_count:

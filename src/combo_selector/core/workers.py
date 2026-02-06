@@ -4,6 +4,7 @@ from PySide6.QtCore import QObject, QRunnable, Signal, Slot
 
 # Setup logger
 
+
 class RedundancyWorkerSignals(QObject):
     finished = Signal()
 
@@ -80,7 +81,9 @@ class OMWorkerSignals(QObject):
     progress = Signal(int)
     finished = Signal()
 
+
 # om_worker_thread.py
+
 
 class OMWorkerComputeOM(QRunnable):
     def __init__(self, metric_list, model):
@@ -92,14 +95,17 @@ class OMWorkerComputeOM(QRunnable):
     @Slot()
     def run(self):
         try:
-            self.model.compute_orthogonality_metric(self.metric_list, self.signals.progress)
+            self.model.compute_orthogonality_metric(
+                self.metric_list, self.signals.progress
+            )
         except Exception as e:
             logging.exception(f"[OMWorkerComputeOM] Error: {e}")
         finally:
             self.signals.finished.emit()
 
+
 class OMWorkerUpdateNumBin(QRunnable):
-    def __init__(self, nb_bin,checked_metric_list,model):
+    def __init__(self, nb_bin, checked_metric_list, model):
         super().__init__()
         self.checked_metric_list = checked_metric_list  # not just a function now
         self.model = model  # not just a function now
@@ -109,7 +115,9 @@ class OMWorkerUpdateNumBin(QRunnable):
     @Slot()
     def run(self):
         try:
-            self.model.update_num_bins(self.nb_bin, self.checked_metric_list, self.signals.progress)
+            self.model.update_num_bins(
+                self.nb_bin, self.checked_metric_list, self.signals.progress
+            )
 
         except Exception as e:
             logging.exception(f"[Unable to update number of bin] Error: {e}")
@@ -117,9 +125,9 @@ class OMWorkerUpdateNumBin(QRunnable):
             self.signals.finished.emit()
 
 
-
 class TableDataWorkerSignals(QObject):
     finished = Signal(object, object, object)  # formatted_data, row_count, col_count
+
 
 class TableDataWorker(QRunnable):
     def __init__(self, data, header_labels):
@@ -134,8 +142,10 @@ class TableDataWorker(QRunnable):
         data_list = data_cast.values.tolist()
 
         def format_value(val, col_idx):
-            label = self.header_labels[col_idx] if col_idx < len(self.header_labels) else ""
-            if label in ["Practical 2D peak capacity","Predicted 2D peak capacity"]:
+            label = (
+                self.header_labels[col_idx] if col_idx < len(self.header_labels) else ""
+            )
+            if label in ["Practical 2D peak capacity", "Predicted 2D peak capacity"]:
                 try:
                     return str(int(round(float(val))))
                 except Exception:
@@ -145,8 +155,7 @@ class TableDataWorker(QRunnable):
             return str(val)
 
         formatted_data = [
-            [format_value(val, j) for j, val in enumerate(row)]
-            for row in data_list
+            [format_value(val, j) for j, val in enumerate(row)] for row in data_list
         ]
 
         row_count = len(data_list)

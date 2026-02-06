@@ -3,15 +3,30 @@ import sys
 from PySide6.QtCore import QRect, QSize, Qt
 from PySide6.QtGui import QColor, QFont, QIcon, QPainter, QPixmap
 from PySide6.QtSvgWidgets import QSvgWidget
-from PySide6.QtWidgets import (QApplication, QCheckBox, QFrame, QGridLayout,
-                               QHBoxLayout, QLabel, QLineEdit, QListWidget,
-                               QListWidgetItem, QPushButton, QSizePolicy,
-                               QSpacerItem, QStackedWidget, QStyle,
-                               QStyledItemDelegate, QVBoxLayout, QWidget)
+from PySide6.QtWidgets import (
+    QApplication,
+    QCheckBox,
+    QFrame,
+    QGridLayout,
+    QHBoxLayout,
+    QLabel,
+    QLineEdit,
+    QListWidget,
+    QListWidgetItem,
+    QPushButton,
+    QSizePolicy,
+    QSpacerItem,
+    QStackedWidget,
+    QStyle,
+    QStyledItemDelegate,
+    QVBoxLayout,
+    QWidget,
+)
 
 from combo_selector.utils import get_version, resource_path
 
 SIDEBAR_BG = "#232b43"  # Use your preferred dark blue
+
 
 class SidebarItemDelegate(QStyledItemDelegate):
     def paint(self, painter, option, index):
@@ -24,7 +39,11 @@ class SidebarItemDelegate(QStyledItemDelegate):
             painter.setPen(QColor("#8a99b8"))
             font = QFont("Segoe UI", 10, QFont.Bold)
             painter.setFont(font)
-            painter.drawText(rect.adjusted(24, 0, 0, 0), Qt.AlignVCenter | Qt.AlignLeft, index.data(Qt.DisplayRole))
+            painter.drawText(
+                rect.adjusted(24, 0, 0, 0),
+                Qt.AlignVCenter | Qt.AlignLeft,
+                index.data(Qt.DisplayRole),
+            )
         else:
             # Draw background for selected item
             if selected:
@@ -35,24 +54,34 @@ class SidebarItemDelegate(QStyledItemDelegate):
             # Draw icon
             icon = index.data(Qt.DecorationRole)
             icon_size = 24
-            icon_padding = 10 # More space to the left
+            icon_padding = 10  # More space to the left
             text_x = rect.left() + icon_padding + icon_size + 14
             if icon:
 
-                icon_rect = QRect(rect.left() + icon_padding, rect.top() + (rect.height() - icon_size) // 2, icon_size, icon_size)
+                icon_rect = QRect(
+                    rect.left() + icon_padding,
+                    rect.top() + (rect.height() - icon_size) // 2,
+                    icon_size,
+                    icon_size,
+                )
                 icon.paint(painter, icon_rect, Qt.AlignCenter)
 
             # Draw text
             painter.setPen(QColor("#fff") if selected else QColor("#bfc8e2"))
             font = QFont("Segoe UI", 10, QFont.Bold if selected else QFont.Normal)
             painter.setFont(font)
-            painter.drawText(QRect(text_x, rect.top(), rect.width() - text_x, rect.height()),
-                             Qt.AlignVCenter | Qt.AlignLeft, index.data(Qt.DisplayRole).strip())
+            painter.drawText(
+                QRect(text_x, rect.top(), rect.width() - text_x, rect.height()),
+                Qt.AlignVCenter | Qt.AlignLeft,
+                index.data(Qt.DisplayRole).strip(),
+            )
 
             # Draw badge if needed
             badge = index.data(Qt.UserRole + 1)
             if badge:
-                badge_rect = QRect(rect.right() - 44, rect.top() + (rect.height() - 20) // 2, 36, 20)
+                badge_rect = QRect(
+                    rect.right() - 44, rect.top() + (rect.height() - 20) // 2, 36, 20
+                )
                 painter.setBrush(QColor("#5062f0"))
                 painter.setPen(Qt.NoPen)
                 painter.drawRoundedRect(badge_rect, 10, 10)
@@ -65,6 +94,7 @@ class SidebarItemDelegate(QStyledItemDelegate):
         is_header = index.data(Qt.UserRole) == "header"
         return QSize(200, 36 if is_header else 48)  # Increase item height here
 
+
 class SidebarLogo(QFrame):
     def __init__(self):
         super().__init__()
@@ -73,16 +103,16 @@ class SidebarLogo(QFrame):
         layout.setSpacing(0)
         logo = QLabel()
         # Draw a simple logo (replace with your own SVG or PNG if available)
-        pixmap = QPixmap(resource_path('icons/logo.png'))
-
+        pixmap = QPixmap(resource_path("icons/logo.png"))
 
         logo = QSvgWidget()
-        logo.load(resource_path('icons/logo.svg'))
+        logo.load(resource_path("icons/logo.svg"))
         logo.renderer().setAspectRatioMode(Qt.KeepAspectRatio)
 
         # logo.setPixmap(pixmap)
         # logo.setAlignment(Qt.AlignCenter)
         layout.addWidget(logo)
+
 
 class SidebarFooter(QFrame):
     def __init__(self):
@@ -90,7 +120,6 @@ class SidebarFooter(QFrame):
         layout = QVBoxLayout(self)
         layout.setContentsMargins(16, 16, 16, 8)
         layout.setSpacing(10)
-
 
         # Footer text
         copyright_row = QHBoxLayout()
@@ -107,6 +136,7 @@ class SidebarFooter(QFrame):
         version_lbl.setStyleSheet("color: white; font-size: 11px;")
         version_lbl.setAlignment(Qt.AlignLeft)
         layout.addWidget(version_lbl)
+
 
 class Sidebar(QListWidget):
     def __init__(self):
@@ -131,7 +161,7 @@ class Sidebar(QListWidget):
         self.setFixedWidth(240)
         # self.populate()
 
-    def add_item(self,text,icon):
+    def add_item(self, text, icon):
 
         item = QListWidgetItem(text)
         self.addItem(item)
@@ -202,7 +232,6 @@ class ModernSidebar(QFrame):
         main_layout.setContentsMargins(0, 0, 0, 0)
         main_layout.setSpacing(0)
 
-
         side_bar_frame = QFrame()
         side_bar_frame.setFixedWidth(200)
         side_bar_frame.setStyleSheet(f"""background: {SIDEBAR_BG};
@@ -221,7 +250,9 @@ class ModernSidebar(QFrame):
         self.sidebar_menu = Sidebar()
 
         # self.sidebar_menu.setStyleSheet(f"background: {SIDEBAR_BG};")
-        self.sidebar_menu.setItemDelegate(SidebarItemDelegate())  # <-- Apply your custom delegate here
+        self.sidebar_menu.setItemDelegate(
+            SidebarItemDelegate()
+        )  # <-- Apply your custom delegate here
         layout.addWidget(self.sidebar_menu)
 
         # layout.addStretch(1)
@@ -229,21 +260,14 @@ class ModernSidebar(QFrame):
 
         self.content_frame = QFrame(self)
         content_frame_layout = QVBoxLayout(self.content_frame)
-        content_frame_layout.setContentsMargins(0,0,0,0)
+        content_frame_layout.setContentsMargins(0, 0, 0, 0)
         content_frame_layout.setSpacing(0)
 
-
-
-
-        #main_layout.addWidget(self.icon_only_widget, 0, 0, 1, 1)
+        # main_layout.addWidget(self.icon_only_widget, 0, 0, 1, 1)
         main_layout.addWidget(side_bar_frame, 0, 1, 1, 1)
         # main_layout.addWidget(self.content_frame, 0, 2, 1, 1)
 
         # self.sidebar_menu.itemClicked.connect(self.page_change)
 
-
     def get_menu_list(self):
         return self.sidebar_menu
-
-
-

@@ -2,8 +2,7 @@ import os
 
 from PySide6.QtCore import QSize
 from PySide6.QtGui import QPixmap
-from PySide6.QtWidgets import (QHBoxLayout, QLabel, QStackedWidget,
-                               QVBoxLayout, QWidget)
+from PySide6.QtWidgets import QHBoxLayout, QLabel, QStackedWidget, QVBoxLayout, QWidget
 
 from combo_selector.utils import resource_path
 
@@ -21,12 +20,11 @@ class Status(QWidget):
         self.qstack = QStackedWidget()
         layout.addWidget(self.qstack)
 
-
-        wait_icon = QPixmap(resource_path('icons/wait.png'))
+        wait_icon = QPixmap(resource_path("icons/wait.png"))
         wait_icon = wait_icon.scaled(self.IconSize)
-        ok_icon = QPixmap(resource_path('icons/ok.png'))
+        ok_icon = QPixmap(resource_path("icons/ok.png"))
         ok_icon = ok_icon.scaled(self.IconSize)
-        nok_icon = QPixmap(resource_path('icons/nok.png'))
+        nok_icon = QPixmap(resource_path("icons/nok.png"))
         nok_icon = nok_icon.scaled(self.IconSize)
 
         wait_label = QLabel()
@@ -34,7 +32,6 @@ class Status(QWidget):
         wait_widget = QWidget(self)
         wait_layout = QHBoxLayout(wait_widget)
         wait_layout.addWidget(wait_label)
-
 
         ok_label = QLabel()
         ok_label.setPixmap(ok_icon)

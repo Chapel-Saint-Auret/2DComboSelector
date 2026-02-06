@@ -15,6 +15,7 @@ from combo_selector.ui.pages.plot_pairwise_page import PlotPairWisePage
 from combo_selector.ui.pages.redundancy_check_page import RedundancyCheckPage
 from combo_selector.ui.pages.results_page import ResultsPage
 from combo_selector.ui.widgets.custom_main_window import CustomMainWindow
+
 # Custom Modules - adjusted import paths for src/combo_selector layout
 from combo_selector.utils import resource_path
 
@@ -37,21 +38,48 @@ class ComboSelectorMain(CustomMainWindow):
         self.results_page = ResultsPage(self.model)
         self.export_page = ExportPage(self.model)
 
-
-        self.add_side_bar_item('Home', self.home_page,resource_path('icons/home_icon.png'))
-        self.add_side_bar_item('Retention Time\nNormalization', self.import_data_page,resource_path('icons/norm_icon.svg'))
-        self.add_side_bar_item('Data plotting\nPairwise', self.plot_page,resource_path('icons/pairwise_icon.png'))
-        self.add_side_bar_item('Orthogonality Metric \nCalculation', self.om_calculation_page,resource_path('icons/om_icon.png'))
-        self.add_side_bar_item('Redundancy\nCheck', self.redundancy_page,resource_path('icons/redund_icon.png'))
-        self.add_side_bar_item('Results', self.results_page,resource_path('icons/rank_icon.png'))
-        self.add_side_bar_item('Export', self.export_page,resource_path('icons/export_icon.png'))
+        self.add_side_bar_item(
+            "Home", self.home_page, resource_path("icons/home_icon.png")
+        )
+        self.add_side_bar_item(
+            "Retention Time\nNormalization",
+            self.import_data_page,
+            resource_path("icons/norm_icon.svg"),
+        )
+        self.add_side_bar_item(
+            "Data plotting\nPairwise",
+            self.plot_page,
+            resource_path("icons/pairwise_icon.png"),
+        )
+        self.add_side_bar_item(
+            "Orthogonality Metric \nCalculation",
+            self.om_calculation_page,
+            resource_path("icons/om_icon.png"),
+        )
+        self.add_side_bar_item(
+            "Redundancy\nCheck",
+            self.redundancy_page,
+            resource_path("icons/redund_icon.png"),
+        )
+        self.add_side_bar_item(
+            "Results", self.results_page, resource_path("icons/rank_icon.png")
+        )
+        self.add_side_bar_item(
+            "Export", self.export_page, resource_path("icons/export_icon.png")
+        )
 
         # self.side_bar_menu.button_clicked.connect(self.side_bar_menu_clicked)
         self.import_data_page.retention_time_loaded.connect(self.init_pages)
-        self.import_data_page.exp_peak_capacities_loaded.connect(self.update_results_with_new_exp_peak_capacities)
+        self.import_data_page.exp_peak_capacities_loaded.connect(
+            self.update_results_with_new_exp_peak_capacities
+        )
         self.import_data_page.retention_time_normalized.connect(self.update_plots)
-        self.om_calculation_page.metric_computed.connect(self.orthogonality_metric_computed)
-        self.redundancy_page.correlation_group_ready.connect(self.results_page.update_suggested_score_data)
+        self.om_calculation_page.metric_computed.connect(
+            self.orthogonality_metric_computed
+        )
+        self.redundancy_page.correlation_group_ready.connect(
+            self.results_page.update_suggested_score_data
+        )
 
     def init_pages(self):
         self.plot_page.init_page()
@@ -61,7 +89,6 @@ class ComboSelectorMain(CustomMainWindow):
     def update_plots(self):
         self.plot_page.update_dataset_selector_state()
         self.om_calculation_page.update_om_selector_state()
-
 
     def orthogonality_metric_computed1(self, metric_list):
         self.redundancy_page.init_page()
@@ -75,7 +102,9 @@ class ComboSelectorMain(CustomMainWindow):
 
         if self._cached_metric_list:
             self.redundancy_worker = RedundancyWorker(self.redundancy_page)
-            self.redundancy_worker.signals.finished.connect(self._start_results_worker_after_redundancy)
+            self.redundancy_worker.signals.finished.connect(
+                self._start_results_worker_after_redundancy
+            )
             self.threadpool.start(self.redundancy_worker)
 
     def update_results_with_new_exp_peak_capacities(self):
@@ -90,20 +119,23 @@ class ComboSelectorMain(CustomMainWindow):
 
     def _on_results_worker_finished(self):
         self.results_page.init_page(self._cached_metric_list)
-        self.set_status_text('Result page ready!')
+        self.set_status_text("Result page ready!")
         self.export_page.init_page(self.metric_list_for_figure)
-        self.set_status_text('Export page ready!')
+        self.set_status_text("Export page ready!")
 
     def side_bar_menu_clicked(self, index):
         pass
 
+
 def main():
     app = QApplication(sys.argv)
-    app_icon = QIcon(resource_path('icons/app_logo.svg'))
+    app_icon = QIcon(resource_path("icons/app_logo.svg"))
     app.setWindowIcon(app_icon)
 
     w = ComboSelectorMain()
     w.show()
     app.exec()
-if __name__ == '__main__':
+
+
+if __name__ == "__main__":
     main()

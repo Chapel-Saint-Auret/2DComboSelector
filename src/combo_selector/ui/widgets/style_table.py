@@ -1,16 +1,26 @@
 from PySide6.QtCore import QModelIndex, Qt, QThreadPool, Signal
-from PySide6.QtWidgets import (QFrame, QHBoxLayout, QHeaderView, QLabel,
-                               QVBoxLayout, QWidget)
+from PySide6.QtWidgets import (
+    QFrame,
+    QHBoxLayout,
+    QHeaderView,
+    QLabel,
+    QVBoxLayout,
+    QWidget,
+)
 
 from combo_selector.core.workers import TableDataWorker
 from combo_selector.ui.widgets.header_button import HeaderButton
 from combo_selector.ui.widgets.orthogonality_table import (
-    OrthogonalityTableModel, OrthogonalityTableView, SquareBackgroundDelegate)
+    OrthogonalityTableModel,
+    OrthogonalityTableView,
+    SquareBackgroundDelegate,
+)
 
 
 class StyledTable(QWidget):
     selectionChanged = Signal()
-    def __init__(self,title=''):
+
+    def __init__(self, title=""):
         super().__init__()
 
         self.threadpool = QThreadPool()
@@ -32,14 +42,13 @@ class StyledTable(QWidget):
 
         # Table
         self.model = OrthogonalityTableModel()
-        self.table = OrthogonalityTableView(self,self.model)
+        self.table = OrthogonalityTableView(self, self.model)
 
         # Use our custom header
         self.header = HeaderButton(Qt.Horizontal, self.table)
         self.table.setHorizontalHeader(self.header)
 
         self.table.setItemDelegate(SquareBackgroundDelegate(self.table))
-
 
         # Footer
         footer = QFrame()
@@ -74,8 +83,10 @@ class StyledTable(QWidget):
         self.model.set_formated_data([])
         self.set_default_row_count(10)
 
-    def add_header_button(self,column,tooltip,widget_to_show):
-        self.header.add_header_button(column=column,tooltip=tooltip,widget_to_show=widget_to_show)
+    def add_header_button(self, column, tooltip, widget_to_show):
+        self.header.add_header_button(
+            column=column, tooltip=tooltip, widget_to_show=widget_to_show
+        )
 
     def selection_changed(self):
         self.selectionChanged.emit()
@@ -85,10 +96,10 @@ class StyledTable(QWidget):
         worker.signals.finished.connect(self.handle_data)
         self.threadpool.start(worker)
 
-    def handle_data(self,data, rows, cols):
+    def handle_data(self, data, rows, cols):
         self.model.apply_formatted_data(data, rows, cols)
 
-    def set_table_data(self,data):
+    def set_table_data(self, data):
         self.model.set_data(data)
         # self.table.resizeColumnsToContents()
 
@@ -96,20 +107,26 @@ class StyledTable(QWidget):
             current_width = self.table.columnWidth(col)
             self.table.setColumnWidth(col, current_width + 10)  # Add padding
 
-        self.table.horizontalHeader().setDefaultAlignment(Qt.AlignLeft | Qt.AlignVCenter)
+        self.table.horizontalHeader().setDefaultAlignment(
+            Qt.AlignLeft | Qt.AlignVCenter
+        )
 
         self.table.horizontalHeader().setStretchLastSection(True)
 
         for i in range(self.table.model().columnCount(QModelIndex())):
             if i == 1:  # 'Combination' column index
-                self.table.horizontalHeader().setSectionResizeMode(i, QHeaderView.Stretch)
+                self.table.horizontalHeader().setSectionResizeMode(
+                    i, QHeaderView.Stretch
+                )
             else:
-                self.table.horizontalHeader().setSectionResizeMode(i, QHeaderView.ResizeToContents)
+                self.table.horizontalHeader().setSectionResizeMode(
+                    i, QHeaderView.ResizeToContents
+                )
 
     def get_header(self):
         return self.header
 
-    def set_proxy_filter_regexp(self,regexp):
+    def set_proxy_filter_regexp(self, regexp):
         self.table.filterExpChanged(regexp)
 
     def set_table_proxy(self):
@@ -130,15 +147,14 @@ class StyledTable(QWidget):
     def get_row_count(self):
         return self.model.rowCount(QModelIndex())
 
-    def select_row(self,index):
+    def select_row(self, index):
         self.table.selectRow(index)
 
-    def set_header_label(self,header_label):
+    def set_header_label(self, header_label):
         self.model.set_header_label(header_label)
 
-    def set_default_row_count(self,value):
+    def set_default_row_count(self, value):
         self.model.set_default_row_count(value)
-
 
     def _apply_styles(self):
         self.setStyleSheet("""

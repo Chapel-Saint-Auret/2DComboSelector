@@ -9,7 +9,7 @@ class CheckableComboList(QComboBox):
 
     item_checked = Signal(list)
 
-    def __init__(self,excluive = False,placeholder=''):
+    def __init__(self, excluive=False, placeholder=""):
         super().__init__()
         self.item_list = []
         self.exclusive = excluive
@@ -38,7 +38,7 @@ class CheckableComboList(QComboBox):
     def update_text(self):
         self.lineEdit().setText(self.display_text)
 
-    def update(self,item=None):
+    def update(self, item=None):
         self.display_text = ""
         self.checked_items = []
 
@@ -54,27 +54,26 @@ class CheckableComboList(QComboBox):
                     self.model.item(i).setCheckState(Qt.Unchecked)
                     self.model.blockSignals(False)
 
-
         else:
             for i in range(self.model.rowCount()):
-                if self.model.item(i,0).checkState() == Qt.Checked:
-                    self.display_text += self.model.item(i,0).text() + "; "
+                if self.model.item(i, 0).checkState() == Qt.Checked:
+                    self.display_text += self.model.item(i, 0).text() + "; "
                     self.checked_items.append(self.model.item(i, 0).text())
         toto = self.get_checked_item()
         toto = 0
         QTimer.singleShot(0, self.update_text)
 
-    def add_item(self,text):
+    def add_item(self, text):
         row = self.model.rowCount()
         new_item = QStandardItem(text)
         new_item.setFlags(Qt.ItemIsUserCheckable | Qt.ItemIsEnabled)
         new_item.setData(Qt.Unchecked, Qt.CheckStateRole)
         self.blockSignals(True)
-        self.model.setItem(row,0,new_item)
+        self.model.setItem(row, 0, new_item)
         self.blockSignals(False)
         self.setModel(self.model)
 
-    def add_items(self,item_text_list):
+    def add_items(self, item_text_list):
         self.item_list = item_text_list
         for text in item_text_list:
             self.add_item(text)
@@ -87,7 +86,7 @@ class CheckableComboList(QComboBox):
     def get_items(self):
         return self.item_list
 
-    def set_checked_items(self,item_text_list):
+    def set_checked_items(self, item_text_list):
         nb_of_rows = self.model.rowCount()
         for item_text in item_text_list:
             index = self.findText(item_text)
@@ -95,6 +94,7 @@ class CheckableComboList(QComboBox):
                 self.model.item(index).setCheckState(Qt.Checked)
 
         self.update()
+
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
@@ -105,8 +105,8 @@ if __name__ == "__main__":
     w.setLayout(main_layout)
 
     checkablecomnbo = CheckableComboList(True)
-    checkablecomnbo.add_items(["one","two",'three'])
-    checkablecomnbo.set_checked_items(["one","two",'three'])
+    checkablecomnbo.add_items(["one", "two", "three"])
+    checkablecomnbo.set_checked_items(["one", "two", "three"])
 
     main_layout.addWidget(checkablecomnbo)
 

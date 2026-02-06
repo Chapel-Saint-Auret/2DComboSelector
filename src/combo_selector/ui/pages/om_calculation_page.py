@@ -6,11 +6,24 @@ from matplotlib.backends.backend_qtagg import FigureCanvas
 from matplotlib.figure import Figure
 from PySide6.QtCore import QModelIndex, QSize, Qt, QThreadPool, QTimer, Signal
 from PySide6.QtGui import QColor, QIcon
-from PySide6.QtWidgets import (QApplication, QComboBox, QFrame,
-                               QGraphicsDropShadowEffect, QGroupBox,
-                               QHBoxLayout, QLabel, QMessageBox, QPushButton,
-                               QScrollArea, QSizePolicy, QSpinBox, QSplitter,
-                               QStackedLayout, QVBoxLayout, QWidget)
+from PySide6.QtWidgets import (
+    QApplication,
+    QComboBox,
+    QFrame,
+    QGraphicsDropShadowEffect,
+    QGroupBox,
+    QHBoxLayout,
+    QLabel,
+    QMessageBox,
+    QPushButton,
+    QScrollArea,
+    QSizePolicy,
+    QSpinBox,
+    QSplitter,
+    QStackedLayout,
+    QVBoxLayout,
+    QWidget,
+)
 
 from combo_selector.core.orthogonality import Orthogonality
 from combo_selector.core.plot_utils import PlotUtils
@@ -44,8 +57,9 @@ METRIC_PLOT_MAP = {
     "NND Arithm mean": None,
     "NND Geom mean": None,
     "NND Harm mean": None,
-    "NND mean": None
+    "NND mean": None,
 }
+
 
 class OMCalculationPage(QFrame):
     metric_computed = Signal(list)
@@ -220,10 +234,20 @@ class OMCalculationPage(QFrame):
         """)
 
         metric_list = [
-            "Convex hull relative area", "Bin box counting", "Gilar-Watson method",
-            "Modeling approach", "Conditional entropy", "Pearson Correlation",
-            "Spearman Correlation", "Kendall Correlation", "Asterisk equations",
-            "NND Arithm mean", "NND Geom mean", "NND Harm mean", "%FIT", "%BIN"
+            "Convex hull relative area",
+            "Bin box counting",
+            "Gilar-Watson method",
+            "Modeling approach",
+            "Conditional entropy",
+            "Pearson Correlation",
+            "Spearman Correlation",
+            "Kendall Correlation",
+            "Asterisk equations",
+            "NND Arithm mean",
+            "NND Geom mean",
+            "NND Harm mean",
+            "%FIT",
+            "%BIN",
         ]
         self.om_tree_list = CheckableTreeList(metric_list)
         self.om_tree_list.setFixedHeight(175)
@@ -316,12 +340,33 @@ class OMCalculationPage(QFrame):
         self.add_dataset_selector("Select OM 3:", self.om_selector3)
         self.add_dataset_selector("Select OM 4:", self.om_selector4)
 
-        self.om_selector_list = [self.om_selector1, self.om_selector2, self.om_selector3, self.om_selector4]
+        self.om_selector_list = [
+            self.om_selector1,
+            self.om_selector2,
+            self.om_selector3,
+            self.om_selector4,
+        ]
         self.om_selector_map = {
-            "0": {"selector": self.om_selector1, "axe": None, "scatter_collection": None},
-            "1": {"selector": self.om_selector2, "axe": None, "scatter_collection": None},
-            "2": {"selector": self.om_selector3, "axe": None, "scatter_collection": None},
-            "3": {"selector": self.om_selector4, "axe": None, "scatter_collection": None},
+            "0": {
+                "selector": self.om_selector1,
+                "axe": None,
+                "scatter_collection": None,
+            },
+            "1": {
+                "selector": self.om_selector2,
+                "axe": None,
+                "scatter_collection": None,
+            },
+            "2": {
+                "selector": self.om_selector3,
+                "axe": None,
+                "scatter_collection": None,
+            },
+            "3": {
+                "selector": self.om_selector4,
+                "axe": None,
+                "scatter_collection": None,
+            },
         }
 
         data_selection_group.setLayout(self.om_selection_layout)
@@ -399,7 +444,9 @@ class OMCalculationPage(QFrame):
         table_frame_layout.setContentsMargins(20, 20, 20, 20)
 
         self.styled_table = StyledTable("OM result table")
-        self.styled_table.set_header_label(["Set #", "2D Combination", "OM 1", "OM 2", "...", "OM n"])
+        self.styled_table.set_header_label(
+            ["Set #", "2D Combination", "OM 1", "OM 2", "...", "OM n"]
+        )
         self.styled_table.set_default_row_count(10)
         table_frame_layout.addWidget(self.styled_table)
 
@@ -444,13 +491,17 @@ class OMCalculationPage(QFrame):
         # --- signal wiring ----------------------------------------------------
         self.compare_number.currentTextChanged.connect(self.update_om_selector_state)
         for index, data in self.om_selector_map.items():
-            data["selector"].currentTextChanged.connect(lambda _, k=index: self.on_selector_changed(k))
+            data["selector"].currentTextChanged.connect(
+                lambda _, k=index: self.on_selector_changed(k)
+            )
         self.om_calculate_btn.clicked.connect(self.compute_orthogonality_metric)
         self.nb_bin.editingFinished.connect(self.update_bin_box_number)
-        self.dataset_selector.currentTextChanged.connect(self.data_set_selection_changed_from_combobox)
+        self.dataset_selector.currentTextChanged.connect(
+            self.data_set_selection_changed_from_combobox
+        )
         # self.styled_table.selectionChanged.connect(self.data_set_selection_changed_from_table)
 
-    def add_dataset_selector(self,label_text, combobox):
+    def add_dataset_selector(self, label_text, combobox):
         container = QVBoxLayout()
         container.setSpacing(2)
         container.addWidget(QLabel(label_text))
@@ -470,25 +521,30 @@ class OMCalculationPage(QFrame):
 
         self.threadpool.start(worker)
 
-    def start_update_bin_number(self,nb_bin):
+    def start_update_bin_number(self, nb_bin):
         checked_metric_list = self.om_tree_list.get_checked_items()
 
-        #TODO this was to only compute the metric if any of these metric were selected
+        # TODO this was to only compute the metric if any of these metric were selected
         # remove the threading if not necessary
 
-        if any(metric in checked_metric_list \
-               for metric in ["Bin box counting", "Modeling approach", "Gilar-Watson method"]):
+        if any(
+            metric in checked_metric_list
+            for metric in [
+                "Bin box counting",
+                "Modeling approach",
+                "Gilar-Watson method",
+            ]
+        ):
 
-            worker = OMWorkerUpdateNumBin(nb_bin,checked_metric_list, self.model)
+            worker = OMWorkerUpdateNumBin(nb_bin, checked_metric_list, self.model)
 
             worker.signals.progress.connect(self.handle_progress_update)
 
-            #TODO find a better way to compute the metric once bin number has been updated
+            # TODO find a better way to compute the metric once bin number has been updated
             # this is commented because this call this will update table and trigger computed_metric signal
             # the issue is that when bin number is updated, I should find a way to compute metric if they have at least
             # been computed once otherwise it means I compute the metric without clicking on compute metric button
             # worker.signals.finished.connect(self.handle_finished)
-
 
             self.threadpool.start(worker)
         else:
@@ -520,7 +576,9 @@ class OMCalculationPage(QFrame):
 
             self.update_orthogonality_table()
             self.data_sets_change()
-            self.metric_computed.emit([self.om_tree_list.get_checked_items(), self.selected_metric_list])
+            self.metric_computed.emit(
+                [self.om_tree_list.get_checked_items(), self.selected_metric_list]
+            )
         else:
             return
 
@@ -531,14 +589,16 @@ class OMCalculationPage(QFrame):
     def init_page(self):
         self.om_tree_list.unchecked_all()
         self.styled_table.clean_table()
-        self.styled_table.set_header_label(["Set #", "2D Combination", "OM 1", "OM 2", "...", "OM n"])
+        self.styled_table.set_header_label(
+            ["Set #", "2D Combination", "OM 1", "OM 2", "...", "OM n"]
+        )
         # self.styled_table.set_table_data(pd.DataFrame())
         self.plot_utils.set_orthogonality_data(self.model.get_orthogonality_dict())
         self.model.reset_om_status_computation_state()
         self.populate_selector()
         self.update_om_selector_state()
 
-    def clear_axis_except_pathcollections(self,ax):
+    def clear_axis_except_pathcollections(self, ax):
         """Clear all elements from the axis except PathCollection objects (e.g., scatter plots)."""
 
         # Remove all lines
@@ -564,56 +624,62 @@ class OMCalculationPage(QFrame):
 
     def update_om_selector_state(self):
 
-        #TODO number_of_selector should be a class attribute (when compare_number currentTextChanged)
+        # TODO number_of_selector should be a class attribute (when compare_number currentTextChanged)
         number_of_selectors = int(self.compare_number.currentText())
 
-
-        [self.om_selector_list[i].setDisabled(False) if i<number_of_selectors
-         else self.om_selector_list[i].setDisabled(True) for i,selector in enumerate(self.om_selector_list)]
+        [
+            (
+                self.om_selector_list[i].setDisabled(False)
+                if i < number_of_selectors
+                else self.om_selector_list[i].setDisabled(True)
+            )
+            for i, selector in enumerate(self.om_selector_list)
+        ]
 
         self.update_plot_layout()
 
         self.refresh_displayed_plot()
 
-
-
     def update_plot_layout(self):
-        #get the number of plot to compare
+        # get the number of plot to compare
         number_of_selectors = self.compare_number.currentText()
 
-        #create a key string based on the compare number value in order to know which ploy layout to select
-        plot_key = number_of_selectors+'PLOT'
-
+        # create a key string based on the compare number value in order to know which ploy layout to select
+        plot_key = number_of_selectors + "PLOT"
 
         # plot layout map that contains the list of plot layout to display based on the compare number
-        plot_layout_map = {'1PLOT':[111,None,None,None],
-                       '2PLOT':[121,122,None,None],
-                       '3PLOT':[221,222,223,None],
-                       '4PLOT':[221,222,223,224]}
+        plot_layout_map = {
+            "1PLOT": [111, None, None, None],
+            "2PLOT": [121, 122, None, None],
+            "3PLOT": [221, 222, 223, None],
+            "4PLOT": [221, 222, 223, 224],
+        }
 
-        #get list of layout
+        # get list of layout
         layout_list = plot_layout_map[plot_key]
 
         self.fig.clear()
         # self.remove_all_axes()
 
-        for i,layout in enumerate(layout_list):
+        for i, layout in enumerate(layout_list):
             index = str(i)
-            #initialize selector axe and scatter point selection
+            # initialize selector axe and scatter point selection
             if layout is not None:
                 axe = self.fig.add_subplot(layout)
-                self.fig.subplots_adjust(wspace=.5, hspace=.5)
+                self.fig.subplots_adjust(wspace=0.5, hspace=0.5)
                 axe.set_box_aspect(1)
                 axe.set_xlim(0, 1)
                 axe.set_ylim(0, 1)
 
                 self.draw_figure()
 
-                self.om_selector_map[index]['axe'] = axe
-                self.om_selector_map[index]['scatter_collection'] = axe.scatter([], [],s=20, c='k', marker='o', alpha=0.5)
+                self.om_selector_map[index]["axe"] = axe
+                self.om_selector_map[index]["scatter_collection"] = axe.scatter(
+                    [], [], s=20, c="k", marker="o", alpha=0.5
+                )
             else:
-                self.om_selector_map[index]['axe'] = None
-                self.om_selector_map[index]['scatter_collection'] = None
+                self.om_selector_map[index]["axe"] = None
+                self.om_selector_map[index]["scatter_collection"] = None
 
         # self.update_figure()
 
@@ -622,7 +688,9 @@ class OMCalculationPage(QFrame):
         selector = self.om_selector_map[index]["selector"]
         self.selected_metric = selector.currentText()
         self.plot_utils.set_axe(self.om_selector_map[index]["axe"])
-        self.plot_utils.set_scatter_collection(self.om_selector_map[index]["scatter_collection"])
+        self.plot_utils.set_scatter_collection(
+            self.om_selector_map[index]["scatter_collection"]
+        )
 
         self.update_figure()
 
@@ -652,9 +720,9 @@ class OMCalculationPage(QFrame):
 
         self.dataset_selector.blockSignals(False)
 
-        #clear selector list in case previous data were loaded
+        # clear selector list in case previous data were loaded
         for index, data in self.om_selector_map.items():
-            om_selector = data['selector']
+            om_selector = data["selector"]
 
             om_selector.blockSignals(True)
             om_selector.clear()
@@ -671,16 +739,20 @@ class OMCalculationPage(QFrame):
         QApplication.processEvents()
 
         self.start_om_computation(self.selected_metric_list)
-        self.selected_metric_list = [METRIC_PLOT_MAP[metric] for metric in self.selected_metric_list]
+        self.selected_metric_list = [
+            METRIC_PLOT_MAP[metric] for metric in self.selected_metric_list
+        ]
 
-        #remove None item
-        self.selected_metric_list = [metric for metric in self.selected_metric_list if metric]
+        # remove None item
+        self.selected_metric_list = [
+            metric for metric in self.selected_metric_list if metric
+        ]
 
-        #rermove doublon from list (when converting a list into dict it removes dupplicate keys)
+        # rermove doublon from list (when converting a list into dict it removes dupplicate keys)
         self.selected_metric_list = list(dict.fromkeys(self.selected_metric_list))
 
         for index, data in self.om_selector_map.items():
-            om_selector = data['selector']
+            om_selector = data["selector"]
 
             om_selector.blockSignals(True)
             om_selector.clear()
@@ -694,7 +766,6 @@ class OMCalculationPage(QFrame):
 
         # self.metric_computed.emit([self.om_tree_list.get_checked_items(),self.selected_metric_list])
 
-
     def _on_om_computed(self, original_metric_list: list):
         # now the model has filled its dataframes; we can continue
         # exactly the same as before, e.g.:
@@ -705,7 +776,7 @@ class OMCalculationPage(QFrame):
         plot_list = list(dict.fromkeys(plot_list))
 
         for idx, data in self.om_selector_map.items():
-            sel = data['selector']
+            sel = data["selector"]
             sel.blockSignals(True)
             sel.clear()
             sel.addItems(plot_list)
@@ -715,10 +786,9 @@ class OMCalculationPage(QFrame):
         self.data_sets_change()
         self.metric_computed.emit([original_metric_list, plot_list])
 
-
     def update_bin_box_number(self):
 
-        #simply update the number of bin and reset computed metric status for the metric that use bin number
+        # simply update the number of bin and reset computed metric status for the metric that use bin number
         self.model.update_num_bins(self.nb_bin.value())
 
         # self.stack.setCurrentWidget(self.progress_overlay)
@@ -735,7 +805,7 @@ class OMCalculationPage(QFrame):
         #     self.metric_computed.emit([self.om_tree_list.get_checked_items(), self.selected_metric_list])
 
     def select_orthogonality(self):
-        self.model.set_orthogonality_value('orthogonality_score')
+        self.model.set_orthogonality_value("orthogonality_score")
 
     def update_orthogonality_table(self):
         data = self.model.get_orthogonality_metric_df()
@@ -745,7 +815,6 @@ class OMCalculationPage(QFrame):
         self.styled_table.set_table_proxy()
 
     def data_sets_change(self, data_set: str = None) -> None:
-
         """
         Handles dataset selection from the dropdown menu and updates the UI accordingly.
 
@@ -799,7 +868,9 @@ class OMCalculationPage(QFrame):
         row_count = self.styled_table.get_row_count()
 
         for row in range(row_count):
-            model_index = self.styled_table.get_proxy_model().index(row, 0)  # Column 0 assumed to contain dataset names
+            model_index = self.styled_table.get_proxy_model().index(
+                row, 0
+            )  # Column 0 assumed to contain dataset names
             if f"Set {model_index.data()}" == self.selected_set:
                 return row
 
@@ -891,15 +962,15 @@ class OMCalculationPage(QFrame):
         self.fig.canvas.draw()
         self.fig.canvas.flush_events()
 
-    def  update_figure(self):
+    def update_figure(self):
 
-        #if no axe is selected no need to update figure
+        # if no axe is selected no need to update figure
         if self.selected_axe is None:
             return
 
         self.plot_utils.clean_figure()
 
-        if self.model.get_status() in ['loaded', 'peak_capacity_loaded']:
+        if self.model.get_status() in ["loaded", "peak_capacity_loaded"]:
             # self.plot_scatter()
             self.plot_utils.plot_scatter()
         else:
@@ -913,12 +984,14 @@ class OMCalculationPage(QFrame):
         # else:
         #     self.bin_box_input_widget.setHidden(True)
 
-        #No metric has been computed yet so no need to plot them
+        # No metric has been computed yet so no need to plot them
         if self.selected_metric is None:
             return
 
         if self.selected_metric in self.plot_functions_map:
-            self.plot_functions_map[self.selected_metric]()  # Call the corresponding function
+            self.plot_functions_map[
+                self.selected_metric
+            ]()  # Call the corresponding function
 
     def plot_percent_bin(self):
         self.plot_utils.plot_percent_bin()

@@ -6,12 +6,27 @@ from matplotlib.backends.backend_qtagg import FigureCanvas
 from matplotlib.figure import Figure
 from PySide6.QtCore import QThreadPool, QTimer
 from PySide6.QtSvgWidgets import QSvgWidget
-from PySide6.QtWidgets import (QApplication, QButtonGroup, QCheckBox,
-                               QComboBox, QFrame, QGraphicsDropShadowEffect,
-                               QGridLayout, QGroupBox, QHBoxLayout,
-                               QHeaderView, QLabel, QPushButton, QRadioButton,
-                               QScrollArea, QSizePolicy, QSplitter,
-                               QStackedLayout, QVBoxLayout, QWidget)
+from PySide6.QtWidgets import (
+    QApplication,
+    QButtonGroup,
+    QCheckBox,
+    QComboBox,
+    QFrame,
+    QGraphicsDropShadowEffect,
+    QGridLayout,
+    QGroupBox,
+    QHBoxLayout,
+    QHeaderView,
+    QLabel,
+    QPushButton,
+    QRadioButton,
+    QScrollArea,
+    QSizePolicy,
+    QSplitter,
+    QStackedLayout,
+    QVBoxLayout,
+    QWidget,
+)
 
 from combo_selector.core.workers import ResultsWorkerComputeCustomOMScore
 from combo_selector.ui.widgets.checkable_tree_list import CheckableTreeList
@@ -43,7 +58,7 @@ UI_TO_MODEL_MAPPING = {
     "%BIN": "percent_bin",
     "Gilar-Watson method": "gilar-watson",
     "Modeling approach": "modeling_approach",
-    "Conditional entropy": "conditional_entropy"
+    "Conditional entropy": "conditional_entropy",
 }
 
 
@@ -199,7 +214,9 @@ class ResultsPage(QFrame):
 
         ranking_layout.addWidget(QLabel("Ranking based on:"))
         self.select_ranking_type = QComboBox()
-        self.select_ranking_type.addItems(['Suggested score','Computed score','Practical 2D peak capacity'])
+        self.select_ranking_type.addItems(
+            ["Suggested score", "Computed score", "Practical 2D peak capacity"]
+        )
         ranking_layout.addWidget(self.select_ranking_type)
         ranking_layout.addSpacing(20)
 
@@ -282,7 +299,9 @@ class ResultsPage(QFrame):
         self.radio_button_group.addButton(self.use_computed_btn)
         self.radio_button_group.setExclusive(True)
 
-        orthogonality_score_layout.addWidget(QLabel("Practical 2D peak capacity Calculation:"))
+        orthogonality_score_layout.addWidget(
+            QLabel("Practical 2D peak capacity Calculation:")
+        )
         orthogonality_score_layout.addWidget(self.use_suggested_btn)
         orthogonality_score_layout.addWidget(self.use_computed_btn)
         orthogonality_score_layout.addWidget(QLabel("Computed OM list:"))
@@ -292,7 +311,9 @@ class ResultsPage(QFrame):
 
         # --- Score Comparison group (stylesheet UNCHANGED) --------------------
         orthogonality_compare_score_group = QGroupBox("Orthogonality score comparison")
-        orthogonality_compare_score_group.setStyleSheet(orthogonality_score_group.styleSheet())
+        orthogonality_compare_score_group.setStyleSheet(
+            orthogonality_score_group.styleSheet()
+        )
 
         self.om_selection_layout = QVBoxLayout()
         self.om_selection_layout.addWidget(QLabel("Number of score to compare:"))
@@ -314,12 +335,37 @@ class ResultsPage(QFrame):
         self.add_dataset_selector("Select Score 3:", self.om_selector3)
         self.add_dataset_selector("Select Score 4:", self.om_selector4)
 
-        self.om_selector_list = [self.om_selector1, self.om_selector2, self.om_selector3, self.om_selector4]
+        self.om_selector_list = [
+            self.om_selector1,
+            self.om_selector2,
+            self.om_selector3,
+            self.om_selector4,
+        ]
         self.om_selector_map = {
-            "0": {"selector": self.om_selector1, "axe": None, "scatter_collection": None, "filtered_scatter_point": {}},
-            "1": {"selector": self.om_selector2, "axe": None, "scatter_collection": None, "filtered_scatter_point": {}},
-            "2": {"selector": self.om_selector3, "axe": None, "scatter_collection": None, "filtered_scatter_point": {}},
-            "3": {"selector": self.om_selector4, "axe": None, "scatter_collection": None, "filtered_scatter_point": {}}
+            "0": {
+                "selector": self.om_selector1,
+                "axe": None,
+                "scatter_collection": None,
+                "filtered_scatter_point": {},
+            },
+            "1": {
+                "selector": self.om_selector2,
+                "axe": None,
+                "scatter_collection": None,
+                "filtered_scatter_point": {},
+            },
+            "2": {
+                "selector": self.om_selector3,
+                "axe": None,
+                "scatter_collection": None,
+                "filtered_scatter_point": {},
+            },
+            "3": {
+                "selector": self.om_selector4,
+                "axe": None,
+                "scatter_collection": None,
+                "filtered_scatter_point": {},
+            },
         }
         orthogonality_compare_score_group.setLayout(self.om_selection_layout)
 
@@ -419,10 +465,16 @@ class ResultsPage(QFrame):
         table_frame_layout.setContentsMargins(20, 20, 20, 20)
 
         self.styled_table = StyledTable("Final result and ranking table")
-        self.styled_table.set_header_label([
-            "Set #", "2D Combination", "Suggested score", "Computed score",
-            "Practical 2D peak capacity", "Ranking"
-        ])
+        self.styled_table.set_header_label(
+            [
+                "Set #",
+                "2D Combination",
+                "Suggested score",
+                "Computed score",
+                "Practical 2D peak capacity",
+                "Ranking",
+            ]
+        )
         self.styled_table.get_header().setSectionResizeMode(0, QHeaderView.Fixed)
         self.styled_table.get_header().setSectionResizeMode(1, QHeaderView.Stretch)
         self.styled_table.get_header().setSectionResizeMode(5, QHeaderView.Fixed)
@@ -430,7 +482,9 @@ class ResultsPage(QFrame):
         self.styled_table.set_default_row_count(10)
 
         self.custom_filter_widget = CustomFilterDialog(self)
-        self.styled_table.add_header_button(column=1, tooltip="Custom filter",widget_to_show=self.custom_filter_widget)
+        self.styled_table.add_header_button(
+            column=1, tooltip="Custom filter", widget_to_show=self.custom_filter_widget
+        )
 
         table_frame_layout.addWidget(self.styled_table)
 
@@ -439,7 +493,7 @@ class ResultsPage(QFrame):
 
         # === Overlay (progress) ===============================================
         self.progress_bar = RoundProgressBar()
-        self.progress_bar.rpb_setBarStyle('Pizza')
+        self.progress_bar.rpb_setBarStyle("Pizza")
 
         self.progress_overlay = QWidget(self)
         self.progress_overlay.setAttribute(Qt.WA_TransparentForMouseEvents)
@@ -475,25 +529,29 @@ class ResultsPage(QFrame):
         # --- signals -----------------------------------------------------------
         self.custom_filter_widget.filter_regexp_changed.connect(self.filter_table)
         self.select_ranking_type.currentTextChanged.connect(self.set_ranking_argument)
-        self.radio_button_group.buttonClicked.connect(self.set_use_suggested_om_score_flag)
+        self.radio_button_group.buttonClicked.connect(
+            self.set_use_suggested_om_score_flag
+        )
         self.compute_score_btn.clicked.connect(self.start_om_computation)
         self.compare_number.currentTextChanged.connect(self.update_om_selector_state)
         for index, data in self.om_selector_map.items():
-            data["selector"].currentTextChanged.connect(lambda _, k=index: self.on_selector_changed(k))
+            data["selector"].currentTextChanged.connect(
+                lambda _, k=index: self.on_selector_changed(k)
+            )
 
     def get_model(self):
         return self.model
 
-    def filter_table(self,regexp):
+    def filter_table(self, regexp):
         self.styled_table.set_proxy_filter_regexp(regexp)
 
-    def add_dataset_selector(self,label_text, combobox):
+    def add_dataset_selector(self, label_text, combobox):
         container = QVBoxLayout()
         container.setSpacing(2)
         container.addWidget(QLabel(label_text))
         container.addWidget(combobox)
         self.om_selection_layout.addLayout(container)
-		
+
     def create_filter_groupbox(self):
 
         grid_layout = QGridLayout()
@@ -502,18 +560,17 @@ class ResultsPage(QFrame):
         self.filter_button_group = QButtonGroup()
         self.filter_button_group.setExclusive(False)
 
-        self.hilic_vs_hilic = QCheckBox('HILIC x HILIC')
-        self.rplc_vs_rplc = QCheckBox('RPLC x RPLC')
-        self.rplc_vs_hilic = QCheckBox('HILIC x RPLC')
+        self.hilic_vs_hilic = QCheckBox("HILIC x HILIC")
+        self.rplc_vs_rplc = QCheckBox("RPLC x RPLC")
+        self.rplc_vs_hilic = QCheckBox("HILIC x RPLC")
 
         self.hilic_vs_hilic.setCheckState(Qt.CheckState.Checked)
         self.rplc_vs_rplc.setCheckState(Qt.CheckState.Checked)
         self.rplc_vs_hilic.setCheckState(Qt.CheckState.Checked)
 
-
-        self.hilic_vs_hilic.setObjectName('HILIC x HILIC')
-        self.rplc_vs_rplc.setObjectName('RPLC x RPLC')
-        self.rplc_vs_hilic.setObjectName('HILIC x RPLC')
+        self.hilic_vs_hilic.setObjectName("HILIC x HILIC")
+        self.rplc_vs_rplc.setObjectName("RPLC x RPLC")
+        self.rplc_vs_hilic.setObjectName("HILIC x RPLC")
 
         self.filter_button_group.addButton(self.hilic_vs_hilic)
         self.filter_button_group.addButton(self.rplc_vs_rplc)
@@ -543,17 +600,21 @@ class ResultsPage(QFrame):
         logging.debug("Running ResultsWorker: update_results_table")
         self.update_results_table()
 
-
         number_of_selectors = int(self.compare_number.currentText())
         for i in range(number_of_selectors):
             self.handle_selector_change(str(i), emit_plot=True)
 
-
     def update_om_selector_state(self):
         number_of_selectors = int(self.compare_number.currentText())
 
-        [self.om_selector_list[i].setDisabled(False) if i < number_of_selectors
-         else self.om_selector_list[i].setDisabled(True) for i, selector in enumerate(self.om_selector_list)]
+        [
+            (
+                self.om_selector_list[i].setDisabled(False)
+                if i < number_of_selectors
+                else self.om_selector_list[i].setDisabled(True)
+            )
+            for i, selector in enumerate(self.om_selector_list)
+        ]
 
         self.update_plot_layout()
 
@@ -570,10 +631,14 @@ class ResultsPage(QFrame):
         selector = self.om_selector_map[index]["selector"]
         self.selected_score = selector.currentText()
         self.selected_axe = self.om_selector_map[index]["axe"]
-        self.selected_filtered_scatter_point = self.om_selector_map[index]["filtered_scatter_point"]
+        self.selected_filtered_scatter_point = self.om_selector_map[index][
+            "filtered_scatter_point"
+        ]
 
         if self.selected_axe and self.selected_score and emit_plot:
-            logging.debug(f"Plot OM vs 2D for index {index} with score {self.selected_score}")
+            logging.debug(
+                f"Plot OM vs 2D for index {index} with score {self.selected_score}"
+            )
             self.plot_orthogonality_vs_2d_peaks()
 
     def on_selector_changed(self, index: str):
@@ -584,54 +649,54 @@ class ResultsPage(QFrame):
 
         om_list = self.om_list.get_items()
 
-        om_score_list = ['Suggested score','Computed score'] + om_list
+        om_score_list = ["Suggested score", "Computed score"] + om_list
 
         for index, data in self.om_selector_map.items():
-            om_score_selector = data['selector']
+            om_score_selector = data["selector"]
             om_score_selector.blockSignals(True)
             om_score_selector.clear()
             om_score_selector.addItems(om_score_list)
             om_score_selector.blockSignals(False)
 
     def update_plot_layout(self):
-        #get the number of plot to compare
+        # get the number of plot to compare
         number_of_selectors = self.compare_number.currentText()
 
-        #create a key string based on the compare number value in order to know which ploy layout to select
-        plot_key = number_of_selectors+'PLOT'
-
+        # create a key string based on the compare number value in order to know which ploy layout to select
+        plot_key = number_of_selectors + "PLOT"
 
         # plot layout map that contains the list of plot layout to display based on the compare number
-        plot_layout_map = {'1PLOT':[111,None,None,None],
-                       '2PLOT':[121,122,None,None],
-                       '3PLOT':[221,222,223,None],
-                       '4PLOT':[221,222,223,224]}
+        plot_layout_map = {
+            "1PLOT": [111, None, None, None],
+            "2PLOT": [121, 122, None, None],
+            "3PLOT": [221, 222, 223, None],
+            "4PLOT": [221, 222, 223, 224],
+        }
 
-        #get list of layout
+        # get list of layout
         layout_list = plot_layout_map[plot_key]
-
 
         self.fig.clear()
         # self.remove_all_axes()
 
-        for i,layout in enumerate(layout_list):
+        for i, layout in enumerate(layout_list):
             index = str(i)
-            #initialize selector axe and scatter point selection
+            # initialize selector axe and scatter point selection
             if layout is not None:
                 axe = self.fig.add_subplot(layout)
-                self.fig.subplots_adjust(wspace=.5, hspace=.5)
+                self.fig.subplots_adjust(wspace=0.5, hspace=0.5)
                 axe.set_box_aspect(1)
 
                 self.draw_figure()
 
-                #since the figure has been cleares, all the previous axes and scatter collection need to be reinitialized
-                #if it's not done the filtered_scatter_point won be attached to any axe because it has been deleted
-                self.om_selector_map[index]['axe'] = axe
-                self.om_selector_map[index]["filtered_scatter_point"] ={}
+                # since the figure has been cleares, all the previous axes and scatter collection need to be reinitialized
+                # if it's not done the filtered_scatter_point won be attached to any axe because it has been deleted
+                self.om_selector_map[index]["axe"] = axe
+                self.om_selector_map[index]["filtered_scatter_point"] = {}
 
                 # self.om_selector_map[index]['scatter_collection'] = axe.scatter([], [], s=15, color='silver', edgecolor='black', linewidths=0.8)
             else:
-                self.om_selector_map[index]['axe'] = None
+                self.om_selector_map[index]["axe"] = None
                 self.om_selector_map[index]["filtered_scatter_point"] = None
                 # self.om_selector_map[index]['scatter_collection'] = None
 
@@ -651,17 +716,18 @@ class ResultsPage(QFrame):
         selector = self.om_selector_map[index]["selector"]
         self.selected_score = selector.currentText()
         self.selected_axe = self.om_selector_map[index]["axe"]
-        self.selected_filtered_scatter_point = self.om_selector_map[index]["filtered_scatter_point"]
+        self.selected_filtered_scatter_point = self.om_selector_map[index][
+            "filtered_scatter_point"
+        ]
 
         if self.selected_axe and self.selected_score:
-            print('PLot OM vs 2D')
+            print("PLot OM vs 2D")
             self.plot_orthogonality_vs_2d_peaks()
 
     def set_ranking_argument(self):
         ranking_argument = self.select_ranking_type.currentText()
         self.model.set_orthogonality_ranking_argument(ranking_argument)
         self.update_results_table()
-
 
     def set_use_suggested_om_score_flag(self):
 
@@ -678,7 +744,7 @@ class ResultsPage(QFrame):
         self.model.create_results_table()
         self.update_results_table()
 
-    def update_orthogonality_metric_list(self,om_list):
+    def update_orthogonality_metric_list(self, om_list):
         self.om_list.blockSignals(True)
         self.om_list.clear()
         self.om_list.add_items(om_list)
@@ -712,7 +778,6 @@ class ResultsPage(QFrame):
         self.build_filtered_point()
         self.plot_orthogonality_vs_2d_peaks()
 
-
     def handle_progress_update(self, value: int):
         print(f"[RECEIVED] Progress update: {value}")
 
@@ -737,8 +802,8 @@ class ResultsPage(QFrame):
 
         # self.populate_om_score_selector()
         self.update_results_table()
-        #this is just to update self.filter_subset_dict with the new computed value (maybe there is a mor optimize way to do it)
-        #it a lazy option
+        # this is just to update self.filter_subset_dict with the new computed value (maybe there is a mor optimize way to do it)
+        # it a lazy option
         # self.build_filtered_point()
         self.plot_orthogonality_vs_2d_peaks()
 
@@ -746,14 +811,13 @@ class ResultsPage(QFrame):
         self.progress_overlay.hide()
         self.stack.setCurrentWidget(self.main_widget)
 
-
     def update_results_table(self):
         data = self.model.get_orthogonality_result_df()
         self.styled_table.async_set_table_data(data)
         self.styled_table.set_table_proxy()
 
     def plot_orthogonality_vs_2d_peaks(self):
-        if self.model.get_status() not in ['peak_capacity_loaded']:
+        if self.model.get_status() not in ["peak_capacity_loaded"]:
             return
 
         if not self.selected_score:
@@ -765,33 +829,32 @@ class ResultsPage(QFrame):
         #     return
 
         orthogonality_score_dict = self.model.get_orthogonality_score_df()
-        orthogonality_score_df = pd.DataFrame.from_dict(orthogonality_score_dict, orient='index')
+        orthogonality_score_df = pd.DataFrame.from_dict(
+            orthogonality_score_dict, orient="index"
+        )
 
         score = UI_TO_MODEL_MAPPING[self.selected_score]
 
         x = orthogonality_score_df[score]
-        y = orthogonality_score_df['2d_peak_capacity']
+        y = orthogonality_score_df["2d_peak_capacity"]
 
         # Set axes titles
         self.selected_axe.set_xlabel(self.selected_score, fontsize=12)
-        self.selected_axe.set_ylabel('Hypothetical 2D peak capacity', fontsize=12)
+        self.selected_axe.set_ylabel("Hypothetical 2D peak capacity", fontsize=12)
 
         # self.display_filtered_point()
         if self.selected_scatter_collection in self.selected_axe.collections:
             self.selected_scatter_collection.remove()
             self.selected_scatter_collection = None
 
-
-        self.selected_scatter_collection = self.selected_axe.scatter(x, y, s=20, color='silver',
-                                                                                 edgecolor='black', linewidths=0.9)
-
-
+        self.selected_scatter_collection = self.selected_axe.scatter(
+            x, y, s=20, color="silver", edgecolor="black", linewidths=0.9
+        )
 
         # Hide the legend and update the figure
         self.fig.legend().set_visible(False)
         self.fig.canvas.draw()
         self.fig.canvas.flush_events()
-
 
     def build_filtered_point(self):
         # for group in self.selected_filtered_scatter_point:
@@ -801,8 +864,8 @@ class ResultsPage(QFrame):
         #         scatter.remove()
         #         scatter = None
 
-        self.orthogonality_score= self.model.get_orthogonality_score_df()
-        data_frame = pd.DataFrame.from_dict(self.orthogonality_score, orient='index')
+        self.orthogonality_score = self.model.get_orthogonality_score_df()
+        data_frame = pd.DataFrame.from_dict(self.orthogonality_score, orient="index")
 
         self.filter_subset_dict = {}
         button_list = self.filter_button_group.buttons()
@@ -817,43 +880,41 @@ class ResultsPage(QFrame):
             # return the column number of the filter name
             return column_number
 
-        regular_expresion_map = \
-            {'HILIC x HILIC': r'HILIC.*vs.*HILIC',
-             'RPLC x RPLC': r'RPLC.*vs.*RPLC',
-             'HILIC x RPLC': r'HILIC.*vs.*RPLC',
-             'pH3 x pH8': r'pH\s?3(?!\.\d).*vs.*pH\s?8(?!\.\d)',
-             'pH3 x pH5.5': r'pH\s?3(?!\.\d).*vs.*pH\s?5.5(?!\.\d)',
-             'pH5.5 x pH8': r'pH\s?5.5(?!\.\d).*vs.*pH\s?8(?!\.\d)',
-             'MeOH x ACN': r'MeOH.*vs.*ACN'
-             }
+        regular_expresion_map = {
+            "HILIC x HILIC": r"HILIC.*vs.*HILIC",
+            "RPLC x RPLC": r"RPLC.*vs.*RPLC",
+            "HILIC x RPLC": r"HILIC.*vs.*RPLC",
+            "pH3 x pH8": r"pH\s?3(?!\.\d).*vs.*pH\s?8(?!\.\d)",
+            "pH3 x pH5.5": r"pH\s?3(?!\.\d).*vs.*pH\s?5.5(?!\.\d)",
+            "pH5.5 x pH8": r"pH\s?5.5(?!\.\d).*vs.*pH\s?8(?!\.\d)",
+            "MeOH x ACN": r"MeOH.*vs.*ACN",
+        }
 
         data_frame_mask2 = pd.Series(False, index=range(len(data_frame)))
 
         for button_name in button_name_list:
             reg_exp1 = regular_expresion_map[button_name]
-            data_frame_mask1 = data_frame['title'].str.contains(reg_exp1)
+            data_frame_mask1 = data_frame["title"].str.contains(reg_exp1)
 
             # Split the original string into words
-            words = reg_exp1.split('.*')
+            words = reg_exp1.split(".*")
             # Reverse the order of the words
             swapped_words = words[::-1]
             # Combine the reversed words with separators
-            reg_exp2 = '.*'.join(swapped_words)
+            reg_exp2 = ".*".join(swapped_words)
             data_frame_mask2.index = data_frame_mask1.index
             # if swapped word is the same we don't want to double the mask which would lead to have double scatter point of same subset of datas
             if reg_exp1 != reg_exp2:
-                data_frame_mask2 = data_frame['title'].str.contains(reg_exp2)
+                data_frame_mask2 = data_frame["title"].str.contains(reg_exp2)
             else:
                 # that's a workaround, proper way would be to just set a dataframe mask of False, same size of data_frame
 
                 data_frame_mask2.index = data_frame_mask1.index
 
-            self.filter_subset_dict[button_name] = [{'mask': data_frame_mask1,
-                                                     'data_frame1': data_frame[data_frame_mask1]},
-                                                    {'mask': data_frame_mask2,
-                                                     'data_frame2': data_frame[data_frame_mask2]}
-                                                    ]
-
+            self.filter_subset_dict[button_name] = [
+                {"mask": data_frame_mask1, "data_frame1": data_frame[data_frame_mask1]},
+                {"mask": data_frame_mask2, "data_frame2": data_frame[data_frame_mask2]},
+            ]
 
     def display_filtered_point(self):
         # self.orthogonality_dict = self.model.get_orthogonality_dict()
@@ -864,7 +925,9 @@ class ResultsPage(QFrame):
         score = UI_TO_MODEL_MAPPING[self.selected_score]
 
         button_list = self.filter_button_group.buttons()
-        checked_button_list = [button.objectName() for button in button_list if button.isChecked()]
+        checked_button_list = [
+            button.objectName() for button in button_list if button.isChecked()
+        ]
         button_name_list = [button.objectName() for button in button_list]
 
         def get_filter_column_nb(filter):
@@ -879,7 +942,9 @@ class ResultsPage(QFrame):
         def check_if_filter_exclusively_in_same_column():
             # check if all checked filter button are exclusively in the same column (in GUI it means same row)
             if button_name_list:
-                filter_column_list = np.array([get_filter_column_nb(checked) for checked in button_name_list])
+                filter_column_list = np.array(
+                    [get_filter_column_nb(checked) for checked in button_name_list]
+                )
 
                 return np.all(filter_column_list == filter_column_list[0])
             else:
@@ -898,26 +963,65 @@ class ResultsPage(QFrame):
                     # edge.set_visible(False)
                     face.set_visible(False)
 
-
-        filter_marker_map = \
-            {'HILIC x HILIC': {'MARKER': "s", "COLOR": 'lightgray', 'FACECOLOR': 'k', 'EDGECOLOR': 'k','LABEL':'HILIC x HILIC'},
-             'RPLC x RPLC': {'MARKER': "o", "COLOR": 'lightgray', 'FACECOLOR': 'k', 'EDGECOLOR': 'k','LABEL':'RPLC x RPLC'},
-             'HILIC x RPLC': {'MARKER': "^", "COLOR": 'lightgray', 'FACECOLOR': 'k', 'EDGECOLOR': 'k','LABEL':'HILIC x RPLC'},
-             'pH3 x pH8': {'MARKER': None, "COLOR": 'red', 'FACECOLOR': None, 'EDGECOLOR': 'red'},
-             'pH3 x pH5.5': {'MARKER': None, "COLOR": 'green', 'FACECOLOR': None, 'EDGECOLOR': 'green'},
-             'pH5.5 x pH8': {'MARKER': None, "COLOR": 'blue', 'FACECOLOR': None, 'EDGECOLOR': 'blue'},
-             'MeOH x ACN': {'MARKER': None, "COLOR": 'brown', 'FACECOLOR': None, 'EDGECOLOR': 'brown'}}
+        filter_marker_map = {
+            "HILIC x HILIC": {
+                "MARKER": "s",
+                "COLOR": "lightgray",
+                "FACECOLOR": "k",
+                "EDGECOLOR": "k",
+                "LABEL": "HILIC x HILIC",
+            },
+            "RPLC x RPLC": {
+                "MARKER": "o",
+                "COLOR": "lightgray",
+                "FACECOLOR": "k",
+                "EDGECOLOR": "k",
+                "LABEL": "RPLC x RPLC",
+            },
+            "HILIC x RPLC": {
+                "MARKER": "^",
+                "COLOR": "lightgray",
+                "FACECOLOR": "k",
+                "EDGECOLOR": "k",
+                "LABEL": "HILIC x RPLC",
+            },
+            "pH3 x pH8": {
+                "MARKER": None,
+                "COLOR": "red",
+                "FACECOLOR": None,
+                "EDGECOLOR": "red",
+            },
+            "pH3 x pH5.5": {
+                "MARKER": None,
+                "COLOR": "green",
+                "FACECOLOR": None,
+                "EDGECOLOR": "green",
+            },
+            "pH5.5 x pH8": {
+                "MARKER": None,
+                "COLOR": "blue",
+                "FACECOLOR": None,
+                "EDGECOLOR": "blue",
+            },
+            "MeOH x ACN": {
+                "MARKER": None,
+                "COLOR": "brown",
+                "FACECOLOR": None,
+                "EDGECOLOR": "brown",
+            },
+        }
 
         data_frame_mask = False
         if self.filter_subset_dict:
             for checked_filter in self.filter_subset_dict:
-                data_frame_mask1 = self.filter_subset_dict[checked_filter][0]['mask']
-                data_frame_mask2 = self.filter_subset_dict[checked_filter][1]['mask']
-                data_frame_mask = (data_frame_mask | data_frame_mask1) | (data_frame_mask | data_frame_mask2)
+                data_frame_mask1 = self.filter_subset_dict[checked_filter][0]["mask"]
+                data_frame_mask2 = self.filter_subset_dict[checked_filter][1]["mask"]
+                data_frame_mask = (data_frame_mask | data_frame_mask1) | (
+                    data_frame_mask | data_frame_mask2
+                )
 
         if button_name_list:
             # for key in self.displayed_filter_keys:
-
 
             # Initialize a set to keep track of displayed keys
 
@@ -929,8 +1033,8 @@ class ResultsPage(QFrame):
             for button_name in self.filter_subset_dict:
 
                 # Skip if already plotted
-                subset1 = self.filter_subset_dict[button_name][0]['data_frame1']
-                subset2 = self.filter_subset_dict[button_name][1]['data_frame2']
+                subset1 = self.filter_subset_dict[button_name][0]["data_frame1"]
+                subset2 = self.filter_subset_dict[button_name][1]["data_frame2"]
 
                 # Concatenate the two DataFrames vertically
                 subset = pd.concat([subset1, subset2], axis=0)
@@ -939,24 +1043,26 @@ class ResultsPage(QFrame):
                 subset = subset.reset_index(drop=True)
 
                 x = subset[score]
-                y = subset['2d_peak_capacity']
+                y = subset["2d_peak_capacity"]
 
                 if button_name not in list(self.selected_filtered_scatter_point.keys()):
 
-
-                    scatter = self.selected_axe.scatter(x, y,
-                                                              s=20,
-                                                              marker=filter_marker_map[button_name]['MARKER'],
-                                                              color=filter_marker_map[button_name]['COLOR'],
-                                                              label=filter_marker_map[button_name]['LABEL'],
-                                                              # color=None,
-                                                              # facecolor=filter_marker_map[button_name]['FACECOLOR'],
-                                                              # facecolor='None',
-                                                              # edgecolor=filter_marker_map[button_name]['EDGECOLOR'],
-                                                              # edgecolor=filter_marker_map[button_name]['EDGECOLOR'],
-                                                              edgecolor='black',
-                                                              # alpha=0.5,
-                                                              linewidths=0.8)
+                    scatter = self.selected_axe.scatter(
+                        x,
+                        y,
+                        s=20,
+                        marker=filter_marker_map[button_name]["MARKER"],
+                        color=filter_marker_map[button_name]["COLOR"],
+                        label=filter_marker_map[button_name]["LABEL"],
+                        # color=None,
+                        # facecolor=filter_marker_map[button_name]['FACECOLOR'],
+                        # facecolor='None',
+                        # edgecolor=filter_marker_map[button_name]['EDGECOLOR'],
+                        # edgecolor=filter_marker_map[button_name]['EDGECOLOR'],
+                        edgecolor="black",
+                        # alpha=0.5,
+                        linewidths=0.8,
+                    )
 
                     # scatter_face = self.orthogonality_axes.scatter(x, y,
                     #                                  s=20,
@@ -971,9 +1077,9 @@ class ResultsPage(QFrame):
                     # self.scatter_point_group[button_name] = (scatter_edge, scatter_face)
                     self.selected_filtered_scatter_point[button_name] = scatter
                 else:
-                    #if they are present in group just update their value with scatter plot offset
-                    #means that selected score has been changes so scatter point needs to be updated
-                    #accordingly
+                    # if they are present in group just update their value with scatter plot offset
+                    # means that selected score has been changes so scatter point needs to be updated
+                    # accordingly
                     scatter = self.selected_filtered_scatter_point[button_name]
                     scatter.set_offsets(list(zip(x, y)))
                 # Add the key to the set to mark it as displayed

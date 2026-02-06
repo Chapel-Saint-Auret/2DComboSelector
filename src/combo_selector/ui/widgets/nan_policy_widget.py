@@ -2,9 +2,18 @@
 import sys
 
 from PySide6.QtCore import Qt
-from PySide6.QtWidgets import (QApplication, QButtonGroup, QDialog,
-                               QDialogButtonBox, QGroupBox, QHBoxLayout,
-                               QLabel, QRadioButton, QSpinBox, QVBoxLayout)
+from PySide6.QtWidgets import (
+    QApplication,
+    QButtonGroup,
+    QDialog,
+    QDialogButtonBox,
+    QGroupBox,
+    QHBoxLayout,
+    QLabel,
+    QRadioButton,
+    QSpinBox,
+    QVBoxLayout,
+)
 
 
 class NanPolicyDialog(QDialog):
@@ -69,11 +78,11 @@ class NanPolicyDialog(QDialog):
         )
 
         self.option_remove.setChecked(True)
-        self.option_remove.setObjectName('option 1')
+        self.option_remove.setObjectName("option 1")
 
         # --- Option 2 -------------------------------------------------------
-        self.option_keep = QRadioButton('Option 2: Keep peaks and leave NaNs blank.')
-        self.option_keep.setObjectName('option 2')
+        self.option_keep = QRadioButton("Option 2: Keep peaks and leave NaNs blank.")
+        self.option_keep.setObjectName("option 2")
 
         self.option_button_grp = QButtonGroup()
         self.option_button_grp.addButton(self.option_remove)
@@ -83,20 +92,19 @@ class NanPolicyDialog(QDialog):
         self.threshold_spin = QSpinBox()
         self.threshold_spin.setSuffix("%")
         self.threshold_spin.setFixedWidth(73)
-        self.threshold_spin.setRange(0, 100)   # placeholder range
-        self.threshold_spin.setValue(50)       # placeholder default
+        self.threshold_spin.setRange(0, 100)  # placeholder range
+        self.threshold_spin.setValue(50)  # placeholder default
 
         row1 = QHBoxLayout()
         row1.addWidget(self.option_remove, 1)
         row1.addWidget(self.threshold_spin, 0, Qt.AlignLeft)
-        row1.addWidget(QLabel(' of total condition'))
+        row1.addWidget(QLabel(" of total condition"))
 
         note = QLabel(
             'Note: Peak(s) with fewer "NaN" retention times than the threshold are kept, '
-            'and the missing values remain blank.'
+            "and the missing values remain blank."
         )
         note.setWordWrap(True)
-
 
         # --- Layout ---------------------------------------------------------
 

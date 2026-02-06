@@ -9,18 +9,21 @@ def resource_path(relative_path):
     Get absolute path to resource in dev, pip, or PyInstaller (frozen).
     Example: resource_path("icons/close_window.svg")
     """
-    if getattr(sys, 'frozen', False):
+    if getattr(sys, "frozen", False):
         # PyInstaller: resources bundled in _internal/resources
         base = os.path.join(os.path.dirname(sys.executable), "_internal", "resources")
         abs_path = os.path.join(base, relative_path)
         if os.path.exists(abs_path):
             return abs_path
-        raise FileNotFoundError(f"Resource not found: {relative_path} (expected at {abs_path})")
+        raise FileNotFoundError(
+            f"Resource not found: {relative_path} (expected at {abs_path})"
+        )
     else:
         # Dev or pip: resources inside the installed package
         try:
             from importlib.resources import files
-            package = 'combo_selector.resources'
+
+            package = "combo_selector.resources"
             resource_file = files(package) / relative_path
             if resource_file.is_file():
                 return str(resource_file)
@@ -28,14 +31,17 @@ def resource_path(relative_path):
             pass  # Fallback to direct path below
 
         # fallback: directly from filesystem (for IDE, etc.)
-        dev_path = os.path.join(os.path.dirname(__file__), 'resources', relative_path)
+        dev_path = os.path.join(os.path.dirname(__file__), "resources", relative_path)
         if os.path.exists(dev_path):
             return dev_path
-        raise FileNotFoundError(f"Resource not found: {relative_path} (checked {dev_path})")
+        raise FileNotFoundError(
+            f"Resource not found: {relative_path} (checked {dev_path})"
+        )
+
 
 def load_simple_table(filepath, sheetname=0):
     df = pd.read_excel(filepath, sheet_name=sheetname, header=None)
-    df = df.dropna(how='all').dropna(axis=1, how='all')
+    df = df.dropna(how="all").dropna(axis=1, how="all")
     # Check shape to decide
     if df.shape[0] == 2 and df.shape[1] >= 2:
         # Horizontal: first row is header
@@ -52,7 +58,9 @@ def load_simple_table(filepath, sheetname=0):
         raise ValueError("Table shape not recognized.")
 
 
-def load_table_with_header_anywhere(filepath, sheetname=0, min_header_cols=2, auto_fix_duplicates=True):
+def load_table_with_header_anywhere(
+    filepath, sheetname=0, min_header_cols=2, auto_fix_duplicates=True
+):
     """
     Loads the first table in an Excel sheet, starting from the first row
     with at least `min_header_cols` non-NaN values (assumed header).
@@ -74,8 +82,8 @@ def load_table_with_header_anywhere(filepath, sheetname=0, min_header_cols=2, au
 
     # Now read again, skipping to that header row, using it as header
     df = pd.read_excel(filepath, sheet_name=sheetname, header=header_row)
-    df = df.dropna(how="all")    # Drop fully empty rows
-    df = df.loc[:, ~df.columns.str.contains('^Unnamed')]  # Drop unnamed columns
+    df = df.dropna(how="all")  # Drop fully empty rows
+    df = df.loc[:, ~df.columns.str.contains("^Unnamed")]  # Drop unnamed columns
 
     # Strip all whitespace from columns
     df.columns = df.columns.str.strip()
@@ -93,6 +101,7 @@ def load_table_with_header_anywhere(filepath, sheetname=0, min_header_cols=2, au
 
     return df
 
+
 def get_version():
     """
     Reads the 'version' from the [project] section of pyproject.toml
@@ -103,7 +112,9 @@ def get_version():
     """
     # Get path to pyproject.toml (2 directories up)
     current_dir = os.path.dirname(os.path.abspath(__file__))
-    pyproject_path = os.path.abspath(os.path.join(current_dir, "..", "..", "pyproject.toml"))
+    pyproject_path = os.path.abspath(
+        os.path.join(current_dir, "..", "..", "pyproject.toml")
+    )
 
     version = "Unknown"
     in_project_section = False

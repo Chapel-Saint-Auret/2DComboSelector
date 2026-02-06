@@ -2,20 +2,35 @@ import sys
 
 from PySide6.QtCore import QPoint, QRectF, QSize, Qt
 from PySide6.QtGui import QColor, QImage, QPainter, QPixmap, QTransform
-from PySide6.QtWidgets import (QApplication, QDialog, QFrame,
-                               QGraphicsBlurEffect, QGraphicsEffect,
-                               QGraphicsPixmapItem, QGraphicsScene, QGroupBox,
-                               QHBoxLayout, QVBoxLayout, QWidget)
+from PySide6.QtWidgets import (
+    QApplication,
+    QDialog,
+    QFrame,
+    QGraphicsBlurEffect,
+    QGraphicsEffect,
+    QGraphicsPixmapItem,
+    QGraphicsScene,
+    QGroupBox,
+    QHBoxLayout,
+    QVBoxLayout,
+    QWidget,
+)
 
 
 class BoxShadow(QGraphicsEffect):
-    def __init__(self, shadow_list: list[dict] = None, border: int = 3, smooth: bool = True):
+    def __init__(
+        self, shadow_list: list[dict] = None, border: int = 3, smooth: bool = True
+    ):
         QGraphicsEffect.__init__(self)
 
-        light_outside = [{"outside": True, "offset": [8,8], "blur": 10, "color": "#ffffff"},
-                   {"outside": True, "offset": [-8, -8], "blur": 10, "color": "#d0d0d0"}]
-        light_inside = [{"inside": True, "offset": [6, 6], "blur": 8, "color": "#C1D5EE"},
-                  {"inside": True, "offset": [-6, -6], "blur": 8, "color": "#FFFFFF"}]
+        light_outside = [
+            {"outside": True, "offset": [8, 8], "blur": 10, "color": "#ffffff"},
+            {"outside": True, "offset": [-8, -8], "blur": 10, "color": "#d0d0d0"},
+        ]
+        light_inside = [
+            {"inside": True, "offset": [6, 6], "blur": 8, "color": "#C1D5EE"},
+            {"inside": True, "offset": [-6, -6], "blur": 8, "color": "#FFFFFF"},
+        ]
         self._shadow_list = []
         self._max_x_offset = 0
         self._max_y_offset = 0
@@ -41,7 +56,12 @@ class BoxShadow(QGraphicsEffect):
         return self._max_x_offset, self._max_y_offset
 
     def boundingRectFor(self, rect):
-        return rect.adjusted(-self._max_x_offset, -self._max_y_offset, self._max_x_offset, self._max_y_offset)
+        return rect.adjusted(
+            -self._max_x_offset,
+            -self._max_y_offset,
+            self._max_x_offset,
+            self._max_y_offset,
+        )
 
     def _set_max_offset(self):
         for shadow in self._shadow_list:
@@ -80,7 +100,9 @@ class BoxShadow(QGraphicsEffect):
         painter = QPainter(new_pixmap)
         painter.setTransform(QTransform())
         painter.setRenderHints(QPainter.Antialiasing | QPainter.SmoothPixmapTransform)
-        painter.setCompositionMode(QPainter.CompositionMode.CompositionMode_DestinationIn)
+        painter.setCompositionMode(
+            QPainter.CompositionMode.CompositionMode_DestinationIn
+        )
         painter.drawPixmap(0, 0, pixmap)
         painter.end()
         return new_pixmap
@@ -90,7 +112,9 @@ class BoxShadow(QGraphicsEffect):
         painter = QPainter(pixmap)
         painter.setTransform(QTransform())
         painter.setRenderHints(QPainter.Antialiasing | QPainter.SmoothPixmapTransform)
-        painter.setCompositionMode(QPainter.CompositionMode.CompositionMode_DestinationOut)
+        painter.setCompositionMode(
+            QPainter.CompositionMode.CompositionMode_DestinationOut
+        )
         painter.drawPixmap(offset_x, offset_y, source)
         painter.end()
         return pixmap
@@ -98,9 +122,9 @@ class BoxShadow(QGraphicsEffect):
     def _outside_shadow(self):
 
         offset = QPoint()
-        mask = self.sourcePixmap(Qt.CoordinateSystem.DeviceCoordinates,
-                                 offset).createMaskFromColor(QColor(0, 0, 0, 0),
-                                                             Qt.MaskMode.MaskInColor)
+        mask = self.sourcePixmap(
+            Qt.CoordinateSystem.DeviceCoordinates, offset
+        ).createMaskFromColor(QColor(0, 0, 0, 0), Qt.MaskMode.MaskInColor)
 
         _pixmap_shadow_list = []
 
@@ -109,10 +133,14 @@ class BoxShadow(QGraphicsEffect):
                 shadow = QPixmap(mask.size())
                 shadow.fill(Qt.transparent)
                 shadow_painter = QPainter(shadow)
-                shadow_painter.setRenderHints(QPainter.Antialiasing | QPainter.SmoothPixmapTransform)
+                shadow_painter.setRenderHints(
+                    QPainter.Antialiasing | QPainter.SmoothPixmapTransform
+                )
                 shadow_painter.setTransform(QTransform())
                 shadow_painter.setPen(QColor(_shadow["color"]))
-                shadow_painter.drawPixmap(_shadow["offset"][0], _shadow["offset"][1], mask)
+                shadow_painter.drawPixmap(
+                    _shadow["offset"][0], _shadow["offset"][1], mask
+                )
                 shadow_painter.end()
 
                 _pixmap_shadow_list.append(shadow)
@@ -122,16 +150,20 @@ class BoxShadow(QGraphicsEffect):
 
         outside_shadow_painter = QPainter(outside_shadow)
         outside_shadow_painter.setTransform(QTransform())
-        outside_shadow_painter.setRenderHints(QPainter.Antialiasing | QPainter.SmoothPixmapTransform)
+        outside_shadow_painter.setRenderHints(
+            QPainter.Antialiasing | QPainter.SmoothPixmapTransform
+        )
 
         for i, pixmap in enumerate(_pixmap_shadow_list):
-            outside_shadow_painter.drawPixmap(0, 0, self._blur_pixmap(pixmap, self._shadow_list[i]["blur"]))
+            outside_shadow_painter.drawPixmap(
+                0, 0, self._blur_pixmap(pixmap, self._shadow_list[i]["blur"])
+            )
 
         outside_shadow_painter.end()
 
-        mask = self.sourcePixmap(Qt.CoordinateSystem.DeviceCoordinates,
-                                 offset).createMaskFromColor(QColor(0, 0, 0, 0),
-                                                             Qt.MaskMode.MaskOutColor)
+        mask = self.sourcePixmap(
+            Qt.CoordinateSystem.DeviceCoordinates, offset
+        ).createMaskFromColor(QColor(0, 0, 0, 0), Qt.MaskMode.MaskOutColor)
 
         outside_shadow.setMask(mask)
 
@@ -140,9 +172,9 @@ class BoxShadow(QGraphicsEffect):
     def _inside_shadow(self):
 
         offset = QPoint()
-        mask = self.sourcePixmap(Qt.CoordinateSystem.DeviceCoordinates,
-                                 offset).createMaskFromColor(QColor(0, 0, 0, 0),
-                                                             Qt.MaskMode.MaskInColor)
+        mask = self.sourcePixmap(
+            Qt.CoordinateSystem.DeviceCoordinates, offset
+        ).createMaskFromColor(QColor(0, 0, 0, 0), Qt.MaskMode.MaskInColor)
 
         _pixmap_shadow_list = []
 
@@ -151,7 +183,9 @@ class BoxShadow(QGraphicsEffect):
                 shadow = QPixmap(mask.size())
                 shadow.fill(Qt.transparent)
                 shadow_painter = QPainter(shadow)
-                shadow_painter.setRenderHints(QPainter.Antialiasing | QPainter.SmoothPixmapTransform)
+                shadow_painter.setRenderHints(
+                    QPainter.Antialiasing | QPainter.SmoothPixmapTransform
+                )
 
                 removed_color = "#000000"
                 color = QColor(_shadow["color"])
@@ -162,9 +196,13 @@ class BoxShadow(QGraphicsEffect):
                 shadow_painter.setPen(color)
                 shadow_painter.drawPixmap(0, 0, mask)
                 shadow_painter.setPen(removed_color)
-                shadow_painter.drawPixmap(_shadow["offset"][0], _shadow["offset"][1], mask)
+                shadow_painter.drawPixmap(
+                    _shadow["offset"][0], _shadow["offset"][1], mask
+                )
 
-                shadow_mask = shadow.createMaskFromColor(color, Qt.MaskMode.MaskOutColor)
+                shadow_mask = shadow.createMaskFromColor(
+                    color, Qt.MaskMode.MaskOutColor
+                )
                 shadow_mask.save("mask.png")
                 shadow.fill(Qt.transparent)
                 shadow_painter.setPen(color)
@@ -181,10 +219,14 @@ class BoxShadow(QGraphicsEffect):
 
         inside_shadow_painter = QPainter(inside_shadow)
         inside_shadow_painter.setTransform(QTransform())
-        inside_shadow_painter.setRenderHints(QPainter.Antialiasing | QPainter.SmoothPixmapTransform)
+        inside_shadow_painter.setRenderHints(
+            QPainter.Antialiasing | QPainter.SmoothPixmapTransform
+        )
 
         for i, pixmap in enumerate(_pixmap_shadow_list):
-            inside_shadow_painter.drawPixmap(0, 0, self._blur_pixmap(pixmap, self._shadow_list[i]["blur"]))
+            inside_shadow_painter.drawPixmap(
+                0, 0, self._blur_pixmap(pixmap, self._shadow_list[i]["blur"])
+            )
 
         inside_shadow_painter.end()
 
@@ -205,9 +247,17 @@ class BoxShadow(QGraphicsEffect):
                 shadow = QPixmap(source.size())
                 shadow.fill(Qt.transparent)
                 shadow_painter = QPainter(shadow)
-                shadow_painter.setRenderHints(QPainter.Antialiasing | QPainter.SmoothPixmapTransform)
+                shadow_painter.setRenderHints(
+                    QPainter.Antialiasing | QPainter.SmoothPixmapTransform
+                )
                 shadow_painter.setTransform(QTransform())
-                shadow_painter.drawPixmap(_shadow["offset"][0], _shadow["offset"][1], w, h, self._colored_pixmap(_shadow["color"], source))
+                shadow_painter.drawPixmap(
+                    _shadow["offset"][0],
+                    _shadow["offset"][1],
+                    w,
+                    h,
+                    self._colored_pixmap(_shadow["color"], source),
+                )
                 shadow_painter.end()
 
                 _pixmap_shadow_list.append(shadow)
@@ -217,17 +267,25 @@ class BoxShadow(QGraphicsEffect):
 
         outside_shadow_painter = QPainter(outside_shadow)
         outside_shadow_painter.setTransform(QTransform())
-        outside_shadow_painter.setRenderHints(QPainter.Antialiasing | QPainter.SmoothPixmapTransform)
+        outside_shadow_painter.setRenderHints(
+            QPainter.Antialiasing | QPainter.SmoothPixmapTransform
+        )
 
         for i, pixmap in enumerate(_pixmap_shadow_list):
-            outside_shadow_painter.drawPixmap(0, 0, w, h, self._blur_pixmap(pixmap, self._shadow_list[i]["blur"]))
+            outside_shadow_painter.drawPixmap(
+                0, 0, w, h, self._blur_pixmap(pixmap, self._shadow_list[i]["blur"])
+            )
 
         outside_shadow_painter.end()
 
         outside_shadow_painter = QPainter(outside_shadow)
         outside_shadow_painter.setTransform(QTransform())
-        outside_shadow_painter.setRenderHints(QPainter.Antialiasing | QPainter.SmoothPixmapTransform)
-        outside_shadow_painter.setCompositionMode(QPainter.CompositionMode.CompositionMode_DestinationOut)
+        outside_shadow_painter.setRenderHints(
+            QPainter.Antialiasing | QPainter.SmoothPixmapTransform
+        )
+        outside_shadow_painter.setCompositionMode(
+            QPainter.CompositionMode.CompositionMode_DestinationOut
+        )
         outside_shadow_painter.drawPixmap(0, 0, w, h, source)
 
         outside_shadow_painter.end()
@@ -247,10 +305,23 @@ class BoxShadow(QGraphicsEffect):
                 shadow = QPixmap(source.size())
                 shadow.fill(Qt.transparent)
                 shadow_painter = QPainter(shadow)
-                shadow_painter.setRenderHints(QPainter.Antialiasing | QPainter.SmoothPixmapTransform)
+                shadow_painter.setRenderHints(
+                    QPainter.Antialiasing | QPainter.SmoothPixmapTransform
+                )
                 shadow_painter.setTransform(QTransform())
                 new_source = self._colored_pixmap(_shadow["color"], source)
-                shadow_painter.drawPixmap(0, 0, w, h, self._cut_shadow(new_source, source, _shadow["offset"][0] / 2, _shadow["offset"][1] / 2))
+                shadow_painter.drawPixmap(
+                    0,
+                    0,
+                    w,
+                    h,
+                    self._cut_shadow(
+                        new_source,
+                        source,
+                        _shadow["offset"][0] / 2,
+                        _shadow["offset"][1] / 2,
+                    ),
+                )
                 shadow_painter.end()
 
                 _pixmap_shadow_list.append(shadow)
@@ -260,17 +331,25 @@ class BoxShadow(QGraphicsEffect):
 
         inside_shadow_painter = QPainter(inside_shadow)
         inside_shadow_painter.setTransform(QTransform())
-        inside_shadow_painter.setRenderHints(QPainter.Antialiasing | QPainter.SmoothPixmapTransform)
+        inside_shadow_painter.setRenderHints(
+            QPainter.Antialiasing | QPainter.SmoothPixmapTransform
+        )
 
         for i, pixmap in enumerate(_pixmap_shadow_list):
-            inside_shadow_painter.drawPixmap(0, 0, w, h, self._blur_pixmap(pixmap, self._shadow_list[i]["blur"]))
+            inside_shadow_painter.drawPixmap(
+                0, 0, w, h, self._blur_pixmap(pixmap, self._shadow_list[i]["blur"])
+            )
 
         inside_shadow_painter.end()
 
         inside_shadow_painter = QPainter(inside_shadow)
         inside_shadow_painter.setTransform(QTransform())
-        inside_shadow_painter.setRenderHints(QPainter.Antialiasing | QPainter.SmoothPixmapTransform)
-        inside_shadow_painter.setCompositionMode(QPainter.CompositionMode.CompositionMode_DestinationIn)
+        inside_shadow_painter.setRenderHints(
+            QPainter.Antialiasing | QPainter.SmoothPixmapTransform
+        )
+        inside_shadow_painter.setCompositionMode(
+            QPainter.CompositionMode.CompositionMode_DestinationIn
+        )
         inside_shadow_painter.drawPixmap(0, 0, w, h, source)
 
         inside_shadow_painter.end()
@@ -282,7 +361,9 @@ class BoxShadow(QGraphicsEffect):
         painter.setRenderHints(QPainter.Antialiasing | QPainter.SmoothPixmapTransform)
         restoreTransform = painter.worldTransform()
 
-        source_rect = self.boundingRectFor(self.sourceBoundingRect(Qt.CoordinateSystem.DeviceCoordinates)).toRect()
+        source_rect = self.boundingRectFor(
+            self.sourceBoundingRect(Qt.CoordinateSystem.DeviceCoordinates)
+        ).toRect()
         x, y, w, h = source_rect.getRect()
 
         offset = QPoint()
@@ -301,7 +382,13 @@ class BoxShadow(QGraphicsEffect):
 
         painter.drawPixmap(x, y, w, h, outside_shadow)
         painter.drawPixmap(x, y, source)
-        painter.drawPixmap(x + self._border, y + self._border, w - self._border * 2, h - self._border * 2, inside_shadow)
+        painter.drawPixmap(
+            x + self._border,
+            y + self._border,
+            w - self._border * 2,
+            h - self._border * 2,
+            inside_shadow,
+        )
         painter.setWorldTransform(restoreTransform)
 
         painter.end()
@@ -314,7 +401,7 @@ if __name__ == "__main__":
     w = QFrame()
 
     main_layout = QHBoxLayout()
-    main_layout.setContentsMargins(100,100,100,100)
+    main_layout.setContentsMargins(100, 100, 100, 100)
     w.setLayout(main_layout)
 
     w.setStyleSheet("""background-color:#f7f9fc;""")
@@ -322,7 +409,7 @@ if __name__ == "__main__":
     groupbox = QWidget()
     groupbox.setStyleSheet("""background-color:white;
                               border-radius:10px""")
-    groupbox.setFixedSize(500,500)
+    groupbox.setFixedSize(500, 500)
 
     shadow = BoxShadow()
     groupbox.setGraphicsEffect(shadow)
@@ -331,4 +418,3 @@ if __name__ == "__main__":
 
     w.show()
     app.exec()
-

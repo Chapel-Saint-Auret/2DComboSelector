@@ -7,10 +7,21 @@ from matplotlib.figure import Figure
 from matplotlib.patches import Rectangle
 from PySide6.QtCore import QObject, QRunnable, Qt, QTimer, Signal, Slot
 from PySide6.QtGui import QColor
-from PySide6.QtWidgets import (QButtonGroup, QCheckBox, QDoubleSpinBox,
-                               QFormLayout, QFrame, QGraphicsDropShadowEffect,
-                               QGroupBox, QHBoxLayout, QLabel, QScrollArea,
-                               QSizePolicy, QSplitter, QVBoxLayout)
+from PySide6.QtWidgets import (
+    QButtonGroup,
+    QCheckBox,
+    QDoubleSpinBox,
+    QFormLayout,
+    QFrame,
+    QGraphicsDropShadowEffect,
+    QGroupBox,
+    QHBoxLayout,
+    QLabel,
+    QScrollArea,
+    QSizePolicy,
+    QSplitter,
+    QVBoxLayout,
+)
 
 from combo_selector.ui.widgets.custom_toolbar import CustomToolbar
 from combo_selector.ui.widgets.line_widget import LineWidget
@@ -33,7 +44,7 @@ METRIC_CORR_MAP = {
     "NND Geom mean": "NND Gmean",
     "NND Harm mean": "NND Hmean",
     "%FIT": "%FIT",
-    "%BIN": "%BIN"
+    "%BIN": "%BIN",
 }
 
 checked_icon_path = resource_path("icons/checkbox_checked.svg").replace("\\", "/")
@@ -311,17 +322,27 @@ class RedundancyCheckPage(QFrame):
         self.main_layout.addWidget(self.main_splitter)
 
         # --- signals -----------------------------------------------------------
-        self.corr_mat_cmap.currentTextChanged.connect(self.update_correlation_matrix_cmap)
-        self.correlation_threshold.editingFinished.connect(self.update_correlation_group_table)
-        self.correlation_threshold_tolerance.editingFinished.connect(self.update_correlation_group_table)
-        self.highlight_threshold.stateChanged.connect(self.highlight_correlation_threshold)
-        self.hierarchical_clustering.stateChanged.connect(self.plot_correlation_heat_map)
+        self.corr_mat_cmap.currentTextChanged.connect(
+            self.update_correlation_matrix_cmap
+        )
+        self.correlation_threshold.editingFinished.connect(
+            self.update_correlation_group_table
+        )
+        self.correlation_threshold_tolerance.editingFinished.connect(
+            self.update_correlation_group_table
+        )
+        self.highlight_threshold.stateChanged.connect(
+            self.highlight_correlation_threshold
+        )
+        self.hierarchical_clustering.stateChanged.connect(
+            self.plot_correlation_heat_map
+        )
         self.show_triangle_grp.buttonClicked.connect(self.plot_correlation_heat_map)
 
     def get_model(self):
         return self.model
 
-    def update_correlation_matrix_cmap(self,cmap):
+    def update_correlation_matrix_cmap(self, cmap):
         quadmesh = self._ax.collections[0]
         quadmesh.set_cmap(cmap)
         self.fig.canvas.draw_idle()
@@ -343,7 +364,7 @@ class RedundancyCheckPage(QFrame):
         Uses Seaborn for styling and Matplotlib for rendering.
         """
         self.fig.clf()
-        self.fig.patch.set_facecolor('white')
+        self.fig.patch.set_facecolor("white")
         self._ax = self.fig.add_subplot()
 
         self.corr_matrix = self.model.get_orthogonality_metric_corr_matrix_df().corr()
@@ -354,7 +375,9 @@ class RedundancyCheckPage(QFrame):
         cmap = self.corr_mat_cmap.currentText()
 
         # Map to display names, fall back if missing
-        metric_list = [METRIC_CORR_MAP[metric] for metric in list(self.corr_matrix.columns)]
+        metric_list = [
+            METRIC_CORR_MAP[metric] for metric in list(self.corr_matrix.columns)
+        ]
 
         if self.hierarchical_clustering.checkState() == Qt.Checked:
             self.corr_matrix = self.cluster_corr(self.corr_matrix)
@@ -369,10 +392,20 @@ class RedundancyCheckPage(QFrame):
 
         # Plot heatmap
 
-        g = sns.heatmap(self.corr_matrix,mask=self.heatmap_mask, vmin=self.corr_matrix.values.min(),
-                        vmax=1, square=True, cmap=cmap, linewidths=0.1,
-                        annot=True, annot_kws={"fontsize": 6},
-                        xticklabels=1, yticklabels=1,ax=self._ax)
+        g = sns.heatmap(
+            self.corr_matrix,
+            mask=self.heatmap_mask,
+            vmin=self.corr_matrix.values.min(),
+            vmax=1,
+            square=True,
+            cmap=cmap,
+            linewidths=0.1,
+            annot=True,
+            annot_kws={"fontsize": 6},
+            xticklabels=1,
+            yticklabels=1,
+            ax=self._ax,
+        )
 
         g.set_xticklabels(metric_list, fontsize=7)
         g.set_yticklabels(metric_list, rotation=0, fontsize=7)
@@ -391,7 +424,9 @@ class RedundancyCheckPage(QFrame):
         if self.corr_matrix is None:
             return
 
-        metric_list = [METRIC_CORR_MAP[metric] for metric in list(self.corr_matrix.columns)]
+        metric_list = [
+            METRIC_CORR_MAP[metric] for metric in list(self.corr_matrix.columns)
+        ]
 
         if self.hierarchical_clustering.checkState() == Qt.Checked:
             self.corr_matrix = self.cluster_corr(self.corr_matrix)
@@ -399,8 +434,19 @@ class RedundancyCheckPage(QFrame):
         cmap = self.corr_mat_cmap.currentText()
 
         cbar_kws = {"shrink": 1}
-        heatmap = sns.heatmap(self.corr_matrix,mask=self.heatmap_mask, vmin=-1, vmax=1, square=True, annot=True, linewidths=0.35,
-                              annot_kws={'size':5}, cmap=cmap, ax=self._ax, cbar_kws=cbar_kws)
+        heatmap = sns.heatmap(
+            self.corr_matrix,
+            mask=self.heatmap_mask,
+            vmin=-1,
+            vmax=1,
+            square=True,
+            annot=True,
+            linewidths=0.35,
+            annot_kws={"size": 5},
+            cmap=cmap,
+            ax=self._ax,
+            cbar_kws=cbar_kws,
+        )
         sns.set(font_scale=1)
         self._ax.set_xticklabels(metric_list, fontsize=8, rotation=90)
         self._ax.set_yticklabels(metric_list, fontsize=8)
@@ -412,11 +458,10 @@ class RedundancyCheckPage(QFrame):
         self.fig.canvas.draw()
         self.fig.canvas.flush_events()
 
-
     def update_correlation_group_table(self):
         threshold = self.correlation_threshold.value()
         tolerance = self.correlation_threshold_tolerance.value()
-        self.model.create_correlation_group(threshold=threshold,tol=tolerance)
+        self.model.create_correlation_group(threshold=threshold, tol=tolerance)
 
         correlation_group_table = self.model.get_correlation_group_df()
 
@@ -426,7 +471,6 @@ class RedundancyCheckPage(QFrame):
         self.highlight_correlation_threshold()
 
         self.correlation_group_ready.emit()
-
 
     def highlight_correlation_threshold(self):
         if self.corr_matrix is None:
@@ -444,21 +488,29 @@ class RedundancyCheckPage(QFrame):
             tolerance = self.correlation_threshold_tolerance.value()
 
             # Create a mask: Ignore the diagonal (np.eye) and highlight values above the threshold
-            #need to group both conditions with parentheses so Python knows to evaluate them before applying the &:
-            self.highlight_heatmap_mask =((self.corr_matrix.abs() >= (threshold - tolerance)) &(~np.eye(len(self.corr_matrix), dtype=bool)))
+            # need to group both conditions with parentheses so Python knows to evaluate them before applying the &:
+            self.highlight_heatmap_mask = (
+                self.corr_matrix.abs() >= (threshold - tolerance)
+            ) & (~np.eye(len(self.corr_matrix), dtype=bool))
 
-            self.highlight_heatmap_mask = (~self.heatmap_mask) & self.highlight_heatmap_mask
+            self.highlight_heatmap_mask = (
+                ~self.heatmap_mask
+            ) & self.highlight_heatmap_mask
 
             # Overlay a border where correlation > threshold (excluding diagonal)
             for i in range(len(self.corr_matrix)):
                 for j in range(len(self.corr_matrix)):
-                    if self.highlight_heatmap_mask.iloc[i, j]:  # If correlation > threshold and not on the diagonal
-                        self._ax.add_patch(Rectangle((j, i), 1, 1, fill=False, edgecolor='red', lw=1))
+                    if self.highlight_heatmap_mask.iloc[
+                        i, j
+                    ]:  # If correlation > threshold and not on the diagonal
+                        self._ax.add_patch(
+                            Rectangle((j, i), 1, 1, fill=False, edgecolor="red", lw=1)
+                        )
 
             self.fig.canvas.draw()
             self.fig.canvas.flush_events()
 
-    def cluster_corr(self,corr_array, inplace=False):
+    def cluster_corr(self, corr_array, inplace=False):
         """
         Rearranges the correlation matrix, corr_array, so that groups of highly
         correlated variables are next to eachother
@@ -474,10 +526,11 @@ class RedundancyCheckPage(QFrame):
             a NxN correlation matrix with the columns and rows rearranged
         """
         pairwise_distances = sch.distance.pdist(corr_array)
-        linkage = sch.linkage(pairwise_distances, method='complete')
+        linkage = sch.linkage(pairwise_distances, method="complete")
         cluster_distance_threshold = pairwise_distances.max() / 2
-        idx_to_cluster_array = sch.fcluster(linkage, cluster_distance_threshold,
-                                            criterion='distance')
+        idx_to_cluster_array = sch.fcluster(
+            linkage, cluster_distance_threshold, criterion="distance"
+        )
         idx = np.argsort(idx_to_cluster_array)
 
         if not inplace:
@@ -486,6 +539,5 @@ class RedundancyCheckPage(QFrame):
         if isinstance(corr_array, pd.DataFrame):
             return corr_array.iloc[idx, :].T.iloc[idx, :]
         return corr_array[idx, :][:, idx]
-
 
         # return result.reset_index(drop=True).set_index(['Variable 1', 'Variable 2'])

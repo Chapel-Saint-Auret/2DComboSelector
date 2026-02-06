@@ -3,13 +3,26 @@ from enum import Enum
 
 import numpy as np
 import pandas as pd
-from PySide6.QtCore import (QAbstractTableModel, QItemSelectionModel,
-                            QModelIndex, QRegularExpression,
-                            QSortFilterProxyModel, Qt)
+from PySide6.QtCore import (
+    QAbstractTableModel,
+    QItemSelectionModel,
+    QModelIndex,
+    QRegularExpression,
+    QSortFilterProxyModel,
+    Qt,
+)
 from PySide6.QtGui import QBrush, QColor
-from PySide6.QtWidgets import (QAbstractItemView, QHBoxLayout, QHeaderView,
-                               QLabel, QSizePolicy, QStyledItemDelegate,
-                               QTableView, QVBoxLayout, QWidget)
+from PySide6.QtWidgets import (
+    QAbstractItemView,
+    QHBoxLayout,
+    QHeaderView,
+    QLabel,
+    QSizePolicy,
+    QStyledItemDelegate,
+    QTableView,
+    QVBoxLayout,
+    QWidget,
+)
 
 
 # class syntax
@@ -30,6 +43,7 @@ class COLUMN(Enum):
     ORTHOFACTOR = 13
     ORTHOSCORE = 14
     PRACTTWODPEAK = 15
+
 
 class OrthogonalityTableModel(QAbstractTableModel):
 
@@ -59,7 +73,7 @@ class OrthogonalityTableModel(QAbstractTableModel):
     def set_proxy(self, proxy):
         self.proxy_model = proxy
 
-    def set_formated_data(self,data):
+    def set_formated_data(self, data):
         self._formatted_data = data
         self.modelReset.emit()
 
@@ -82,7 +96,11 @@ class OrthogonalityTableModel(QAbstractTableModel):
 
     def _format_value(self, val, col_idx=None):
         # If this is the "Practical 2D peak capacity" column, format as integer
-        if col_idx is not None and self.header_label and self.header_label[col_idx] == "Practical 2D peak capacity":
+        if (
+            col_idx is not None
+            and self.header_label
+            and self.header_label[col_idx] == "Practical 2D peak capacity"
+        ):
             try:
                 return str(int(round(float(val))))
             except Exception:
@@ -118,20 +136,17 @@ class OrthogonalityTableModel(QAbstractTableModel):
         elif role == Qt.BackgroundRole:  # <-- add this block
             val = str(self._formatted_data[r][c]).strip().lower()
 
-            if val == 'nan':
-                return QBrush(QColor('#ff9999'))  # red background
+            if val == "nan":
+                return QBrush(QColor("#ff9999"))  # red background
             return None
 
         return None
 
-
     def rowCount(self, parent=QModelIndex()):
         return self._row_count
 
-
     def columnCount(self, parent=QModelIndex()):
         return self._column_count
-
 
     def headerData(self, section, orientation, role=Qt.DisplayRole):
         if role != Qt.DisplayRole:
@@ -146,6 +161,7 @@ class OrthogonalityTableModel(QAbstractTableModel):
             return self.header_label[section]
         return None
 
+
 class SquareBackgroundDelegate(QStyledItemDelegate):
     def paint(self, painter, option, index):
         # 1) paint a plain rectangular background if the model provided one
@@ -159,6 +175,7 @@ class SquareBackgroundDelegate(QStyledItemDelegate):
 
         # 2) let Qt draw text, focus, etc.
         super().paint(painter, option, index)
+
 
 class OrthogonalityTableView(QTableView):
     def __init__(self, parent=None, model=None, default_column_width=100):
@@ -193,7 +210,6 @@ class OrthogonalityTableView(QTableView):
         horizontalHeader.setSortIndicatorShown(True)
         horizontalHeader.setFixedHeight(30)
         horizontalHeader.setHighlightSections(False)
-
 
         # self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         # self.setSelectionMode(QAbstractItemView.SingleSelection)
@@ -242,7 +258,10 @@ class OrthogonalityTableView(QTableView):
         return [self._proxyModel.mapToSource(index) for index in self.selectedIndexes()]
 
     def selectedRows(self, column=0):
-        return [self._proxyModel.mapToSource(index) for index in self.selectionModel().selectedRows(column)]
+        return [
+            self._proxyModel.mapToSource(index)
+            for index in self.selectionModel().selectedRows(column)
+        ]
 
     def getSourceModel(self):
         return self._proxyModel.sourceModel()
@@ -321,7 +340,9 @@ class OrthogonalityTableView(QTableView):
 
     def selectNodes(self, nodes):
         for node in nodes:
-            self.selectionModel().select(self.getSourceModel().getIndex(node), QItemSelectionModel.Select)
+            self.selectionModel().select(
+                self.getSourceModel().getIndex(node), QItemSelectionModel.Select
+            )
 
     def getSingleSelectedNode(self):
         indexes = self.getSelectedIndexes()
@@ -336,31 +357,31 @@ class OrthogonalityTableView(QTableView):
 
 
 class OrthogonalityTableSortProxy(QSortFilterProxyModel):
-        def __init__(self):
-            super(OrthogonalityTableSortProxy,self).__init__()
+    def __init__(self):
+        super(OrthogonalityTableSortProxy, self).__init__()
 
-        def lessThan(self, left: QModelIndex, right: QModelIndex) -> bool:
-            # Get the data from the model as strings
-            left_data = self.sourceModel().data(left, Qt.DisplayRole)
-            right_data = self.sourceModel().data(right, Qt.DisplayRole)
+    def lessThan(self, left: QModelIndex, right: QModelIndex) -> bool:
+        # Get the data from the model as strings
+        left_data = self.sourceModel().data(left, Qt.DisplayRole)
+        right_data = self.sourceModel().data(right, Qt.DisplayRole)
 
-            def norm(v):
-                # None or NaN → +inf so they always go last
-                if v is None:
-                    return math.inf
-                try:
-                    f = float(v)
-                    return f if not math.isnan(f) else math.inf
-                except (ValueError, TypeError):
-                    # not numeric, fallback to string comparison
-                    return v
+        def norm(v):
+            # None or NaN → +inf so they always go last
+            if v is None:
+                return math.inf
+            try:
+                f = float(v)
+                return f if not math.isnan(f) else math.inf
+            except (ValueError, TypeError):
+                # not numeric, fallback to string comparison
+                return v
 
-            return norm(left_data) < norm(right_data)
+        return norm(left_data) < norm(right_data)
 
-        def headerData(self, section, orientation, role=Qt.DisplayRole):
-            if orientation == Qt.Vertical and role == Qt.DisplayRole:
-                return str(section + 1)  # Fixed sequential order for vertical headers
-            return super().headerData(section, orientation, role)
+    def headerData(self, section, orientation, role=Qt.DisplayRole):
+        if orientation == Qt.Vertical and role == Qt.DisplayRole:
+            return str(section + 1)  # Fixed sequential order for vertical headers
+        return super().headerData(section, orientation, role)
 
-        def mapToSourceRow(self, proxy_row):
-            return self.mapToSource(self.index(proxy_row, 0)).row()
+    def mapToSourceRow(self, proxy_row):
+        return self.mapToSource(self.index(proxy_row, 0)).row()

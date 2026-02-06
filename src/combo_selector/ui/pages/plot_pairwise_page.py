@@ -6,26 +6,42 @@ from matplotlib.backends.backend_qtagg import FigureCanvas
 from matplotlib.figure import Figure
 from PySide6.QtCore import QItemSelectionModel, QModelIndex, QSize, Qt, QTimer
 from PySide6.QtGui import QColor
-from PySide6.QtWidgets import (QApplication, QComboBox, QDialog, QFrame,
-                               QGraphicsDropShadowEffect, QGroupBox,
-                               QHBoxLayout, QHeaderView, QLabel, QScrollArea,
-                               QSizePolicy, QSplitter, QVBoxLayout)
+from PySide6.QtWidgets import (
+    QApplication,
+    QComboBox,
+    QDialog,
+    QFrame,
+    QGraphicsDropShadowEffect,
+    QGroupBox,
+    QHBoxLayout,
+    QHeaderView,
+    QLabel,
+    QScrollArea,
+    QSizePolicy,
+    QSplitter,
+    QVBoxLayout,
+)
 
 from combo_selector.ui.widgets.custom_toolbar import CustomToolbar
 from combo_selector.ui.widgets.line_widget import LineWidget
 from combo_selector.ui.widgets.neumorphism import *
-from combo_selector.ui.widgets.orthogonality_table import \
-    OrthogonalityTableView
+from combo_selector.ui.widgets.orthogonality_table import OrthogonalityTableView
 from combo_selector.ui.widgets.style_table import StyledTable
 from combo_selector.utils import resource_path
 
 PLOT_SIZE = QSize(600, 400)
 
-drop_down_icon_path = resource_path('icons/drop_down_arrow.png').replace("\\", "/")
-print("LOOKING FOR ICON:", drop_down_icon_path, "EXISTS:", os.path.exists(drop_down_icon_path))
+drop_down_icon_path = resource_path("icons/drop_down_arrow.png").replace("\\", "/")
+print(
+    "LOOKING FOR ICON:",
+    drop_down_icon_path,
+    "EXISTS:",
+    os.path.exists(drop_down_icon_path),
+)
+
 
 class PlotPairWisePage(QFrame):
-    def __init__(self, model=None, title='Unnamed'):
+    def __init__(self, model=None, title="Unnamed"):
         super().__init__()
 
         self.blink_timer = QTimer()
@@ -37,7 +53,7 @@ class PlotPairWisePage(QFrame):
         self.selected_scatter_collection = None
         self.selected_axe = None
         self.full_scatter_collection = None
-        self.selected_set = 'Set 1'
+        self.selected_set = "Set 1"
         self.orthogonality_dict = None
         self.model = model
 
@@ -183,14 +199,30 @@ class PlotPairWisePage(QFrame):
             self.dataset_selector1,
             self.dataset_selector2,
             self.dataset_selector3,
-            self.dataset_selector4
+            self.dataset_selector4,
         ]
 
         self.dataset_selector_map = {
-            '0': {'selector': self.dataset_selector1, 'axe': None, 'scatter_collection': None},
-            '1': {'selector': self.dataset_selector2, 'axe': None, 'scatter_collection': None},
-            '2': {'selector': self.dataset_selector3, 'axe': None, 'scatter_collection': None},
-            '3': {'selector': self.dataset_selector4, 'axe': None, 'scatter_collection': None}
+            "0": {
+                "selector": self.dataset_selector1,
+                "axe": None,
+                "scatter_collection": None,
+            },
+            "1": {
+                "selector": self.dataset_selector2,
+                "axe": None,
+                "scatter_collection": None,
+            },
+            "2": {
+                "selector": self.dataset_selector3,
+                "axe": None,
+                "scatter_collection": None,
+            },
+            "3": {
+                "selector": self.dataset_selector4,
+                "axe": None,
+                "scatter_collection": None,
+            },
         }
 
         data_selection_group.setLayout(self.data_selection_layout)
@@ -225,16 +257,16 @@ class PlotPairWisePage(QFrame):
         self.textEdit.setWordWrap(True)
         self.textEdit.setText(
             '<p><strong><span style="text-decoration: underline;">Tip 1</span>:</strong><br>'
-            'Click on a plot area to select it, then choose a dataset from the table to display it there.</p>'
+            "Click on a plot area to select it, then choose a dataset from the table to display it there.</p>"
             '<p><strong><span style="text-decoration: underline;">Tip 2</span>:</strong><br>'
-            'Collapse the table section by moving the horizontal splitter down—this will open the table in a separate window.</p>'
+            "Collapse the table section by moving the horizontal splitter down—this will open the table in a separate window.</p>"
         )
         page_tips_layout.addWidget(self.textEdit)
 
         user_input_frame_layout.addWidget(data_selection_group)
-        user_input_frame_layout.addWidget(LineWidget('Horizontal'))
+        user_input_frame_layout.addWidget(LineWidget("Horizontal"))
         user_input_frame_layout.addWidget(info_group)
-        user_input_frame_layout.addWidget(LineWidget('Horizontal'))
+        user_input_frame_layout.addWidget(LineWidget("Horizontal"))
         user_input_frame_layout.addWidget(page_tips_group)
 
         # Plot Section
@@ -266,13 +298,12 @@ class PlotPairWisePage(QFrame):
             border-top-right-radius: 10px;
         """)
 
-        self.fig = Figure(figsize=(15,15))
+        self.fig = Figure(figsize=(15, 15))
         self.canvas = FigureCanvas(self.fig)
         self.toolbar = CustomToolbar(self.canvas)
 
         self._ax = self.canvas.figure.add_subplot(1, 1, 1)
         self._ax.set_box_aspect(1)
-
 
         plot_frame_layout.addWidget(plot_title)
         plot_frame_layout.addWidget(self.toolbar)
@@ -289,16 +320,19 @@ class PlotPairWisePage(QFrame):
         table_frame_layout = QHBoxLayout(table_frame)
         table_frame_layout.setContentsMargins(20, 20, 20, 20)
 
-        self.styled_table = StyledTable('2D combination table')
-        self.styled_table.set_header_label([
-            "Set #", "2D Combination", "Number of peaks","Hypothetical 2D peak capacity"
-        ])
+        self.styled_table = StyledTable("2D combination table")
+        self.styled_table.set_header_label(
+            [
+                "Set #",
+                "2D Combination",
+                "Number of peaks",
+                "Hypothetical 2D peak capacity",
+            ]
+        )
         self.styled_table.set_default_row_count(10)
 
         self.table_view_dialog = TableViewDialog(
-            self,
-            self.styled_table.get_table_view(),
-            self.styled_table.get_model()
+            self, self.styled_table.get_table_view(), self.styled_table.get_model()
         )
 
         table_frame_layout.addWidget(self.styled_table)
@@ -315,11 +349,15 @@ class PlotPairWisePage(QFrame):
         self.main_layout.addWidget(self.main_splitter)
 
         # Connect dataset count selector to update combo states
-        self.compare_number.currentTextChanged.connect(self.update_dataset_selector_state)
+        self.compare_number.currentTextChanged.connect(
+            self.update_dataset_selector_state
+        )
 
         # Connect dataset combo changes to update selection map
         for index, data in self.dataset_selector_map.items():
-            data["selector"].currentTextChanged.connect(lambda _, k=index: self.on_selector_changed(k))
+            data["selector"].currentTextChanged.connect(
+                lambda _, k=index: self.on_selector_changed(k)
+            )
 
         # Matplotlib canvas click event
         self.canvas.figure.canvas.mpl_connect("button_press_event", self.on_click)
@@ -328,12 +366,15 @@ class PlotPairWisePage(QFrame):
         self.main_splitter.splitterMoved.connect(self.table_collapsed)
 
         # Table selection event
-        self.styled_table.selectionChanged.connect(self.data_set_selection_changed_from_table)
+        self.styled_table.selectionChanged.connect(
+            self.data_set_selection_changed_from_table
+        )
 
         # Individual dataset combo selector change event
         for index, data in self.dataset_selector_map.items():
-            data["selector"].currentTextChanged.connect(self.data_set_selection_changed_from_combobox)
-
+            data["selector"].currentTextChanged.connect(
+                self.data_set_selection_changed_from_combobox
+            )
 
     def init_page(self):
         self.orthogonality_dict = self.model.get_orthogonality_dict()
@@ -345,7 +386,7 @@ class PlotPairWisePage(QFrame):
 
         self.update_dataset_selector_state()
 
-        #at page initialization , the current set selector is the number one
+        # at page initialization , the current set selector is the number one
         # self.selected_set = self.dataset_selector_map['0']["selector"].currentText()
         # self.selected_axe = self.dataset_selector_map['0']["axe"]
         # self.selected_scatter_collection = self.dataset_selector_map['0']["scatter_collection"]
@@ -353,7 +394,7 @@ class PlotPairWisePage(QFrame):
         # self.update_figure()
 
     # Helper to reduce redundancy
-    def add_dataset_selector(self,label_text, combobox):
+    def add_dataset_selector(self, label_text, combobox):
         container = QVBoxLayout()
         container.setSpacing(2)
         container.addWidget(QLabel(label_text))
@@ -370,38 +411,43 @@ class PlotPairWisePage(QFrame):
     def update_dataset_selector_state(self):
         number_of_selectors = int(self.compare_number.currentText())
 
-        [self.dataset_selector_list[i].setDisabled(False) if i<number_of_selectors
-         else self.dataset_selector_list[i].setDisabled(True) for i,selector in enumerate(self.dataset_selector_list)]
+        [
+            (
+                self.dataset_selector_list[i].setDisabled(False)
+                if i < number_of_selectors
+                else self.dataset_selector_list[i].setDisabled(True)
+            )
+            for i, selector in enumerate(self.dataset_selector_list)
+        ]
 
         self.update_plot_layout()
 
-
         [self.on_selector_changed(str(i)) for i in range(number_of_selectors)]
 
-
     def update_plot_layout(self):
-        #get the number of plot to compare
+        # get the number of plot to compare
         number_of_selectors = self.compare_number.currentText()
 
-        #create a key string based on the compare number value in order to know which ploy layout to select
-        plot_key = number_of_selectors+'PLOT'
-
+        # create a key string based on the compare number value in order to know which ploy layout to select
+        plot_key = number_of_selectors + "PLOT"
 
         # plot layout map that contains the list of plot layout to display based on the compare number
-        plot_layout_map = {'1PLOT':[111],
-                       '2PLOT':[121,122],
-                       '3PLOT':[221,222,223],
-                       '4PLOT':[221,222,223,224]}
+        plot_layout_map = {
+            "1PLOT": [111],
+            "2PLOT": [121, 122],
+            "3PLOT": [221, 222, 223],
+            "4PLOT": [221, 222, 223, 224],
+        }
 
-        #get list of layout
+        # get list of layout
         layout_list = plot_layout_map[plot_key]
 
         self.fig.clear()
 
-        for i,layout in enumerate(layout_list):
+        for i, layout in enumerate(layout_list):
             index = str(i)
             axe = self.canvas.figure.add_subplot(layout)
-            self.canvas.figure.subplots_adjust(wspace=.5, hspace=.5)
+            self.canvas.figure.subplots_adjust(wspace=0.5, hspace=0.5)
             axe.set_box_aspect(1)
             axe.set_xlim(0, 1)
             axe.set_ylim(0, 1)
@@ -409,20 +455,22 @@ class PlotPairWisePage(QFrame):
             self.fig.canvas.draw()
             self.fig.canvas.flush_events()
 
-            #initialize selector axe and scatter point selection
-            self.dataset_selector_map[index]['axe'] = axe
-            self.dataset_selector_map[index]['scatter_collection'] = axe.scatter([], [],s=20, c='k', marker='o', alpha=0.5)
-
+            # initialize selector axe and scatter point selection
+            self.dataset_selector_map[index]["axe"] = axe
+            self.dataset_selector_map[index]["scatter_collection"] = axe.scatter(
+                [], [], s=20, c="k", marker="o", alpha=0.5
+            )
 
     def on_selector_changed(self, index):
         """Handle combobox text change and get the corresponding axe."""
         selector = self.dataset_selector_map[index]["selector"]
         self.selected_set = selector.currentText()
         self.selected_axe = self.dataset_selector_map[index]["axe"]
-        self.selected_scatter_collection = self.dataset_selector_map[index]["scatter_collection"]
+        self.selected_scatter_collection = self.dataset_selector_map[index][
+            "scatter_collection"
+        ]
 
         self.update_figure()
-
 
     def populate_data_set_selectors(self):
         """
@@ -442,7 +490,7 @@ class PlotPairWisePage(QFrame):
         data_sets_list = list(self.orthogonality_dict.keys())
 
         for key in self.dataset_selector_map:
-            selector = self.dataset_selector_map[key]['selector']
+            selector = self.dataset_selector_map[key]["selector"]
 
             selector.blockSignals(True)  # Prevent UI signal loops
 
@@ -472,11 +520,8 @@ class PlotPairWisePage(QFrame):
         data = self.model.get_combination_df()
         self.styled_table.async_set_table_data(data)
 
-
         self.styled_table.set_table_proxy()
         # self.table_view_dialog.set_proxy(self.table_view.getProxyModel())
-
-
 
     def data_sets_change(self, data_set: str = None) -> None:
         """
@@ -522,17 +567,20 @@ class PlotPairWisePage(QFrame):
 
         """
 
-        if self.model.get_status() in ['loaded','peak_capacity_loaded']:
+        if self.model.get_status() in ["loaded", "peak_capacity_loaded"]:
             self.plot_scatter()
         else:
             return
 
-
     def update_blink(self):
         """Smoothly fade the border in and out, then reset."""
         if self.blink_ax:
-            alpha = abs(np.sin(self.blink_step * np.pi / 10))  # Create smooth fade effect
-            self.blink_ax.patch.set_edgecolor((1, 0, 0, alpha))  # Red with varying alpha
+            alpha = abs(
+                np.sin(self.blink_step * np.pi / 10)
+            )  # Create smooth fade effect
+            self.blink_ax.patch.set_edgecolor(
+                (1, 0, 0, alpha)
+            )  # Red with varying alpha
             self.canvas.figure.canvas.draw_idle()  # Force redraw
 
             self.blink_step += 1
@@ -559,7 +607,6 @@ class PlotPairWisePage(QFrame):
             self.blink_timer.start(25)  # Adjust speed of blink
 
             self.highlighted_ax = self.selected_axe  # Store the selected axe
-
 
     def plot_scatter(self, set_nb=None, dirname=""):
         """
@@ -588,11 +635,11 @@ class PlotPairWisePage(QFrame):
         else:
             set_number = set_nb
 
-        x = self.orthogonality_dict[set_number]['x_values']
-        y = self.orthogonality_dict[set_number]['y_values']
-        x_title = self.orthogonality_dict[set_number]['x_title']
-        y_title = self.orthogonality_dict[set_number]['y_title']
-        self.selected_axe.set_title(set_number, fontdict={'fontsize': 10}, pad=13)
+        x = self.orthogonality_dict[set_number]["x_values"]
+        y = self.orthogonality_dict[set_number]["y_values"]
+        x_title = self.orthogonality_dict[set_number]["x_title"]
+        y_title = self.orthogonality_dict[set_number]["y_title"]
+        self.selected_axe.set_title(set_number, fontdict={"fontsize": 10}, pad=13)
 
         # Set axis labels
         self.selected_axe.set_xlabel(x_title, fontsize=11)
@@ -600,7 +647,6 @@ class PlotPairWisePage(QFrame):
 
         # Update scatter plot if it already exists
         self.selected_scatter_collection.set_offsets(list(zip(x, y)))
-
 
         # self._ax.legend().set_visible(False)
 
@@ -624,7 +670,9 @@ class PlotPairWisePage(QFrame):
         row_count = self.styled_table.get_row_count()
 
         for row in range(row_count):
-            model_index = self.styled_table.get_proxy_model().index(row, 0)  # Column 0 assumed to contain dataset names
+            model_index = self.styled_table.get_proxy_model().index(
+                row, 0
+            )  # Column 0 assumed to contain dataset names
             if f"Set {model_index.data()}" == self.selected_set:
                 return row
 
@@ -670,7 +718,6 @@ class PlotPairWisePage(QFrame):
             self.styled_table.select_row(index=index_at_row)
             self.table_view_dialog.get_table_view().selectRow(index_at_row)
 
-
         # Refresh the figure to reflect the selected dataset
         self.update_figure()
 
@@ -697,15 +744,20 @@ class PlotPairWisePage(QFrame):
         model_index = proxy_model.mapToSource(model_index_list[0])
         self.selected_set = f"Set {model_index.data()}"
 
-
         # find the index of  data set selector assocciated to the given selected axe
-        index = [index for index, val in self.dataset_selector_map.items() if val['axe'] == self.selected_axe]
+        index = [
+            index
+            for index, val in self.dataset_selector_map.items()
+            if val["axe"] == self.selected_axe
+        ]
 
         # index is a list, but I just need the index value inside (string)
         index = index[0]
         selector = self.dataset_selector_map[index]["selector"]
         self.selected_axe = self.dataset_selector_map[index]["axe"]
-        self.selected_scatter_collection = self.dataset_selector_map[index]["scatter_collection"]
+        self.selected_scatter_collection = self.dataset_selector_map[index][
+            "scatter_collection"
+        ]
 
         selector.blockSignals(True)
         selector.setCurrentText(self.selected_set)
@@ -713,9 +765,10 @@ class PlotPairWisePage(QFrame):
 
         self.update_figure()
 
+
 class TableViewDialog(QDialog):
 
-    def __init__(self,parent,parent_table_view = None, model = None ):
+    def __init__(self, parent, parent_table_view=None, model=None):
         super().__init__(parent)
 
         self.setWindowTitle("Data set table")
@@ -724,12 +777,15 @@ class TableViewDialog(QDialog):
         main_layout = QVBoxLayout()
         self.setLayout(main_layout)
         self.table_model = model
-        self.table_view = OrthogonalityTableView(self,model)
+        self.table_view = OrthogonalityTableView(self, model)
 
-        self.table_view.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeToContents)
+        self.table_view.horizontalHeader().setSectionResizeMode(
+            0, QHeaderView.ResizeToContents
+        )
         self.table_view.horizontalHeader().setSectionResizeMode(1, QHeaderView.Stretch)
-        self.table_view.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeToContents)
-
+        self.table_view.horizontalHeader().setSectionResizeMode(
+            2, QHeaderView.ResizeToContents
+        )
 
         main_layout.addWidget(self.table_view)
 
@@ -737,10 +793,11 @@ class TableViewDialog(QDialog):
         header = self.table_view.horizontalHeader()
         header.sectionClicked.connect(self.sync_sorting)
 
-
         # # ✅ Sync sorting in both directions
         # self.table_view.horizontalHeader().sectionClicked.connect(self.sync_sorting)
-        self.parent_table_view.horizontalHeader().sectionClicked.connect(self.sync_sorting)
+        self.parent_table_view.horizontalHeader().sectionClicked.connect(
+            self.sync_sorting
+        )
 
         # ✅ Manually sync selection changes
         self.table_view.selectionModel().selectionChanged.connect(self.sync_selection)
@@ -748,7 +805,7 @@ class TableViewDialog(QDialog):
     def get_table_view(self):
         return self.table_view
 
-    def set_proxy(self,proxy):
+    def set_proxy(self, proxy):
         self.table_model.set_proxy(proxy)
 
     def sync_sorting(self, column):
@@ -773,8 +830,13 @@ class TableViewDialog(QDialog):
             row = index.row()
 
             # Select the same row in the parent table
-            parent_index = self.parent_table_view.model().index(row, 0)  # Select the first column
-            parent_selection_model.select(parent_index, QItemSelectionModel.Select | QItemSelectionModel.Rows)
+            parent_index = self.parent_table_view.model().index(
+                row, 0
+            )  # Select the first column
+            parent_selection_model.select(
+                parent_index, QItemSelectionModel.Select | QItemSelectionModel.Rows
+            )
+
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)

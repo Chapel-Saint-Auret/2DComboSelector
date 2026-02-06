@@ -3,12 +3,25 @@ import pandas as pd
 from PySide6.QtCore import QSize, Qt, Signal
 from PySide6.QtGui import QColor, QIcon
 from PySide6.QtSvgWidgets import QSvgWidget
-from PySide6.QtWidgets import (QButtonGroup, QFileDialog, QFrame,
-                               QGraphicsDropShadowEffect, QGroupBox,
-                               QHBoxLayout, QInputDialog, QLabel, QLineEdit,
-                               QMessageBox, QPushButton, QRadioButton,
-                               QSizePolicy, QSplitter, QStackedWidget,
-                               QVBoxLayout, QWidget)
+from PySide6.QtWidgets import (
+    QButtonGroup,
+    QFileDialog,
+    QFrame,
+    QGraphicsDropShadowEffect,
+    QGroupBox,
+    QHBoxLayout,
+    QInputDialog,
+    QLabel,
+    QLineEdit,
+    QMessageBox,
+    QPushButton,
+    QRadioButton,
+    QSizePolicy,
+    QSplitter,
+    QStackedWidget,
+    QVBoxLayout,
+    QWidget,
+)
 
 from combo_selector.ui.widgets.nan_policy_widget import NanPolicyDialog
 from combo_selector.ui.widgets.neumorphism import *
@@ -40,7 +53,7 @@ class ImportDataPage(QFrame):
 
         # --- model & frame setup ------------------------------------------------
         self.model = model
-        self.nan_policy_dialog = NanPolicyDialog(model = self.model)
+        self.nan_policy_dialog = NanPolicyDialog(model=self.model)
         self.setFrameShape(QFrame.StyledPanel)
         self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
 
@@ -62,8 +75,7 @@ class ImportDataPage(QFrame):
         data_import_layout.setSpacing(0)
         data_import_layout.setContentsMargins(0, 0, 0, 0)
 
-        data_import_frame.setStyleSheet(
-            """
+        data_import_frame.setStyleSheet("""
             QFrame {
                 background-color: #f3f3f3;
                 border: none;
@@ -92,29 +104,28 @@ class ImportDataPage(QFrame):
             QPushButton:hover { background-color: #bcc8f5; }
             QPushButton:pressed { background-color: #8fa3ef; }
             QPushButton:disabled { background-color: #E5E9F5; color: #FFFFFF; }
-            """
-        )
+            """)
 
         data_import_title = QLabel("Data import")
         data_import_title.setFixedHeight(30)
         data_import_title.setObjectName("TitleBar")
         data_import_title.setAlignment(Qt.AlignVCenter | Qt.AlignLeft)
         data_import_title.setContentsMargins(10, 0, 0, 0)
-        data_import_title.setStyleSheet(
-            """
+        data_import_title.setStyleSheet("""
             background-color: #183881;
             color: #ffffff;
             font-weight: bold;
             font-size: 15px;
             margin-bottom: 0px;
-            """
-        )
+            """)
 
         data_import_input_frame = QFrame(data_import_frame)
         data_import_inner_layout = QVBoxLayout(data_import_input_frame)
 
         # Retention times
-        self.add_ret_time_btn = QPushButton(QIcon(resource_path("icons/folder_icon.png")), "Import")
+        self.add_ret_time_btn = QPushButton(
+            QIcon(resource_path("icons/folder_icon.png")), "Import"
+        )
         self.clean_retention_time_btn = QPushButton("Clean NaN")
         self.add_ret_time_btn.setIconSize(ICON_SIZE)
         self.add_ret_time_btn.setFixedHeight(30)
@@ -130,7 +141,9 @@ class ImportDataPage(QFrame):
         rt_layout.addWidget(self.ret_time_import_status)
 
         # Experimental 1D peak capacities
-        self.add_2D_peak_data_btn = QPushButton(QIcon(resource_path("icons/folder_icon.png")), "Import")
+        self.add_2D_peak_data_btn = QPushButton(
+            QIcon(resource_path("icons/folder_icon.png")), "Import"
+        )
         self.add_2D_peak_data_btn.setIconSize(ICON_SIZE)
         self.add_2D_peak_data_btn.setFixedHeight(30)
         self.add_2D_peak_data_linedit = QLineEdit()
@@ -143,7 +156,9 @@ class ImportDataPage(QFrame):
         peak_layout.addWidget(self.twoD_peak_status)
 
         # Void time (hidden until needed)
-        self.add_void_time_btn = QPushButton(QIcon(resource_path("icons/folder_icon.png")), "Import")
+        self.add_void_time_btn = QPushButton(
+            QIcon(resource_path("icons/folder_icon.png")), "Import"
+        )
         self.add_void_time_btn.setIconSize(ICON_SIZE)
         self.add_void_time_btn.setFixedHeight(30)
         self.add_void_time_filename = QLineEdit()
@@ -162,7 +177,9 @@ class ImportDataPage(QFrame):
         self.void_time_label.setVisible(False)
 
         # Gradient end time (hidden until needed)
-        self.add_gradient_end_time_btn = QPushButton(QIcon(resource_path("icons/folder_icon.png")), "Import")
+        self.add_gradient_end_time_btn = QPushButton(
+            QIcon(resource_path("icons/folder_icon.png")), "Import"
+        )
         self.add_gradient_end_time_btn.setIconSize(ICON_SIZE)
         self.add_gradient_end_time_btn.setFixedHeight(30)
         self.add_gradient_end_time_filename = QLineEdit()
@@ -203,15 +220,13 @@ class ImportDataPage(QFrame):
         separation_space_scaling_title.setObjectName("TitleBar")
         separation_space_scaling_title.setAlignment(Qt.AlignVCenter | Qt.AlignLeft)
         separation_space_scaling_title.setContentsMargins(10, 0, 0, 0)
-        separation_space_scaling_title.setStyleSheet(
-            """
+        separation_space_scaling_title.setStyleSheet("""
             background-color: #183881;
             color: #ffffff;
             font-weight: bold;
             font-size: 15px;
             margin-bottom: 0px;
-            """
-        )
+            """)
 
         select_scaling_input_frame = QFrame()
         select_scaling_input_frame_layout = QHBoxLayout(select_scaling_input_frame)
@@ -220,8 +235,7 @@ class ImportDataPage(QFrame):
         scaling_method_group = QGroupBox("Select scaling method")
         scaling_method_layout = QVBoxLayout()
         scaling_method_group.setLayout(scaling_method_layout)
-        scaling_method_group.setStyleSheet(
-            """
+        scaling_method_group.setStyleSheet("""
             QGroupBox {
                 font-size: 14px;
                 font-weight: bold;
@@ -258,8 +272,7 @@ class ImportDataPage(QFrame):
             QPushButton:hover { background-color: #bcc8f5; }
             QPushButton:pressed { background-color: #8fa3ef; }
             QPushButton:disabled { background-color: #E5E9F5; color: #FFFFFF; }
-            """
-        )
+            """)
 
         self.normalize_btn = QPushButton("Normalize data")
 
@@ -361,7 +374,9 @@ class ImportDataPage(QFrame):
         table_frame_layout.setContentsMargins(20, 20, 20, 20)
 
         self.normalized_data_table = StyledTable("Normalized Retention time table")
-        self.normalized_data_table.set_header_label(["Peak #", "Condition 1", "Condition 2", "...", "Condition n"])
+        self.normalized_data_table.set_header_label(
+            ["Peak #", "Condition 1", "Condition 2", "...", "Condition n"]
+        )
         self.normalized_data_table.set_default_row_count(10)
         table_frame_layout.addWidget(self.normalized_data_table)
 
@@ -384,7 +399,9 @@ class ImportDataPage(QFrame):
         self.radio_button_group.buttonClicked.connect(self.change_norm_svg)
         self.normalize_btn.clicked.connect(self.normalize_retention_time)
         self.add_ret_time_btn.clicked.connect(self.load_retention_data)
-        self.add_2D_peak_data_btn.clicked.connect(self.load_experimental_peak_capacities)
+        self.add_2D_peak_data_btn.clicked.connect(
+            self.load_experimental_peak_capacities
+        )
         self.clean_retention_time_btn.clicked.connect(self.show_nan_policy_dialog)
         self.add_void_time_btn.clicked.connect(self.load_void_time_data)
         self.add_gradient_end_time_btn.clicked.connect(self.load_gradient_end_time_data)
@@ -395,31 +412,31 @@ class ImportDataPage(QFrame):
     #
     def table_collapsed(self):
         print(self.main_splitter.sizes())
+
     def change_norm_svg(self):
         button_checked = self.radio_button_group.checkedButton()
         method = button_checked.objectName()
 
-        if method == 'min_max':
+        if method == "min_max":
             self.scaling_method_svg_qstack.setCurrentIndex(0)
             self.void_time_widget.setVisible(False)
             self.gradient_end_time_widget.setVisible(False)
             self.void_time_label.setVisible(False)
             self.gradient_end_time_label.setVisible(False)
 
-        if method == 'void_max':
+        if method == "void_max":
             self.scaling_method_svg_qstack.setCurrentIndex(1)
             self.void_time_widget.setVisible(True)
             self.void_time_label.setVisible(True)
             self.gradient_end_time_widget.setVisible(False)
             self.gradient_end_time_label.setVisible(False)
 
-        if method == 'wosel':
+        if method == "wosel":
             self.scaling_method_svg_qstack.setCurrentIndex(2)
             self.void_time_widget.setVisible(True)
             self.void_time_label.setVisible(True)
             self.gradient_end_time_widget.setVisible(True)
             self.gradient_end_time_label.setVisible(True)
-
 
     def normalize_retention_time(self):
         button_checked = self.radio_button_group.checkedButton()
@@ -427,7 +444,6 @@ class ImportDataPage(QFrame):
         self.model.normalize_retention_time(method)
 
         data = self.model.get_normalized_retention_time_df()
-
 
         self.normalized_data_table.async_set_table_data(data)
 
@@ -455,15 +471,18 @@ class ImportDataPage(QFrame):
             - ValueError: If the selected sheet is invalid.
             - Exception: For unexpected errors.
         """
-        file_path, _ = QFileDialog.getOpenFileName(self, "Open Excel File", "", "Excel Files (*.xlsx *.xls)")
+        file_path, _ = QFileDialog.getOpenFileName(
+            self, "Open Excel File", "", "Excel Files (*.xlsx *.xls)"
+        )
 
         if not file_path:
             return  # User canceled the selection
 
         try:
             sheet_names = pd.ExcelFile(file_path, engine="openpyxl").sheet_names
-            selected_sheet, ok = QInputDialog.getItem(self, "Select Sheet", "Choose a sheet:", sheet_names,
-                                                      editable=False)
+            selected_sheet, ok = QInputDialog.getItem(
+                self, "Select Sheet", "Choose a sheet:", sheet_names, editable=False
+            )
 
             if not ok:
                 raise ValueError("No sheet selected")
@@ -472,7 +491,11 @@ class ImportDataPage(QFrame):
 
             if self.model.get_status() == "error":
                 self.ret_time_import_status.set_error()
-                QMessageBox.critical(self, "Error", "Failed to load the data. Please check the file format.")
+                QMessageBox.critical(
+                    self,
+                    "Error",
+                    "Failed to load the data. Please check the file format.",
+                )
                 return
 
             # Successful load: update UI
@@ -499,25 +522,34 @@ class ImportDataPage(QFrame):
             QMessageBox.warning(self, "Warning", str(e))
         except Exception as e:
             self.ret_time_import_status.set_error()  # Ensure GUI shows failure status
-            QMessageBox.critical(self, "Error", f"An unexpected error occurred:\n{str(e)}")
+            QMessageBox.critical(
+                self, "Error", f"An unexpected error occurred:\n{str(e)}"
+            )
 
     def load_experimental_peak_capacities(self):
         print(self.main_splitter.sizes())
-        fileName = QFileDialog.getOpenFileName(self, "Open Excel File", "", "Excel Files (*.xlsx *.xls)")
+        fileName = QFileDialog.getOpenFileName(
+            self, "Open Excel File", "", "Excel Files (*.xlsx *.xls)"
+        )
         if fileName[0]:
             try:
-                sheet_names_list = pd.ExcelFile(fileName[0], engine='openpyxl').sheet_names
-                sheet, ok = QInputDialog.getItem(self, 'Select excel sheet', 'select sheet', sheet_names_list)
+                sheet_names_list = pd.ExcelFile(
+                    fileName[0], engine="openpyxl"
+                ).sheet_names
+                sheet, ok = QInputDialog.getItem(
+                    self, "Select excel sheet", "select sheet", sheet_names_list
+                )
             except:
                 ok = False
 
             if ok:
-                self.model.load_data_frame_2d_peak(filepath=fileName[0],
-                                                   sheetname=sheet)
+                self.model.load_data_frame_2d_peak(
+                    filepath=fileName[0], sheetname=sheet
+                )
 
                 status = self.model.get_status()
 
-                if status == 'error':
+                if status == "error":
                     self.twoD_peak_status.set_error()
                 else:
                     self.twoD_peak_status.set_valid()
@@ -527,21 +559,26 @@ class ImportDataPage(QFrame):
                 self.twoD_peak_status.set_error()
 
     def load_gradient_end_time_data(self):
-        fileName = QFileDialog.getOpenFileName(self, "Open Excel File", "", "Excel Files (*.xlsx *.xls)")
+        fileName = QFileDialog.getOpenFileName(
+            self, "Open Excel File", "", "Excel Files (*.xlsx *.xls)"
+        )
         if fileName[0]:
             try:
-                sheet_names_list = pd.ExcelFile(fileName[0], engine='openpyxl').sheet_names
-                sheet, ok = QInputDialog.getItem(self, 'Select excel sheet', 'select sheet', sheet_names_list)
+                sheet_names_list = pd.ExcelFile(
+                    fileName[0], engine="openpyxl"
+                ).sheet_names
+                sheet, ok = QInputDialog.getItem(
+                    self, "Select excel sheet", "select sheet", sheet_names_list
+                )
             except:
                 ok = False
 
             if ok:
-                self.model.load_gradient_end_time(filepath=fileName[0],
-                                                   sheetname=sheet)
+                self.model.load_gradient_end_time(filepath=fileName[0], sheetname=sheet)
 
                 status = self.model.get_status()
 
-                if status == 'error':
+                if status == "error":
                     self.gradient_end_time_import_status.set_error()
                 else:
                     self.gradient_end_time_import_status.set_valid()
@@ -550,21 +587,26 @@ class ImportDataPage(QFrame):
                 self.gradient_end_time_import_status.set_error()
 
     def load_void_time_data(self):
-        fileName = QFileDialog.getOpenFileName(self, "Open Excel File", "", "Excel Files (*.xlsx *.xls)")
+        fileName = QFileDialog.getOpenFileName(
+            self, "Open Excel File", "", "Excel Files (*.xlsx *.xls)"
+        )
         if fileName[0]:
             try:
-                sheet_names_list = pd.ExcelFile(fileName[0], engine='openpyxl').sheet_names
-                sheet, ok = QInputDialog.getItem(self, 'Select excel sheet', 'select sheet', sheet_names_list)
+                sheet_names_list = pd.ExcelFile(
+                    fileName[0], engine="openpyxl"
+                ).sheet_names
+                sheet, ok = QInputDialog.getItem(
+                    self, "Select excel sheet", "select sheet", sheet_names_list
+                )
             except:
                 ok = False
 
             if ok:
-                self.model.load_void_time(filepath=fileName[0],
-                                                   sheetname=sheet)
+                self.model.load_void_time(filepath=fileName[0], sheetname=sheet)
 
                 status = self.model.get_status()
 
-                if status == 'error':
+                if status == "error":
                     self.void_time_import_status.set_error()
                 else:
                     self.void_time_import_status.set_valid()
@@ -579,7 +621,5 @@ if __name__ == "__main__":
 
     w = ImportDataPage()
 
-
     w.show()
     app.exec()
-

@@ -23,10 +23,11 @@ def resource_path(relative_path):
         base_path = os.path.dirname(os.path.abspath(__file__))
 
     return os.path.join(base_path, relative_path)
-    
+
+
 def load_simple_table(filepath, sheetname=0):
     df = pd.read_excel(filepath, sheet_name=sheetname, header=None)
-    df = df.dropna(how='all').dropna(axis=1, how='all')
+    df = df.dropna(how="all").dropna(axis=1, how="all")
     # Check shape to decide
     if df.shape[0] == 2 and df.shape[1] >= 2:
         # Horizontal: first row is header
@@ -43,7 +44,9 @@ def load_simple_table(filepath, sheetname=0):
         raise ValueError("Table shape not recognized.")
 
 
-def load_table_with_header_anywhere(filepath, sheetname=0, min_header_cols=2, auto_fix_duplicates=True):
+def load_table_with_header_anywhere(
+    filepath, sheetname=0, min_header_cols=2, auto_fix_duplicates=True
+):
     """
     Loads the first table in an Excel sheet, starting from the first row
     with at least `min_header_cols` non-NaN values (assumed header).
@@ -65,8 +68,8 @@ def load_table_with_header_anywhere(filepath, sheetname=0, min_header_cols=2, au
 
     # Now read again, skipping to that header row, using it as header
     df = pd.read_excel(filepath, sheet_name=sheetname, header=header_row)
-    df = df.dropna(how="all")    # Drop fully empty rows
-    df = df.loc[:, ~df.columns.str.contains('^Unnamed')]  # Drop unnamed columns
+    df = df.dropna(how="all")  # Drop fully empty rows
+    df = df.loc[:, ~df.columns.str.contains("^Unnamed")]  # Drop unnamed columns
 
     # Strip all whitespace from columns
     df.columns = df.columns.str.strip()
@@ -84,14 +87,16 @@ def load_table_with_header_anywhere(filepath, sheetname=0, min_header_cols=2, au
 
     return df
 
+
 # --- Usage example ---
 # df_norm_rt = load_table_with_header_anywhere("Data Soraya 5.xlsx", sheetname="Normalize RT")
 # print(df_norm_rt)
 
 
 def extract_set_number(name):
-    match = re.search(r'\d+', name)  # Find the first sequence of digits
+    match = re.search(r"\d+", name)  # Find the first sequence of digits
     return int(match.group()) if match else None
+
 
 def normalize_x_y_series(x_series, y_series):
     x_min = min(x_series)
@@ -100,11 +105,16 @@ def normalize_x_y_series(x_series, y_series):
     y_min = min(y_series)
     y_max = max(y_series)
 
-    x_norm_series = x_series.apply(lambda x: (x - x_min) / (x_max - x_min) if x>=0 else '')
-    y_norm_series = y_series.apply(lambda y: (y - y_min) / (y_max - y_min) if y>=0 else '')
+    x_norm_series = x_series.apply(
+        lambda x: (x - x_min) / (x_max - x_min) if x >= 0 else ""
+    )
+    y_norm_series = y_series.apply(
+        lambda y: (y - y_min) / (y_max - y_min) if y >= 0 else ""
+    )
 
     # cast value to float to avoid issue introduced by empty string
     return x_norm_series, y_norm_series
+
 
 def point_is_above_curve(x, y, curve):
     """
@@ -128,6 +138,7 @@ def point_is_above_curve(x, y, curve):
     else:
         return False  # The point is on or below the curve
 
+
 def point_is_below_curve(x, y, curve):
     """
     Determines whether a given point (x, y) lies below a specified curve.
@@ -149,6 +160,7 @@ def point_is_below_curve(x, y, curve):
         return True  # The point is below the curve
     else:
         return False  # The point is on or above the curve
+
 
 def get_list_of_point_above_curve(x_series, y_series, curve):
     """
@@ -199,6 +211,7 @@ def get_list_of_point_below_curve(x_series, y_series, curve):
 
     return point_below
 
+
 def compute_bin_box_mask_color(x, y, nb_boxes):
     """
     Computes a masked 2D histogram (bin box mask color) for the given x and y data.
@@ -234,7 +247,8 @@ def compute_bin_box_mask_color(x, y, nb_boxes):
     # Apply the mask to the histogram
     h_color = np.ma.masked_array(h, mask=mask)
 
-    return h_color.T,x_edges, y_edges
+    return h_color.T, x_edges, y_edges
+
 
 def compute_percent_fit_for_set(set_key, set_data):
     def objective(x, peak, curve):
@@ -244,7 +258,9 @@ def compute_percent_fit_for_set(set_key, set_data):
     def compute_minimal_distances1(peaks, curve):
         results = []
         for peak in peaks:
-            res = minimize_scalar(objective, method="bounded", bounds=(0.0, 1.0), args=(peak, curve))
+            res = minimize_scalar(
+                objective, method="bounded", bounds=(0.0, 1.0), args=(peak, curve)
+            )
             results.append(res.x)  # Or res.fun for actual minimal value
         return results
 
@@ -258,18 +274,21 @@ def compute_percent_fit_for_set(set_key, set_data):
             x0 = xs[min_idx]
             left = max(0, x0 - fine_range)
             right = min(1, x0 + fine_range)
-            res = minimize_scalar(objective, method="bounded", bounds=(left, right), args=(peak, curve))
+            res = minimize_scalar(
+                objective, method="bounded", bounds=(left, right), args=(peak, curve)
+            )
             return res.x
 
         from concurrent.futures import ThreadPoolExecutor
+
         with ThreadPoolExecutor() as executor:
             results = list(executor.map(optimize_peak, peaks))
         return results
 
     set_number = set_key
 
-    if set_key == 'Set 270':
-        toto =  2
+    if set_key == "Set 270":
+        toto = 2
     x, y = set_data["x_values"], set_data["y_values"]
     quadratic_model_xy = np.poly1d(np.polyfit(x, y, 2))
     quadratic_model_yx = np.poly1d(np.polyfit(x, y, 2))
@@ -280,41 +299,58 @@ def compute_percent_fit_for_set(set_key, set_data):
     peak_below_xy = get_list_of_point_below_curve(x, y, quadratic_model_xy)
     peak_below_yx = get_list_of_point_below_curve(y, x, quadratic_model_yx)
 
-    minimal_distance_below_xy = compute_minimal_distances(peak_below_xy, quadratic_model_xy)
-    minimal_distance_below_yx = compute_minimal_distances(peak_below_yx, quadratic_model_yx)
-    minimal_distance_above_xy = compute_minimal_distances(peak_above_xy, quadratic_model_xy)
-    minimal_distance_above_yx = compute_minimal_distances(peak_above_yx, quadratic_model_yx)
+    minimal_distance_below_xy = compute_minimal_distances(
+        peak_below_xy, quadratic_model_xy
+    )
+    minimal_distance_below_yx = compute_minimal_distances(
+        peak_below_yx, quadratic_model_yx
+    )
+    minimal_distance_above_xy = compute_minimal_distances(
+        peak_above_xy, quadratic_model_xy
+    )
+    minimal_distance_above_yx = compute_minimal_distances(
+        peak_above_yx, quadratic_model_yx
+    )
 
     xy1_avg = tmean(minimal_distance_below_xy) if minimal_distance_below_xy else 0
     yx1_avg = tmean(minimal_distance_below_yx) if minimal_distance_below_yx else 0
-    xy1_sd = tstd(minimal_distance_below_xy) if len(minimal_distance_below_xy)>1 else 0
-    yx1_sd = tstd(minimal_distance_below_yx) if len(minimal_distance_below_yx)>1 else 0
+    xy1_sd = (
+        tstd(minimal_distance_below_xy) if len(minimal_distance_below_xy) > 1 else 0
+    )
+    yx1_sd = (
+        tstd(minimal_distance_below_yx) if len(minimal_distance_below_yx) > 1 else 0
+    )
 
     xy2_avg = tmean(minimal_distance_above_xy) if minimal_distance_above_xy else 0
     yx2_avg = tmean(minimal_distance_above_yx) if minimal_distance_above_yx else 0
-    xy2_sd = tstd(minimal_distance_above_xy) if len(minimal_distance_above_xy)>1 else 0
-    yx2_sd = tstd(minimal_distance_above_yx) if len(minimal_distance_above_yx)>1 else 0
+    xy2_sd = (
+        tstd(minimal_distance_above_xy) if len(minimal_distance_above_xy) > 1 else 0
+    )
+    yx2_sd = (
+        tstd(minimal_distance_above_yx) if len(minimal_distance_above_yx) > 1 else 0
+    )
 
     delta_xy_avg = ((1 - abs(1 - (xy1_avg * 4))) + (1 - abs(1 - (xy2_avg * 4)))) / 2
-    delta_xy_sd  = ((1 - abs(1 - (xy1_sd * 7))) + (1 - abs(1 - (xy2_sd * 7)))) / 2
+    delta_xy_sd = ((1 - abs(1 - (xy1_sd * 7))) + (1 - abs(1 - (xy2_sd * 7)))) / 2
     delta_yx_avg = ((1 - abs(1 - (yx1_avg * 4))) + (1 - abs(1 - (yx2_avg * 4)))) / 2
-    delta_yx_sd  = ((1 - abs(1 - (yx1_sd * 7))) + (1 - abs(1 - (yx2_sd * 7)))) / 2
+    delta_yx_sd = ((1 - abs(1 - (yx1_sd * 7))) + (1 - abs(1 - (yx2_sd * 7)))) / 2
 
     percent_fit = (delta_xy_avg + delta_xy_sd + delta_yx_avg + delta_yx_sd) / 4
 
     # Return all needed info to update set_data in main thread
     result = {
-        'quadratic_reg_xy': quadratic_model_xy,
-        'quadratic_reg_yx': quadratic_model_yx,
-        'percent_fit': {
-            'delta_xy_avg': delta_xy_avg,
-            'delta_xy_sd': delta_xy_sd,
-            'delta_yx_avg': delta_yx_avg,
-            'delta_yx_sd': delta_yx_sd,
-            'value': abs(percent_fit)
-        }
+        "quadratic_reg_xy": quadratic_model_xy,
+        "quadratic_reg_yx": quadratic_model_yx,
+        "percent_fit": {
+            "delta_xy_avg": delta_xy_avg,
+            "delta_xy_sd": delta_xy_sd,
+            "delta_yx_avg": delta_yx_avg,
+            "delta_yx_sd": delta_yx_sd,
+            "value": abs(percent_fit),
+        },
     }
     return set_key, result
+
 
 def cluster_and_fuse(data):
     # 1) Build a mapping: item → list of tuple-indices
@@ -326,8 +362,8 @@ def cluster_and_fuse(data):
             elif idx not in item_to_idxs[item]:
                 item_to_idxs[item].append(idx)
 
-    visited = []    # indices we’ve already enqueued/seen
-    clusters = []   # list of connected components (each is a list of indices)
+    visited = []  # indices we’ve already enqueued/seen
+    clusters = []  # list of connected components (each is a list of indices)
 
     # 2) For each tuple-index, do a BFS (using a plain list as queue)
     for start in range(len(data)):
@@ -339,7 +375,7 @@ def cluster_and_fuse(data):
         comp = []
 
         while queue:
-            curr = queue.pop(0)    # dequeue
+            curr = queue.pop(0)  # dequeue
             comp.append(curr)
 
             # enqueue all neighbours sharing any item
@@ -365,6 +401,3 @@ def cluster_and_fuse(data):
         fused.append(seen)
 
     return grouped, fused
-
-
-

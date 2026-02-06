@@ -2,7 +2,7 @@ import os
 
 import matplotlib
 
-matplotlib.use('Agg')  # make sure we’re using the non-GUI “Agg” backend
+matplotlib.use("Agg")  # make sure we’re using the non-GUI “Agg” backend
 
 from functools import partial
 
@@ -11,10 +11,20 @@ from matplotlib.backends.backend_qtagg import FigureCanvas
 from matplotlib.figure import Figure
 from PySide6.QtCore import QSize, Qt, QTimer
 from PySide6.QtGui import QColor
-from PySide6.QtWidgets import (QFileDialog, QFrame, QGraphicsDropShadowEffect,
-                               QGroupBox, QHBoxLayout, QLabel, QLineEdit,
-                               QPushButton, QScrollArea, QSizePolicy,
-                               QSplitter, QVBoxLayout)
+from PySide6.QtWidgets import (
+    QFileDialog,
+    QFrame,
+    QGraphicsDropShadowEffect,
+    QGroupBox,
+    QHBoxLayout,
+    QLabel,
+    QLineEdit,
+    QPushButton,
+    QScrollArea,
+    QSizePolicy,
+    QSplitter,
+    QVBoxLayout,
+)
 
 from combo_selector.core.plot_utils import PlotUtils
 from combo_selector.ui.widgets.checkable_combo_list import CheckableComboList
@@ -30,7 +40,7 @@ drop_down_icon_path = resource_path("icons/drop_down_arrow.png").replace("\\", "
 
 
 class ExportPage(QFrame):
-    def __init__(self, model=None, title='Unnamed'):
+    def __init__(self, model=None, title="Unnamed"):
         """
         Initialize the ExportPage.
 
@@ -49,7 +59,7 @@ class ExportPage(QFrame):
         self.selected_scatter_collection = None
         self.selected_axe = None
         self.full_scatter_collection = None
-        self.selected_set = 'Set 1'
+        self.selected_set = "Set 1"
         self.orthogonality_dict = None
         self.model = model
 
@@ -74,7 +84,7 @@ class ExportPage(QFrame):
             "Conditional entropy": partial(self.plot_conditional_entropy),
             "Asterisk": partial(self.plot_utils.plot_asterisk),
             "%FIT": partial(self.plot_utils.plot_percent_fit_xy),
-            "%BIN": partial(self.plot_utils.plot_percent_bin)
+            "%BIN": partial(self.plot_utils.plot_percent_bin),
         }
 
         self.table_functions_map = {
@@ -82,7 +92,7 @@ class ExportPage(QFrame):
             "2D Combination table": self.model.get_combination_df,
             "OM result table": self.model.get_orthogonality_metric_df,
             "Orthogonality result correlation table": self.model.get_correlation_group_df,
-            "Final result and ranking table": self.model.get_orthogonality_result_df
+            "Final result and ranking table": self.model.get_orthogonality_result_df,
         }
 
         # --- page frame & outer layout ---------------------------------------
@@ -168,7 +178,7 @@ class ExportPage(QFrame):
         info_group.setLayout(info_layout)
 
         # Export figure group (stylesheet unchanged)
-        export_figure_grp = QGroupBox('Export data set figure')
+        export_figure_grp = QGroupBox("Export data set figure")
         export_figure_grp.setStyleSheet(f"""
              QGroupBox {{
                 font-size: 14px;
@@ -223,7 +233,7 @@ class ExportPage(QFrame):
         # export directory
         self.figure_export_directory_lineEdit = QLineEdit()
         self.figure_export_directory_lineEdit.setText(os.getcwd())
-        self.export_figure_directory_btn = QPushButton('...')
+        self.export_figure_directory_btn = QPushButton("...")
         self.export_figure_directory_btn.setFixedWidth(50)
 
         export_directory_hlayout = QHBoxLayout()
@@ -233,7 +243,7 @@ class ExportPage(QFrame):
         form_layout.addLayout(export_directory_hlayout)
 
         # folder name
-        self.figure_folder_name_lineEdit = QLineEdit('Figure')
+        self.figure_folder_name_lineEdit = QLineEdit("Figure")
         form_layout.addWidget(QLabel("Folder name:"))
         form_layout.addWidget(self.figure_folder_name_lineEdit)
 
@@ -246,13 +256,13 @@ class ExportPage(QFrame):
         form_layout.addWidget(QLabel("Figure list:"))
         form_layout.addWidget(self.figure_list_chklist)
 
-        self.save_figure_btn = QPushButton('Save figure(s)')
+        self.save_figure_btn = QPushButton("Save figure(s)")
         form_layout.addWidget(self.save_figure_btn)
 
         export_figure_grp.setLayout(form_layout)
 
         # Export table group (stylesheet unchanged)
-        export_table_grp = QGroupBox('Export table(s)')
+        export_table_grp = QGroupBox("Export table(s)")
         export_table_layout = QVBoxLayout()
         export_table_grp.setLayout(export_table_layout)
         export_table_grp.setStyleSheet("""
@@ -303,15 +313,18 @@ class ExportPage(QFrame):
         """)
 
         table_list = [
-            "Normalized retention table", "2D Combination table", "OM result table",
-            "Orthogonality result correlation table", "Final result and ranking table"
+            "Normalized retention table",
+            "2D Combination table",
+            "OM result table",
+            "Orthogonality result correlation table",
+            "Final result and ranking table",
         ]
         self.table_selection = CheckableTreeList(table_list)
         self.table_selection.setFixedHeight(175)
 
         self.table_export_directory_lineEdit = QLineEdit()
         self.table_export_directory_lineEdit.setText(os.getcwd())
-        self.export_table_directory_btn = QPushButton('...')
+        self.export_table_directory_btn = QPushButton("...")
         self.export_table_directory_btn.setFixedWidth(50)
 
         self.export_filename = QLineEdit()
@@ -327,13 +340,13 @@ class ExportPage(QFrame):
         export_table_layout.addWidget(self.table_selection)
         export_table_layout.addWidget(QLabel("Export directory:"))
         export_table_layout.addLayout(export_table_directory_hlayout)
-        export_table_layout.addWidget(QLabel('File name:'))
+        export_table_layout.addWidget(QLabel("File name:"))
         export_table_layout.addWidget(self.export_filename)
         export_table_layout.addWidget(self.export_table_btn)
 
         # Assemble input column
         user_input_frame_layout.addWidget(export_figure_grp)
-        user_input_frame_layout.addWidget(LineWidget('Horizontal'))
+        user_input_frame_layout.addWidget(LineWidget("Horizontal"))
         user_input_frame_layout.addWidget(export_table_grp)
         # user_input_frame_layout.addWidget(info_group)
         # user_input_frame_layout.addWidget(LineWidget('Horizontal'))
@@ -379,8 +392,10 @@ class ExportPage(QFrame):
         table_frame_layout = QHBoxLayout(table_frame)
         table_frame_layout.setContentsMargins(20, 20, 20, 20)
 
-        self.styled_table = StyledTable('2D combination table')
-        self.styled_table.set_header_label(["Set #", "2D Combination", "Predicted 2D peak capacity"])
+        self.styled_table = StyledTable("2D combination table")
+        self.styled_table.set_header_label(
+            ["Set #", "2D Combination", "Predicted 2D peak capacity"]
+        )
         self.styled_table.set_default_row_count(10)
         table_frame_layout.addWidget(self.styled_table)
 
@@ -395,11 +410,13 @@ class ExportPage(QFrame):
 
         # --- signals -----------------------------------------------------------
         self.export_figure_directory_btn.clicked.connect(self.create_figure_directory)
-        self.export_table_directory_btn.clicked.connect(self.select_export_file_directory)
+        self.export_table_directory_btn.clicked.connect(
+            self.select_export_file_directory
+        )
         self.save_figure_btn.clicked.connect(self.save_figure_list)
         self.export_table_btn.clicked.connect(self.export_tables)
 
-    def init_page(self,om_list):
+    def init_page(self, om_list):
         self.orthogonality_dict = self.model.get_orthogonality_dict()
         self.plot_utils.set_orthogonality_data(self.model.get_orthogonality_dict())
         data_sets_list = list(self.orthogonality_dict.keys())
@@ -424,7 +441,6 @@ class ExportPage(QFrame):
         file_path = f"{select_directory}/{self.export_filename.text()}"
         table_to_export_list = self.table_selection.get_checked_items()
 
-
         with pd.ExcelWriter(file_path, engine="openpyxl") as writer:
             for table_name in table_to_export_list:
                 df = self.table_functions_map[table_name]()
@@ -432,7 +448,9 @@ class ExportPage(QFrame):
 
     def save_figure_list(self):
         chosen_directory = self.figure_export_directory_lineEdit.text()
-        chosen_folder_name = f"{chosen_directory}/{self.figure_folder_name_lineEdit.text()}"
+        chosen_folder_name = (
+            f"{chosen_directory}/{self.figure_folder_name_lineEdit.text()}"
+        )
         figure_type_list = self.figure_type_chklist.get_checked_item()
         figure_list_chklist = self.figure_list_chklist.get_checked_item()
 
@@ -449,7 +467,11 @@ class ExportPage(QFrame):
                 # self.orthogonality_metric_combo.blockSignals(False)
 
                 for figure_set_nb in figure_list_chklist:
-                    self.save_figure(plot_type = plot_type,set_nb=figure_set_nb, dirname=subdirectory_type_name)
+                    self.save_figure(
+                        plot_type=plot_type,
+                        set_nb=figure_set_nb,
+                        dirname=subdirectory_type_name,
+                    )
 
     def save_figure(self, plot_type, set_nb, dirname):
 
@@ -461,39 +483,43 @@ class ExportPage(QFrame):
         #
         # self.plot_utils.set_axe(ax)
 
-        if self.model.get_status() in ['loaded', 'peak_capacity_loaded']:
+        if self.model.get_status() in ["loaded", "peak_capacity_loaded"]:
             self.plot_utils.plot_scatter(set_number=set_nb, dirname="")
 
         if plot_type in self.plot_functions_map:
-            self.plot_functions_map[plot_type](set_number=set_nb)  # Call the corresponding function
+            self.plot_functions_map[plot_type](
+                set_number=set_nb
+            )  # Call the corresponding function
 
         filename = f"{dirname}/{set_nb}.png"
-        self.canvas.figure.savefig(filename, dpi=600, bbox_inches='tight', transparent=True)
+        self.canvas.figure.savefig(
+            filename, dpi=600, bbox_inches="tight", transparent=True
+        )
 
-    def plot_convex_hull(self,set_number):
+    def plot_convex_hull(self, set_number):
         self.plot_utils.plot_convex_hull(set_number=set_number)
 
-    def plot_percent_bin(self,set_number):
+    def plot_percent_bin(self, set_number):
         self.plot_utils.plot_percent_bin(set_number=set_number)
 
-    def plot_bin_box(self,set_number):
+    def plot_bin_box(self, set_number):
         self.plot_utils.plot_bin_box(set_number=set_number)
 
     # Plot methods
-    def plot_asterisk(self,set_number):
+    def plot_asterisk(self, set_number):
         self.plot_utils.plot_asterisk(set_number=set_number)
 
-    def plot_linear_reg(self,set_number):
+    def plot_linear_reg(self, set_number):
         self.plot_utils.plot_linear_reg(set_number=set_number)
 
-    def plot_percent_fit_xy(self,set_number):
+    def plot_percent_fit_xy(self, set_number):
         self.plot_utils.plot_percent_fit_xy(set_number=set_number)
 
-    def plot_percent_fit_yx(self,set_number):
+    def plot_percent_fit_yx(self, set_number):
         self.plot_utils.plot_percent_fit_yx(set_number=set_number)
 
-    def plot_conditional_entropy(self,set_number):
+    def plot_conditional_entropy(self, set_number):
         self.plot_utils.plot_conditional_entropy(set_number=set_number)
 
-    def plot_modeling_approach(self,set_number):
+    def plot_modeling_approach(self, set_number):
         self.plot_utils.plot_modeling_approach(set_number=set_number)
