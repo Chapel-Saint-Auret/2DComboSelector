@@ -7,7 +7,7 @@
    viewBox="0 0 97.43036 34.504056"
    version="1.1"
    id="svg1"
-   inkscape:version="1.4 (86a8ad7, 2024-10-11)"
+   inkscape:version="1.4.2 (f4327f4, 2025-05-13)"
    sodipodi:docname="norm_min_max.svg"
    inkscape:export-filename="norm_void_max.png"
    inkscape:export-xdpi="96"
@@ -26,9 +26,9 @@
      inkscape:pagecheckerboard="0"
      inkscape:deskcolor="#d1d1d1"
      inkscape:document-units="mm"
-     inkscape:zoom="1"
-     inkscape:cx="93"
-     inkscape:cy="48.5"
+     inkscape:zoom="2"
+     inkscape:cx="251.75"
+     inkscape:cy="196.25"
      inkscape:window-width="1920"
      inkscape:window-height="1111"
      inkscape:window-x="-9"
@@ -36,7 +36,8 @@
      inkscape:window-maximized="1"
      inkscape:current-layer="layer1"
      inkscape:export-bgcolor="#ffffff00"
-     showgrid="false" />
+     showgrid="false"
+     showguides="true" />
   <defs
      id="defs1">
     <defs
@@ -335,6 +336,10 @@
         </g>
       </g>
     </defs>
+    <mask
+       id="id-f7380f61-1627-4979-b3ea-54299fb9ad4e"
+       fill="#1a1a1a"
+       stroke-width="0" />
   </defs>
   <g
      inkscape:label="Layer 1"
@@ -342,7 +347,7 @@
      id="layer1"
      transform="translate(-67.196187,-134.99897)">
     <rect
-       style="fill:none;stroke:#000000;stroke-width:0.170599;stroke-dasharray:none"
+       style="fill:#e7e7e7;fill-opacity:1;stroke:#e7e7e7;stroke-width:0.170599;stroke-dasharray:none;stroke-opacity:1"
        id="rect116"
        width="97.259766"
        height="34.333454"
@@ -350,7 +355,7 @@
        y="135.08427" />
     <g
        id="g1"
-       transform="matrix(2.3262811,0,0,2.3262811,-90.275795,-180.08579)">
+       transform="matrix(2.3263151,0,0,2.3262811,-90.278114,-180.18546)">
       <g
          fill-opacity="1"
          id="id-d84792c1-2665-46e9-8e1b-06408a6630a7"
@@ -1694,6 +1699,38 @@
              style="fill:#1a1a1a;stroke-width:0" />
         </g>
       </g>
+    </g>
+    <g
+       transform="matrix(0.57234,0,0,0.57234,-17.33951,151.09343)"
+       id="g35"
+       style="fill:#1a1a1a;stroke-width:0">
+      <g
+         transform="translate(255.9,134.76)"
+         fill="#1a1a1a"
+         stroke-width="0"
+         id="g34">
+        <rect
+           transform="matrix(0.11995,0,0,0.11995,0.4798,-7.077)"
+           x="-4.5999999"
+           y="-6"
+           width="55.200001"
+           height="72"
+           fill="#1a1a1a"
+           mask="url(#id-f7380f61-1627-4979-b3ea-54299fb9ad4e)"
+           stroke-width="0"
+           id="rect33" />
+      </g>
+    </g>
+    <g
+       transform="matrix(1.0583,0,0,1.0583,-88.407091,20.258187)"
+       fill="#1a1a1a"
+       stroke-width="0"
+       id="g3-1">
+      <g
+         transform="translate(253.42,134.76)"
+         fill="#1a1a1a"
+         stroke-width="0"
+         id="g2-1" />
     </g>
   </g>
 </svg>

@@ -5,7 +5,8 @@ from PySide6.QtWidgets import (
 from PySide6.QtCore import Qt, QModelIndex, Signal, QThreadPool
 
 from combo_selector.core.workers import TableDataWorker
-from combo_selector.ui.widgets.orthogonality_table import OrthogonalityTableView, OrthogonalityTableModel
+from combo_selector.ui.widgets.orthogonality_table import OrthogonalityTableView, OrthogonalityTableModel,SquareBackgroundDelegate
+from combo_selector.ui.widgets.header_button import HeaderButton
 
 
 
@@ -21,7 +22,7 @@ class StyledTable(QWidget):
         card = QFrame()
         card.setObjectName("CardFrame")
         card.setLayout(QVBoxLayout())
-        card.layout().setContentsMargins(0, 0, 0, 0)
+        card.layout().setContentsMargins(5, 5, 5, 5)
         card.layout().setSpacing(0)
 
         # Title bar
@@ -34,6 +35,12 @@ class StyledTable(QWidget):
         # Table
         self.model = OrthogonalityTableModel()
         self.table = OrthogonalityTableView(self,self.model)
+
+        # Use our custom header
+        self.header = HeaderButton(Qt.Horizontal, self.table)
+        self.table.setHorizontalHeader(self.header)
+
+        self.table.setItemDelegate(SquareBackgroundDelegate(self.table))
 
 
         # Footer
@@ -69,6 +76,9 @@ class StyledTable(QWidget):
         self.model.set_formated_data([])
         self.set_default_row_count(10)
 
+    def add_header_button(self,column,tooltip,widget_to_show):
+        self.header.add_header_button(column=column,tooltip=tooltip,widget_to_show=widget_to_show)
+
     def selection_changed(self):
         self.selectionChanged.emit()
 
@@ -79,8 +89,6 @@ class StyledTable(QWidget):
 
     def handle_data(self,data, rows, cols):
         self.model.apply_formatted_data(data, rows, cols)
-
-
 
     def set_table_data(self,data):
         self.model.set_data(data)
@@ -99,6 +107,12 @@ class StyledTable(QWidget):
                 self.table.horizontalHeader().setSectionResizeMode(i, QHeaderView.Stretch)
             else:
                 self.table.horizontalHeader().setSectionResizeMode(i, QHeaderView.ResizeToContents)
+
+    def get_header(self):
+        return self.header
+
+    def set_proxy_filter_regexp(self,regexp):
+        self.table.filterExpChanged(regexp)
 
     def set_table_proxy(self):
         self.model.set_proxy(self.table.getProxyModel())
@@ -135,24 +149,21 @@ class StyledTable(QWidget):
                 font-size: 13px;
             }
 
-            QFrame#CardFrame {
-                background: white;
-                border-radius: 12px;
-                border: 1px solid #d0d5dd;
-            }
+
 
             QLabel#TitleBar {
-                background-color: #154E9D;
-                color: white;
+                background-color: #183881;
+                color: #ffffff;
                 font-weight:bold;
                 font-size: 16px;
-                border-top-left-radius: 12px;
-                border-top-right-radius: 12px;
+                                        border-top-left-radius: 10px;
+                        border-top-right-radius: 10px;
+
             }
 
     QHeaderView::section {
-        background-color: #D1D9FC;
-        color: #154E9D;
+        background-color: #d1d9fc;
+        color: #1859b4;
         font-size: 12px;
         padding: 4px;
         font-weight: bold;
@@ -162,23 +173,23 @@ class StyledTable(QWidget):
     QTableView {
     
         background-color: #F6F8FD;
-        border: 1px solid #F6F8FD;
         gridline-color: #D4D6EC;
         selection-background-color: #c9daf8;
         selection-color: #000000;
         font-size: 11px;
     }
 
-    QTableView::item {
-        padding: 6px;Y
-        padding: 2px;
-        border: none;
-    }
 
     QTableView::item:selected {
         background-color: #d8e5fc;
         color: #000000;
     }
+
+QTableView::item {
+    background: transparent;   /* so BackgroundRole shows */
+    border: none;
+    border-radius: 0px;        /* <-- force square corners */
+}
 
     QScrollBar:vertical {
         border: none;

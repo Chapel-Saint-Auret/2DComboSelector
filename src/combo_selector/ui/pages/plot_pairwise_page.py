@@ -17,6 +17,7 @@ from combo_selector.ui.widgets.style_table import StyledTable
 from combo_selector.ui.widgets.custom_toolbar import CustomToolbar
 from combo_selector.ui.widgets.line_widget import LineWidget
 from combo_selector.ui.widgets.orthogonality_table import OrthogonalityTableView
+from combo_selector.ui.widgets.neumorphism import*
 
 PLOT_SIZE = QSize(600, 400)
 
@@ -40,59 +41,50 @@ class PlotPairWisePage(QFrame):
         self.orthogonality_dict = None
         self.model = model
 
-        self.shadow = QGraphicsDropShadowEffect(self)
-        self.shadow.setBlurRadius(20)
-        self.shadow.setXOffset(0)
-        self.shadow.setYOffset(0)
-        self.shadow.setColor(QColor(0, 0, 0, 100))
-
+        self.setFrameShape(QFrame.StyledPanel)
         self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self.main_layout = QVBoxLayout(self)
         self.main_layout.setContentsMargins(0, 0, 0, 0)
         self.main_layout.setSpacing(0)
 
-        self.setFrameShape(QFrame.StyledPanel)
-        self.setFrameShadow(QFrame.Raised)
-
         top_frame = QFrame()
-        top_frame.setFrameShape(QFrame.NoFrame)
-        top_frame.setGraphicsEffect(self.shadow)
 
         top_frame_layout = QHBoxLayout(top_frame)
-        top_frame_layout.setContentsMargins(25, 25, 25, 25)
-        top_frame_layout.setSpacing(25)
+        top_frame_layout.setContentsMargins(50, 50, 50, 50)
+        top_frame_layout.setSpacing(80)
 
-        user_input_scroll_area = QScrollArea()
-        user_input_scroll_area.setFixedWidth(290)
         input_title = QLabel("Input")
         input_title.setFixedHeight(30)
         input_title.setObjectName("TitleBar")
         input_title.setAlignment(Qt.AlignVCenter | Qt.AlignLeft)
         input_title.setContentsMargins(10, 0, 0, 0)
         input_title.setStyleSheet("""
-            background-color: #154E9D;
+            background-color: #183881;
             color: white;
             font-weight:bold;
             font-size: 16px;
-            border-top-left-radius: 12px;
-            border-top-right-radius: 12px;
+            border-top-left-radius: 10px;
+            border-top-right-radius: 10px;
         """)
 
         user_input_scroll_area = QScrollArea()
+        user_input_scroll_area.setObjectName("userScroll")
+
         user_input_scroll_area.setFixedWidth(290)
         user_input_scroll_area.setWidgetResizable(True)
         user_input_scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
         user_input_scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
 
         user_input_frame = QFrame()
-        user_input_frame.setStyleSheet("background-color: white; border-radius: 10px;")
-        user_input_frame.setFixedWidth(280)
+
+        user_input_frame.setFixedWidth(290)
         user_input_frame_layout = QVBoxLayout(user_input_frame)
         user_input_frame_layout.setContentsMargins(20, 20, 20, 20)
 
         user_input_scroll_area.setWidget(user_input_frame)
 
         input_section = QFrame()
+        input_section.setFixedWidth(290)
         input_layout = QVBoxLayout(input_section)
         input_layout.setSpacing(0)
         input_layout.setContentsMargins(0, 0, 0, 0)
@@ -114,6 +106,7 @@ class PlotPairWisePage(QFrame):
                 subcontrol-origin: margin;
                 subcontrol-position: top left;
                 padding: 0px;
+                margin-top: -8px;
             }
             QLabel {
                 background-color: transparent;
@@ -246,6 +239,8 @@ class PlotPairWisePage(QFrame):
 
         # Plot Section
         plot_frame = QFrame()
+        plot_frame.setFrameShape(QFrame.StyledPanel)
+        plot_frame.setFrameShadow(QFrame.Raised)
         plot_frame.setStyleSheet("""
             background-color: #e7e7e7;
             border-top-left-radius: 10px;
@@ -261,10 +256,11 @@ class PlotPairWisePage(QFrame):
         plot_title.setAlignment(Qt.AlignVCenter | Qt.AlignLeft)
         plot_title.setContentsMargins(10, 0, 0, 0)
         plot_title.setStyleSheet("""
-            background-color: #154E9D;
+            background-color: #183881;
             color: white;
             font-weight:bold;
             font-size: 16px;
+            font-weight: bold;
             padding: 6px 12px;
             border-top-left-radius: 10px;
             border-top-right-radius: 10px;
@@ -285,23 +281,17 @@ class PlotPairWisePage(QFrame):
         top_frame_layout.addWidget(input_section)
         top_frame_layout.addWidget(plot_frame)
 
-        # Table Section
-        table_frame = QFrame()
-        self.shadow1 = QGraphicsDropShadowEffect(self)
-        self.shadow1.setBlurRadius(20)
-        self.shadow1.setXOffset(0)
-        self.shadow1.setYOffset(0)
-        self.shadow1.setColor(QColor(0, 0, 0, 100))
-        table_frame.setGraphicsEffect(self.shadow1)
+        self.top_frame_shadow = BoxShadow()
+        top_frame.setGraphicsEffect(self.top_frame_shadow)
 
-        table_frame.setStyleSheet("QFrame { background-color: transparent; }")
-
+        # ====== NORMALIZED TABLE SECTION (optional below) ======
+        table_frame = QWidget()
         table_frame_layout = QHBoxLayout(table_frame)
         table_frame_layout.setContentsMargins(20, 20, 20, 20)
 
         self.styled_table = StyledTable('2D combination table')
         self.styled_table.set_header_label([
-            "Set #", "2D Combination", "Hypothetical 2D peak capacity"
+            "Set #", "2D Combination", "Number of peaks","Hypothetical 2D peak capacity"
         ])
         self.styled_table.set_default_row_count(10)
 
@@ -313,9 +303,14 @@ class PlotPairWisePage(QFrame):
 
         table_frame_layout.addWidget(self.styled_table)
 
+        self.table_frame_shadow = BoxShadow()
+        self.styled_table.setGraphicsEffect(self.table_frame_shadow)
+
         self.main_splitter = QSplitter(Qt.Vertical, self)
         self.main_splitter.addWidget(top_frame)
         self.main_splitter.addWidget(table_frame)
+
+        self.main_splitter.setSizes([486, 204])
 
         self.main_layout.addWidget(self.main_splitter)
 
@@ -366,6 +361,7 @@ class PlotPairWisePage(QFrame):
         self.data_selection_layout.addLayout(container)
 
     def table_collapsed(self):
+
         if self.main_splitter.sizes()[1] == 0:
             self.table_view_dialog.show()
         else:

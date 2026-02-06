@@ -6,10 +6,9 @@ from PySide6.QtWidgets import (
     QApplication, QVBoxLayout, QHBoxLayout, QGridLayout, QWidget,
     QLabel, QComboBox, QFrame, QPushButton, QGroupBox,
     QSizePolicy, QSplitter, QCheckBox, QScrollArea, QRadioButton,
-    QButtonGroup, QGraphicsDropShadowEffect, QStackedLayout
+    QButtonGroup, QGraphicsDropShadowEffect, QStackedLayout, QHeaderView
 )
-from PySide6.QtCore import Qt, QSize, QTimer, QThreadPool
-from PySide6.QtGui import QColor
+from PySide6.QtCore import QTimer, QThreadPool
 
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_qtagg import FigureCanvas
@@ -18,9 +17,11 @@ from combo_selector.utils import resource_path
 from combo_selector.core.workers import ResultsWorkerComputeCustomOMScore
 from combo_selector.ui.widgets.line_widget import LineWidget
 from combo_selector.ui.widgets.custom_toolbar import CustomToolbar
+from combo_selector.ui.widgets.custom_filter_dialog import CustomFilterDialog
 from combo_selector.ui.widgets.checkable_tree_list import CheckableTreeList
 from combo_selector.ui.widgets.style_table import StyledTable
 from combo_selector.ui.widgets.circle_progress_bar import RoundProgressBar
+from combo_selector.ui.widgets.neumorphism import*
 
 PLOT_SIZE = QSize(600, 400)
 drop_down_icon_path = resource_path("icons/drop_down_arrow.png").replace("\\", "/")
@@ -48,8 +49,17 @@ UI_TO_MODEL_MAPPING = {
 
 class ResultsPage(QFrame):
     def __init__(self, model=None, title="Unnamed"):
+        """
+        Initialize the ResultsPage.
+
+        Layout:
+          - Top: input panel (left) + result visualization (right)
+          - Bottom: final result & ranking table
+          - Overlay: circular progress bar during computations
+        """
         super().__init__()
 
+        # --- state ------------------------------------------------------------
         self.threadpool = QThreadPool()
         self.orthogonality_filter_marker = None
         self.orthogonality_scatter_default = None
@@ -66,27 +76,38 @@ class ResultsPage(QFrame):
         self.full_scatter_collection = None
         self.selected_set = "Set 1"
         self.orthogonality_dict = None
-
         self.scatter_point_group = {}
-
         self.model = model
 
+        # --- base frame & outer layout ---------------------------------------
         self.setFrameShape(QFrame.StyledPanel)
-        self.setFrameShadow(QFrame.Raised)
-
-        self.shadow = QGraphicsDropShadowEffect(self)
-        self.shadow.setBlurRadius(20)
-        self.shadow.setXOffset(0)
-        self.shadow.setYOffset(0)
-        self.shadow.setColor(QColor(0, 0, 0, 100))
-
         self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
 
+        self.main_widget = QWidget()
+        self.main_layout = QVBoxLayout(self.main_widget)
+        self.main_layout.setContentsMargins(0, 0, 0, 0)
+        self.main_layout.setSpacing(0)
+
+        # === TOP AREA (input + plot) ==========================================
         top_frame = QFrame()
-        top_frame.setGraphicsEffect(self.shadow)
         top_frame_layout = QHBoxLayout(top_frame)
-        top_frame_layout.setContentsMargins(25, 25, 25, 25)
-        top_frame_layout.setSpacing(25)
+        top_frame_layout.setContentsMargins(50, 50, 50, 50)
+        top_frame_layout.setSpacing(80)
+
+        # ----- Left: Input column ---------------------------------------------
+        input_title = QLabel("Input")
+        input_title.setFixedHeight(30)
+        input_title.setObjectName("TitleBar")
+        input_title.setAlignment(Qt.AlignVCenter | Qt.AlignLeft)
+        input_title.setContentsMargins(10, 0, 0, 0)
+        input_title.setStyleSheet("""
+            background-color: #183881;
+            color: white;
+            font-weight:bold;
+            font-size: 16px;
+            border-top-left-radius: 10px;
+            border-top-right-radius: 10px;
+        """)
 
         user_input_scroll_area = QScrollArea()
         user_input_scroll_area.setFixedWidth(290)
@@ -95,28 +116,10 @@ class ResultsPage(QFrame):
         user_input_scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
 
         user_input_frame = QFrame()
-        # user_input_frame.setStyleSheet("background-color: lightgrey; border-radius: 10px;")
         user_input_frame.setFixedWidth(290)
-
-
         user_input_frame_layout = QVBoxLayout(user_input_frame)
         user_input_frame_layout.setContentsMargins(20, 20, 20, 20)
         user_input_scroll_area.setWidget(user_input_frame)
-        user_input_frame.setStyleSheet("background-color: white; border-radius: 10px;")
-
-        input_title = QLabel("Input")
-        input_title.setFixedHeight(30)
-        input_title.setObjectName("TitleBar")
-        input_title.setAlignment(Qt.AlignVCenter | Qt.AlignLeft)
-        input_title.setContentsMargins(10, 0, 0, 0)
-        input_title.setStyleSheet("""
-            background-color: #154E9D;
-            color: white;
-            font-weight:bold;
-            font-size: 16px;
-            border-top-left-radius: 12px;
-            border-top-right-radius: 12px;
-        """)
 
         input_section = QFrame()
         input_section.setFixedWidth(290)
@@ -126,8 +129,81 @@ class ResultsPage(QFrame):
         input_layout.addWidget(input_title)
         input_layout.addWidget(user_input_scroll_area)
 
+        # --- Score Calculation group (stylesheet UNCHANGED) -------------------
+        ranking_selection_group = QGroupBox("Ranking")
+        ranking_selection_group.setStyleSheet(f"""
+                    QGroupBox {{
+                        font-size: 14px;
+                        font-weight: bold;
+                        background-color: #e7e7e7;
+                        color: #154E9D;
+                        border: 1px solid #d0d4da;
+                        border-radius: 12px;
+                        margin-top: 25px;
 
-        # === Score Calculation Group ===
+                    }}
+
+                        QPushButton {{
+                        background-color: #d5dcf9;
+                        color: #2C3346;
+                        border: none;
+                        border-radius: 6px;
+                        padding: 8px 16px;
+                        font-weight: 500;
+                    }}
+                    QPushButton:hover {{
+                        background-color: #bcc8f5;
+                    }}
+                    QPushButton:pressed {{
+                        background-color: #8fa3ef;
+                    }}
+                    QPushButton:disabled {{
+                        background-color: #E5E9F5;
+                        color: #FFFFFF;
+                    }}
+
+                    QGroupBox::title {{
+                        subcontrol-origin: margin;
+                        subcontrol-position: top left;
+                        padding: 0px;
+                        margin-top: -8px;
+                    }}
+                    QLabel {{
+                    background-color: transparent;
+                    color: #2C3E50;
+                    font-family: "Segoe UI";
+                    font-weight: bold;
+                    }}
+
+                    QRadioButton, QCheckBox {{
+                        background-color: transparent;
+                    color: #2C3E50;              /* dark slate navy */
+                        font-family: "Segoe UI";
+        			    font-weight: bold;
+                    }}
+                    QComboBox:hover {{
+                        border: 1px solid #a6b2c0;
+                    }}
+                    QComboBox::drop-down {{
+                        border:none;
+                    }}
+
+                    QComboBox::down-arrow {{
+                        image: url("{drop_down_icon_path}");
+                    }}
+                """)
+
+        ranking_layout = QVBoxLayout()
+        ranking_layout.setContentsMargins(5, 5, 5, 5)
+        ranking_selection_group.setLayout(ranking_layout)
+
+        ranking_layout.addWidget(QLabel("Ranking based on:"))
+        self.select_ranking_type = QComboBox()
+        self.select_ranking_type.addItems(['Suggested score','Computed score','Practical 2D peak capacity'])
+        ranking_layout.addWidget(self.select_ranking_type)
+        ranking_layout.addSpacing(20)
+
+        # --- Score Calculation group (stylesheet UNCHANGED) -------------------
         orthogonality_score_group = QGroupBox("Orthogonality score calculation")
         orthogonality_score_group.setStyleSheet(f"""
             QGroupBox {{
@@ -138,9 +214,9 @@ class ResultsPage(QFrame):
                 border: 1px solid #d0d4da;
                 border-radius: 12px;
                 margin-top: 25px;
-                
+
             }}
-            
+
                 QPushButton {{
                 background-color: #d5dcf9;
                 color: #2C3346;
@@ -159,7 +235,7 @@ class ResultsPage(QFrame):
                 background-color: #E5E9F5;
                 color: #FFFFFF;
             }}
-            
+
             QGroupBox::title {{
                 subcontrol-origin: margin;
                 subcontrol-position: top left;
@@ -172,11 +248,12 @@ class ResultsPage(QFrame):
             font-family: "Segoe UI";
             font-weight: bold;
             }}
-            
+
             QRadioButton, QCheckBox {{
                 background-color: transparent;
             color: #2C3E50;              /* dark slate navy */
-            
+                font-family: "Segoe UI";
+			    font-weight: bold;
             }}
             QComboBox:hover {{
                 border: 1px solid #a6b2c0;
@@ -189,18 +266,15 @@ class ResultsPage(QFrame):
                 image: url("{drop_down_icon_path}");
             }}
         """)
-
         orthogonality_score_layout = QVBoxLayout()
         orthogonality_score_layout.setContentsMargins(5, 5, 5, 5)
 
         self.om_list = CheckableTreeList()
         self.om_list.setFixedHeight(175)
-
         self.compute_score_btn = QPushButton("Compute score")
 
         self.use_suggested_btn = QRadioButton("Use suggested core")
         self.use_suggested_btn.setChecked(True)
-
         self.use_computed_btn = QRadioButton("Use computed score")
 
         self.radio_button_group = QButtonGroup()
@@ -208,65 +282,55 @@ class ResultsPage(QFrame):
         self.radio_button_group.addButton(self.use_computed_btn)
         self.radio_button_group.setExclusive(True)
 
-
         orthogonality_score_layout.addWidget(QLabel("Practical 2D peak capacity Calculation:"))
         orthogonality_score_layout.addWidget(self.use_suggested_btn)
         orthogonality_score_layout.addWidget(self.use_computed_btn)
         orthogonality_score_layout.addWidget(QLabel("Computed OM list:"))
         orthogonality_score_layout.addWidget(self.om_list)
         orthogonality_score_layout.addWidget(self.compute_score_btn)
-        # orthogonality_score_layout.addStretch()
-        # orthogonality_score_layout.addLayout(self.create_filter_groupbox())
-
-
         orthogonality_score_group.setLayout(orthogonality_score_layout)
 
-        # === Score Comparison Group ===
+        # --- Score Comparison group (stylesheet UNCHANGED) --------------------
         orthogonality_compare_score_group = QGroupBox("Orthogonality score comparison")
         orthogonality_compare_score_group.setStyleSheet(orthogonality_score_group.styleSheet())
 
-        om_selection_layout = QVBoxLayout()
-
-        om_selection_layout.addWidget(QLabel("Number of score to compare:"))
+        self.om_selection_layout = QVBoxLayout()
+        self.om_selection_layout.addWidget(QLabel("Number of score to compare:"))
         self.compare_number = QComboBox()
         self.compare_number.addItems(["1", "2", "3", "4"])
-        om_selection_layout.addWidget(self.compare_number)
+        self.om_selection_layout.addWidget(self.compare_number)
+        self.om_selection_layout.addSpacing(20)
 
         self.om_selector1 = QComboBox()
         self.om_selector2 = QComboBox()
         self.om_selector3 = QComboBox()
         self.om_selector4 = QComboBox()
-
         self.om_selector2.setDisabled(True)
         self.om_selector3.setDisabled(True)
         self.om_selector4.setDisabled(True)
 
-        om_selection_layout.addWidget(QLabel("Select score 1:"))
-        om_selection_layout.addWidget(self.om_selector1)
-        om_selection_layout.addWidget(QLabel("Select score 2:"))
-        om_selection_layout.addWidget(self.om_selector2)
-        om_selection_layout.addWidget(QLabel("Select score 3:"))
-        om_selection_layout.addWidget(self.om_selector3)
-        om_selection_layout.addWidget(QLabel("Select score 4:"))
-        om_selection_layout.addWidget(self.om_selector4)
+        self.add_dataset_selector("Select Score 1:", self.om_selector1)
+        self.add_dataset_selector("Select Score 2:", self.om_selector2)
+        self.add_dataset_selector("Select Score 3:", self.om_selector3)
+        self.add_dataset_selector("Select Score 4:", self.om_selector4)
 
         self.om_selector_list = [self.om_selector1, self.om_selector2, self.om_selector3, self.om_selector4]
         self.om_selector_map = {
-            "0": {"selector": self.om_selector1, "axe": None, "scatter_collection": None, "filtered_scatter_point":{}},
-            "1": {"selector": self.om_selector2, "axe": None, "scatter_collection": None, "filtered_scatter_point":{}},
-            "2": {"selector": self.om_selector3, "axe": None, "scatter_collection": None, "filtered_scatter_point":{}},
-            "3": {"selector": self.om_selector4, "axe": None, "scatter_collection": None, "filtered_scatter_point":{}}
+            "0": {"selector": self.om_selector1, "axe": None, "scatter_collection": None, "filtered_scatter_point": {}},
+            "1": {"selector": self.om_selector2, "axe": None, "scatter_collection": None, "filtered_scatter_point": {}},
+            "2": {"selector": self.om_selector3, "axe": None, "scatter_collection": None, "filtered_scatter_point": {}},
+            "3": {"selector": self.om_selector4, "axe": None, "scatter_collection": None, "filtered_scatter_point": {}}
         }
+        orthogonality_compare_score_group.setLayout(self.om_selection_layout)
 
-        orthogonality_compare_score_group.setLayout(om_selection_layout)
-
-        # === Info Group ===
+        # --- Info group (stylesheet UNCHANGED) --------------------------------
         info_page_group = QGroupBox("Info")
         info_page_group.setStyleSheet("""
             QGroupBox {
                 font-size: 14px;
                 font-weight: bold;
                 background-color: #e7e7e7;
+                color: #154E9D;
                 border: 1px solid #d0d4da;
                 border-radius: 12px;
                 margin-top: 25px;
@@ -277,8 +341,11 @@ class ResultsPage(QFrame):
                 padding: 0px;
                 margin-top: -8px;
             }
+            QLabel {
+                background-color: transparent;
+                color: #3f4c5a;
+            }
         """)
-
         info_page_layout = QVBoxLayout()
         self.textEdit = QLabel()
         self.textEdit.setTextFormat(Qt.TextFormat.RichText)
@@ -292,27 +359,27 @@ class ResultsPage(QFrame):
         """)
         self.om_score_formula = QSvgWidget()
         self.om_score_formula.load("om_suggested_score_infos.svg")
-
         info_page_layout.addWidget(self.om_score_formula)
         info_page_group.setLayout(info_page_layout)
 
+        # Assemble input column
+        user_input_frame_layout.addWidget(ranking_selection_group)
+        user_input_frame_layout.addWidget(LineWidget("Horizontal"))
         user_input_frame_layout.addWidget(orthogonality_score_group)
         user_input_frame_layout.addWidget(LineWidget("Horizontal"))
         user_input_frame_layout.addWidget(orthogonality_compare_score_group)
         user_input_frame_layout.addWidget(LineWidget("Horizontal"))
         # user_input_frame_layout.addWidget(info_page_group)
 
-        # === Plot Section ===
+        # ----- Right: Plot card (styles UNCHANGED) ----------------------------
         plot_frame = QFrame()
         plot_frame.setStyleSheet("""
             background-color: #e7e7e7;
             border-top-left-radius: 10px;
             border-top-right-radius: 10px;
         """)
-
         plot_frame_layout = QVBoxLayout(plot_frame)
         plot_frame_layout.setContentsMargins(0, 0, 0, 0)
-
 
         plot_title = QLabel("Result visualization")
         plot_title.setFixedHeight(30)
@@ -320,14 +387,15 @@ class ResultsPage(QFrame):
         plot_title.setAlignment(Qt.AlignVCenter | Qt.AlignLeft)
         plot_title.setContentsMargins(10, 0, 0, 0)
         plot_title.setStyleSheet("""
-            background-color: #154E9D;
+            background-color: #183881;
             color: white;
             font-weight:bold;
             font-size: 16px;
+            font-weight: bold;
+            padding: 6px 12px;
             border-top-left-radius: 10px;
             border-top-right-radius: 10px;
         """)
-
         self.fig = Figure(figsize=(10, 6))
         self.canvas = FigureCanvas(self.fig)
         self.toolbar = CustomToolbar(self.canvas)
@@ -339,25 +407,37 @@ class ResultsPage(QFrame):
         plot_frame_layout.addWidget(self.toolbar)
         plot_frame_layout.addWidget(self.canvas)
 
+        # Assemble top row
         top_frame_layout.addWidget(input_section)
         top_frame_layout.addWidget(plot_frame)
+        self.top_frame_shadow = BoxShadow()
+        top_frame.setGraphicsEffect(self.top_frame_shadow)
 
-        # === Table Section ===
-        table_frame = QFrame()
-        table_frame.setFrameStyle(QFrame.StyledPanel | QFrame.Plain)
-
+        # === BOTTOM AREA (table) ==============================================
+        table_frame = QWidget()
         table_frame_layout = QHBoxLayout(table_frame)
-        table_frame_layout.setContentsMargins(0, 0, 0, 0)
+        table_frame_layout.setContentsMargins(20, 20, 20, 20)
 
         self.styled_table = StyledTable("Final result and ranking table")
         self.styled_table.set_header_label([
-            "Set #", "2D Combination", "Suggested score", "Computed score", "Hypothetical 2D peak capacity", "Ranking"
+            "Set #", "2D Combination", "Suggested score", "Computed score",
+            "Practical 2D peak capacity", "Ranking"
         ])
+        self.styled_table.get_header().setSectionResizeMode(0, QHeaderView.Fixed)
+        self.styled_table.get_header().setSectionResizeMode(1, QHeaderView.Stretch)
+        self.styled_table.get_header().setSectionResizeMode(5, QHeaderView.Fixed)
+
         self.styled_table.set_default_row_count(10)
+
+        self.custom_filter_widget = CustomFilterDialog(self)
+        self.styled_table.add_header_button(column=1, tooltip="Custom filter",widget_to_show=self.custom_filter_widget)
 
         table_frame_layout.addWidget(self.styled_table)
 
-        # --- Progress Overlay Setup ---
+        self.table_frame_shadow = BoxShadow()
+        self.styled_table.setGraphicsEffect(self.table_frame_shadow)
+
+        # === Overlay (progress) ===============================================
         self.progress_bar = RoundProgressBar()
         self.progress_bar.rpb_setBarStyle('Pizza')
 
@@ -366,58 +446,57 @@ class ResultsPage(QFrame):
         self.progress_overlay.setStyleSheet("background-color: transparent;")
         self.progress_overlay.hide()
 
-        # Overlay layout and progress bar placement
         overlay_layout = QVBoxLayout(self.progress_overlay)
         overlay_layout.setContentsMargins(0, 0, 0, 0)
         overlay_layout.addStretch()
         overlay_layout.addWidget(self.progress_bar, alignment=Qt.AlignCenter)
         overlay_layout.addStretch()
 
-        # Main layout widget for content
-        self.main_widget = QWidget()
-        self.main_layout = QVBoxLayout(self.main_widget)
-        self.main_layout.setContentsMargins(0, 0, 0, 0)
-        self.main_layout.setSpacing(0)
-
-        # --- Main Splitter ---
+        # === Splitter & stacked layout ========================================
         self.main_splitter = QSplitter(Qt.Vertical, self)
         self.main_splitter.addWidget(top_frame)
         self.main_splitter.addWidget(table_frame)
+        self.main_splitter.setSizes([486, 204])
         self.main_layout.addWidget(self.main_splitter)
 
-        # Stacked widget to hold content and overlay
         self.stack = QStackedLayout()
         self.stack.setStackingMode(QStackedLayout.StackingMode.StackAll)
         self.stack.addWidget(self.main_widget)
         self.stack.addWidget(self.progress_overlay)
         self.stack.setCurrentWidget(self.progress_overlay)  # default view
 
-        # Base layout holds the stack
         self.base_layout = QVBoxLayout(self)
         self.base_layout.setContentsMargins(0, 0, 0, 0)
         self.base_layout.addLayout(self.stack)
 
-        # Ensure overlay tracks resizing
         self.progress_overlay.setGeometry(self.stack.geometry())
         self.progress_overlay.raise_()
 
-        # === Signal Connections ===
+        # --- signals -----------------------------------------------------------
+        self.custom_filter_widget.filter_regexp_changed.connect(self.filter_table)
+        self.select_ranking_type.currentTextChanged.connect(self.set_ranking_argument)
         self.radio_button_group.buttonClicked.connect(self.set_use_suggested_om_score_flag)
-        # self.filter_button_group.buttonClicked.connect(self.filter_button_clicked)
         self.compute_score_btn.clicked.connect(self.start_om_computation)
         self.compare_number.currentTextChanged.connect(self.update_om_selector_state)
-
         for index, data in self.om_selector_map.items():
             data["selector"].currentTextChanged.connect(lambda _, k=index: self.on_selector_changed(k))
-
 
     def get_model(self):
         return self.model
 
+    def filter_table(self,regexp):
+        self.styled_table.set_proxy_filter_regexp(regexp)
+
+    def add_dataset_selector(self,label_text, combobox):
+        container = QVBoxLayout()
+        container.setSpacing(2)
+        container.addWidget(QLabel(label_text))
+        container.addWidget(combobox)
+        self.om_selection_layout.addLayout(container)
+		
     def create_filter_groupbox(self):
 
         grid_layout = QGridLayout()
-
 
         # Add widgets to grid_layout
         self.filter_button_group = QButtonGroup()
@@ -578,6 +657,12 @@ class ResultsPage(QFrame):
             print('PLot OM vs 2D')
             self.plot_orthogonality_vs_2d_peaks()
 
+    def set_ranking_argument(self):
+        ranking_argument = self.select_ranking_type.currentText()
+        self.model.set_orthogonality_ranking_argument(ranking_argument)
+        self.update_results_table()
+
+
     def set_use_suggested_om_score_flag(self):
 
         if self.use_suggested_btn.isChecked():
@@ -665,6 +750,7 @@ class ResultsPage(QFrame):
     def update_results_table(self):
         data = self.model.get_orthogonality_result_df()
         self.styled_table.async_set_table_data(data)
+        self.styled_table.set_table_proxy()
 
     def plot_orthogonality_vs_2d_peaks(self):
         if self.model.get_status() not in ['peak_capacity_loaded']:

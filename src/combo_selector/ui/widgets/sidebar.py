@@ -2,8 +2,11 @@ import sys
 from PySide6.QtWidgets import QVBoxLayout, QFrame, QWidget,QPushButton,\
     QApplication, QHBoxLayout, QDialog, QLabel,QGridLayout,QStackedWidget
 
-from PySide6.QtGui import QFont
-from PySide6.QtCore import Signal
+from combo_selector.ui.widgets.line_widget import LineWidget
+from combo_selector.utils import resource_path
+from combo_selector.ui.widgets import line_widget
+from PySide6.QtGui import QFont, QIcon
+from PySide6.QtCore import Signal, QSize
 
 stylesheet = """
 	#full_menu_widget {
@@ -87,13 +90,20 @@ class SideBar(QWidget):
         font.setPointSize(15)
         self.side_bar_title.setFont(font)
 
-        side_bar_title_layout.addWidget(self.side_bar_logo)
+        # side_bar_title_layout.addWidget(self.side_bar_logo)
         #side_bar_title_layout.addWidget(self.side_bar_title)
 
         self.side_bar_button_frame = QFrame()
         self.side_bar_button_frame.setObjectName('side_bar_button_frame')
         self.side_bar_buttons_layout = QVBoxLayout(self.side_bar_button_frame)
 
+        logo = QPushButton()
+        logo.setObjectName('logo_button')
+        logo.setFixedHeight(50)
+        logo.setIcon(QIcon(resource_path('icons/logo.png')))
+        logo.setIconSize(QSize(120,48))
+        self.side_bar_buttons_layout.addWidget(logo)
+        self.side_bar_buttons_layout.addWidget(LineWidget())
 
         self.full_menu_layout.addLayout(side_bar_title_layout)
         #side_bar_title_layout.setAlignment(Qt.AlignTop)

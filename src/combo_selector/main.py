@@ -1,5 +1,6 @@
 import sys,os
 from PySide6.QtCore import QThreadPool
+from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import QApplication
 
 # Custom Modules - adjusted import paths for src/combo_selector layout
@@ -21,7 +22,6 @@ class ComboSelectorMain(CustomMainWindow):
 
         self.metric_list_for_figure = []
         self._cached_metric_list = []
-        self.set_window_title('2D COMBO SELECTOR')
 
         self.threadpool = QThreadPool()
 
@@ -34,20 +34,19 @@ class ComboSelectorMain(CustomMainWindow):
         self.results_page = ResultsPage(self.model)
         self.export_page = ExportPage(self.model)
 
-        self.menu_file = self.menu_bar.addAction('Import datas')
 
-        self.side_bar_menu.add_side_bar_button('HOME', self.home_page)
-        self.side_bar_menu.add_side_bar_button('RETENTION TIME\nNORMALIZATION', self.import_data_page)
-        self.side_bar_menu.add_side_bar_button('DATA PLOTTING\nPAIRWISE', self.plot_page)
-        self.side_bar_menu.add_side_bar_button('ORTHOGONALITY \nMETRIC (OM)\nCALCULATION', self.om_calculation_page)
-        self.side_bar_menu.add_side_bar_button('REDUNDANCY\nCHECK', self.redundancy_page)
-        self.side_bar_menu.add_side_bar_button('RESULTS', self.results_page)
-        self.side_bar_menu.add_side_bar_button('EXPORT', self.export_page)
+        self.add_side_bar_item('Home', self.home_page,resource_path('icons/home_icon.png'))
+        self.add_side_bar_item('Retention Time\nNormalization', self.import_data_page,resource_path('icons/norm_icon.svg'))
+        self.add_side_bar_item('Data plotting\nPairwise', self.plot_page,resource_path('icons/pairwise_icon.png'))
+        self.add_side_bar_item('Orthogonality Metric \nCalculation', self.om_calculation_page,resource_path('icons/om_icon.png'))
+        self.add_side_bar_item('Redundancy\nCheck', self.redundancy_page,resource_path('icons/redund_icon.png'))
+        self.add_side_bar_item('Results', self.results_page,resource_path('icons/rank_icon.png'))
+        self.add_side_bar_item('Export', self.export_page,resource_path('icons/export_icon.png'))
 
-        self.side_bar_menu.button_clicked.connect(self.side_bar_menu_clicked)
+        # self.side_bar_menu.button_clicked.connect(self.side_bar_menu_clicked)
         self.import_data_page.retention_time_loaded.connect(self.init_pages)
         self.import_data_page.exp_peak_capacities_loaded.connect(self.update_results_with_new_exp_peak_capacities)
-        self.import_data_page.retention_time_normalized.connect(self.plot_page.update_dataset_selector_state)
+        self.import_data_page.retention_time_normalized.connect(self.update_plots)
         self.om_calculation_page.metric_computed.connect(self.orthogonality_metric_computed)
         self.redundancy_page.correlation_group_ready.connect(self.results_page.update_suggested_score_data)
 
@@ -55,6 +54,11 @@ class ComboSelectorMain(CustomMainWindow):
         self.plot_page.init_page()
         self.om_calculation_page.init_page()
         self.redundancy_page.init_page()
+
+    def update_plots(self):
+        self.plot_page.update_dataset_selector_state()
+        self.om_calculation_page.update_om_selector_state()
+
 
     def orthogonality_metric_computed1(self, metric_list):
         self.redundancy_page.init_page()
@@ -92,6 +96,8 @@ class ComboSelectorMain(CustomMainWindow):
 
 def main():
     app = QApplication(sys.argv)
+    app_icon = QIcon(resource_path('icons/app_logo.svg'))
+    app.setWindowIcon(app_icon)
 
     w = ComboSelectorMain()
     w.show()

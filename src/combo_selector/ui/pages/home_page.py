@@ -123,8 +123,7 @@ class HomePage(QFrame):
 
         self.tool_presentation = QSvgWidget()
         # self.suggested_score.setFixedWidth(450)
-        print(f"in home page picture path is {resource_path('icons/tool_flowchart.svg')}")
-        self.tool_presentation.load(resource_path('icons/tool_flowchart.svg'))
+        self.tool_presentation.load(resource_path('icons/home_page_monochrome.svg'))
         self.tool_presentation.renderer().setAspectRatioMode(Qt.KeepAspectRatio)
 
         home_content_frame_layout.addWidget(self.tool_presentation)
@@ -134,11 +133,12 @@ class HomePage(QFrame):
 
  
 
-        self.main_splitter = QSplitter(Qt.Orientation.Horizontal, self)
-        self.main_splitter.addWidget(user_input_scroll_area)
-        self.main_splitter.addWidget(home_content_frame)
+        # self.main_splitter = QSplitter(Qt.Orientation.Horizontal, self)
+        # self.main_splitter.addWidget(user_input_scroll_area)
+        # self.main_splitter.addWidget(home_content_frame)
 
-        self.main_layout.addWidget(self.main_splitter)
+        # self.main_layout.addWidget(self.main_splitter)
+        self.main_layout.addWidget(home_content_frame)
 
 
 if __name__ == "__main__":

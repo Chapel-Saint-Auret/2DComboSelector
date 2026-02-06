@@ -2,13 +2,16 @@ import sys, os
 from PySide6 import QtCore, QtGui
 from PySide6.QtCore import *
 from PySide6.QtGui import *
+from PySide6.QtSvg import QSvgRenderer
+from PySide6.QtSvgWidgets import QSvgWidget
 from PySide6.QtWidgets import (
     QSizeGrip, QGraphicsDropShadowEffect, QVBoxLayout, QFrame, QWidget,
-    QHBoxLayout, QLabel, QPushButton, QMenu, QMainWindow, QGraphicsEffect, QMenuBar
+    QHBoxLayout, QLabel, QPushButton, QMenu, QMainWindow, QGraphicsEffect, QMenuBar, QStackedWidget
 )
 
 from combo_selector.utils import resource_path
 from combo_selector.ui.widgets.sidebar import SideBar
+from combo_selector.ui.widgets.modern_side_menu import ModernSidebar
 
 
 
@@ -60,8 +63,8 @@ QPushButton#btn_close:hover
 
 QFrame#central_widget_frame
 {
-    background-color:#F3F3FD;
-    border-radius:10px;
+    background-color:#edf1f8;
+    border-radius:22px;
 
 }
 
@@ -157,129 +160,69 @@ QPushButton#make_cut{
 }   
 """
 
-class CustomMainWindow(QMainWindow):
+ICON_PATH = os.path.abspath(
+    os.path.join(os.path.dirname(__file__), '..', '..', 'resources', 'icons'))
 
+class CustomMainWindow(QMainWindow):
     menu_clicked = Signal(int)
 
     def __init__(self):
         super().__init__()
 
-        # Window Configuration
+        self.page_index_map = {}
+
+        # === Window Configuration ===
         self.setMinimumSize(QSize(1200, 750))
         self.globale_state = 0
         self.setWindowFlag(Qt.FramelessWindowHint)
         self.setAttribute(Qt.WA_TranslucentBackground)
         self.setContextMenuPolicy(Qt.CustomContextMenu)
         self.customContextMenuRequested.connect(self.right_menu)
-
-        # Style Application
         self.setStyleSheet(MainWindowStyleSheet)
-        self.shadow = QGraphicsDropShadowEffect(self)
-        self.shadow.setBlurRadius(20)
-        self.shadow.setXOffset(0)
-        self.shadow.setYOffset(0)
-        self.shadow.setColor(QColor(0, 0, 0, 100))
 
-        # Central Widget
+        # === Shadow Effect ===
+
+        # === Central Widget & Frame ===
         self.central_widget = QWidget(self)
         self.central_widget.setObjectName("central_widget")
         self.setCentralWidget(self.central_widget)
         self.central_widget_layout = QVBoxLayout(self.central_widget)
+        self.central_widget_layout.setContentsMargins(0, 0, 0, 0)
 
-        # Main Frame
         self.central_widget_frame = QFrame(self.central_widget)
         self.central_widget_frame.setObjectName("central_widget_frame")
         self.central_widget_frame.setFrameShape(QFrame.NoFrame)
-        self.central_widget_frame.setGraphicsEffect(self.shadow)
         self.central_widget_layout.addWidget(self.central_widget_frame)
-        self.central_widget_layout.setContentsMargins(0,0,0,0)
 
-        self.main_layout = QVBoxLayout(self.central_widget_frame)
-        self.main_layout.setContentsMargins(5, 0, 5, 5)
+        self.main_layout = QHBoxLayout(self.central_widget_frame)
+        self.main_layout.setContentsMargins(0, 0, 0, 0)
 
-
-        # Title Bar
+        # === Title Bar ===
         self.title_bar_frame = QFrame()
-        # self.title_bar_frame.setStyleSheet("background-color: red;")
         self.title_bar_frame.setObjectName("title_bar_frame")
-        self.title_bar_frame.setFixedHeight(40)
+        self.title_bar_frame.setFixedHeight(25)
         self.title_bar_layout = QHBoxLayout(self.title_bar_frame)
+        self.title_bar_layout.setSpacing(0)
         self.title_bar_layout.setContentsMargins(0, 0, 0, 0)
 
-
-
-        self.title_frame = QFrame(self.title_bar_frame)
-        self.title_frame.setObjectName("title_frame")
-        self.title_label = QLabel(self.title_frame)
-        self.title_label.setObjectName("label_title")
-        self.title_label.setFont(QFont("Roboto", 14))
-        self.title_label.setStyleSheet("color: #154E9D;")
-        self.title_frame.setLayout(QHBoxLayout())
-        self.title_frame.layout().addWidget(self.title_label)
-        self.title_bar_layout.addWidget(self.title_frame)
-
-        self.menu_frame = QFrame()
-        self.menu_frame_layout = QHBoxLayout(self.menu_frame)
-        self.menu_frame_layout.setContentsMargins(0,0,0,0)
-        self.menu_frame_layout.setSpacing(0)
-        # self.menu_frame.setStyleSheet("background-color: red;")
-        # self.menu_frame.setFixedHeight(30)
-        self.menu_bar = QMenuBar()
-
-        # self.menu_frame_layout.addWidget(self.menu_bar)
-
-        # Create styled status bar
-        self.status_bar_frame = QFrame()
-        self.status_bar_frame.setObjectName("status_bar_frame")
-        self.status_bar_frame.setFixedHeight(22)
-        self.status_bar_frame.setStyleSheet("""
-            QFrame#status_bar_frame {
-                background-color: transparent;
-                padding: 0px;
-                margin: 0px;
-            }
-        """)
-
-        self.status_bar_layout = QHBoxLayout(self.status_bar_frame)
-        self.status_bar_layout.setContentsMargins(0, 0, 0, 0)
-        self.status_bar_layout.setSpacing(0)
-
-        self.status_label = QLabel("")
-        self.status_label.setFont(QFont("Segoe UI", 10, QFont.Medium))
-        self.status_label.setStyleSheet("color: #5c5c5c;")
-        self.status_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-
-        self.status_bar_layout.addStretch()
-        self.status_bar_layout.addWidget(self.status_label)
-
-
-        self.main_layout.addWidget(self.title_bar_frame, alignment=Qt.AlignTop)
-
-
-        # self.main_layout.addWidget(self.menu_frame, alignment=Qt.AlignTop)
-
-
-        # Sidebar Menu
-        self.side_bar_menu = SideBar(title="2D Combo Selector")
-        self.main_layout.addWidget(self.side_bar_menu)
-        self.main_layout.addWidget(self.status_bar_frame)
-        # self.main_layout.addWidget(self.status_bar_frame)
-
-        # Window Controls
+        # === Window Controls ===
         self.btns_frame = QFrame(self.title_bar_frame)
         self.btns_frame.setMaximumSize(QSize(100, 16777215))
         btn_layout = QHBoxLayout(self.btns_frame)
-        self.btn_maximize = QPushButton()
-        self.btn_maximize.setIcon(QIcon(resource_path('icons/maximize_window.svg')))
-        self.btn_maximize.setObjectName("btn_maximize")
-        self.btn_maximize.setFixedSize(16, 16)
+        btn_layout.setContentsMargins(0, 5, 10, 0)
+        btn_layout.setSpacing(10)
+
         self.btn_minimize = QPushButton()
         self.btn_minimize.setIcon(QIcon(resource_path('icons/minimize_window.svg')))
         self.btn_minimize.setObjectName("btn_minimize")
         self.btn_minimize.setFixedSize(16, 16)
 
+        self.btn_maximize = QPushButton()
+        self.btn_maximize.setIcon(QIcon(resource_path('icons/maximize_window.svg')))
+        self.btn_maximize.setObjectName("btn_maximize")
+        self.btn_maximize.setFixedSize(16, 16)
+
         self.btn_close = QPushButton()
-        print(f"in Custom main windows, picture path is {resource_path('icons/close_window.svg')}")
         self.btn_close.setIcon(QIcon(resource_path('icons/close_window.svg')))
         self.btn_close.setFixedSize(16, 16)
         self.btn_close.setIconSize(self.btn_close.size())
@@ -290,33 +233,105 @@ class CustomMainWindow(QMainWindow):
                 border-radius: 4px;
             }
             QPushButton:hover {
-                background-color: rgba(255, 0, 0, 100);  /* semi-transparent red */
+                background-color: rgba(255, 0, 0, 100);
             }
         """)
 
-
-        # self.btn_close.setFixedSize(16, 16)
         btn_layout.addWidget(self.btn_minimize)
         btn_layout.addWidget(self.btn_maximize)
         btn_layout.addWidget(self.btn_close)
-        self.title_bar_layout.addWidget(self.btns_frame)
+        self.title_bar_layout.addWidget(self.btns_frame,alignment=Qt.AlignRight)
 
-        # Size Grip
+        # self.main_layout.addWidget(self.title_bar_frame, alignment=Qt.AlignTop)
+
+        # === Sidebar Menu ===
+        self.side_bar_menu = ModernSidebar()
+        self.main_layout.addWidget(self.side_bar_menu)
+
+
+        # === Status Bar ===
+        self.status_bar_frame = QFrame()
+        self.status_bar_frame.setObjectName("status_bar_frame")
+        self.status_bar_frame.setFixedHeight(10)
+        self.status_bar_frame.setStyleSheet("""
+            QFrame#status_bar_frame {
+                background-color: transparent;
+                padding: 0px;
+                margin: 0px;
+            }
+        """)
+        self.status_bar_layout = QHBoxLayout(self.status_bar_frame)
+        self.status_bar_layout.setContentsMargins(0, 0, 0, 0)
+        self.status_bar_layout.setSpacing(0)
+        self.status_label = QLabel("")
+        self.status_label.setFont(QFont("Segoe UI", 10, QFont.Medium))
+        self.status_label.setStyleSheet("color: #5c5c5c;")
+        self.status_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        self.status_bar_layout.addStretch()
+        self.status_bar_layout.addWidget(self.status_label)
+        # self.main_layout.addWidget(self.status_bar_frame)
+
+
+        # === Page content ===
+        self.content_qstack = QStackedWidget()
+        qstack_frame = QFrame()
+        qstack_layout = QHBoxLayout()
+        qstack_frame.setLayout(qstack_layout)
+        qstack_layout.addWidget(self.content_qstack)
+        qstack_layout.setContentsMargins(0,0,0,0)
+        qstack_layout.setSpacing(0)
+
+
+        content_frame =  QFrame()
+        content_frame_layout = QVBoxLayout()
+        content_frame_layout.setContentsMargins(0,0,0,0)
+        content_frame_layout.setSpacing(0)
+        content_frame.setLayout(content_frame_layout)
+
+        content_frame_layout.addWidget(self.title_bar_frame, alignment=Qt.AlignTop)
+        content_frame_layout.addWidget(qstack_frame)
+        content_frame_layout.addWidget(self.status_bar_frame, alignment=Qt.AlignBottom)
+
+        self.main_layout.addWidget(content_frame)
+
+        # === Size Grip ===
         self.sizegrip = QSizeGrip(self.central_widget)
         self.sizegrip.setToolTip("Resize Window")
 
-        # Signal Connections
+        self.main_layout.addWidget(self.sizegrip,alignment=Qt.AlignBottom |Qt.AlignRight)
+
+        # === Signal Connections ===
         self.btn_maximize.clicked.connect(self.maximize_restore)
         self.btn_minimize.clicked.connect(self.showMinimized)
         self.btn_close.clicked.connect(self.close)
         self.title_bar_frame.mouseMoveEvent = self.moveWindow
 
+        self.side_bar_menu.get_menu_list().itemClicked.connect(self.page_change)
+
     def set_status_text(self, text):
         self.status_label.setText(text)
         QTimer.singleShot(3000, lambda: self.status_label.setText(""))
 
-    def set_window_title(self,title):
-        self.title_label.setText(title)
+
+    def add_side_bar_item(self,text, widget,icon=None):
+
+        self.content_qstack.addWidget(widget)
+
+        self.side_bar_menu.get_menu_list().add_item(text,icon)
+
+        widget_index = self.content_qstack.indexOf(widget)
+
+        self.page_index_map[text] = {'index':widget_index}
+
+
+    def page_change(self,item_clicked):
+
+        page_name = item_clicked.text()
+
+        page_index = self.page_index_map[page_name]['index']
+        self.content_qstack.setCurrentIndex(page_index)
+
+
     # MOVE WINDOW
     def moveWindow(self,event):
         # RESTORE BEFORE MOVE

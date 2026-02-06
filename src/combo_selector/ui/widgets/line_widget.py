@@ -3,16 +3,16 @@ from PySide6.QtWidgets import QFrame,QVBoxLayout,QApplication
 
 
 class LineWidget(QFrame):
-    def __init__(self, Orientation):
+    def __init__(self, orientation='Horizontal'):
         super().__init__()
 
         layout = QVBoxLayout()
         # Add horizontal line
         line = QFrame()
-        if Orientation == 'Horizontal':
+        if orientation == 'Horizontal':
             line.setFrameShape(QFrame.HLine)
 
-        if Orientation == 'Vertical':
+        if orientation == 'Vertical':
             line.setFrameShape(QFrame.VLine)
 
         line.setFrameShadow(QFrame.Sunken)

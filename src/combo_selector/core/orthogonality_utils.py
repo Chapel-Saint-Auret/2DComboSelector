@@ -90,6 +90,19 @@ def extract_set_number(name):
     match = re.search(r'\d+', name)  # Find the first sequence of digits
     return int(match.group()) if match else None
 
+def normalize_x_y_series(x_series, y_series):
+    x_min = min(x_series)
+    x_max = max(x_series)
+
+    y_min = min(y_series)
+    y_max = max(y_series)
+
+    x_norm_series = x_series.apply(lambda x: (x - x_min) / (x_max - x_min) if x>=0 else '')
+    y_norm_series = y_series.apply(lambda y: (y - y_min) / (y_max - y_min) if y>=0 else '')
+
+    # cast value to float to avoid issue introduced by empty string
+    return x_norm_series, y_norm_series
+
 def point_is_above_curve(x, y, curve):
     """
     Determines whether a given point (x, y) lies above a specified curve.

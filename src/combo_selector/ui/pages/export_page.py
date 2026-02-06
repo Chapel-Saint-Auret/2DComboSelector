@@ -23,7 +23,7 @@ from combo_selector.ui.widgets.checkable_tree_list import CheckableTreeList
 from combo_selector.ui.widgets.checkable_combo_list import CheckableComboList
 from combo_selector.ui.widgets.style_table import StyledTable
 from combo_selector.ui.widgets.line_widget import LineWidget
-
+from combo_selector.ui.widgets.neumorphism import*
 
 
 PLOT_SIZE = QSize(600, 400)
@@ -32,8 +32,16 @@ drop_down_icon_path = resource_path("icons/drop_down_arrow.png").replace("\\", "
 
 class ExportPage(QFrame):
     def __init__(self, model=None, title='Unnamed'):
+        """
+        Initialize the ExportPage.
+
+        Layout:
+          - Top row: left input panel (export options) + right figure visualization
+          - (Optional) Table section is prepared but not added to splitter by default
+        """
         super().__init__()
 
+        # --- state ------------------------------------------------------------
         self.blink_timer = QTimer()
         self.blink_step = 0
         self.blink_ax = None
@@ -46,7 +54,8 @@ class ExportPage(QFrame):
         self.orthogonality_dict = None
         self.model = model
 
-        self.fig = Figure(figsize=(15,15))
+        # --- plotting setup ---------------------------------------------------
+        self.fig = Figure(figsize=(15, 15))
         self.canvas = FigureCanvas(self.fig)
         self.toolbar = CustomToolbar(self.canvas)
 
@@ -54,7 +63,6 @@ class ExportPage(QFrame):
         self.axe.set_box_aspect(1)
         self.axe.set_xlim(0, 1)
         self.axe.set_ylim(0, 1)
-
 
         self.plot_utils = PlotUtils(fig=self.fig)
         self.plot_utils.set_axe(self.axe)
@@ -71,50 +79,39 @@ class ExportPage(QFrame):
         }
 
         self.table_functions_map = {
-            "Normalized retention table":self.model.get_normalized_retention_time_df,
-            "2D Combination table":self.model.get_combination_df,
-            "OM result table":self.model.get_orthogonality_metric_df,
-             "Orthogonality result correlation table":self.model.get_correlation_group_df,
-            "Final result and ranking table":self.model.get_orthogonality_result_df
+            "Normalized retention table": self.model.get_normalized_retention_time_df,
+            "2D Combination table": self.model.get_combination_df,
+            "OM result table": self.model.get_orthogonality_metric_df,
+            "Orthogonality result correlation table": self.model.get_correlation_group_df,
+            "Final result and ranking table": self.model.get_orthogonality_result_df
         }
 
-        self.shadow = QGraphicsDropShadowEffect(self)
-        self.shadow.setBlurRadius(20)
-        self.shadow.setXOffset(0)
-        self.shadow.setYOffset(0)
-        self.shadow.setColor(QColor(0, 0, 0, 100))
-
+        # --- page frame & outer layout ---------------------------------------
+        self.setFrameShape(QFrame.StyledPanel)
         self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self.main_layout = QVBoxLayout(self)
         self.main_layout.setContentsMargins(0, 0, 0, 0)
         self.main_layout.setSpacing(0)
 
-        self.setFrameShape(QFrame.StyledPanel)
-        self.setFrameShadow(QFrame.Raised)
-
+        # === TOP AREA (input + plot) ==========================================
         top_frame = QFrame()
-        top_frame.setFrameShape(QFrame.NoFrame)
-        top_frame.setGraphicsEffect(self.shadow)
-        # f5f7fa
-
         top_frame_layout = QHBoxLayout(top_frame)
-        top_frame_layout.setContentsMargins(25, 25, 25, 25)
-        top_frame_layout.setSpacing(25)
+        top_frame_layout.setContentsMargins(50, 50, 50, 50)
+        top_frame_layout.setSpacing(80)
 
-        user_input_scroll_area = QScrollArea()
-        user_input_scroll_area.setFixedWidth(290)
+        # ----- Left: Input column ---------------------------------------------
         input_title = QLabel("Input")
         input_title.setFixedHeight(30)
         input_title.setObjectName("TitleBar")
         input_title.setAlignment(Qt.AlignVCenter | Qt.AlignLeft)
         input_title.setContentsMargins(10, 0, 0, 0)
         input_title.setStyleSheet("""
-            background-color: #154E9D;
+            background-color: #183881;
             color: white;
             font-weight:bold;
             font-size: 16px;
-            border-top-left-radius: 12px;
-            border-top-right-radius: 12px;
+            border-top-left-radius: 10px;
+            border-top-right-radius: 10px;
         """)
 
         user_input_scroll_area = QScrollArea()
@@ -124,20 +121,22 @@ class ExportPage(QFrame):
         user_input_scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
 
         user_input_frame = QFrame()
-        user_input_frame.setStyleSheet("background-color: white; border-radius: 10px;")
+        # user_input_frame.setStyleSheet("background-color: lightgrey; border-radius: 10px;")
         user_input_frame.setFixedWidth(290)
+
         user_input_frame_layout = QVBoxLayout(user_input_frame)
         user_input_frame_layout.setContentsMargins(20, 20, 20, 20)
-
         user_input_scroll_area.setWidget(user_input_frame)
 
         input_section = QFrame()
+        input_section.setFixedWidth(290)
         input_layout = QVBoxLayout(input_section)
         input_layout.setSpacing(0)
         input_layout.setContentsMargins(0, 0, 0, 0)
         input_layout.addWidget(input_title)
         input_layout.addWidget(user_input_scroll_area)
 
+        # Info group (stylesheet unchanged)
         info_group = QGroupBox("Info")
         info_group.setStyleSheet("""
             QGroupBox {
@@ -153,13 +152,13 @@ class ExportPage(QFrame):
                 subcontrol-origin: margin;
                 subcontrol-position: top left;
                 padding: 0px;
+                margin-top: -8px;
             }
             QLabel {
                 background-color: transparent;
                 color: #3f4c5a;
             }
         """)
-
         info_layout = QVBoxLayout()
         info_layout.addWidget(QLabel("Number of conditions:"))
         self.condition_label = QLabel("---")
@@ -169,9 +168,8 @@ class ExportPage(QFrame):
         info_layout.addWidget(self.combination_label)
         info_group.setLayout(info_layout)
 
-        # Create the "Export data set figure" group box
+        # Export figure group (stylesheet unchanged)
         export_figure_grp = QGroupBox('Export data set figure')
-
         export_figure_grp.setStyleSheet(f"""
              QGroupBox {{
                 font-size: 14px;
@@ -212,7 +210,7 @@ class ExportPage(QFrame):
             font-family: "Segoe UI";
             font-weight: bold;
             }}
-            
+
             QComboBox::drop-down {{
             border: none;
             }}
@@ -221,62 +219,43 @@ class ExportPage(QFrame):
             }}
         """)
 
-
-
-
-        # Use QFormLayout for aligning combo boxes and line edits
         form_layout = QVBoxLayout()
 
-        # Export directory selection
+        # export directory
         self.figure_export_directory_lineEdit = QLineEdit()
         self.figure_export_directory_lineEdit.setText(os.getcwd())
-        # self.figure_export_directory_lineEdit.setFixedWidth(150)
         self.export_figure_directory_btn = QPushButton('...')
         self.export_figure_directory_btn.setFixedWidth(50)
 
-
-        # Create a horizontal layout for the export directory section
         export_directory_hlayout = QHBoxLayout()
         export_directory_hlayout.addWidget(self.figure_export_directory_lineEdit)
         export_directory_hlayout.addWidget(self.export_figure_directory_btn)
         form_layout.addWidget(QLabel("Export directory:"))
         form_layout.addLayout(export_directory_hlayout)
 
-        # Folder name input
+        # folder name
         self.figure_folder_name_lineEdit = QLineEdit('Figure')
-        # self.figure_folder_name_lineEdit.setFixedWidth(200)
         form_layout.addWidget(QLabel("Folder name:"))
         form_layout.addWidget(self.figure_folder_name_lineEdit)
 
-
-
-        # Figure type selection
+        # figure type + list
         self.figure_type_chklist = CheckableComboList()
-        # self.figure_type_chklist.setFixedWidth(200)
         form_layout.addWidget(QLabel("Figure type:"))
         form_layout.addWidget(self.figure_type_chklist)
 
-        # Figure list selection
         self.figure_list_chklist = CheckableComboList()
-        # self.figure_list_chklist.setFixedWidth(200)
         form_layout.addWidget(QLabel("Figure list:"))
         form_layout.addWidget(self.figure_list_chklist)
-
 
         self.save_figure_btn = QPushButton('Save figure(s)')
         form_layout.addWidget(self.save_figure_btn)
 
-        # Add the export directory section to the form layout
-
         export_figure_grp.setLayout(form_layout)
 
-
-
-        # Create the "Export data set figure" group box
+        # Export table group (stylesheet unchanged)
         export_table_grp = QGroupBox('Export table(s)')
         export_table_layout = QVBoxLayout()
         export_table_grp.setLayout(export_table_layout)
-
         export_table_grp.setStyleSheet("""
              QGroupBox {
                 font-size: 14px;
@@ -312,10 +291,8 @@ class ExportPage(QFrame):
                 color: #FFFFFF;
             }
             QLabel {
-            background-color: transparent;
-            color: #2C3E50;
-            font-family: "Segoe UI";
-            font-weight: bold;
+                background-color: transparent;
+                color: #3f4c5a;
             }
 
             QComboBox::drop-down {
@@ -326,24 +303,21 @@ class ExportPage(QFrame):
             }
         """)
 
-        table_list = ["Normalized retention table","2D Combination table","OM result table",
-                      "Orthogonality result correlation table","Final result and ranking table"]
-
+        table_list = [
+            "Normalized retention table", "2D Combination table", "OM result table",
+            "Orthogonality result correlation table", "Final result and ranking table"
+        ]
         self.table_selection = CheckableTreeList(table_list)
         self.table_selection.setFixedHeight(175)
 
-        # Export directory selection
         self.table_export_directory_lineEdit = QLineEdit()
         self.table_export_directory_lineEdit.setText(os.getcwd())
-        # self.figure_export_directory_lineEdit.setFixedWidth(150)
         self.export_table_directory_btn = QPushButton('...')
         self.export_table_directory_btn.setFixedWidth(50)
 
         self.export_filename = QLineEdit()
         self.export_filename.setText("export_table.xlsx")
 
-
-        # Create a horizontal layout for the export directory section
         export_table_directory_hlayout = QHBoxLayout()
         export_table_directory_hlayout.addWidget(self.table_export_directory_lineEdit)
         export_table_directory_hlayout.addWidget(self.export_table_directory_btn)
@@ -358,7 +332,7 @@ class ExportPage(QFrame):
         export_table_layout.addWidget(self.export_filename)
         export_table_layout.addWidget(self.export_table_btn)
 
-
+        # Assemble input column
         user_input_frame_layout.addWidget(export_figure_grp)
         user_input_frame_layout.addWidget(LineWidget('Horizontal'))
         user_input_frame_layout.addWidget(export_table_grp)
@@ -366,15 +340,13 @@ class ExportPage(QFrame):
         # user_input_frame_layout.addWidget(LineWidget('Horizontal'))
         user_input_frame_layout.addStretch()
 
-        # Plot Section
+        # ----- Right: Plot card (styles unchanged) ----------------------------
         plot_frame = QFrame()
         plot_frame.setStyleSheet("""
             background-color: #e7e7e7;
             border-top-left-radius: 10px;
             border-top-right-radius: 10px;
         """)
-
-
         plot_frame_layout = QVBoxLayout(plot_frame)
         plot_frame_layout.setContentsMargins(0, 0, 0, 0)
 
@@ -384,10 +356,11 @@ class ExportPage(QFrame):
         plot_title.setAlignment(Qt.AlignVCenter | Qt.AlignLeft)
         plot_title.setContentsMargins(10, 0, 0, 0)
         plot_title.setStyleSheet("""
-            background-color: #154E9D;
+            background-color: #183881;
             color: white;
             font-weight:bold;
             font-size: 16px;
+            padding: 6px 12px;
             border-top-left-radius: 10px;
             border-top-right-radius: 10px;
         """)
@@ -396,38 +369,32 @@ class ExportPage(QFrame):
         plot_frame_layout.addWidget(self.toolbar)
         plot_frame_layout.addWidget(self.canvas)
 
+        # Assemble top row
         top_frame_layout.addWidget(input_section)
         top_frame_layout.addWidget(plot_frame)
+        self.top_frame_shadow = BoxShadow()
+        top_frame.setGraphicsEffect(self.top_frame_shadow)
 
-        # Table Section
-        table_frame = QFrame()
-        self.shadow1 = QGraphicsDropShadowEffect(self)
-        self.shadow1.setBlurRadius(20)
-        self.shadow1.setXOffset(0)
-        self.shadow1.setYOffset(0)
-        self.shadow1.setColor(QColor(0, 0, 0, 100))
-        table_frame.setGraphicsEffect(self.shadow1)
-
-        table_frame.setStyleSheet("QFrame { background-color: transparent; }")
-
+        # === (Optional) table section prepared, not added to splitter =========
+        table_frame = QWidget()
         table_frame_layout = QHBoxLayout(table_frame)
         table_frame_layout.setContentsMargins(20, 20, 20, 20)
 
         self.styled_table = StyledTable('2D combination table')
-        self.styled_table.set_header_label([
-            "Set #", "2D Combination", "Predicted 2D peak capacity"
-        ])
+        self.styled_table.set_header_label(["Set #", "2D Combination", "Predicted 2D peak capacity"])
         self.styled_table.set_default_row_count(10)
-
-
         table_frame_layout.addWidget(self.styled_table)
 
+        self.table_frame_shadow = BoxShadow()
+        self.styled_table.setGraphicsEffect(self.table_frame_shadow)
+
+        # === Splitter & wiring ================================================
         self.main_splitter = QSplitter(Qt.Vertical, self)
         self.main_splitter.addWidget(top_frame)
-        # self.main_splitter.addWidget(table_frame)
-
+        # self.main_splitter.addWidget(table_frame)  # intentionally not shown by default
         self.main_layout.addWidget(self.main_splitter)
 
+        # --- signals -----------------------------------------------------------
         self.export_figure_directory_btn.clicked.connect(self.create_figure_directory)
         self.export_table_directory_btn.clicked.connect(self.select_export_file_directory)
         self.save_figure_btn.clicked.connect(self.save_figure_list)

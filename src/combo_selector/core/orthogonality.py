@@ -8,6 +8,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from PySide6.QtCore import QObject, Signal
 from scipy.cluster.hierarchy import linkage
 from scipy.spatial.distance import pdist
+from scipy.special.cython_special import nbdtr
 from scipy.stats import linregress, pearsonr, spearmanr, kendalltau, hmean, gmean
 from scipy.spatial import ConvexHull
 
@@ -16,38 +17,40 @@ from combo_selector.core.orthogonality_utils import *
 METRIC_MAPPING = {
     'set_number': {'table_index': 0, 'include_in_score': True, 'include_in_corr_mat': False},
     'title': {'table_index': 1, 'include_in_score': True, 'include_in_corr_mat': False},
-    '2d_peak_capacity': {'table_index': 2, 'include_in_score': True, 'include_in_corr_mat': False},
-    'convex_hull': {'table_index': 3, 'include_in_score': True, 'include_in_corr_mat': True},
-    'bin_box_ratio': {'table_index': 4, 'include_in_score': True, 'include_in_corr_mat': True},
-    'pearson_r': {'table_index': 5, 'include_in_score': True, 'include_in_corr_mat': True},
-    'spearman_rho': {'table_index': 6, 'include_in_score': True, 'include_in_corr_mat': True},
-    'kendall_tau': {'table_index': 7, 'include_in_score': True, 'include_in_corr_mat': True},
-    'cc_mean': {'table_index': 8, 'include_in_score': True, 'include_in_corr_mat': False},
-    'asterisk_metrics': {'table_index': 9, 'include_in_score': True, 'include_in_corr_mat': True},
-    'nnd_arithmetic_mean': {'table_index': 10, 'include_in_score': True, 'include_in_corr_mat': False},
-    'nnd_geom_mean': {'table_index': 11, 'include_in_score': True, 'include_in_corr_mat': False},
-    'nnd_harm_mean': {'table_index': 12, 'include_in_score': True, 'include_in_corr_mat': False},
-    'nnd_mean': {'table_index': 13, 'include_in_score': True, 'include_in_corr_mat': True},
-    'percent_fit': {'table_index': 14, 'include_in_score': True, 'include_in_corr_mat': True},
-    'percent_bin': {'table_index': 15, 'include_in_score': True, 'include_in_corr_mat': True},
-    'mean_bin_box_percent_bin': {'table_index': 16, 'include_in_score': True, 'include_in_corr_mat': False},
-    'asterisk_convex_hull_mean': {'table_index': 17, 'include_in_score': True, 'include_in_corr_mat': False},
-    'mean_bin_box_percent_bin_nnd_mean': {'table_index': 18, 'include_in_score': True, 'include_in_corr_mat': False},
-    'computed_score': {'table_index': 19, 'include_in_score': True, 'include_in_corr_mat': False},
-    'suggested_score': {'table_index': 20, 'include_in_score': True, 'include_in_corr_mat': False},
-    'orthogonality_factor': {'table_index': 21, 'include_in_score': True, 'include_in_corr_mat': False},
-    'practical_2d_peak_capacity': {'table_index': 22, 'include_in_score': True, 'include_in_corr_mat': False},
-    'orthogonality_value': {'table_index': 23, 'include_in_score': True, 'include_in_corr_mat': False},
-    'gilar-watson': {'table_index': 24, 'include_in_score': True, 'include_in_corr_mat': True},
-    'modeling_approach': {'table_index': 25, 'include_in_score': True, 'include_in_corr_mat': True},
-    'conditional_entropy': {'table_index': 26, 'include_in_score': True, 'include_in_corr_mat': True},
-    'geometric_approach': {'table_index': 27, 'include_in_score': True, 'include_in_corr_mat': True}
+    'nb_peaks': {'table_index': 2, 'include_in_score': False, 'include_in_corr_mat': False},
+    '2d_peak_capacity': {'table_index': 3, 'include_in_score': True, 'include_in_corr_mat': False},
+    'convex_hull': {'table_index': 4, 'include_in_score': True, 'include_in_corr_mat': True},
+    'bin_box_ratio': {'table_index': 5, 'include_in_score': True, 'include_in_corr_mat': True},
+    'pearson_r': {'table_index': 6, 'include_in_score': True, 'include_in_corr_mat': True},
+    'spearman_rho': {'table_index': 7, 'include_in_score': True, 'include_in_corr_mat': True},
+    'kendall_tau': {'table_index': 8, 'include_in_score': True, 'include_in_corr_mat': True},
+    'cc_mean': {'table_index': 9, 'include_in_score': True, 'include_in_corr_mat': False},
+    'asterisk_metrics': {'table_index': 10, 'include_in_score': True, 'include_in_corr_mat': True},
+    'nnd_arithmetic_mean': {'table_index': 11, 'include_in_score': True, 'include_in_corr_mat': False},
+    'nnd_geom_mean': {'table_index': 12, 'include_in_score': True, 'include_in_corr_mat': False},
+    'nnd_harm_mean': {'table_index': 13, 'include_in_score': True, 'include_in_corr_mat': False},
+    'nnd_mean': {'table_index': 14, 'include_in_score': True, 'include_in_corr_mat': True},
+    'percent_fit': {'table_index': 15, 'include_in_score': True, 'include_in_corr_mat': True},
+    'percent_bin': {'table_index': 16, 'include_in_score': True, 'include_in_corr_mat': True},
+    'mean_bin_box_percent_bin': {'table_index': 17, 'include_in_score': True, 'include_in_corr_mat': False},
+    'asterisk_convex_hull_mean': {'table_index': 18, 'include_in_score': True, 'include_in_corr_mat': False},
+    'mean_bin_box_percent_bin_nnd_mean': {'table_index': 19, 'include_in_score': True, 'include_in_corr_mat': False},
+    'computed_score': {'table_index': 20, 'include_in_score': True, 'include_in_corr_mat': False},
+    'suggested_score': {'table_index': 21, 'include_in_score': True, 'include_in_corr_mat': False},
+    'orthogonality_factor': {'table_index': 22, 'include_in_score': True, 'include_in_corr_mat': False},
+    'practical_2d_peak_capacity': {'table_index': 23, 'include_in_score': True, 'include_in_corr_mat': False},
+    'orthogonality_value': {'table_index': 24, 'include_in_score': True, 'include_in_corr_mat': False},
+    'gilar-watson': {'table_index': 25, 'include_in_score': True, 'include_in_corr_mat': True},
+    'modeling_approach': {'table_index': 26, 'include_in_score': True, 'include_in_corr_mat': True},
+    'conditional_entropy': {'table_index': 27, 'include_in_score': True, 'include_in_corr_mat': True},
+    'geometric_approach': {'table_index': 28, 'include_in_score': True, 'include_in_corr_mat': True}
 }
+
 
 UI_TO_MODEL_MAPPING = {
     "Convex hull relative area": "convex_hull",
     "Bin box counting": "bin_box_ratio",
-   "Pearson Correlation": "pearson_r",
+    "Pearson Correlation": "pearson_r",
     "Spearman Correlation": "spearman_rho",
     "Kendall Correlation": "kendall_tau",
     "CC mean": "cc_mean",
@@ -84,6 +87,7 @@ class Orthogonality(QObject):
 
     def __init__(self):
         super().__init__()
+        self.column_names = []
         self.orthogonality_metric_df = None
         self.correlation_group_df = None
         self.orthogonality_result_df = None
@@ -95,6 +99,8 @@ class Orthogonality(QObject):
         self.orthogonality_score = None
         self.orthogonality_dict = None
         self.norm_ret_time_table = None
+        self.has_nan_value = False
+        self.nan_policy_threshold = 50
         self.table_data = None
         self.om_function_map = None
         self.nb_peaks = None
@@ -107,7 +113,10 @@ class Orthogonality(QObject):
         self.status = 'no_data'
         self.init_datas()
         self.reset_om_status_computation_state()
-    
+
+    def get_has_nan_value(self):
+        return self.has_nan_value
+
     def get_retention_time_df(self):
         return self.retention_time_df
     
@@ -181,6 +190,10 @@ class Orthogonality(QObject):
     def get_correlation_group_df(self):
         return self.correlation_group_df
 
+    def set_nan_policy_threshold(self,treshold):
+
+        self.nan_policy_threshold = treshold
+
     def init_datas(self):
         self.table_data = []
         self.norm_ret_time_table = []
@@ -194,7 +207,7 @@ class Orthogonality(QObject):
         self.correlation_group_df = pd.DataFrame()
         self.orthogonality_metric_df = pd.DataFrame()
 
-        self.combination_df = pd.DataFrame(columns=["Set #", "2D Combination", "Hypothetical 2D peak capacity"])
+        self.combination_df = pd.DataFrame(columns=["Set #", "2D Combination","Number of peaks", "Hypothetical 2D peak capacity"])
 
     def get_default_orthogonality_entry(self):
         return {
@@ -204,6 +217,7 @@ class Orthogonality(QObject):
             'x_title': '',
             'y_title': '',
             'y_values': [],
+            'nb_peaks': 0,
             'hull_subset': 0,
             'convex_hull': 0,
             'bin_box': {'color_mask': 0, 'edges': [0, 0]},
@@ -560,8 +574,13 @@ class Orthogonality(QObject):
 
         self.orthogonality_result_df['Ranking'] = self.orthogonality_result_df['Practical 2D peak capacity'].rank(method='dense', ascending=False).astype('Int64', errors='ignore')
 
+        self.set_orthogonality_ranking_argument('Practical 2D peak capacity')
+
         # self.orthogonality_result_df['Ranking'] = (
         #     self.orthogonality_result_df['Practical 2D peak'].rank(method='dense', ascending=True).astype(int))
+
+    def set_orthogonality_ranking_argument(self, argument):
+        self.orthogonality_result_df['Ranking'] = self.orthogonality_result_df[argument].rank(method='dense', ascending=False).astype('Int64', errors='ignore')
 
     def compute_orthogonality_factor(self, method_list):
         """
@@ -635,10 +654,10 @@ class Orthogonality(QObject):
             column_value = data_frame_copy[column_name]
 
             # maximum and Rt0 retention time
-
+            column_value_cleaned = list(filter(None,column_value))
             try:
-                rt_min = column_value.min()
-                rt_max = column_value.max()
+                rt_min = min(column_value_cleaned)
+                rt_max = max(column_value_cleaned)
 
             except Exception as e:
                 issue = str(e)
@@ -646,45 +665,17 @@ class Orthogonality(QObject):
                 print(f"Unmatch void time column name (cannot find {column_name})")
                 self.status = 'error'
 
-            rt_max = column_value.max()
+            # rt_max = column_value.max()
 
             # Normalizing data
-            data_frame_copy[column_name] = column_value.apply(lambda x: (x - rt_min) / (rt_max - rt_min))
+            data_frame_copy[column_name] = column_value.apply(lambda x: (x - rt_min) / (rt_max - rt_min) if x else '')
 
         self.normalized_retention_time_df = data_frame_copy.copy()
 
         # delete copy
         del data_frame_copy
 
-        num_columns = len(self.normalized_retention_time_df.columns)
-
-        # self.normalized_retention_time_df.insert(0, "Peak #", range(1, len(self.retention_time_df) + 1))
-
-        current_column = 1
-        set_number = 1
-
-        while current_column < num_columns:
-            x_values = self.normalized_retention_time_df.iloc[:, current_column]
-
-            if num_columns-1 >2:
-                next_column_list = list(range(current_column + 1, num_columns))
-            else:
-                # the dataframe only has 2 column
-                #TODO it should be based on the dataframe shape instead, check the shape first if df is horizontal or
-                #TODO vertical than set the next_column_list accordingly
-                next_column_list = [2]
-
-            for next_column in next_column_list:
-                set_key = f'Set {set_number}'
-                y_values = self.normalized_retention_time_df.iloc[:, next_column]
-
-                # Update orthogonality dictionary
-                self.orthogonality_dict[set_key]['x_values'] = x_values
-                self.orthogonality_dict[set_key]['y_values'] = y_values
-
-                set_number += 1
-
-            current_column += 1
+        self.set_orthogonality_dict_x_y_series()
 
 
     def normalize_retention_time_void_max(self):
@@ -715,35 +706,8 @@ class Orthogonality(QObject):
         # delete copy
         del data_frame_copy
 
-        num_columns = len(self.normalized_retention_time_df.columns)-1
+        self.set_orthogonality_dict_x_y_series()
 
-        # self.normalized_retention_time_df.insert(0, "Peak #", range(1, len(self.retention_time_df) + 1))
-
-        current_column = 1
-        set_number = 1
-
-        while current_column < num_columns:
-            x_values = self.normalized_retention_time_df.iloc[:, current_column]
-
-            if current_column + 1 != num_columns:
-                next_column_list = list(range(current_column + 1, num_columns))
-            else:
-                # the dataframe only has 2 column
-                # TODO it should be based on the dataframe shape instead, check the shape first if df is horizontal or
-                # TODO vertical than set the next_column_list accordingly
-                next_column_list = [2]
-
-            for next_column in next_column_list:
-                set_key = f'Set {set_number}'
-                y_values = self.normalized_retention_time_df.iloc[:, next_column]
-
-                # Update orthogonality dictionary
-                self.orthogonality_dict[set_key]['x_values'] = x_values
-                self.orthogonality_dict[set_key]['y_values'] = y_values
-
-                set_number += 1
-
-            current_column += 1
     def normalize_retention_time_wosel(self):
 
         data_frame_copy = self.retention_time_df.copy()
@@ -772,35 +736,67 @@ class Orthogonality(QObject):
         # delete copy
         del data_frame_copy
 
-        num_columns = len(self.normalized_retention_time_df.columns) - 1
+        self.set_orthogonality_dict_x_y_series()
 
-        # self.normalized_retention_time_df.insert(0, "Peak #", range(1, len(self.retention_time_df) + 1))
+    def  set_orthogonality_dict_x_y_series(self,):
+        num_columns = len(self.column_names)
 
-        current_column = 1
+        current_column = 0
         set_number = 1
 
         while current_column < num_columns:
-            x_values = self.normalized_retention_time_df.iloc[:, current_column]
+            current_column_name = self.column_names[current_column]
+            x_values = self.normalized_retention_time_df[current_column_name]
 
-            if current_column + 1 != num_columns:
+            if num_columns >2:
                 next_column_list = list(range(current_column + 1, num_columns))
             else:
                 # the dataframe only has 2 column
                 # TODO it should be based on the dataframe shape instead, check the shape first if df is horizontal or
                 # TODO vertical than set the next_column_list accordingly
-                next_column_list = [2]
+                next_column_list = [1]
 
             for next_column in next_column_list:
+                next_column_name = self.column_names[next_column]
                 set_key = f'Set {set_number}'
-                y_values = self.normalized_retention_time_df.iloc[:, next_column]
+                y_values = self.normalized_retention_time_df[next_column_name]
 
-                # Update orthogonality dictionary
-                self.orthogonality_dict[set_key]['x_values'] = x_values
-                self.orthogonality_dict[set_key]['y_values'] = y_values
+                #check if x,y pair element contains at least one empty item.
+                #if an empty item exist on an x,y pair, that pair will be deleted from the list
+                x_y_pair_list = list(zip(x_values,y_values))
+                x_y_pair_list = [pair for pair in x_y_pair_list if pair[0]!='' and pair[1]!='']
+
+                if x_y_pair_list:
+                    # unpack x and y list cleaned of incomplete x y pairs
+
+                    x_series, y_series = zip(*x_y_pair_list)
+
+                    # working with pd.Series makes operation on list easier
+                    x_series = pd.Series(x_series)
+                    y_series = pd.Series(y_series)
+
+                    nb_peaks = len(x_y_pair_list)
+
+                    # in case 1 or 0 has been deleted from the list, retention time should be normalized again
+                    x_series, y_series = normalize_x_y_series(x_series, y_series)
+
+                    # Update orthogonality dictionary
+                    self.orthogonality_dict[set_key]['x_values'] = x_series
+                    self.orthogonality_dict[set_key]['y_values'] = y_series
+                    self.orthogonality_dict[set_key]['nb_peaks'] = nb_peaks
+                    set_number = extract_set_number(set_key)
+                    self.update_metrics(set_key, 'nb_peaks', nb_peaks,table_row_index=set_number-1)
+
+                else:
+                    if set_key in self.orthogonality_dict:
+                        self.orthogonality_dict.pop(set_key)
+
 
                 set_number += 1
 
             current_column += 1
+
+        self.update_combination_df()
 
     def normalize_retention_time(self,method):
 
@@ -813,17 +809,91 @@ class Orthogonality(QObject):
         if method == 'wosel':
             self.normalize_retention_time_wosel()
 
-    def fill_combination_df(self):
+    def clean_nan_value(self,option):
+        peak_list = []
+        if option == 'option 1':
+            for row_datas in self.retention_time_df.iterrows():
+                peak_retention_time = row_datas[1]
+                nan_count = peak_retention_time.isna().sum()
+
+                #nan_policy_threshold is % of total condition
+                if (nan_count*100)/self.nb_condition > self.nan_policy_threshold:
+                    peak_list.append(row_datas[0])
+
+            self.retention_time_df = self.retention_time_df.drop(peak_list)
+            self.retention_time_df = self.retention_time_df.fillna('')
+
+        if option == 'option 2':
+            self.retention_time_df = self.retention_time_df.fillna('')
+
+        num_columns = len(self.column_names)
+
+        current_column = 0
+        set_number = 1
+
+        while current_column < num_columns:
+            current_column_name = self.column_names[current_column]
+            x_values = self.retention_time_df[current_column_name]
+
+            if num_columns > 2:
+                next_column_list = list(range(current_column + 1, num_columns))
+            else:
+                # the dataframe only has 2 column
+                # TODO it should be based on the dataframe shape instead, check the shape first if df is horizontal or
+                # TODO vertical than set the next_column_list accordingly
+                next_column_list = [1]
+
+            for next_column in next_column_list:
+                next_column_name = self.column_names[next_column]
+                set_key = f'Set {set_number}'
+                y_values = self.retention_time_df[next_column_name]
+
+
+                #check if x,y pair element contains at least one empty item.
+                #if an empty item exist on an x,y pair, that pair will be deleted from the list
+                x_y_pair_list = list(zip(x_values,y_values))
+                x_y_pair_list = [pair for pair in x_y_pair_list if pair[0]!='' and pair[1]!='']
+
+                if x_y_pair_list:
+                    #unpack x and y list cleaned of incomplete x y pairs
+
+                    x_series, y_series = zip(*x_y_pair_list)
+
+                    # working with pd.Series makes operation on list easier
+                    x_series = pd.Series(x_series)
+                    y_series = pd.Series(y_series)
+
+                    nb_peaks = len(x_y_pair_list)
+
+                    # Update orthogonality dictionary
+                    self.orthogonality_dict[set_key]['x_values'] = x_series
+                    self.orthogonality_dict[set_key]['y_values'] = y_series
+                    self.orthogonality_dict[set_key]['nb_peaks'] = nb_peaks
+
+                    set_number = extract_set_number(set_key)
+                    self.update_metrics(set_key, 'nb_peaks', nb_peaks,table_row_index=set_number-1)
+
+                else:
+                    self.orthogonality_dict.pop(set_key)
+
+                set_number += 1
+
+            current_column += 1
+
+        self.update_combination_df()
+
+
+    def update_combination_df(self):
         # Check if combination_df exists and has the third column filled (not empty)
         if self.combination_df["Hypothetical 2D peak capacity"].isnull().all():
             # Otherwise, fill with two columns
-            combination_table = [row[0:2] for row in self.table_data]
-            self.combination_df = pd.DataFrame(combination_table, columns=["Set #", "2D Combination"])
+            combination_table = [row[0:4] for row in self.table_data]
+            self.combination_df = pd.DataFrame(combination_table, columns=["Set #", "2D Combination","Number of peaks","Hypothetical 2D peak capacity"])
         else:
             #already filled
             return
 
-    def load_2d_set(self, filepath, sheetname):
+    def load_retention_time(self, filepath, sheetname):
         """
         Loads data from an Excel file, processes it, and computes various metrics for orthogonality analysis.
 
@@ -862,23 +932,29 @@ class Orthogonality(QObject):
             # self.nb_condition = len(self.retention_time_df.columns)
 
             self.retention_time_df = load_table_with_header_anywhere(filepath, sheetname)
+
+            #check there is nan value in data frame
+            self.has_nan_value = self.retention_time_df.isnull().any().any()
+
+            self.column_names = self.retention_time_df.columns.tolist()
+            self.nb_condition =  num_columns = len(self.column_names)
+            self.nb_peaks = len(self.retention_time_df.iloc[:, 0])
+
             # Initialize loop parameters
             self.retention_time_df.insert(0, "Peak #", range(1, len(self.retention_time_df) + 1))
 
-            column_names = self.retention_time_df.columns.tolist()
-            self.nb_condition =  num_columns = len(self.retention_time_df.columns)
-            self.nb_peaks = len(self.retention_time_df.iloc[:, 0])
-
-            current_column = 1
+            current_column = 0
             set_number = 1
 
             while current_column < num_columns:
-                x_values = self.retention_time_df.iloc[:, current_column]
+                current_column_name = self.column_names[current_column]
+                x_values = self.retention_time_df[current_column_name]
 
                 for next_column in range(current_column + 1, num_columns):
+                    next_column_name = self.column_names[next_column]
                     set_key = f'Set {set_number}'
-                    set_title = f'{column_names[current_column]} vs {column_names[next_column]}'
-                    y_values = self.retention_time_df.iloc[:, next_column]
+                    set_title = f'{current_column_name} vs {next_column_name}'
+                    y_values = self.retention_time_df[next_column_name]
 
                     # Initialize table data by adding a new row with None values
                     self.table_data.append([None] * len(METRIC_MAPPING))
@@ -886,6 +962,7 @@ class Orthogonality(QObject):
                     # Update metadata columns
                     self.update_metrics(set_key, 'set_number', set_number)
                     self.update_metrics(set_key, 'title', set_title)
+                    self.update_metrics(set_key, 'nb_peaks', self.nb_peaks)
                     # self.update_metrics(set_key, '2d_peak_capacity', 'no data loaded')
                     self.update_metrics(set_key, 'suggested_score', 0)
                     self.update_metrics(set_key, 'computed_score', 0)
@@ -903,9 +980,10 @@ class Orthogonality(QObject):
                         'title': set_title,
                         'type': f'{column1_type}|{column2_type}',
                         'x_values': x_values,
-                        'x_title': column_names[current_column],
-                        'y_title': column_names[next_column],
+                        'x_title': self.column_names[current_column],
+                        'y_title': self.column_names[next_column],
                         'y_values': y_values,
+                        'nb_peaks': self.nb_peaks,
                         'hull_subset': 0,
                         'convex_hull': 0,
                         'bin_box': {'color_mask':0,'edges':[0,0]},
@@ -961,7 +1039,7 @@ class Orthogonality(QObject):
 
             self.nb_combination = set_number-1
 
-            self.fill_combination_df()
+            self.update_combination_df()
 
             self.status = 'loaded'
         except Exception as e:
@@ -987,6 +1065,7 @@ class Orthogonality(QObject):
         """
 
         for set_key in self.orthogonality_dict.keys():
+            print(set_key)
             set_data = self.orthogonality_dict[set_key]
             x , y = set_data["x_values"], set_data["y_values"]
 
@@ -1204,10 +1283,12 @@ class Orthogonality(QObject):
             ho = hmean(distances)
             go = gmean(distances)
 
+            nb_peaks = set_data['nb_peaks']
+
             # Normalize the means using the number of peaks
-            ao = (ao * (sqrt(self.nb_peaks) - 1)) / 0.64
-            ho = (ho * (sqrt(self.nb_peaks) - 1)) / 0.64
-            go = (go * (sqrt(self.nb_peaks) - 1)) / 0.64
+            ao = (ao * (sqrt(nb_peaks) - 1)) / 0.64
+            ho = (ho * (sqrt(nb_peaks) - 1)) / 0.64
+            go = (go * (sqrt(nb_peaks) - 1)) / 0.64
 
             set_data['a_mean'] = ao
             set_data['g_mean'] = go
@@ -1586,8 +1667,8 @@ class Orthogonality(QObject):
 
                 set_number += 1
 
-            combination_table = [row[0:3] for row in self.table_data]
-            self.combination_df = pd.DataFrame(combination_table, columns=["Set #", "2D Combination", "Hypothetical 2D peak capacity"])
+            combination_table = [row[0:4] for row in self.table_data]
+            self.combination_df = pd.DataFrame(combination_table, columns=["Set #", "2D Combination","Number of peaks", "Hypothetical 2D peak capacity"])
 
             self.status = 'peak_capacity_loaded'
 

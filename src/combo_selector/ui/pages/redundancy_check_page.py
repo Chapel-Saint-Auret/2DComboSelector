@@ -21,6 +21,7 @@ from combo_selector.ui.widgets.custom_toolbar import CustomToolbar
 from combo_selector.ui.widgets.line_widget import LineWidget
 from combo_selector.ui.widgets.style_table import StyledTable
 from combo_selector.ui.widgets.qcombobox_cmap import QComboBoxCmap
+from combo_selector.ui.widgets.neumorphism import*
 
 METRIC_CORR_MAP = {
     "Convex hull relative area": "Convex hull",
@@ -42,16 +43,26 @@ METRIC_CORR_MAP = {
 checked_icon_path = resource_path("icons/checkbox_checked.svg").replace("\\", "/")
 unchecked_icon_path = resource_path("icons/checkbox_unchecked.svg").replace("\\", "/")
 
+
 class RedundancyCheckPage(QFrame):
     correlation_group_ready = Signal()
 
-    def __init__(self, model=None, title='Unnamed'):
+    def __init__(self, model=None, title: str = "Unnamed") -> None:
+        """
+        Initialize the RedundancyCheckPage.
+
+        Layout:
+          - Top: input (left) + correlation matrix visualization (right)
+          - Bottom: correlation-group result table
+        """
         super().__init__()
 
-        self.heatmap_mask = True
-        self.highlight_heatmap_mask = False
+        # --- state ------------------------------------------------------------
         self.model = model
         self.corr_matrix = None
+        self.heatmap_mask = True
+        self.highlight_heatmap_mask = False
+
         self.blink_timer = QTimer()
         self.blink_step = 0
         self.blink_ax = None
@@ -60,29 +71,36 @@ class RedundancyCheckPage(QFrame):
         self.selected_scatter_collection = None
         self.selected_axe = None
         self.full_scatter_collection = None
-        self.selected_set = 'Set 1'
+        self.selected_set = "Set 1"
         self.orthogonality_dict = None
 
-        self.model = model
-        self.shadow = QGraphicsDropShadowEffect(self)
-        self.shadow.setBlurRadius(20)
-        self.shadow.setXOffset(0)
-        self.shadow.setYOffset(0)
-        self.shadow.setColor(QColor(0, 0, 0, 100))
-
+        # --- page frame & base layout -----------------------------------------
+        self.setFrameShape(QFrame.StyledPanel)
         self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self.main_layout = QVBoxLayout(self)
         self.main_layout.setContentsMargins(0, 0, 0, 0)
         self.main_layout.setSpacing(0)
 
-        self.setFrameShape(QFrame.StyledPanel)
-        self.setFrameShadow(QFrame.Raised)
-
+        # === TOP AREA (input + plot) ==========================================
         top_frame = QFrame()
-        top_frame.setGraphicsEffect(self.shadow)
         top_frame_layout = QHBoxLayout(top_frame)
-        top_frame_layout.setContentsMargins(25, 25, 25, 25)
-        top_frame_layout.setSpacing(25)
+        top_frame_layout.setContentsMargins(50, 50, 50, 50)
+        top_frame_layout.setSpacing(80)
+
+        # ----- Left: Input column ---------------------------------------------
+        input_title = QLabel("Input")
+        input_title.setFixedHeight(30)
+        input_title.setObjectName("TitleBar")
+        input_title.setAlignment(Qt.AlignVCenter | Qt.AlignLeft)
+        input_title.setContentsMargins(10, 0, 0, 0)
+        input_title.setStyleSheet("""
+            background-color: #183881;
+            color: white;
+            font-weight:bold;
+            font-size: 16px;
+            border-top-left-radius: 10px;
+            border-top-right-radius: 10px;
+        """)
 
         user_input_scroll_area = QScrollArea()
         user_input_scroll_area.setFixedWidth(290)
@@ -91,26 +109,10 @@ class RedundancyCheckPage(QFrame):
         user_input_scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
 
         user_input_frame = QFrame()
-        user_input_frame.setStyleSheet("background-color: white; border-radius: 10px;")
-        user_input_frame.setFixedWidth(280)
+        user_input_frame.setFixedWidth(290)
         user_input_frame_layout = QVBoxLayout(user_input_frame)
         user_input_frame_layout.setContentsMargins(20, 20, 20, 20)
-
         user_input_scroll_area.setWidget(user_input_frame)
-
-        input_title = QLabel("Input")
-        input_title.setFixedHeight(30)
-        input_title.setObjectName("TitleBar")
-        input_title.setAlignment(Qt.AlignVCenter | Qt.AlignLeft)
-        input_title.setContentsMargins(10, 0, 0, 0)
-        input_title.setStyleSheet("""
-            background-color: #154E9D;
-            color: white;
-            font-weight:bold;
-            font-size: 16px;
-            border-top-left-radius: 12px;
-            border-top-right-radius: 12px;
-        """)
 
         input_section = QFrame()
         input_section.setFixedWidth(290)
@@ -120,6 +122,7 @@ class RedundancyCheckPage(QFrame):
         input_layout.addWidget(input_title)
         input_layout.addWidget(user_input_scroll_area)
 
+        # Correlation parameter group (stylesheet values unchanged)
         correlation_parameter_group = QGroupBox("Correlation matrix parameter")
         correlation_parameter_group.setStyleSheet(f"""
             QGroupBox {{
@@ -141,7 +144,7 @@ class RedundancyCheckPage(QFrame):
                 background-color: transparent;
                 color: #3f4c5a;
             }}
-            
+
             QCheckBox::indicator:unchecked,
             QTreeWidget::indicator:unchecked {{
                 image: url("{unchecked_icon_path}");
@@ -151,7 +154,6 @@ class RedundancyCheckPage(QFrame):
                 image: url("{checked_icon_path}");
             }}
         """)
-
         correlation_parameter_layout = QVBoxLayout()
         form_layout = QFormLayout()
 
@@ -197,10 +199,9 @@ class RedundancyCheckPage(QFrame):
         correlation_parameter_layout.addWidget(self.hierarchical_clustering)
         correlation_parameter_layout.addWidget(self.lower_triangle_matrix)
         correlation_parameter_layout.addWidget(self.upper_triangle_matrix)
-
         correlation_parameter_group.setLayout(correlation_parameter_layout)
 
-        # Info Section
+        # Info group (stylesheet values unchanged)
         info_page_group = QGroupBox("Info")
         info_page_group.setStyleSheet("""
             QGroupBox {
@@ -223,7 +224,6 @@ class RedundancyCheckPage(QFrame):
                 color: #3f4c5a;
             }
         """)
-
         info_page_layout = QVBoxLayout()
         self.textEdit = QLabel()
         self.textEdit.setTextFormat(Qt.TextFormat.RichText)
@@ -241,18 +241,18 @@ class RedundancyCheckPage(QFrame):
         info_page_layout.addWidget(self.textEdit)
         info_page_group.setLayout(info_page_layout)
 
-        # Add groups to layout
+        # Assemble input column
         user_input_frame_layout.addWidget(correlation_parameter_group)
         user_input_frame_layout.addWidget(LineWidget("Horizontal"))
         user_input_frame_layout.addStretch()
         user_input_frame_layout.addWidget(info_page_group)
 
-        # Plot Frame
+        # ----- Right: Plot card (stylesheet values unchanged) -----------------
         plot_frame = QFrame()
         plot_frame.setStyleSheet("""
-            background-color: #e7e7e7;
-            border-top-left-radius: 10px;
-            border-top-right-radius: 10px;
+               background-color: #e7e7e7;
+               border-top-left-radius: 10px;
+               border-top-right-radius: 10px;
         """)
         plot_frame_layout = QVBoxLayout(plot_frame)
         plot_frame_layout.setContentsMargins(0, 0, 0, 0)
@@ -263,7 +263,7 @@ class RedundancyCheckPage(QFrame):
         plot_title.setAlignment(Qt.AlignVCenter | Qt.AlignLeft)
         plot_title.setContentsMargins(10, 0, 0, 0)
         plot_title.setStyleSheet("""
-            background-color: #154E9D;
+            background-color: #183881;
             color: white;
             font-weight:bold;
             font-size: 16px;
@@ -273,17 +273,11 @@ class RedundancyCheckPage(QFrame):
             border-top-right-radius: 10px;
         """)
 
-        # self.fig = Figure(figsize=(10, 6))
-        self.fig = Figure(figsize=(15,15))
-
-
+        self.fig = Figure(figsize=(15, 15))
         self.canvas = FigureCanvas(self.fig)
         self.toolbar = CustomToolbar(self.canvas)
 
-        # self.fig.set_size_inches(10, 8)  # adjust as needed for your label length
-        # self.fig.subplots_adjust(left=0.205,right=.785, bottom=0.365,top=.955)  # increases space for long labels
-        self.fig.subplots_adjust(bottom=0.170)  # increases space for long labels
-
+        self.fig.subplots_adjust(bottom=0.170)  # space for long labels
         self._ax = self.canvas.figure.add_subplot(1, 1, 1)
         self._ax.set_box_aspect(1)
         self._ax.set_xlim(0, 1)
@@ -293,29 +287,34 @@ class RedundancyCheckPage(QFrame):
         plot_frame_layout.addWidget(self.toolbar)
         plot_frame_layout.addWidget(self.canvas)
 
+        # Assemble top row
         top_frame_layout.addWidget(input_section)
         top_frame_layout.addWidget(plot_frame)
+        self.top_frame_shadow = BoxShadow()
+        top_frame.setGraphicsEffect(self.top_frame_shadow)
 
-        # Table Frame
-        table_frame = QFrame()
-        table_frame.setFrameStyle(QFrame.StyledPanel | QFrame.Plain)
-
+        # === BOTTOM AREA: table ===============================================
+        table_frame = QWidget()
         table_frame_layout = QHBoxLayout(table_frame)
         table_frame_layout.setContentsMargins(20, 20, 20, 20)
 
         self.styled_table = StyledTable("Orthogonality result correlation table")
         self.styled_table.set_header_label(["Group", "Correlated OM"])
         self.styled_table.set_default_row_count(10)
-
         table_frame_layout.addWidget(self.styled_table)
 
+        self.table_frame_shadow = BoxShadow()
+        self.styled_table.setGraphicsEffect(self.table_frame_shadow)
+
+        # === Splitter + main layout ===========================================
         self.main_splitter = QSplitter(Qt.Vertical, self)
         self.main_splitter.addWidget(top_frame)
         self.main_splitter.addWidget(table_frame)
+        self.main_splitter.setSizes([486, 204])
 
         self.main_layout.addWidget(self.main_splitter)
 
-        # Signal Connections
+        # --- signals -----------------------------------------------------------
         self.corr_mat_cmap.currentTextChanged.connect(self.update_correlation_matrix_cmap)
         self.correlation_threshold.editingFinished.connect(self.update_correlation_group_table)
         self.correlation_threshold_tolerance.editingFinished.connect(self.update_correlation_group_table)

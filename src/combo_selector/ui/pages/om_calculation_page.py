@@ -7,7 +7,7 @@ from PySide6.QtWidgets import (
     QGraphicsDropShadowEffect, QStackedLayout
 )
 from PySide6.QtCore import Qt, QModelIndex, QSize, Signal, QThreadPool, QTimer
-from PySide6.QtGui import QColor
+from PySide6.QtGui import QColor, QIcon
 
 import matplotlib as mpl
 from matplotlib import collections
@@ -23,8 +23,10 @@ from combo_selector.ui.widgets.line_widget import LineWidget
 from combo_selector.ui.widgets.circle_progress_bar import RoundProgressBar
 from combo_selector.ui.widgets.style_table import StyledTable
 from combo_selector.ui.widgets.checkable_tree_list import CheckableTreeList
+from combo_selector.ui.widgets.neumorphism import*
 
 PLOT_SIZE = QSize(600, 400)
+ICON_SIZE = QSize(28, 28)
 drop_down_icon_path = resource_path("icons/drop_down_arrow.png").replace("\\", "/")
 
 
@@ -48,12 +50,22 @@ METRIC_PLOT_MAP = {
 }
 
 class OMCalculationPage(QFrame):
-
     metric_computed = Signal(list)
     gui_update_requested = Signal()
 
-    def __init__(self, model: Orthogonality = None):
+    def __init__(self, model: Orthogonality = None) -> None:
+        """
+        Initialize the OMCalculationPage.
+
+        Layout:
+          - Top: input (left) + OM visualization (right)
+          - Bottom: OM result table
+          - Overlay: circular progress bar during computations
+        """
         super().__init__()
+
+        # --- model & state ----------------------------------------------------
+        self.model = model
         self.selected_metric_list = []
         self.threadpool = QThreadPool()
         self.selected_scatter_collection = None
@@ -62,9 +74,9 @@ class OMCalculationPage(QFrame):
         self.arrow_list = []
         self.selected_set = "Set 1"
         self.orthogonality_dict = {}
-        self.model = model
 
-        self.fig = Figure(figsize=(15,15))
+        # --- plotting setup ---------------------------------------------------
+        self.fig = Figure(figsize=(15, 15))
         self.canvas = FigureCanvas(self.fig)
         self.toolbar = CustomToolbar(self.canvas)
 
@@ -73,9 +85,7 @@ class OMCalculationPage(QFrame):
         self.selected_axe.set_xlim(0, 1)
         self.selected_axe.set_ylim(0, 1)
 
-
         self.plot_utils = PlotUtils(fig=self.fig)
-
         self.plot_functions_map = {
             "Convex Hull": partial(self.plot_convex_hull),
             "Bin Box": partial(self.plot_bin_box),
@@ -85,48 +95,47 @@ class OMCalculationPage(QFrame):
             "%FIT yx": partial(self.plot_utils.plot_percent_fit_yx),
             "%BIN": partial(self.plot_utils.plot_percent_bin),
             "Modeling approach": partial(self.plot_utils.plot_modeling_approach),
-            "Conditional entropy": partial(self.plot_utils.plot_conditional_entropy)
+            "Conditional entropy": partial(self.plot_utils.plot_conditional_entropy),
         }
 
+        # --- base frame & main container -------------------------------------
         self.setFrameShape(QFrame.StyledPanel)
-        self.setFrameShadow(QFrame.Raised)
-
-        self.shadow = QGraphicsDropShadowEffect(self)
-        self.shadow.setBlurRadius(20)
-        self.shadow.setXOffset(0)
-        self.shadow.setYOffset(0)
-        self.shadow.setColor(QColor(0, 0, 0, 100))
-
         self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
 
+        self.main_widget = QWidget()
+        self.main_layout = QVBoxLayout(self.main_widget)
+        self.main_layout.setContentsMargins(0, 0, 0, 0)
+        self.main_layout.setSpacing(0)
+
+        # === TOP AREA =========================================================
         top_frame = QFrame()
-        top_frame.setGraphicsEffect(self.shadow)
         top_frame_layout = QHBoxLayout(top_frame)
-        top_frame_layout.setContentsMargins(25, 25, 25, 25)
-        top_frame_layout.setSpacing(25)
+        top_frame_layout.setContentsMargins(50, 50, 50, 50)
+        top_frame_layout.setSpacing(80)
 
-        user_input_scroll_area = QScrollArea()
-
+        # ----- Left: Input card ----------------------------------------------
         input_title = QLabel("Input")
         input_title.setFixedHeight(30)
         input_title.setObjectName("TitleBar")
         input_title.setAlignment(Qt.AlignVCenter | Qt.AlignLeft)
         input_title.setContentsMargins(10, 0, 0, 0)
         input_title.setStyleSheet("""
-            background-color: #154E9D;
+            background-color: #183881;
             color: white;
             font-weight:bold;
             font-size: 16px;
-            border-top-left-radius: 12px;
-            border-top-right-radius: 12px;
+            border-top-left-radius: 10px;
+            border-top-right-radius: 10px;
         """)
 
+        user_input_scroll_area = QScrollArea()
+        user_input_scroll_area.setFixedWidth(290)
         user_input_scroll_area.setWidgetResizable(True)
         user_input_scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
         user_input_scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
 
         user_input_frame = QFrame()
-        user_input_frame.setStyleSheet("background-color: white; border-radius: 10px;")
+        user_input_frame.setFixedWidth(290)
         user_input_frame_layout = QVBoxLayout(user_input_frame)
         user_input_frame_layout.setContentsMargins(20, 20, 20, 20)
         user_input_scroll_area.setWidget(user_input_frame)
@@ -139,12 +148,10 @@ class OMCalculationPage(QFrame):
         input_layout.addWidget(input_title)
         input_layout.addWidget(user_input_scroll_area)
 
-        # OM Calculation Group
+        # OM calculation group (stylesheet unchanged)
         om_computing_group = QGroupBox("OM calculation")
         om_calculation_layout = QVBoxLayout()
-        om_calculation_layout.setContentsMargins(5, 5, 5, 5)
         om_computing_group.setLayout(om_calculation_layout)
-
         om_computing_group.setStyleSheet("""
              QGroupBox {
                 font-size: 14px;
@@ -182,7 +189,7 @@ class OMCalculationPage(QFrame):
                            QLabel {
             background-color: transparent;
             }
-            
+
             QCheckBox::indicator {
                 width: 16px;
                 height: 16px;
@@ -190,22 +197,22 @@ class OMCalculationPage(QFrame):
                 border-radius: 3px;
                 background: white;
             }
-            
+
             QCheckBox::indicator:checked {
                 background: #154E9D;
                 border: 1px solid #154E9D;
             }
-            
+
             QCheckBox::indicator:unchecked {
                 background: white;
                 border: 1px solid #154E9D;
             }
-            
+
             QCheckBox::indicator:disabled {
                 background: #d0d0d0;
                 border: 1px solid #b0b0b0;
             }
-            
+
              QLabel#sub-title {
             background-color: transparent;
             color: #2C3E50;
@@ -215,15 +222,15 @@ class OMCalculationPage(QFrame):
         """)
 
         metric_list = [
-            "Convex hull relative area", "Bin box counting","Gilar-Watson method","Modeling approach","Conditional entropy",
-            "Pearson Correlation", "Spearman Correlation", "Kendall Correlation", "Asterisk equations",
+            "Convex hull relative area", "Bin box counting", "Gilar-Watson method",
+            "Modeling approach", "Conditional entropy", "Pearson Correlation",
+            "Spearman Correlation", "Kendall Correlation", "Asterisk equations",
             "NND Arithm mean", "NND Geom mean", "NND Harm mean", "%FIT", "%BIN"
         ]
-
         self.om_tree_list = CheckableTreeList(metric_list)
         self.om_tree_list.setFixedHeight(175)
-
         self.om_calculate_btn = QPushButton("Compute metrics")
+
         self.footnote = QLabel()
         self.footnote.setTextFormat(Qt.TextFormat.RichText)
         self.footnote.setWordWrap(True)
@@ -234,22 +241,23 @@ class OMCalculationPage(QFrame):
         self.nb_bin = QSpinBox()
         self.nb_bin.setFixedWidth(100)
         self.nb_bin.setValue(14)
-        self.nb_bin_label = QLabel('Number of bin box:')
+        self.nb_bin_label = QLabel("Number of bin box:")
         self.nb_bin_label.setObjectName("sub-title")
         number_of_bin_layout.addWidget(self.nb_bin_label)
         number_of_bin_layout.addWidget(self.nb_bin)
 
         select_metric_title = QLabel("Select metrics to compute:")
         select_metric_title.setObjectName("sub-title")
+
         om_calculation_layout.addWidget(select_metric_title)
         om_calculation_layout.addWidget(self.om_tree_list)
         om_calculation_layout.addWidget(self.footnote)
-        # om_calculation_layout.addWidget(LineWidget('Horizontal'))
         om_calculation_layout.addSpacing(15)
         om_calculation_layout.addLayout(number_of_bin_layout)
         om_calculation_layout.addSpacing(15)
         om_calculation_layout.addWidget(self.om_calculate_btn)
 
+        # OM selection group (stylesheet unchanged)
         data_selection_group = QGroupBox("OM selection")
         data_selection_group.setStyleSheet(f"""
             QGroupBox {{
@@ -268,11 +276,12 @@ class OMCalculationPage(QFrame):
                 margin-top: -8px;
             }}
             QLabel {{
-                background-color: transparent;
-                color: #2C3E50;
-                font-family: "Segoe UI";
-                font-weight: bold;
+            background-color: transparent;
+            color: #2C3E50;
+            font-family: "Segoe UI";
+            font-weight: bold;
             }}
+
 
             QComboBox::drop-down {{
                 border:none;
@@ -281,61 +290,45 @@ class OMCalculationPage(QFrame):
             QComboBox::down-arrow {{
                 image: url("{drop_down_icon_path}");
             }}
-            
+
         """)
 
-        om_selection_layout = QVBoxLayout()
-        om_selection_layout.addWidget(QLabel("Number of metric to compare:"))
+        self.om_selection_layout = QVBoxLayout()
+        self.om_selection_layout.setSpacing(6)
+        self.om_selection_layout.addWidget(QLabel("Number of metric to compare:"))
         self.compare_number = QComboBox()
         self.compare_number.addItems(["1", "2", "3", "4"])
-        om_selection_layout.addWidget(self.compare_number)
-        om_selection_layout.addSpacing(20)
+        self.om_selection_layout.addWidget(self.compare_number)
+        self.om_selection_layout.addSpacing(20)
 
-
-        om_selection_layout.addWidget(QLabel("Select data set:"))
+        self.om_selection_layout.addWidget(QLabel("Select data set:"))
         self.dataset_selector = QComboBox()
-        om_selection_layout.addWidget(self.dataset_selector)
-
-
+        self.om_selection_layout.addWidget(self.dataset_selector)
 
         self.om_selector1 = QComboBox()
         self.om_selector2 = QComboBox()
         self.om_selector3 = QComboBox()
         self.om_selector4 = QComboBox()
-
         self.om_selector2.setDisabled(True)
         self.om_selector3.setDisabled(True)
         self.om_selector4.setDisabled(True)
 
-        om_selection_layout.addWidget(QLabel("Select OM 1:"))
-        om_selection_layout.addWidget(self.om_selector1)
+        self.add_dataset_selector("Select OM 1:", self.om_selector1)
+        self.add_dataset_selector("Select OM 2:", self.om_selector2)
+        self.add_dataset_selector("Select OM 3:", self.om_selector3)
+        self.add_dataset_selector("Select OM 4:", self.om_selector4)
 
-        om_selection_layout.addWidget(QLabel("Select OM 2:"))
-        om_selection_layout.addWidget(self.om_selector2)
-
-        om_selection_layout.addWidget(QLabel("Select OM 3:"))
-        om_selection_layout.addWidget(self.om_selector3)
-
-        om_selection_layout.addWidget(QLabel("Select OM 4:"))
-        om_selection_layout.addWidget(self.om_selector4)
-
-        self.om_selector_list = [
-            self.om_selector1,
-            self.om_selector2,
-            self.om_selector3,
-            self.om_selector4
-        ]
-
+        self.om_selector_list = [self.om_selector1, self.om_selector2, self.om_selector3, self.om_selector4]
         self.om_selector_map = {
-            '0': {'selector': self.om_selector1, 'axe': None, 'scatter_collection': None},
-            '1': {'selector': self.om_selector2, 'axe': None, 'scatter_collection': None},
-            '2': {'selector': self.om_selector3, 'axe': None, 'scatter_collection': None},
-            '3': {'selector': self.om_selector4, 'axe': None, 'scatter_collection': None}
+            "0": {"selector": self.om_selector1, "axe": None, "scatter_collection": None},
+            "1": {"selector": self.om_selector2, "axe": None, "scatter_collection": None},
+            "2": {"selector": self.om_selector3, "axe": None, "scatter_collection": None},
+            "3": {"selector": self.om_selector4, "axe": None, "scatter_collection": None},
         }
 
-        data_selection_group.setLayout(om_selection_layout)
+        data_selection_group.setLayout(self.om_selection_layout)
 
-        # Tips Section
+        # (Optional) Tips group (stylesheet unchanged; currently not added to layout)
         page_tips_group = QGroupBox("Tips")
         page_tips_group.setStyleSheet("""
             QGroupBox {
@@ -354,7 +347,6 @@ class OMCalculationPage(QFrame):
                 margin-top: -8px;
             }
         """)
-
         page_tips_layout = QVBoxLayout()
         self.textEdit = QLabel()
         self.textEdit.setTextFormat(Qt.TextFormat.RichText)
@@ -366,17 +358,15 @@ class OMCalculationPage(QFrame):
         user_input_frame_layout.addWidget(LineWidget("Horizontal"))
         user_input_frame_layout.addWidget(data_selection_group)
         # user_input_frame_layout.addWidget(LineWidget("Horizontal"))
-        # user_input_frame_layout.addStretch()
         # user_input_frame_layout.addWidget(page_tips_group)
 
-        # Plot Section
-        plot_frame = QFrame()
+        # ----- Right: Plot card (styles unchanged) ----------------------------
         plot_frame = QFrame()
         plot_frame.setStyleSheet("""
-            background-color: #e7e7e7;
-            border-top-left-radius: 10px;
-            border-top-right-radius: 10px;
-        """)
+               background-color: #e7e7e7;
+               border-top-left-radius: 10px;
+               border-top-right-radius: 10px;
+           """)
         plot_frame_layout = QVBoxLayout(plot_frame)
         plot_frame_layout.setContentsMargins(0, 0, 0, 0)
 
@@ -386,7 +376,7 @@ class OMCalculationPage(QFrame):
         plot_title.setAlignment(Qt.AlignVCenter | Qt.AlignLeft)
         plot_title.setContentsMargins(10, 0, 0, 0)
         plot_title.setStyleSheet("""
-            background-color: #154E9D;
+            background-color: #183881;
             color: white;
             font-weight:bold;
             font-size: 16px;
@@ -395,87 +385,79 @@ class OMCalculationPage(QFrame):
             border-top-left-radius: 10px;
             border-top-right-radius: 10px;
         """)
-
-
-
-
         plot_frame_layout.addWidget(plot_title)
         plot_frame_layout.addWidget(self.toolbar)
         plot_frame_layout.addWidget(self.canvas)
 
-        # Combine input and plot
+        # Assemble top row
         top_frame_layout.addWidget(input_section)
         top_frame_layout.addWidget(plot_frame)
+        self.top_frame_shadow = BoxShadow()
+        top_frame.setGraphicsEffect(self.top_frame_shadow)
 
-        # Table Section
-        table_frame = QFrame()
-        table_frame.setFrameStyle(QFrame.StyledPanel | QFrame.Plain)
-
+        # === BOTTOM AREA: table ===============================================
+        table_frame = QWidget()
         table_frame_layout = QHBoxLayout(table_frame)
         table_frame_layout.setContentsMargins(20, 20, 20, 20)
 
         self.styled_table = StyledTable("OM result table")
         self.styled_table.set_header_label(["Set #", "2D Combination", "OM 1", "OM 2", "...", "OM n"])
         self.styled_table.set_default_row_count(10)
-
         table_frame_layout.addWidget(self.styled_table)
 
-        # --- Progress Overlay Setup ---
+        self.table_frame_shadow = BoxShadow()
+        self.styled_table.setGraphicsEffect(self.table_frame_shadow)
+
+        # === Overlay (progress) ===============================================
         self.progress_bar = RoundProgressBar()
-        self.progress_bar.rpb_setBarStyle('Pizza')
+        self.progress_bar.rpb_setBarStyle("Pizza")
 
         self.progress_overlay = QWidget(self)
         self.progress_overlay.setAttribute(Qt.WA_TransparentForMouseEvents)
         self.progress_overlay.setStyleSheet("background-color: transparent;")
         self.progress_overlay.hide()
 
-        # Overlay layout and progress bar placement
         overlay_layout = QVBoxLayout(self.progress_overlay)
         overlay_layout.setContentsMargins(0, 0, 0, 0)
         overlay_layout.addStretch()
         overlay_layout.addWidget(self.progress_bar, alignment=Qt.AlignCenter)
         overlay_layout.addStretch()
 
-        # Main layout widget for content
-        self.main_widget = QWidget()
-        self.main_layout = QVBoxLayout(self.main_widget)
-        self.main_layout.setContentsMargins(0, 0, 0, 0)
-        self.main_layout.setSpacing(0)
-
-        # --- Main Splitter ---
+        # === Splitter + stacking ==============================================
         self.main_splitter = QSplitter(Qt.Vertical, self)
         self.main_splitter.addWidget(top_frame)
         self.main_splitter.addWidget(table_frame)
+        self.main_splitter.setSizes([486, 204])
         self.main_layout.addWidget(self.main_splitter)
 
-        # Stacked widget to hold content and overlay
         self.stack = QStackedLayout()
         self.stack.setStackingMode(QStackedLayout.StackingMode.StackAll)
         self.stack.addWidget(self.main_widget)
         self.stack.addWidget(self.progress_overlay)
         self.stack.setCurrentWidget(self.progress_overlay)  # default view
 
-        # Base layout holds the stack
         self.base_layout = QVBoxLayout(self)
         self.base_layout.setContentsMargins(0, 0, 0, 0)
         self.base_layout.addLayout(self.stack)
 
-        # Ensure overlay tracks resizing
         self.progress_overlay.setGeometry(self.stack.geometry())
         self.progress_overlay.raise_()
 
-        # Connections
-        # self.dataset_selector.currentTextChanged.connect(self.data_sets_change)
+        # --- signal wiring ----------------------------------------------------
         self.compare_number.currentTextChanged.connect(self.update_om_selector_state)
         for index, data in self.om_selector_map.items():
             data["selector"].currentTextChanged.connect(lambda _, k=index: self.on_selector_changed(k))
-
         self.om_calculate_btn.clicked.connect(self.compute_orthogonality_metric)
         self.nb_bin.editingFinished.connect(self.update_bin_box_number)
-
         self.dataset_selector.currentTextChanged.connect(self.data_set_selection_changed_from_combobox)
-        # Table selection event
         # self.styled_table.selectionChanged.connect(self.data_set_selection_changed_from_table)
+
+    def add_dataset_selector(self,label_text, combobox):
+        container = QVBoxLayout()
+        container.setSpacing(2)
+        container.addWidget(QLabel(label_text))
+        container.addWidget(combobox)
+        self.om_selection_layout.addLayout(container)
 
     # Override resizeEvent to keep overlay in sync
     def resizeEvent(self, event):

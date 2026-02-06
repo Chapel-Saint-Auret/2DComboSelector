@@ -1,9 +1,12 @@
+import math
 from enum import Enum
 
 import numpy as np
 import pandas as pd
+from PySide6.QtGui import QColor, QBrush
 
-from PySide6.QtWidgets import QAbstractItemView, QWidget, QLabel, QHBoxLayout, QVBoxLayout, QSizePolicy
+from PySide6.QtWidgets import QAbstractItemView, QWidget, QLabel, QHBoxLayout, QVBoxLayout, QSizePolicy, \
+    QStyledItemDelegate
 from PySide6.QtCore import QRegularExpression, QItemSelectionModel
 from PySide6.QtWidgets import QTableView,QHeaderView
 from PySide6.QtCore import Qt, QAbstractTableModel, QModelIndex,QSortFilterProxyModel
@@ -31,6 +34,7 @@ class OrthogonalityTableModel(QAbstractTableModel):
 
     def __init__(self, data=None):
         super().__init__()
+        self._raw_data = None
         self._formatted_data = []  # cache for display
         self.default_row_count = 0
         self._data = data if data is not None else pd.DataFrame()
@@ -63,13 +67,14 @@ class OrthogonalityTableModel(QAbstractTableModel):
         data_cast = data.astype(object)
         data_list = data_cast.values.tolist()
 
-        # Cache formatted values
+        self._raw_data = data_list  # <-- keep raw values
+
+        # Cache formatted values for display
         self._formatted_data = [
             [self._format_value(val, col_idx=j) for j, val in enumerate(row)]
             for row in data_list
         ]
 
-        # Cache counts once
         self._row_count = len(data_list)
         self._column_count = len(data_list[0]) if self._row_count > 0 else 0
         self.endResetModel()
@@ -98,12 +103,25 @@ class OrthogonalityTableModel(QAbstractTableModel):
         self.endResetModel()
 
     def data(self, index, role=Qt.DisplayRole):
-        if not index.isValid() or role != Qt.DisplayRole:
+        if not index.isValid() or not self._formatted_data:
             return None
-        try:
-            return self._formatted_data[index.row()][index.column()]
-        except IndexError:
-            return ""
+
+        r, c = index.row(), index.column()
+
+        if role == Qt.DisplayRole:
+            return self._formatted_data[r][c]  # what you currently show
+
+        if role == Qt.UserRole:
+            return self._formatted_data[r][c]  # actual numeric/NaN/None
+
+        elif role == Qt.BackgroundRole:  # <-- add this block
+            val = str(self._formatted_data[r][c]).strip().lower()
+
+            if val == 'nan':
+                return QBrush(QColor('#ff9999'))  # red background
+            return None
+
+        return None
 
 
     def rowCount(self, parent=QModelIndex()):
@@ -127,29 +145,19 @@ class OrthogonalityTableModel(QAbstractTableModel):
             return self.header_label[section]
         return None
 
-class TableView(QTableView):
-    def __init__(self):
-        super(TableView, self).__init__()
+class SquareBackgroundDelegate(QStyledItemDelegate):
+    def paint(self, painter, option, index):
+        # 1) paint a plain rectangular background if the model provided one
+        brush = index.data(Qt.BackgroundRole)
+        if isinstance(brush, QColor):
+            brush = QBrush(brush)
+        if isinstance(brush, QBrush):
+            painter.save()
+            painter.fillRect(option.rect, brush)  # <- square, no rounded corners
+            painter.restore()
 
-        self.setMaximumWidth(900)
-        self.setSortingEnabled(True)
-
-
-        self.h_header = self.horizontalHeader()
-        self.h_header.setFocusPolicy(Qt.NoFocus)
-        self.h_header.setSectionsMovable(False)
-        self.h_header.setSectionResizeMode(QHeaderView.Interactive)
-        self.h_header.setCascadingSectionResizes(True)
-        self.h_header.setStretchLastSection(True)
-        self.h_header.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
-        self.h_header.setDefaultAlignment(Qt.AlignBottom)
-        self.h_header.setSortIndicatorShown(True)
-        self.h_header.setFixedHeight(30)
-        # hheader.setSectionResizeMode(QHeaderView.ResizeToContents)
-
-        self.v_header = self.verticalHeader()
-        self.v_header.setDefaultSectionSize(20)
-        self.v_header.setVisible(True)
+        # 2) let Qt draw text, focus, etc.
+        super().paint(painter, option, index)
 
 class OrthogonalityTableView(QTableView):
     def __init__(self, parent=None, model=None, default_column_width=100):
@@ -335,17 +343,18 @@ class OrthogonalityTableSortProxy(QSortFilterProxyModel):
             left_data = self.sourceModel().data(left, Qt.DisplayRole)
             right_data = self.sourceModel().data(right, Qt.DisplayRole)
 
-            # Try to convert the data to floats for numerical comparison
-            try:
-                left_value = float(left_data)
-                right_value = float(right_data)
-            except ValueError:
-                # If conversion fails, fall back to string comparison
-                left_value = left_data
-                right_value = right_data
+            def norm(v):
+                # None or NaN → +inf so they always go last
+                if v is None:
+                    return math.inf
+                try:
+                    f = float(v)
+                    return f if not math.isnan(f) else math.inf
+                except (ValueError, TypeError):
+                    # not numeric, fallback to string comparison
+                    return v
 
-            # Compare the values as numbers if possible
-            return left_value < right_value
+            return norm(left_data) < norm(right_data)
 
         def headerData(self, section, orientation, role=Qt.DisplayRole):
             if orientation == Qt.Vertical and role == Qt.DisplayRole:
