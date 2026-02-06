@@ -1,8 +1,8 @@
 import sys
-from PySide6.QtWidgets import QComboBox, QHBoxLayout, QApplication, QDialog
 
-from PySide6.QtGui import QStandardItemModel, QStandardItem
-from PySide6.QtCore import Qt, QTimer,Signal
+from PySide6.QtCore import Qt, QTimer, Signal
+from PySide6.QtGui import QStandardItem, QStandardItemModel
+from PySide6.QtWidgets import QApplication, QComboBox, QDialog, QHBoxLayout
 
 
 class CheckableComboList(QComboBox):

@@ -1,5 +1,5 @@
 
-from PySide6.QtGui import QStandardItemModel, QStandardItem
+from PySide6.QtGui import QStandardItem, QStandardItemModel
 
 
 class CustomFilterModel(QStandardItemModel):

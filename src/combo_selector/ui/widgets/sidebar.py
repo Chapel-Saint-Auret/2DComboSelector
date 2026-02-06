@@ -1,12 +1,14 @@
 import sys
-from PySide6.QtWidgets import QVBoxLayout, QFrame, QWidget,QPushButton,\
-    QApplication, QHBoxLayout, QDialog, QLabel,QGridLayout,QStackedWidget
 
+from PySide6.QtCore import QSize, Signal
+from PySide6.QtGui import QFont, QIcon
+from PySide6.QtWidgets import (QApplication, QDialog, QFrame, QGridLayout,
+                               QHBoxLayout, QLabel, QPushButton,
+                               QStackedWidget, QVBoxLayout, QWidget)
+
+from combo_selector.ui.widgets import line_widget
 from combo_selector.ui.widgets.line_widget import LineWidget
 from combo_selector.utils import resource_path
-from combo_selector.ui.widgets import line_widget
-from PySide6.QtGui import QFont, QIcon
-from PySide6.QtCore import Signal, QSize
 
 stylesheet = """
 	#full_menu_widget {

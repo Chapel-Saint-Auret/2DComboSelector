@@ -1,9 +1,12 @@
 import os
-from PySide6.QtWidgets import QComboBox, QApplication
-from PySide6.QtGui import QIcon
+
 from PySide6.QtCore import QSize
+from PySide6.QtGui import QIcon
+from PySide6.QtWidgets import QApplication, QComboBox
 
 from combo_selector.utils import resource_path
+
+
 class QComboBoxCmap(QComboBox):
     def __init__(self):
         super().__init__()

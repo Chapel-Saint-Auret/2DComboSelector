@@ -12,11 +12,9 @@
 #############################################################################################
 import sys
 
-from PySide6 import QtWidgets, QtCore
-from PySide6.QtCore import Qt, QSize
-from PySide6.QtGui import QColor, QPainter, QPen, QPaintEvent, QFont
-from PySide6.QtCore import QTimer
-
+from PySide6 import QtCore, QtWidgets
+from PySide6.QtCore import QSize, Qt, QTimer
+from PySide6.QtGui import QColor, QFont, QPainter, QPaintEvent, QPen
 
 
 class RoundProgressBar(QtWidgets.QWidget):

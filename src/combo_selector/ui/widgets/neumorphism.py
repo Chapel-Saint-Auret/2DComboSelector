@@ -1,9 +1,11 @@
 import sys
-from PySide6.QtWidgets import QGraphicsEffect, QGraphicsScene, QGraphicsPixmapItem, \
-    QGraphicsBlurEffect, QWidget, QGroupBox, QHBoxLayout, QApplication, QDialog, QFrame, QVBoxLayout
 
-from PySide6.QtGui import QPixmap, QTransform, QPainter, QImage, QColor
-from PySide6.QtCore import QRectF, QSize, Qt, QPoint
+from PySide6.QtCore import QPoint, QRectF, QSize, Qt
+from PySide6.QtGui import QColor, QImage, QPainter, QPixmap, QTransform
+from PySide6.QtWidgets import (QApplication, QDialog, QFrame,
+                               QGraphicsBlurEffect, QGraphicsEffect,
+                               QGraphicsPixmapItem, QGraphicsScene, QGroupBox,
+                               QHBoxLayout, QVBoxLayout, QWidget)
 
 
 class BoxShadow(QGraphicsEffect):

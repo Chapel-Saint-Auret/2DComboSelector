@@ -1,15 +1,15 @@
 import sys
 
+from PySide6.QtCore import QRect, QSize, Qt
+from PySide6.QtGui import QColor, QFont, QIcon, QPainter, QPixmap
 from PySide6.QtSvgWidgets import QSvgWidget
-from PySide6.QtWidgets import (
-    QApplication, QWidget, QVBoxLayout, QHBoxLayout, QStackedWidget,
-    QLabel, QListWidget, QListWidgetItem, QStyledItemDelegate, QFrame,
-    QLineEdit, QPushButton, QSpacerItem, QSizePolicy, QStyle, QCheckBox, QGridLayout
-)
-from PySide6.QtGui import QIcon, QFont, QPainter, QColor, QPixmap
-from PySide6.QtCore import Qt, QSize, QRect
+from PySide6.QtWidgets import (QApplication, QCheckBox, QFrame, QGridLayout,
+                               QHBoxLayout, QLabel, QLineEdit, QListWidget,
+                               QListWidgetItem, QPushButton, QSizePolicy,
+                               QSpacerItem, QStackedWidget, QStyle,
+                               QStyledItemDelegate, QVBoxLayout, QWidget)
 
-from combo_selector.utils import resource_path,get_version
+from combo_selector.utils import get_version, resource_path
 
 SIDEBAR_BG = "#232b43"  # Use your preferred dark blue
 

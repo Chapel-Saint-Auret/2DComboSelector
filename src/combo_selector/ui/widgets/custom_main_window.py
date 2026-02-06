@@ -1,19 +1,19 @@
-import sys, os
+import os
+import sys
+
 from PySide6 import QtCore, QtGui
 from PySide6.QtCore import *
 from PySide6.QtGui import *
 from PySide6.QtSvg import QSvgRenderer
 from PySide6.QtSvgWidgets import QSvgWidget
-from PySide6.QtWidgets import (
-    QSizeGrip, QGraphicsDropShadowEffect, QVBoxLayout, QFrame, QWidget,
-    QHBoxLayout, QLabel, QPushButton, QMenu, QMainWindow, QGraphicsEffect, QMenuBar, QStackedWidget
-)
+from PySide6.QtWidgets import (QFrame, QGraphicsDropShadowEffect,
+                               QGraphicsEffect, QHBoxLayout, QLabel,
+                               QMainWindow, QMenu, QMenuBar, QPushButton,
+                               QSizeGrip, QStackedWidget, QVBoxLayout, QWidget)
 
-from combo_selector.utils import resource_path
-from combo_selector.ui.widgets.sidebar import SideBar
 from combo_selector.ui.widgets.modern_side_menu import ModernSidebar
-
-
+from combo_selector.ui.widgets.sidebar import SideBar
+from combo_selector.utils import resource_path
 
 MainWindowStyleSheet = """
 

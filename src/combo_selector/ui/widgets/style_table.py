@@ -1,13 +1,11 @@
-from PySide6.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout,
-    QLabel, QFrame, QHeaderView
-)
-from PySide6.QtCore import Qt, QModelIndex, Signal, QThreadPool
+from PySide6.QtCore import QModelIndex, Qt, QThreadPool, Signal
+from PySide6.QtWidgets import (QFrame, QHBoxLayout, QHeaderView, QLabel,
+                               QVBoxLayout, QWidget)
 
 from combo_selector.core.workers import TableDataWorker
-from combo_selector.ui.widgets.orthogonality_table import OrthogonalityTableView, OrthogonalityTableModel,SquareBackgroundDelegate
 from combo_selector.ui.widgets.header_button import HeaderButton
-
+from combo_selector.ui.widgets.orthogonality_table import (
+    OrthogonalityTableModel, OrthogonalityTableView, SquareBackgroundDelegate)
 
 
 class StyledTable(QWidget):

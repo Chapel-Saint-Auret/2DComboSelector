@@ -1,11 +1,12 @@
 from functools import partial
-from PySide6.QtCore import Qt, Signal, QRect, QSize
+
+from PySide6.QtCore import QRect, QSize, Qt, Signal
 from PySide6.QtGui import QIcon
-from PySide6.QtWidgets import (
-    QApplication, QHeaderView, QToolButton, QDialog, QStyle, QWidget
-)
+from PySide6.QtWidgets import (QApplication, QDialog, QHeaderView, QStyle,
+                               QToolButton, QWidget)
 
 from combo_selector.utils import resource_path
+
 
 class HeaderButton(QHeaderView):
     """

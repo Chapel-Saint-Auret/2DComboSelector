@@ -1,5 +1,6 @@
 import logging
-from PySide6.QtCore import QObject, Signal, QRunnable, Slot
+
+from PySide6.QtCore import QObject, QRunnable, Signal, Slot
 
 # Setup logger
 

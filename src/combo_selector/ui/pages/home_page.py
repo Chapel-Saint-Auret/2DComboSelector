@@ -1,12 +1,10 @@
-from combo_selector.utils import resource_path
-
+from PySide6.QtCore import QSize, Qt, Signal
 from PySide6.QtSvgWidgets import QSvgWidget
-from PySide6.QtWidgets import (QFrame,
-                               QApplication, QVBoxLayout, QHBoxLayout,
-                               QSizePolicy, QSplitter, QScrollArea, QGroupBox, QLabel
-                               )
-from PySide6.QtCore import Qt, QSize,Signal
+from PySide6.QtWidgets import (QApplication, QFrame, QGroupBox, QHBoxLayout,
+                               QLabel, QScrollArea, QSizePolicy, QSplitter,
+                               QVBoxLayout)
 
+from combo_selector.utils import resource_path
 
 PLOT_SIZE = QSize(600, 400)
 

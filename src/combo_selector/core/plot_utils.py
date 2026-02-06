@@ -2,10 +2,10 @@ from math import sqrt
 from typing import Optional
 
 import numpy as np
-from matplotlib import patches, collections
+from matplotlib import collections, patches
+from matplotlib.collections import QuadMesh
 from matplotlib.colors import ListedColormap
 from matplotlib.figure import Figure
-from matplotlib.collections import QuadMesh
 from matplotlib.lines import Line2D
 
 

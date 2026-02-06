@@ -1,10 +1,12 @@
 import os
-from PySide6.QtGui import QPixmap
-from PySide6.QtWidgets import (QVBoxLayout, QHBoxLayout, QWidget,
-    QLabel, QStackedWidget,
-)
+
 from PySide6.QtCore import QSize
+from PySide6.QtGui import QPixmap
+from PySide6.QtWidgets import (QHBoxLayout, QLabel, QStackedWidget,
+                               QVBoxLayout, QWidget)
+
 from combo_selector.utils import resource_path
+
 
 class Status(QWidget):
 

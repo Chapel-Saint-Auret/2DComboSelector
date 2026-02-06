@@ -1,27 +1,27 @@
-import numpy as np
 import logging
+
+import numpy as np
 import pandas as pd
-from PySide6.QtSvgWidgets import QSvgWidget
-from PySide6.QtWidgets import (
-    QApplication, QVBoxLayout, QHBoxLayout, QGridLayout, QWidget,
-    QLabel, QComboBox, QFrame, QPushButton, QGroupBox,
-    QSizePolicy, QSplitter, QCheckBox, QScrollArea, QRadioButton,
-    QButtonGroup, QGraphicsDropShadowEffect, QStackedLayout, QHeaderView
-)
-from PySide6.QtCore import QTimer, QThreadPool
-
-from matplotlib.figure import Figure
 from matplotlib.backends.backend_qtagg import FigureCanvas
+from matplotlib.figure import Figure
+from PySide6.QtCore import QThreadPool, QTimer
+from PySide6.QtSvgWidgets import QSvgWidget
+from PySide6.QtWidgets import (QApplication, QButtonGroup, QCheckBox,
+                               QComboBox, QFrame, QGraphicsDropShadowEffect,
+                               QGridLayout, QGroupBox, QHBoxLayout,
+                               QHeaderView, QLabel, QPushButton, QRadioButton,
+                               QScrollArea, QSizePolicy, QSplitter,
+                               QStackedLayout, QVBoxLayout, QWidget)
 
-from combo_selector.utils import resource_path
 from combo_selector.core.workers import ResultsWorkerComputeCustomOMScore
-from combo_selector.ui.widgets.line_widget import LineWidget
-from combo_selector.ui.widgets.custom_toolbar import CustomToolbar
-from combo_selector.ui.widgets.custom_filter_dialog import CustomFilterDialog
 from combo_selector.ui.widgets.checkable_tree_list import CheckableTreeList
-from combo_selector.ui.widgets.style_table import StyledTable
 from combo_selector.ui.widgets.circle_progress_bar import RoundProgressBar
-from combo_selector.ui.widgets.neumorphism import*
+from combo_selector.ui.widgets.custom_filter_dialog import CustomFilterDialog
+from combo_selector.ui.widgets.custom_toolbar import CustomToolbar
+from combo_selector.ui.widgets.line_widget import LineWidget
+from combo_selector.ui.widgets.neumorphism import *
+from combo_selector.ui.widgets.style_table import StyledTable
+from combo_selector.utils import resource_path
 
 PLOT_SIZE = QSize(600, 400)
 drop_down_icon_path = resource_path("icons/drop_down_arrow.png").replace("\\", "/")

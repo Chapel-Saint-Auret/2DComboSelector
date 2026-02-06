@@ -1,27 +1,23 @@
-import scipy.cluster.hierarchy as sch
-
 import numpy as np
 import pandas as pd
-from PySide6.QtWidgets import (
-    QVBoxLayout, QHBoxLayout, QDoubleSpinBox,
-    QLabel, QCheckBox, QFrame, QGroupBox,
-    QSizePolicy, QSplitter, QFormLayout, QScrollArea, QButtonGroup,
-    QGraphicsDropShadowEffect
-)
-from PySide6.QtCore import Qt, QTimer, Signal, QObject, QRunnable, Slot
-from PySide6.QtGui import QColor
-
+import scipy.cluster.hierarchy as sch
 import seaborn as sns
-from matplotlib.patches import Rectangle
-from matplotlib.figure import Figure
 from matplotlib.backends.backend_qtagg import FigureCanvas
+from matplotlib.figure import Figure
+from matplotlib.patches import Rectangle
+from PySide6.QtCore import QObject, QRunnable, Qt, QTimer, Signal, Slot
+from PySide6.QtGui import QColor
+from PySide6.QtWidgets import (QButtonGroup, QCheckBox, QDoubleSpinBox,
+                               QFormLayout, QFrame, QGraphicsDropShadowEffect,
+                               QGroupBox, QHBoxLayout, QLabel, QScrollArea,
+                               QSizePolicy, QSplitter, QVBoxLayout)
 
-from combo_selector.utils import resource_path
 from combo_selector.ui.widgets.custom_toolbar import CustomToolbar
 from combo_selector.ui.widgets.line_widget import LineWidget
-from combo_selector.ui.widgets.style_table import StyledTable
+from combo_selector.ui.widgets.neumorphism import *
 from combo_selector.ui.widgets.qcombobox_cmap import QComboBoxCmap
-from combo_selector.ui.widgets.neumorphism import*
+from combo_selector.ui.widgets.style_table import StyledTable
+from combo_selector.utils import resource_path
 
 METRIC_CORR_MAP = {
     "Convex hull relative area": "Convex hull",

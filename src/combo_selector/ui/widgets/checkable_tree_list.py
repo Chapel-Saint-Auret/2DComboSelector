@@ -1,5 +1,6 @@
-from PySide6.QtWidgets import QTreeWidget, QTreeWidgetItem, QVBoxLayout, QWidget
 from PySide6.QtCore import Qt
+from PySide6.QtWidgets import (QTreeWidget, QTreeWidgetItem, QVBoxLayout,
+                               QWidget)
 
 from combo_selector.utils import resource_path
 

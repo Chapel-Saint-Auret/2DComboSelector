@@ -1,30 +1,29 @@
 import os
 
 import matplotlib
+
 matplotlib.use('Agg')  # make sure we’re using the non-GUI “Agg” backend
 
 from functools import partial
+
 import pandas as pd
-from PySide6.QtGui import QColor
-from PySide6.QtWidgets import (
-    QVBoxLayout, QHBoxLayout, QFileDialog,
-    QLabel, QLineEdit, QFrame, QPushButton, QGroupBox,
-    QSizePolicy, QSplitter, QScrollArea,
-    QGraphicsDropShadowEffect
-)
-from PySide6.QtCore import Qt, QTimer, QSize
-from matplotlib.figure import Figure
 from matplotlib.backends.backend_qtagg import FigureCanvas
+from matplotlib.figure import Figure
+from PySide6.QtCore import QSize, Qt, QTimer
+from PySide6.QtGui import QColor
+from PySide6.QtWidgets import (QFileDialog, QFrame, QGraphicsDropShadowEffect,
+                               QGroupBox, QHBoxLayout, QLabel, QLineEdit,
+                               QPushButton, QScrollArea, QSizePolicy,
+                               QSplitter, QVBoxLayout)
 
-from combo_selector.utils import resource_path
 from combo_selector.core.plot_utils import PlotUtils
-from combo_selector.ui.widgets.custom_toolbar import CustomToolbar
-from combo_selector.ui.widgets.checkable_tree_list import CheckableTreeList
 from combo_selector.ui.widgets.checkable_combo_list import CheckableComboList
-from combo_selector.ui.widgets.style_table import StyledTable
+from combo_selector.ui.widgets.checkable_tree_list import CheckableTreeList
+from combo_selector.ui.widgets.custom_toolbar import CustomToolbar
 from combo_selector.ui.widgets.line_widget import LineWidget
-from combo_selector.ui.widgets.neumorphism import*
-
+from combo_selector.ui.widgets.neumorphism import *
+from combo_selector.ui.widgets.style_table import StyledTable
+from combo_selector.utils import resource_path
 
 PLOT_SIZE = QSize(600, 400)
 drop_down_icon_path = resource_path("icons/drop_down_arrow.png").replace("\\", "/")

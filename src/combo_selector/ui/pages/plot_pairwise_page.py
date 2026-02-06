@@ -1,23 +1,23 @@
-import sys,os
+import os
+import sys
 
 import numpy as np
-from PySide6.QtGui import QColor
-from PySide6.QtWidgets import (
-    QApplication, QDialog, QVBoxLayout, QHBoxLayout,
-    QLabel, QComboBox, QFrame, QGroupBox,
-    QSizePolicy, QSplitter, QHeaderView, QScrollArea,
-    QGraphicsDropShadowEffect
-)
-from PySide6.QtCore import Qt, QModelIndex, QTimer, QItemSelectionModel, QSize
-from matplotlib.figure import Figure
 from matplotlib.backends.backend_qtagg import FigureCanvas
+from matplotlib.figure import Figure
+from PySide6.QtCore import QItemSelectionModel, QModelIndex, QSize, Qt, QTimer
+from PySide6.QtGui import QColor
+from PySide6.QtWidgets import (QApplication, QComboBox, QDialog, QFrame,
+                               QGraphicsDropShadowEffect, QGroupBox,
+                               QHBoxLayout, QHeaderView, QLabel, QScrollArea,
+                               QSizePolicy, QSplitter, QVBoxLayout)
 
-from combo_selector.utils import resource_path
-from combo_selector.ui.widgets.style_table import StyledTable
 from combo_selector.ui.widgets.custom_toolbar import CustomToolbar
 from combo_selector.ui.widgets.line_widget import LineWidget
-from combo_selector.ui.widgets.orthogonality_table import OrthogonalityTableView
-from combo_selector.ui.widgets.neumorphism import*
+from combo_selector.ui.widgets.neumorphism import *
+from combo_selector.ui.widgets.orthogonality_table import \
+    OrthogonalityTableView
+from combo_selector.ui.widgets.style_table import StyledTable
+from combo_selector.utils import resource_path
 
 PLOT_SIZE = QSize(600, 400)
 

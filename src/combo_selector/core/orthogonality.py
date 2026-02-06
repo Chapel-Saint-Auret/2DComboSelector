@@ -1,16 +1,17 @@
-from enum import Enum
 import string
-import pandas as pd
-from itertools import combinations
-from math import pi, sqrt, log2, tan, acos, atan
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from enum import Enum
+from itertools import combinations
+from math import acos, atan, log2, pi, sqrt, tan
 
+import pandas as pd
 from PySide6.QtCore import QObject, Signal
 from scipy.cluster.hierarchy import linkage
+from scipy.spatial import ConvexHull
 from scipy.spatial.distance import pdist
 from scipy.special.cython_special import nbdtr
-from scipy.stats import linregress, pearsonr, spearmanr, kendalltau, hmean, gmean
-from scipy.spatial import ConvexHull
+from scipy.stats import (gmean, hmean, kendalltau, linregress, pearsonr,
+                         spearmanr)
 
 from combo_selector.core.orthogonality_utils import *
 

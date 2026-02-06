@@ -1,8 +1,11 @@
-import os,re,sys
+import os
+import re
+import sys
+
+import numpy as np
+import pandas as pd
 from scipy.optimize import minimize_scalar
 from scipy.stats import tmean, tstd
-import pandas as pd
-import numpy as np
 
 
 def resource_path(relative_path):

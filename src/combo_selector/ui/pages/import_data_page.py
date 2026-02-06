@@ -1,19 +1,20 @@
 import openpyxl
 import pandas as pd
-from PySide6.QtGui import QIcon, QColor
+from PySide6.QtCore import QSize, Qt, Signal
+from PySide6.QtGui import QColor, QIcon
 from PySide6.QtSvgWidgets import QSvgWidget
-from PySide6.QtWidgets import (QVBoxLayout, QHBoxLayout, QWidget, QFileDialog, QInputDialog,
-    QLabel, QLineEdit, QFrame, QPushButton, QGroupBox, QMessageBox,
-    QSizePolicy, QSplitter, QStackedWidget,
-    QGraphicsDropShadowEffect, QRadioButton, QButtonGroup
-)
-from PySide6.QtCore import Qt, QSize, Signal
+from PySide6.QtWidgets import (QButtonGroup, QFileDialog, QFrame,
+                               QGraphicsDropShadowEffect, QGroupBox,
+                               QHBoxLayout, QInputDialog, QLabel, QLineEdit,
+                               QMessageBox, QPushButton, QRadioButton,
+                               QSizePolicy, QSplitter, QStackedWidget,
+                               QVBoxLayout, QWidget)
 
-from combo_selector.utils import resource_path
-from combo_selector.ui.widgets.style_table import StyledTable
-from combo_selector.ui.widgets.status_icon import Status
 from combo_selector.ui.widgets.nan_policy_widget import NanPolicyDialog
-from combo_selector.ui.widgets.neumorphism import*
+from combo_selector.ui.widgets.neumorphism import *
+from combo_selector.ui.widgets.status_icon import Status
+from combo_selector.ui.widgets.style_table import StyledTable
+from combo_selector.utils import resource_path
 
 PLOT_SIZE = QSize(600, 400)
 ICON_SIZE = QSize(28, 28)

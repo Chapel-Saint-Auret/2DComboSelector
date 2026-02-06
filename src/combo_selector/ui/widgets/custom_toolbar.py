@@ -1,11 +1,13 @@
 import os
 
+import matplotlib as mpl
+from matplotlib.backends.backend_qt5agg import \
+    NavigationToolbar2QT as NavigationToolbar
+from PySide6.QtWidgets import QFileDialog, QMessageBox
+
 # Scientific and Data Libraries
 
-import matplotlib as mpl
-from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
 
-from PySide6.QtWidgets import QMessageBox, QFileDialog
 
 
 class CustomToolbar(NavigationToolbar):

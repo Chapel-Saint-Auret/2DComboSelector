@@ -1,5 +1,6 @@
 import sys
-from PySide6.QtWidgets import QFrame,QVBoxLayout,QApplication
+
+from PySide6.QtWidgets import QApplication, QFrame, QVBoxLayout
 
 
 class LineWidget(QFrame):

@@ -3,13 +3,14 @@ from enum import Enum
 
 import numpy as np
 import pandas as pd
-from PySide6.QtGui import QColor, QBrush
+from PySide6.QtCore import (QAbstractTableModel, QItemSelectionModel,
+                            QModelIndex, QRegularExpression,
+                            QSortFilterProxyModel, Qt)
+from PySide6.QtGui import QBrush, QColor
+from PySide6.QtWidgets import (QAbstractItemView, QHBoxLayout, QHeaderView,
+                               QLabel, QSizePolicy, QStyledItemDelegate,
+                               QTableView, QVBoxLayout, QWidget)
 
-from PySide6.QtWidgets import QAbstractItemView, QWidget, QLabel, QHBoxLayout, QVBoxLayout, QSizePolicy, \
-    QStyledItemDelegate
-from PySide6.QtCore import QRegularExpression, QItemSelectionModel
-from PySide6.QtWidgets import QTableView,QHeaderView
-from PySide6.QtCore import Qt, QAbstractTableModel, QModelIndex,QSortFilterProxyModel
 
 # class syntax
 class COLUMN(Enum):

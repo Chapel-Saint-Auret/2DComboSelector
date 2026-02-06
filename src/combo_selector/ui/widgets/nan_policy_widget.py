@@ -1,11 +1,11 @@
 # --- Missing RT (NaN) handling widget ---------------------------------------
 import sys
 
-from PySide6.QtWidgets import (
-    QGroupBox, QVBoxLayout, QHBoxLayout, QRadioButton, QSpinBox, QLabel, QApplication, QDialog, QDialogButtonBox,
-    QButtonGroup
-)
 from PySide6.QtCore import Qt
+from PySide6.QtWidgets import (QApplication, QButtonGroup, QDialog,
+                               QDialogButtonBox, QGroupBox, QHBoxLayout,
+                               QLabel, QRadioButton, QSpinBox, QVBoxLayout)
+
 
 class NanPolicyDialog(QDialog):
     """

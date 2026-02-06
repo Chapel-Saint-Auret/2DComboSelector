@@ -1,29 +1,27 @@
 from functools import partial
 
-from PySide6.QtWidgets import (
-    QApplication, QVBoxLayout, QHBoxLayout, QWidget,
-    QLabel, QComboBox, QFrame, QPushButton, QGroupBox, QMessageBox,
-    QSizePolicy, QSplitter, QSpinBox, QScrollArea,
-    QGraphicsDropShadowEffect, QStackedLayout
-)
-from PySide6.QtCore import Qt, QModelIndex, QSize, Signal, QThreadPool, QTimer
-from PySide6.QtGui import QColor, QIcon
-
 import matplotlib as mpl
 from matplotlib import collections
-from matplotlib.figure import Figure
 from matplotlib.backends.backend_qtagg import FigureCanvas
+from matplotlib.figure import Figure
+from PySide6.QtCore import QModelIndex, QSize, Qt, QThreadPool, QTimer, Signal
+from PySide6.QtGui import QColor, QIcon
+from PySide6.QtWidgets import (QApplication, QComboBox, QFrame,
+                               QGraphicsDropShadowEffect, QGroupBox,
+                               QHBoxLayout, QLabel, QMessageBox, QPushButton,
+                               QScrollArea, QSizePolicy, QSpinBox, QSplitter,
+                               QStackedLayout, QVBoxLayout, QWidget)
 
-from combo_selector.utils import resource_path
-from combo_selector.ui.widgets.custom_toolbar import CustomToolbar
-from combo_selector.core.plot_utils import PlotUtils
 from combo_selector.core.orthogonality import Orthogonality
+from combo_selector.core.plot_utils import PlotUtils
 from combo_selector.core.workers import OMWorkerComputeOM, OMWorkerUpdateNumBin
-from combo_selector.ui.widgets.line_widget import LineWidget
-from combo_selector.ui.widgets.circle_progress_bar import RoundProgressBar
-from combo_selector.ui.widgets.style_table import StyledTable
 from combo_selector.ui.widgets.checkable_tree_list import CheckableTreeList
-from combo_selector.ui.widgets.neumorphism import*
+from combo_selector.ui.widgets.circle_progress_bar import RoundProgressBar
+from combo_selector.ui.widgets.custom_toolbar import CustomToolbar
+from combo_selector.ui.widgets.line_widget import LineWidget
+from combo_selector.ui.widgets.neumorphism import *
+from combo_selector.ui.widgets.style_table import StyledTable
+from combo_selector.utils import resource_path
 
 PLOT_SIZE = QSize(600, 400)
 ICON_SIZE = QSize(28, 28)
