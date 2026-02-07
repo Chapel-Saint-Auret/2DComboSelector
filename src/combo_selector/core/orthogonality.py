@@ -6,10 +6,10 @@ from math import acos, atan, log2, pi, sqrt, tan
 
 import pandas as pd
 from PySide6.QtCore import QObject, Signal
+from numpy import sum
 from scipy.cluster.hierarchy import linkage
 from scipy.spatial import ConvexHull
 from scipy.spatial.distance import pdist
-from scipy.special.cython_special import nbdtr
 from scipy.stats import gmean, hmean, kendalltau, linregress, pearsonr, spearmanr
 
 from combo_selector.core.orthogonality_utils import *
@@ -158,7 +158,6 @@ METRIC_MAPPING = {
     },
 }
 
-
 UI_TO_MODEL_MAPPING = {
     "Convex hull relative area": "convex_hull",
     "Bin box counting": "bin_box_ratio",
@@ -188,27 +187,57 @@ DEFAULT_WEIGHT = 1
 
 
 class FuncStatus(Enum):
-    NOTCOMPUTED = 0
+    """Enumeration for tracking the computation status of orthogonality metric functions.
+
+    Attributes:
+        NOT_COMPUTED: The function has not been computed yet.
+        COMPUTED: The function has been successfully computed.
+    """
+    NOT_COMPUTED = 0
     COMPUTED = 1
 
 
 class Orthogonality(QObject):
+    """Main class for computing and managing orthogonality metrics for 2D chromatography analysis.
+
+    This class handles loading retention time data,normalization of retention time, computing various orthogonality metrics,
+    and managing results for multi-dimensional chromatography column selection.
+
+    Signals:
+        progressChanged: Qt signal emitting progress updates (int) during metric computation.
+
+    Attributes:
+        column_names (list): Names of chromatography columns being analyzed.
+        orthogonality_metric_df (pd.DataFrame): DataFrame containing computed orthogonality metrics.
+        correlation_group_df (pd.DataFrame): DataFrame of correlated orthogonality metric groups.
+        orthogonality_result_df (pd.DataFrame): Final results DataFrame with rankings.
+        retention_time_df (pd.DataFrame): Loaded retention time data.
+        normalized_retention_time_df (pd.DataFrame): Normalized retention time data.
+        combination_df (pd.DataFrame): DataFrame of column combinations.
+        bin_number (int): Number of bins for box-based calculations (default: 14).
+        nb_condition (int): Number of experimental conditions.
+        nb_combination (int): Number of column combinations being analyzed.
+        status (str): Current processing status ('no_data', 'loaded', 'error', etc.).
+    """
     progressChanged = Signal(int)
 
     def __init__(self):
+        """Initialize the Orthogonality object with default values and data structures."""
         super().__init__()
         self.column_names = []
         self.orthogonality_metric_df = None
         self.correlation_group_df = None
         self.orthogonality_result_df = None
         self.retention_time_df = None
+        self.norm_ret_time_table = None
         self.normalized_retention_time_df = None
+        self.gradient_end_time_df = None
+        self.void_time_df = None
         self.combination_df = None
         self.orthogonality_metric_corr_matrix_df = None
         self.orthogonality_corr_mat = None
         self.orthogonality_score = None
         self.orthogonality_dict = None
-        self.norm_ret_time_table = None
         self.has_nan_value = False
         self.nan_policy_threshold = 50
         self.table_data = None
@@ -221,28 +250,55 @@ class Orthogonality(QObject):
         self.retention_time_df_2d_peaks = None
         self.use_suggested_score = True
         self.status = "no_data"
-        self.init_datas()
+        self.init_data()
         self.reset_om_status_computation_state()
 
-    def get_has_nan_value(self):
+    def get_has_nan_value(self) -> bool:
+        """returns has_nan_value status.
+
+        Returns:
+            bool: True if NaN values are present in the data, False otherwise.
+        """
         return self.has_nan_value
 
-    def get_retention_time_df(self):
+    def get_retention_time_df(self) -> pd.DataFrame:
+        """Get the retention time DataFrame.
+
+        Returns:
+            pd.DataFrame: The loaded retention time data.
+        """
         return self.retention_time_df
 
-    def get_normalized_retention_time_df(self):
+    def get_normalized_retention_time_df(self) -> pd.DataFrame:
+        """Get the normalized retention time DataFrame.
+
+        Returns:
+            pd.DataFrame: The normalized retention time data.
+        """
         return self.normalized_retention_time_df
 
-    def get_normalized_retention_time_list(self):
-        return self.norm_ret_time_table
+    def get_number_of_condition(self) -> int:
+        """Get the number of experimental conditions.
 
-    def get_number_of_condition(self):
+        Returns:
+            int: The number of conditions (columns) in the dataset.
+        """
         return self.nb_condition
 
-    def get_number_of_combination(self):
+    def get_number_of_combination(self) -> int:
+        """Get the number of column combinations being analyzed.
+
+        Returns:
+            int: The number of 1D column combinations.
+        """
         return self.nb_combination
 
-    def get_number_of_bin(self):
+    def get_number_of_bin(self) -> int:
+        """Get the current number of bins used for box-based calculations.
+
+        Returns:
+            int: The number of bins per axis.
+        """
         return self.bin_number
 
     def get_status(self) -> str:
@@ -253,9 +309,8 @@ class Orthogonality(QObject):
         """
         return self.status
 
-    def get_orthogonality_dict(self):
-        """
-        Returns the orthogonality dictionary containing computed metrics for each set.
+    def get_orthogonality_dict(self) -> dict:
+        """Get the orthogonality dictionary containing analysis raw data for each set.
 
         Returns:
             dict: The orthogonality dictionary with keys as set names (e.g., 'Set 1')
@@ -263,9 +318,8 @@ class Orthogonality(QObject):
         """
         return self.orthogonality_dict
 
-    def get_table_data(self):
-        """
-        Returns the table data containing computed metrics for tabular display.
+    def get_table_data(self) -> list:
+        """Get the table data containing computed metrics for tabular display.
 
         Returns:
             list: A list of lists, where each inner list represents a row of computed metrics
@@ -273,36 +327,71 @@ class Orthogonality(QObject):
         """
         return self.table_data
 
-    def get_combination_df(self):
+    def get_combination_df(self) -> pd.DataFrame:
+        """Get the DataFrame containing column combinations and peak information.
+
+        Returns:
+            pd.DataFrame: DataFrame with Set #, 2D Combination, Number of peaks, 
+                         and Hypothetical 2D peak capacity columns.
+        """
         return self.combination_df
 
     def get_orthogonality_metric_df(self) -> pd.DataFrame:
-        """
-        Returns the orthogonality correlation matrix containing correlation metrics for each set.
+        """Get the orthogonality metrics DataFrame.
 
         Returns:
-            dict: A dictionary where keys are set identifiers (e.g., 'Set 1') and values are
-                 dictionaries of correlation metrics for that set.
+            pd.DataFrame: DataFrame containing all computed orthogonality metrics 
+                         for each column combination set.
         """
         return self.orthogonality_metric_df
 
-    def get_orthogonality_metric_corr_matrix_df(self):
+    def get_orthogonality_metric_corr_matrix_df(self) -> pd.DataFrame:
+        """Get the orthogonality metric correlation matrix DataFrame.
+
+        Returns:
+            pd.DataFrame: Correlation matrix of orthogonality metrics.
+        """
         return self.orthogonality_metric_corr_matrix_df
 
-    def get_orthogonality_result_df(self):
+    def get_orthogonality_result_df(self) -> pd.DataFrame:
+        """Get the final orthogonality results DataFrame with rankings.
+
+        Returns:
+            pd.DataFrame: Results DataFrame with set numbers, scores, and rankings.
+        """
         return self.orthogonality_result_df
 
-    def get_orthogonality_score_df(self):
+    def get_orthogonality_score_df(self) -> dict:
+        """Get the orthogonality scores dictionary.
+
+        Returns:
+            dict: Dictionary mapping set names to their orthogonality scores.
+        """
         return self.orthogonality_score
 
-    def get_correlation_group_df(self):
+    def get_correlation_group_df(self) -> pd.DataFrame:
+        """Get the DataFrame of correlated orthogonality metric groups.
+
+        Returns:
+            pd.DataFrame: DataFrame with groups of correlated metrics.
+        """
         return self.correlation_group_df
 
-    def set_nan_policy_threshold(self, treshold):
+    def set_nan_policy_threshold(self, threshold: float) -> None:
+        """Set the threshold for handling NaN values in the data.
 
-        self.nan_policy_threshold = treshold
+        Args:
+            threshold (float): Percentage threshold (0-100) for NaN tolerance.
+                              Peaks with NaN percentage above this will be removed.
+        """
+        self.nan_policy_threshold = threshold
 
-    def init_datas(self):
+    def init_data(self) -> None:
+        """Initialize or reset all data structures to their default empty states.
+
+        This method creates empty DataFrames and data structures for storing
+        retention times, metrics, scores, and results.
+        """
         self.table_data = []
         self.norm_ret_time_table = []
         self.orthogonality_dict = {}
@@ -324,7 +413,14 @@ class Orthogonality(QObject):
             ]
         )
 
-    def get_default_orthogonality_entry(self):
+    def get_default_orthogonality_entry(self) -> dict:
+        """Get a default dictionary structure for storing orthogonality metrics for one set.
+
+        Returns:
+            dict: Dictionary with default zero/empty values for all orthogonality metrics,
+                  including convex hull, bin box, correlation coefficients, and various
+                  computed scores.
+        """
         return {
             "title": "",
             "type": "",
@@ -383,81 +479,88 @@ class Orthogonality(QObject):
             "2d_peak_capacity": "no data loaded",
         }
 
-    def reset_om_status_computation_state(self):
+    def reset_om_status_computation_state(self) -> None:
+        """Reset the computation status of all orthogonality metric functions.
+
+        Sets all metric functions in om_function_map to NOT_COMPUTED status,
+        allowing them to be recalculated.
+        """
         self.om_function_map = {
             "Convex hull relative area": {
                 "func": self.compute_convex_hull,
-                "status": FuncStatus.NOTCOMPUTED,
+                "status": FuncStatus.NOT_COMPUTED,
             },
             "Bin box counting": {
                 "func": self.compute_bin_box,
-                "status": FuncStatus.NOTCOMPUTED,
+                "status": FuncStatus.NOT_COMPUTED,
             },
             "Pearson Correlation": {
                 "func": self.compute_pearson,
-                "status": FuncStatus.NOTCOMPUTED,
+                "status": FuncStatus.NOT_COMPUTED,
             },
             "Spearman Correlation": {
                 "func": self.compute_spearman,
-                "status": FuncStatus.NOTCOMPUTED,
+                "status": FuncStatus.NOT_COMPUTED,
             },
             "Kendall Correlation": {
                 "func": self.compute_kendall,
-                "status": FuncStatus.NOTCOMPUTED,
+                "status": FuncStatus.NOT_COMPUTED,
             },
-            "CC mean": {"func": self.compute_cc_mean, "status": FuncStatus.NOTCOMPUTED},
+            "CC mean": {"func": self.compute_cc_mean, "status": FuncStatus.NOT_COMPUTED},
             "Asterisk equations": {
                 "func": self.compute_asterisk,
-                "status": FuncStatus.NOTCOMPUTED,
+                "status": FuncStatus.NOT_COMPUTED,
             },
             "NND Arithm mean": {
                 "func": self.compute_ndd,
-                "status": FuncStatus.NOTCOMPUTED,
+                "status": FuncStatus.NOT_COMPUTED,
             },
             "NND Geom mean": {
                 "func": self.compute_ndd,
-                "status": FuncStatus.NOTCOMPUTED,
+                "status": FuncStatus.NOT_COMPUTED,
             },
             "NND Harm mean": {
                 "func": self.compute_ndd,
-                "status": FuncStatus.NOTCOMPUTED,
+                "status": FuncStatus.NOT_COMPUTED,
             },
             "NND mean": {
                 "func": self.compute_nnd_mean,
-                "status": FuncStatus.NOTCOMPUTED,
+                "status": FuncStatus.NOT_COMPUTED,
             },
             "%BIN": {
                 "func": self.compute_percent_bin,
-                "status": FuncStatus.NOTCOMPUTED,
+                "status": FuncStatus.NOT_COMPUTED,
             },
             "%FIT": {
                 "func": self.compute_percent_fit,
-                "status": FuncStatus.NOTCOMPUTED,
+                "status": FuncStatus.NOT_COMPUTED,
             },
             "Gilar-Watson method": {
                 "func": self.compute_gilar_watson_metric,
-                "status": FuncStatus.NOTCOMPUTED,
+                "status": FuncStatus.NOT_COMPUTED,
             },
             "Modeling approach": {
                 "func": self.compute_modeling_approach,
-                "status": FuncStatus.NOTCOMPUTED,
+                "status": FuncStatus.NOT_COMPUTED,
             },
             "Geometric approach": {
                 "func": self.compute_geometric_approach,
-                "status": FuncStatus.NOTCOMPUTED,
+                "status": FuncStatus.NOT_COMPUTED,
             },
             "Conditional entropy": {
                 "func": self.compute_conditional_entropy,
-                "status": FuncStatus.NOTCOMPUTED,
+                "status": FuncStatus.NOT_COMPUTED,
             },
         }
 
-    def update_num_bins(self, nb_bin, metric_list=None, progress_cb=None):
+    def update_num_bins(self, nb_bin: int, metric_list=None, progress_cb=None) -> None:
         """Set the number of bins for box calculations and update dependent properties.
 
         Args:
             nb_bin (int): Number of bins to use for box-based calculations.
-                            Must be a positive integer.
+                         Must be a positive integer.
+            metric_list (list, optional): List of metrics to recompute.
+            progress_cb (Signal, optional): Progress callback signal for updates.
 
         Raises:
             ValueError: If input is not a positive integer.
@@ -469,36 +572,20 @@ class Orthogonality(QObject):
 
         # reset function computed status in order to re compute with new bin number
         for metric in ["Bin box counting", "Modeling approach", "Gilar-Watson method"]:
-            self.om_function_map[metric]["status"] = FuncStatus.NOTCOMPUTED
+            self.om_function_map[metric]["status"] = FuncStatus.NOT_COMPUTED
 
-        # self.compute_orthogonality_metric(metric_list , progress_cb)
+    def compute_orthogonality_metric(self, metric_list: list, progress_cb: Signal) -> None:
+        """Compute orthogonality metrics for all sets and emit progress updates.
 
-        # for index, (set_name, set_data) in enumerate(self.orthogonality_dict.items()):
-        #     # Extract x and y values from the current set
-        #     x_values = set_data['x_values']
-        #     y_values = set_data['y_values']
-        #
-        #     # Compute the bin box mask color
-        #     bin_box_mask_color = compute_bin_box_mask_color(x_values, y_values, self.bin_number)
-        #
-        #     # Calculate the bin box ratio
-        #     bin_box_ratio = bin_box_mask_color.count() / (self.bin_number * self.bin_number)
-        #
-        #     # Update the orthogonality dictionary with the bin box mask and ratio
-        #     set_data['bin_box'] = bin_box_mask_color
-        #
-        #     # TODO: this might be redundant with having the same metric inside orthogonality_score dict
-        #     set_data['bin_box_ratio'] = bin_box_ratio
-        #
-        #     # Update metrics using the helper function
-        #     set_number = extract_set_number(set_name)
-        #     self.update_metrics(set_name, 'bin_box_ratio', bin_box_ratio,table_row_index=set_number-1)
-        #
-        #     # orthogonality_metric_table dataframe is the one display by the TableView in the GUI
-        #     # when number of bin changes we must update all bin box ratio value
-        #     self.orthogonality_metric_df.at[index, "Bin box counting"] = bin_box_ratio
+        Args:
+            metric_list (list): List of metric names (UI format) to compute.
+            progress_cb (Signal): Qt Signal for emitting progress percentage (0-100).
 
-    def compute_orthogonality_metric(self, metric_list, progress_cb):
+        Side Effects:
+            - Computes all uncomputed metrics in metric_list
+            - Updates orthogonality_metric_df and orthogonality_metric_corr_matrix_df
+            - Emits progress updates via progress_cb
+        """
         total_weight = sum(
             METRIC_WEIGHTS.get(metric, DEFAULT_WEIGHT)
             for metric in metric_list
@@ -539,18 +626,19 @@ class Orthogonality(QObject):
 
         # Adding column names directly
         self.orthogonality_metric_df.columns = ["Set #", "2D Combination"] + metric_list
-        # orthogonality_metric_table.to_list()
 
-    def set_orthogonality_value(self, selected_orthogonality):
-        """
-        Sets the orthogonality value for each set in the orthogonality dictionary and score.
+    def set_orthogonality_value(self, selected_orthogonality: str) -> None:
+        """Set the orthogonality value for each set based on a selected metric.
 
-        Parameters:
-            selected_orthogonality (str): The key of the selected orthogonality metric (e.g., 'convex_hull', 'pearson_r').
+        Args:
+            selected_orthogonality (str): The key of the selected orthogonality metric 
+                                         (e.g., 'convex_hull', 'pearson_r').
+
+        Side Effects:
+            Updates orthogonality_value in both orthogonality_score and orthogonality_dict
+            for all sets.
         """
-        # Iterate through each set in the orthogonality dictionary
         for data_set in self.orthogonality_dict:
-            # Update the orthogonality score and dictionary with the selected metric value
             self.orthogonality_score[data_set]["orthogonality_value"] = (
                 self.orthogonality_score[data_set][selected_orthogonality]
             )
@@ -558,16 +646,27 @@ class Orthogonality(QObject):
                 self.orthogonality_score[data_set][selected_orthogonality]
             )
 
-    def create_correlation_group(self, threshold, tol):
-        """
-        df: the dataframe to get correlations from
-        threshold: the maximum and minimum value to include for correlations. For eg, if this is 0.4, only pairs haveing a correlation coefficient greater than 0.4 or less than -0.4 will be included in the results.
+    def create_correlation_group(self, threshold: float, tol: float) -> pd.DataFrame:
+        """Identify and group correlated orthogonality metrics based on correlation threshold.
 
-        function developpeb by @yatharthranjan/
-        https://medium.com/@yatharthranjan/finding-top-correlation-pairs-from-a-large-number-of-variables-in-pandas-f530be53e82a
+        This method finds groups of metrics that are highly correlated with each other,
+        which is useful for identifying redundant metrics and creating suggested scores.
+
+        Args:
+            threshold (float): Correlation coefficient threshold (0-1). Pairs with absolute
+                             correlation >= threshold are considered correlated.
+            tol (float): Tolerance value to adjust the threshold.
+
+        Returns:
+            pd.DataFrame: DataFrame with 'Group' and 'Correlated OM' columns, where each
+                         row represents a group of correlated metrics.
+
+        Note:
+            Algorithm based on work by @yatharthranjan
+            https://medium.com/@yatharthranjan/finding-top-correlation-pairs-from-a-large-number-of-variables-in-pandas-f530be53e82a
         """
         if self.orthogonality_metric_corr_matrix_df.empty:
-            return
+            return pd.DataFrame()
 
         correlated_pair = {}
         orig_corr = self.orthogonality_metric_corr_matrix_df.corr()
@@ -604,31 +703,6 @@ class Orthogonality(QObject):
             {"Correlated OM": list(sorted_correlated_metric)}
         )
 
-        # so = c.unstack()
-        #
-        # print("|    Variable 1    |    Variable 2    | Correlation Coefficient    |")
-        # print("|------------------|------------------|----------------------------|")
-
-        # i = 0
-        # pairs = set()
-        # result = pd.DataFrame()
-        # for index, value in so.sort_values(ascending=False).items():
-        #     # Exclude duplicates and self-correlations
-        #     if value > threshold \
-        #             and index[0] != index[1] \
-        #             and (index[0], index[1]) not in pairs \
-        #             and (index[1], index[0]) not in pairs:
-        #         print(f'|    {index[0]}    |    {index[1]}    |    {orig_corr.loc[(index[0], index[1])]}    |')
-        #         result.loc[i, ['Variable 1', 'Variable 2', 'Correlation Coefficient']] = [index[0], index[1],
-        #                                                                                   orig_corr.loc[
-        #                                                                                       (index[0], index[1])]]
-        #
-        #         correlated_pair[index[0]+' - '+index[1]] = orig_corr.loc[(index[0], index[1])]
-        #         pairs.add((index[0], index[1]))
-        #         i += 1
-
-        # self.correlation_group_table = pd.DataFrame(list(correlated_pair.items()), columns=['Correlated OM', 'Correlation value'])
-
         # Add a new column with letters A-Z
         self.correlation_group_df["Group"] = list(
             string.ascii_uppercase[: len(self.correlation_group_df)]
@@ -640,14 +714,16 @@ class Orthogonality(QObject):
 
         return self.correlation_group_df
 
-    def compute_custom_orthogonality_score(self, metric_list):
-        """
-        Computes the orthogonality score for each set in the orthogonality dictionary
-        based on the provided list of methods.
+    def compute_custom_orthogonality_score(self, metric_list: list) -> None:
+        """Compute a custom orthogonality score as the mean of selected metrics.
 
-        Parameters:
-            metric_list (list): A list of metric keys (e.g., ['convex_hull', 'pearson_r'])
-                                used to compute the orthogonality score.
+        Args:
+            metric_list (list): A list of metric keys (UI format, e.g., ['Convex hull relative area', 'Pearson Correlation'])
+                               used to compute the orthogonality score.
+
+        Side Effects:
+            Updates computed_score and orthogonality_value in orthogonality_score
+            and table_data for each set.
         """
         num_metric = len(metric_list)
         if not num_metric:
@@ -660,7 +736,6 @@ class Orthogonality(QObject):
 
             # Calculate the sum of the selected metric values
             for metric in metric_list:
-
                 # the metrics name from the UI are different from the one in the model
                 metric = UI_TO_MODEL_MAPPING[metric]
                 score_sum += self.orthogonality_score[data_set][metric]
@@ -681,25 +756,31 @@ class Orthogonality(QObject):
                 table_row_index=set_number - 1,
             )
 
-    def om_using_nb_bin_computed(self):
+    def om_using_nb_bin_computed(self) -> None:
+        """Placeholder method for future bin-dependent orthogonality metric handling.
+
+        Currently, does nothing, reserved for future functionality.
+        """
         pass
 
-    def suggested_om_score_flag(self, flag):
+    def suggested_om_score_flag(self, flag: bool) -> None:
+        """Set whether to use suggested score or computed score for practical 2D peak capacity computation.
+
+        Args:
+            flag (bool): If True, use suggested_score; if False, use computed_score.
+        """
         self.use_suggested_score = flag
 
-    def compute_suggested_score(self):
-        # for row  in orig_corr.itertuples():
-        #
-        #     row_metric_list = []
-        #     row_metric_name = row.Index
-        #     row_metric_list.append(row_metric_name)
-        #
-        #     for i in range(1,len(row)):
-        #         column_metric_name = orig_corr.columns[i-1]
-        #         value = row[i]
-        #         if value > threshold:
-        #             row_metric_list.append(column_metric_name)
+    def compute_suggested_score(self) -> None:
+        """Compute suggested orthogonality scores based on correlation groups.
 
+        The suggested score is calculated as the mean of group means, where each group
+        contains correlated metrics. This reduces bias from redundant metrics.
+
+        Side Effects:
+            Updates suggested_score and orthogonality_value in orthogonality_score
+            and table_data for each set.
+        """
         # Iterate through each set in the orthogonality dictionary
         for index, data_set in enumerate(self.orthogonality_score):
             # Reset the sum for each set
@@ -735,7 +816,19 @@ class Orthogonality(QObject):
                 table_row_index=set_number - 1,
             )
 
-    def compute_practical_2d_peak_capacity(self):
+    def compute_practical_2d_peak_capacity(self) -> None:
+        """Compute practical 2D peak capacity for each set.
+
+        Practical 2D peak capacity = orthogonality_score * hypothetical_2d_peak_capacity
+        Uses either suggested_score or computed_score based on use_suggested_score flag.
+
+        Side Effects:
+            Updates practical_2d_peak_capacity in orthogonality_score and table_data
+            for each set.
+
+        Note:
+            Only runs if status is 'peak_capacity_loaded'.
+        """
         if self.status not in ["peak_capacity_loaded"]:
             return
 
@@ -746,10 +839,9 @@ class Orthogonality(QObject):
 
         # Iterate through each set in the orthogonality dictionary
         for index, data_set in enumerate(self.orthogonality_dict):
-
             practical_2d_peak_capacity = (
-                self.orthogonality_score[data_set][om_score]
-                * self.orthogonality_score[data_set]["2d_peak_capacity"]
+                    self.orthogonality_score[data_set][om_score]
+                    * self.orthogonality_score[data_set]["2d_peak_capacity"]
             )
 
             set_number = extract_set_number(data_set)
@@ -760,8 +852,15 @@ class Orthogonality(QObject):
                 table_row_index=set_number - 1,
             )
 
-    def create_results_table(self):
+    def create_results_table(self) -> None:
+        """Create the final results DataFrame with scores and rankings.
 
+        Extracts set numbers, titles, scores, and practical 2D peak capacities,
+        then computes rankings based on practical 2D peak capacity.
+
+        Side Effects:
+            Updates orthogonality_result_df with final results and rankings.
+        """
         if self.use_suggested_score:
             om_score = "suggested_score"
             om_score_label = "Suggested score"
@@ -806,25 +905,30 @@ class Orthogonality(QObject):
 
         self.set_orthogonality_ranking_argument("Practical 2D peak capacity")
 
-        # self.orthogonality_result_df['Ranking'] = (
-        #     self.orthogonality_result_df['Practical 2D peak'].rank(method='dense', ascending=True).astype(int))
+    def set_orthogonality_ranking_argument(self, argument: str) -> None:
+        """Set the ranking criterion for the results table.
 
-    def set_orthogonality_ranking_argument(self, argument):
+        Args:
+            argument (str): Column name to rank by (e.g., 'Practical 2D peak capacity').
+
+        Side Effects:
+            Updates 'Ranking' column in orthogonality_result_df based on the specified column.
+        """
         self.orthogonality_result_df["Ranking"] = (
             self.orthogonality_result_df[argument]
             .rank(method="dense", ascending=False)
             .astype("Int64", errors="ignore")
         )
 
-    def compute_orthogonality_factor(self, method_list):
-        """
-        Computes the orthogonality factor for each set in the orthogonality dictionary
-        based on the provided list of methods. The orthogonality factor is calculated
-        as the product of the selected method values.
+    def compute_orthogonality_factor(self, method_list: list) -> None:
+        """Compute the orthogonality factor as the product of selected method values.
 
-        Parameters:
-            method_list (list): A list of method keys (e.g., ['convex_hull', 'pearson_r'])
-                                used to compute the orthogonality factor.
+        Args:
+            method_list (list): A list of method keys (model format, e.g., ['convex_hull', 'pearson_r'])
+                               used to compute the orthogonality factor.
+
+        Side Effects:
+            Updates orthogonality_factor in orthogonality_score for each set.
         """
         num_methods = len(method_list)
         if not num_methods:
@@ -842,16 +946,17 @@ class Orthogonality(QObject):
             # Update the orthogonality factor using the helper function
             self.update_metrics(data_set, "orthogonality_factor", product)
 
-    def update_metrics(self, dict_key, metric_name, value, table_row_index=-1):
-        """
-        Updates the orthogonality score, correlation matrix, and table data for a given metric.
+    def update_metrics(self, dict_key: str, metric_name: str, value, table_row_index: int = -1) -> None:
+        """Update orthogonality score and table data for a given metric.
 
-        Parameters:
+        Args:
             dict_key (str): The key in the orthogonality dictionary (e.g., 'Set 1').
-            metric_name (str): The name of the metric (e.g., 'Convex hull relative area').
-            value: The value of the metric.
-            table_row_index: The value row position in table_data
+            metric_name (str): The name of the metric to update(e.g., 'convex_hull').
+            value: The computed value of the metric.
+            table_row_index (int, optional): The row index in table_data. Defaults to -1(means add at last position).
 
+        Side Effects:
+            Updates orthogonality_score and table_data with the new metric value.
         """
         # Update orthogonality score
         if METRIC_MAPPING[metric_name]["include_in_score"]:
@@ -864,24 +969,20 @@ class Orthogonality(QObject):
                 self.orthogonality_score.update({dict_key: {}})
                 self.orthogonality_score[dict_key].update({metric_name: value})
 
-        # # Update orthogonality correlation matrix
-        # if METRIC_MAPPING[metric_name]['include_in_corr_mat']:
-        #
-        #     if dict_key in self.orthogonality_corr_mat:
-        #         self.orthogonality_corr_mat[dict_key].update({metric_name: value})
-        #     else:
-        #         # add new set in orthogonality_corr_mat dict
-        #         self.orthogonality_corr_mat.update({dict_key: {}})
-        #         self.orthogonality_corr_mat[dict_key].update({metric_name: value})
-
         # Update table data
         table_index = METRIC_MAPPING[metric_name]["table_index"]
-        self.table_data[table_row_index][
-            table_index
-        ] = value  # Assumes the current row is the last one in table_data
+        self.table_data[table_row_index][table_index] = value
 
-    def normalize_retention_time_min_max(self):
+    def normalize_retention_time_min_max(self) -> None:
+        """Normalize retention times using min-max normalization for each column.
 
+        Formula: (x - rt_min) / (rt_max - rt_min)
+
+        Side Effects:
+            - Updates normalized_retention_time_df
+            - Calls set_orthogonality_dict_x_y_series() to update metric dictionaries
+            - Sets status to 'error' if normalization fails
+        """
         data_frame_copy = self.retention_time_df.copy()
 
         for column_name in data_frame_copy.columns[1:]:
@@ -899,8 +1000,6 @@ class Orthogonality(QObject):
                 print(f"Unmatch void time column name (cannot find {column_name})")
                 self.status = "error"
 
-            # rt_max = column_value.max()
-
             # Normalizing data
             data_frame_copy[column_name] = column_value.apply(
                 lambda x: (x - rt_min) / (rt_max - rt_min) if x else ""
@@ -913,8 +1012,17 @@ class Orthogonality(QObject):
 
         self.set_orthogonality_dict_x_y_series()
 
-    def normalize_retention_time_void_max(self):
+    def normalize_retention_time_void_max(self) -> None:
+        """Normalize retention times using void time and max retention time.
 
+        Formula: (x - rt_0) / (rt_max - rt_0)
+        Requires void_time_df (rt_0) to be loaded.
+
+        Side Effects:
+            - Updates normalized_retention_time_df
+            - Calls set_orthogonality_dict_x_y_series() to update metric dictionaries
+            - Sets status to 'error' if normalization fails or void_time_df is missing
+        """
         data_frame_copy = self.retention_time_df.copy()
 
         for column_name in data_frame_copy.columns[1:]:
@@ -945,8 +1053,17 @@ class Orthogonality(QObject):
 
         self.set_orthogonality_dict_x_y_series()
 
-    def normalize_retention_time_wosel(self):
+    def normalize_retention_time_wosel(self) -> None:
+        """Normalize retention times using Wosel method (void time and gradient end time).
 
+        Formula: (x - rt_0) / (rt_end - rt_0)
+        Requires void_time_df (rt_0) and gradient_end_time_df (rt_end) to be loaded.
+
+        Side Effects:
+            - Updates normalized_retention_time_df
+            - Calls set_orthogonality_dict_x_y_series() to update metric dictionaries
+            - Sets status to 'error' if required data is missing
+        """
         data_frame_copy = self.retention_time_df.copy()
 
         for column_name in data_frame_copy.columns[1:]:
@@ -976,9 +1093,70 @@ class Orthogonality(QObject):
 
         self.set_orthogonality_dict_x_y_series()
 
-    def set_orthogonality_dict_x_y_series(
-        self,
-    ):
+    def load_gradient_end_time(self, filepath: str, sheetname: str) -> None:
+        """Load gradient end time data from an Excel file.
+
+        Args:
+            filepath (str): Path to the Excel file.
+            sheetname (str): Name of the sheet to load.
+
+        Side Effects:
+            - Loads data into gradient_end_time_df
+            - Sets status to 'error' if loading fails
+
+        Raises:
+            Exception: Re-raises any exception after setting status to 'error'.
+        """
+        try:
+
+            self.gradient_end_time_df = load_simple_table(filepath, sheetname)
+
+        except Exception as e:
+            print(f"Error loading gradient time: {str(e)}")
+            self.status = "error"
+            raise
+
+    def load_void_time(self, filepath: str, sheetname: str) -> None:
+        """Load void time (t0) data from an Excel file.
+
+        Args:
+            filepath (str): Path to the Excel file.
+            sheetname (str): Name of the sheet to load.
+
+        Side Effects:
+            - Loads data into void_time_df
+            - Prints void_time_df for debugging
+            - Sets status to 'error' if loading fails
+
+        Raises:
+            Exception: Re-raises any exception after setting status to 'error'.
+        """
+        try:
+
+            # Read table, assuming headers are on the second row (row index 1, i.e., header=1)
+            self.void_time_df = load_simple_table(filepath, sheetname)
+
+            print(self.void_time_df)
+
+        except Exception as e:
+            print(f"Error loading end time: {str(e)}")
+            self.status = "error"
+            raise
+
+    def set_orthogonality_dict_x_y_series(self) -> None:
+        """Update x_values and y_values in orthogonality_dict from normalized retention times.
+
+        each pairwise is a combination of two 1D LC condition , x_values contains all the retention times for the 1st
+        condition and y_values for the 2nd condition.
+
+        Creates all pairwise combinations of columns and populates the orthogonality_dict
+        with normalized x,y series after removing incomplete pairs.
+
+        Side Effects:
+            - Updates x_values, y_values, and nb_peaks in orthogonality_dict
+            - Calls update_combination_df() to refresh combination DataFrame
+            - Removes sets with no valid data points
+        """
         num_columns = len(self.column_names)
 
         current_column = 0
@@ -992,8 +1170,6 @@ class Orthogonality(QObject):
                 next_column_list = list(range(current_column + 1, num_columns))
             else:
                 # the dataframe only has 2 column
-                # TODO it should be based on the dataframe shape instead, check the shape first if df is horizontal or
-                # TODO vertical than set the next_column_list accordingly
                 next_column_list = [1]
 
             for next_column in next_column_list:
@@ -1041,8 +1217,15 @@ class Orthogonality(QObject):
 
         self.update_combination_df()
 
-    def normalize_retention_time(self, method):
+    def normalize_retention_time(self, method: str) -> None:
+        """Normalize retention time data using the specified method.
 
+        Args:
+            method (str): Normalization method to use:
+                         - 'min_max': Min-max normalization
+                         - 'void_max': Void time to max normalization
+                         - 'wosel': Wosel normalization (void time to gradient end)
+        """
         if method == "min_max":
             self.normalize_retention_time_min_max()
 
@@ -1052,16 +1235,28 @@ class Orthogonality(QObject):
         if method == "wosel":
             self.normalize_retention_time_wosel()
 
-    def clean_nan_value(self, option):
+    def clean_nan_value(self, option: str) -> None:
+        """Handle NaN values in retention time data according to the specified option.
+
+        Args:
+            option (str): NaN handling method:
+                         - 'option 1': Remove peaks with NaN% > nan_policy_threshold
+                         - 'option 2': Replace all NaN with empty strings
+
+        Side Effects:
+            - Modifies retention_time_df
+            - Updates orthogonality_dict with cleaned x,y series
+            - Calls update_combination_df() to refresh combination DataFrame
+        """
         peak_list = []
         if option == "option 1":
-            for row_datas in self.retention_time_df.iterrows():
-                peak_retention_time = row_datas[1]
+            for row_data in self.retention_time_df.iterrows():
+                peak_retention_time = row_data[1]
                 nan_count = peak_retention_time.isna().sum()
 
                 # nan_policy_threshold is % of total condition
                 if (nan_count * 100) / self.nb_condition > self.nan_policy_threshold:
-                    peak_list.append(row_datas[0])
+                    peak_list.append(row_data[0])
 
             self.retention_time_df = self.retention_time_df.drop(peak_list)
             self.retention_time_df = self.retention_time_df.fillna("")
@@ -1082,8 +1277,6 @@ class Orthogonality(QObject):
                 next_column_list = list(range(current_column + 1, num_columns))
             else:
                 # the dataframe only has 2 column
-                # TODO it should be based on the dataframe shape instead, check the shape first if df is horizontal or
-                # TODO vertical than set the next_column_list accordingly
                 next_column_list = [1]
 
             for next_column in next_column_list:
@@ -1128,7 +1321,14 @@ class Orthogonality(QObject):
 
         self.update_combination_df()
 
-    def update_combination_df(self):
+    def update_combination_df(self) -> None:
+        """Update the combination DataFrame with set information and peak counts.
+
+        Only updates if the 'Hypothetical 2D peak capacity' column is empty.
+
+        Side Effects:
+            Updates combination_df with data from table_data (columns 0-3).
+        """
         # Check if combination_df exists and has the third column filled (not empty)
         if self.combination_df["Hypothetical 2D peak capacity"].isnull().all():
             # Otherwise, fill with two columns
@@ -1146,43 +1346,27 @@ class Orthogonality(QObject):
             # already filled
             return
 
-    def load_retention_time(self, filepath, sheetname):
-        """
-        Loads data from an Excel file, processes it, and computes various metrics for orthogonality analysis.
+    def load_retention_time(self, filepath: str, sheetname: str) -> None:
+        """Load retention time data from an Excel file and initialize analysis structures.
 
-        Parameters:
-            filepath (str): Path to the Excel file.
+        Args:
+            filepath (str): Path to the Excel file with the raw data.
             sheetname (str): Name of the sheet to load.
 
-        Updates:
-            - self.retention_time_df: Loaded and processed DataFrame.
-            - self.orthogonality_dict: Dictionary storing computed metrics for each set.
-            - self.orthogonality_score: Dictionary storing orthogonality scores.
-            - self.orthogonality_corr_mat: Dictionary storing correlation metrics.
-            - self.table_data: List of lists containing computed metrics for tabular display.
+        Side Effects:
+            - Initializes/resets all data structures via init_data()
+            - Loads data into retention_time_df
+            - Detects NaN values and sets has_nan_value flag
+            - Creates all pairwise column combinations
+            - Initializes orthogonality_dict and table_data for each combination
+            - Sets status to 'loaded' on success or 'error' on failure
+
+        Raises:
+            Exception: Re-raises any exception after setting status to 'error'.
         """
         try:
             # table_data should be reset when loading new normalized time
-            self.init_datas()
-
-            # # 1) peek at the first two rows without assigning headers
-            # raw = pd.read_excel(filepath, sheet_name=sheetname, header=None, nrows=2)
-            #
-            # # 2) decide: if row 0 is *all* NaN, header must be row 1; otherwise header is row 0
-            # if raw.iloc[0].isna().all():
-            #     header_row = 1
-            # else:
-            #     header_row = 0
-            #
-            # # 3) re-read using the discovered header row
-            # self.retention_time_df = pd.read_excel(filepath, sheet_name=sheetname, header=header_row)
-            #
-            # # 4) drop any “Unnamed” columns
-            # mask = ~self.retention_time_df.columns.str.contains(r'^Unnamed', na=False)
-            # self.retention_time_df = self.retention_time_df.loc[:, mask]
-            #
-            # self.nb_peaks = len(self.retention_time_df.iloc[:, 0])
-            # self.nb_condition = len(self.retention_time_df.columns)
+            self.init_data()
 
             self.retention_time_df = load_table_with_header_anywhere(
                 filepath, sheetname
@@ -1220,7 +1404,6 @@ class Orthogonality(QObject):
                     self.update_metrics(set_key, "set_number", set_number)
                     self.update_metrics(set_key, "title", set_title)
                     self.update_metrics(set_key, "nb_peaks", self.nb_peaks)
-                    # self.update_metrics(set_key, '2d_peak_capacity', 'no data loaded')
                     self.update_metrics(set_key, "suggested_score", 0)
                     self.update_metrics(set_key, "computed_score", 0)
                     self.update_metrics(set_key, "orthogonality_factor", 0)
@@ -1307,21 +1490,20 @@ class Orthogonality(QObject):
             print(f"Error loading data: {issue}")
             self.status = "error"
 
-    def compute_convex_hull(self):
+    def compute_convex_hull(self) -> None:
+        """Compute the convex hull volume for each set of peak distribution.
+
+        The convex hull represents the smallest convex polygon containing all peaks.
+        Its area is used as an orthogonality metric (higher is better).
+
+        Side Effects:
+            - Updates 'convex_hull' and 'hull_subset' in orthogonality_dict
+            - Updates convex_hull metric in table_data
+            - Sets 'Convex hull relative area' status to COMPUTED
+
+        Note:
+            Returns 0 if points are collinear or duplicate points reduce rank to 1.
         """
-        Computes the convex hull for a set of 2D points defined by their x and y coordinates.
-
-        Parameters:
-            x (array-like): The x-coordinates of the points.
-            y (array-like): The y-coordinates of the points.
-
-        Returns:
-            tuple: A tuple containing:
-                - hull (scipy.spatial.ConvexHull): The convex hull object representing the smallest convex set
-                  that contains all the points.
-                - subset (numpy.ndarray): A 2D array of shape (n_points, 2) containing the input points as (x, y) pairs.
-        """
-
         for set_key in self.orthogonality_dict.keys():
             print(set_key)
             set_data = self.orthogonality_dict[set_key]
@@ -1357,19 +1539,17 @@ class Orthogonality(QObject):
             "status"
         ] = FuncStatus.COMPUTED
 
-    def compute_bin_box(self):
+    def compute_bin_box(self) -> None:
+        """Compute the bin box ratio orthogonality metric for each set.
+
+        Divides the [0,1] x [0,1] space into a grid and calculates the fraction
+        of bins that contain at least one peak.
+
+        Side Effects:
+            - Updates 'bin_box' (color_mask and edges) and 'bin_box_ratio' in orthogonality_dict
+            - Updates bin_box_ratio metric in table_data
+            - Sets 'Bin box counting' status to COMPUTED
         """
-        Computes a masked 2D histogram (bin box mask color) for the given x and y data.
-
-        Parameters:
-            x (array-like): The x-coordinates of the data points.
-            y (array-like): The y-coordinates of the data points.
-            nb_boxes (int): The number of bins along each axis.
-
-        Returns:
-            numpy.ma.MaskedArray: A masked array representing the 2D histogram, where bins with no data points are masked.
-        """
-
         for set_key in self.orthogonality_dict.keys():
             set_data = self.orthogonality_dict[set_key]
             x, y = set_data["x_values"], set_data["y_values"]
@@ -1390,7 +1570,17 @@ class Orthogonality(QObject):
 
         self.om_function_map["Bin box counting"]["status"] = FuncStatus.COMPUTED
 
-    def compute_pearson(self):
+    def compute_pearson(self) -> None:
+        """Compute Pearson correlation coefficient for each set .
+
+        This orthogonality metric is calculated as 1 - r^2, where r is the Pearson
+        correlation coefficient. Higher values indicate better orthogonality.
+
+        Side Effects:
+            - Updates 'pearson_r' in orthogonality_dict (raw correlation)
+            - Updates pearson_r metric in table_data (as 1 - r^2)
+            - Sets 'Pearson Correlation' status to COMPUTED
+        """
         for set_key in self.orthogonality_dict.keys():
             set_data = self.orthogonality_dict[set_key]
             x, y = set_data["x_values"], set_data["y_values"]
@@ -1400,12 +1590,22 @@ class Orthogonality(QObject):
 
             set_number = extract_set_number(set_key)
             self.update_metrics(
-                set_key, "pearson_r", (1 - pearson_r**2), table_row_index=set_number - 1
+                set_key, "pearson_r", (1 - pearson_r ** 2), table_row_index=set_number - 1
             )
 
         self.om_function_map["Pearson Correlation"]["status"] = FuncStatus.COMPUTED
 
-    def compute_spearman(self):
+    def compute_spearman(self) -> None:
+        """Compute Spearman rank correlation coefficient for each set.
+
+        This orthogonality metric is calculated as 1 - rho^2, where rho is the Spearman
+        rank correlation coefficient.
+
+        Side Effects:
+            - Updates 'spearman_rho' in orthogonality_dict (raw correlation)
+            - Updates spearman_rho metric in table_data (as 1 - rho^2)
+            - Sets 'Spearman Correlation' status to COMPUTED
+        """
         for set_key in self.orthogonality_dict.keys():
             set_data = self.orthogonality_dict[set_key]
             x, y = set_data["x_values"], set_data["y_values"]
@@ -1417,13 +1617,23 @@ class Orthogonality(QObject):
             self.update_metrics(
                 set_key,
                 "spearman_rho",
-                (1 - spearman_rho**2),
+                (1 - spearman_rho ** 2),
                 table_row_index=set_number - 1,
             )
 
         self.om_function_map["Spearman Correlation"]["status"] = FuncStatus.COMPUTED
 
-    def compute_kendall(self):
+    def compute_kendall(self) -> None:
+        """Compute Kendall's tau correlation coefficient for each set.
+
+        This orthogonality metric is calculated as 1 - tau^2, where tau is Kendall's tau
+        correlation coefficient.
+
+        Side Effects:
+            - Updates 'kendall_tau' in orthogonality_dict (raw correlation)
+            - Updates kendall_tau metric in table_data (as 1 - tau^2)
+            - Sets 'Kendall Correlation' status to COMPUTED
+        """
         for set_key in self.orthogonality_dict.keys():
             set_data = self.orthogonality_dict[set_key]
             x, y = set_data["x_values"], set_data["y_values"]
@@ -1435,13 +1645,24 @@ class Orthogonality(QObject):
             self.update_metrics(
                 set_key,
                 "kendall_tau",
-                (1 - kendall_tau**2),
+                (1 - kendall_tau ** 2),
                 table_row_index=set_number - 1,
             )
 
         self.om_function_map["Kendall Correlation"]["status"] = FuncStatus.COMPUTED
 
-    def compute_cc_mean(self):
+    def compute_cc_mean(self) -> None:
+        """Compute the mean of correlation coefficient-based orthogonality metrics.
+
+        Calculates the trimmed mean of (1 - r^2), (1 - rho^2), and (1 - tau^2).e
+
+        Side Effects:
+            - Updates cc_mean metric in table_data
+            - Sets 'CC mean' status to COMPUTED
+
+        Note:
+            Requires Pearson, Spearman, and Kendall to be computed first.
+        """
         for set_key in self.orthogonality_dict.keys():
             set_data = self.orthogonality_dict[set_key]
 
@@ -1453,32 +1674,22 @@ class Orthogonality(QObject):
             self.update_metrics(
                 set_key,
                 "cc_mean",
-                tmean([(1 - r**2), (1 - rho**2), (1 - tau**2)]),
+                tmean([(1 - r ** 2), (1 - rho ** 2), (1 - tau ** 2)]),
                 table_row_index=set_number - 1,
             )
 
         self.om_function_map["CC mean"]["status"] = FuncStatus.COMPUTED
 
-    def compute_asterisk(self):
-        """
-        Computes the a0cs metric and related intermediate values based on the standard deviations
-        of differences between two input series (x and y).
+    def compute_asterisk(self) -> None:
+        """Compute the a0cs (asterisk) metric based on standard deviations of retention differences.
 
-        Parameters:
-            x (pd.Series): The first input series.
-            y (pd.Series): The second input series.
+        The asterisk metric evaluates orthogonality using four intermediate z-values
+        computed from differences between and within dimensions.
 
-        Returns:
-            tuple: A tuple containing:
-                - a0cs (float): The computed a0cs metric (asterisk metric).
-                - z_minus (float): Intermediate value z_minus.
-                - z_plus (float): Intermediate value z_plus.
-                - z1 (float): Intermediate value z1.
-                - z2 (float): Intermediate value z2.
-                - sigma_sz_minus (float): Standard deviation of (x - y).
-                - sigma_sz_plus (float): Standard deviation of (y - (1 - x)).
-                - sigma_sz1 (float): Standard deviation of (x - 0.5).
-                - sigma_sz2 (float): Standard deviation of (y - 0.5).
+        Side Effects:
+            - Updates 'asterisk_metrics' in orthogonality_dict with all intermediate values
+            - Updates asterisk_metrics (a0cs value) in table_data
+            - Sets 'Asterisk equations' status to COMPUTED
         """
         for set_key in self.orthogonality_dict.keys():
             set_data = self.orthogonality_dict[set_key]
@@ -1527,21 +1738,16 @@ class Orthogonality(QObject):
 
         self.om_function_map["Asterisk equations"]["status"] = FuncStatus.COMPUTED
 
-    def compute_ndd(self):
-        """
-        Computes the normalized distance metrics (Ao, Ho, Go) based on the Euclidean distance
-        matrix of the input data.
+    def compute_ndd(self) -> None:
+        """Compute normalized nearest-neighbor distance metrics (arithmetic, geometric, harmonic means).
 
-        Parameters:
-            x (pd.Series): The first input series.
-            y (pd.Series): The second input series.
-            nb_peaks (int): The number of peaks used for normalization.
+        Computes the Euclidean distance matrix, performs hierarchical clustering,
+        and normalizes the arithmetic, harmonic, and geometric means of distances.
 
-        Returns:
-            tuple: A tuple containing:
-                - Ao (float): Normalized arithmetic mean of distances.
-                - Ho (float): Normalized harmonic mean of distances.
-                - Go (float): Normalized geometric mean of distances.
+        Side Effects:
+            - Updates 'a_mean', 'g_mean', 'h_mean' in orthogonality_dict
+            - Updates nnd_arithmetic_mean, nnd_geom_mean, nnd_harm_mean in table_data
+            - Sets 'NND Arithm mean', 'NND Geom mean', 'NND Harm mean' statuses to COMPUTED
         """
         for set_key in self.orthogonality_dict.keys():
             set_data = self.orthogonality_dict[set_key]
@@ -1593,7 +1799,17 @@ class Orthogonality(QObject):
         self.om_function_map["NND Geom mean"]["status"] = FuncStatus.COMPUTED
         self.om_function_map["NND Harm mean"]["status"] = FuncStatus.COMPUTED
 
-    def compute_nnd_mean(self):
+    def compute_nnd_mean(self) -> None:
+        """Compute the mean of NND (nearest-neighbor distance) metrics.
+
+        Calculates the trimmed mean of arithmetic, geometric, and harmonic NND means.
+        Calls compute_ndd() first to ensure NND metrics are available.
+
+        Side Effects:
+            - Updates 'nnd_mean' in orthogonality_dict
+            - Updates nnd_mean metric in table_data
+            - Sets 'NND mean' status to COMPUTED
+        """
         self.compute_ndd()
 
         for set_key in self.orthogonality_dict.keys():
@@ -1614,21 +1830,16 @@ class Orthogonality(QObject):
 
         self.om_function_map["NND mean"]["status"] = FuncStatus.COMPUTED
 
-    def compute_percent_bin(self):
-        """
-        Computes the percentage of bin occupancy and related metrics for the given x and y data.
+    def compute_percent_bin(self) -> None:
+        """Compute the percent bin (%BIN) orthogonality metric for each set.
 
-        Parameters:
-            x (array-like): The x-coordinates of the data points.
-            y (array-like): The y-coordinates of the data points.
+        Measures how evenly peaks are distributed across a 5x5 grid using sum of
+        absolute deviations (SAD) from the ideal uniform distribution.
 
-        Returns:
-            tuple: A tuple containing:
-                - percent_bin (float): The percentage of bin occupancy.
-                - percent_bin_mask (numpy.ma.MaskedArray): A masked array representing the bin box mask.
-                - sad_dev (float): The sum of absolute deviations from the average peaks per bin.
-                - sad_dev_ns (float): The sum of absolute deviations for no peak spreading.
-                - sad_dev_fs (float): The sum of absolute deviations for full peak spreading.
+        Side Effects:
+            - Updates 'percent_bin' in orthogonality_dict with value, mask, edges, and SAD values
+            - Updates percent_bin metric in table_data
+            - Sets '%BIN' status to COMPUTED
         """
         for set_key in self.orthogonality_dict.keys():
             set_data = self.orthogonality_dict[set_key]
@@ -1693,7 +1904,20 @@ class Orthogonality(QObject):
 
         self.om_function_map["%BIN"]["status"] = FuncStatus.COMPUTED
 
-    def compute_percent_fit(self):
+    def compute_percent_fit(self) -> None:
+        """Compute the %FIT orthogonality metric for each set using multithreading.
+
+        Uses ThreadPoolExecutor to compute %FIT metric concurrently for all sets,
+        improving performance for computationally intensive calculations.
+
+        Side Effects:
+            - Updates 'percent_fit' in orthogonality_dict
+            - Updates percent_fit metric in table_data
+            - Sets '%FIT' status to COMPUTED (implicitly, after all computations)
+
+        Note:
+            The actual computation is delegated to compute_percent_fit_for_set function.
+        """
         sets = list(self.orthogonality_dict.items())
         results = []
 
@@ -1714,19 +1938,19 @@ class Orthogonality(QObject):
                     table_row_index=set_number - 1,
                 )
 
-    def compute_gilar_watson_metric(self):
+    def compute_gilar_watson_metric(self) -> None:
+        """Compute the Gilar-Watson orthogonality metric for each set.
+
+        This metric accounts for expected bin occupancy based on the number of peaks
+        and bins, using an exponential model for random peak distribution.
+
+        Formula: (occupied_bins - nb_bins) / (0.63 * total_bins - nb_bins)
+
+        Side Effects:
+            - Updates 'gilar-watson' in orthogonality_dict with color_mask and edges
+            - Updates gilar-watson metric in table_data
+            - Sets 'Gilar-Watson method' status to COMPUTED
         """
-        Computes a masked 2D histogram (bin box mask color) for the given x and y data.
-
-        Parameters:
-            x (array-like): The x-coordinates of the data points.
-            y (array-like): The y-coordinates of the data points.
-            nb_boxes (int): The number of bins along each axis.
-
-        Returns:
-            numpy.ma.MaskedArray: A masked array representing the 2D histogram, where bins with no data points are masked.
-        """
-
         for set_key in self.orthogonality_dict.keys():
             set_data = self.orthogonality_dict[set_key]
             x, y = set_data["x_values"], set_data["y_values"]
@@ -1735,12 +1959,10 @@ class Orthogonality(QObject):
                 x, y, self.bin_number
             )
             p_square = self.bin_number * self.bin_number
-            # alpha = self.nb_peaks/p_square
             sum_bin = h_color.count()
 
-            # orthogonality = sum_bin/((1-exp(-alpha))*p_square)
             orthogonality = (sum_bin - self.bin_number) / (
-                (0.63 * p_square) - self.bin_number
+                    (0.63 * p_square) - self.bin_number
             )
 
             set_data["gilar-watson"]["color_mask"] = h_color
@@ -1753,33 +1975,21 @@ class Orthogonality(QObject):
 
         self.om_function_map["Gilar-Watson method"]["status"] = FuncStatus.COMPUTED
 
-    def compute_modeling_approach(self):
-        """
-        Compute orthogonality metrics for each data set in self.orthogonality_dict.
+    def compute_modeling_approach(self) -> None:
+        """Compute orthogonality using the modeling approach metric.
 
-        This method iterates over each entry in self.orthogonality_dict, where each entry
-        provides a pair of normalized retention‐time arrays x and y. For each set it:
-          1. Builds a masked 2D histogram to identify which bins contain at least one peak.
-          2. Computes the bin‐coverage term C_pert = occupied_bins / (0.63 * nb_bins^2).
-          3. Performs an OLS regression y = b0 + b1*x to get R², then C_peaks = 1 - R².
-          4. Multiplies C_pert * C_peaks to get the overall orthogonality score.
-          5. Stores regression results and scores back in the dictionary.
-          6. Calls self.update_metrics(...) to record the final modeling metric.
+        This method combines bin coverage (C_pert) with correlation-based spread (C_peaks).
+        It builds a 2D histogram and performs linear regression to evaluate orthogonality.
 
-        Uses:
-            self.orthogonality_dict : dict[str, dict]
-                Each value must have keys "x_values" and "y_values" (array‐like).
-            self.bin_number : int
-                Number of bins along each axis for the 2D histogram.
-            compute_bin_box_mask_color : function
-                Returns a numpy.ma.MaskedArray of shape (nb_bins, nb_bins),
-                with masked entries where no peaks occur.
-            linregress : scipy.stats.linregress
-                Performs ordinary least‐squares regression.
-            extract_set_number : function
-                Extracts an integer index from the set_key for table placement.
-            self.update_metrics : method
-                Records the computed orthogonality in the results table.
+        Formula: orthogonality = C_pert * C_peaks
+                 where C_pert = occupied_bins / (0.63 * total_bins)
+                 and C_peaks = 1 - R²
+
+        Side Effects:
+            - Updates 'modeling_approach' with color_mask and edges in orthogonality_dict
+            - Updates 'linregress' and 'linregress_rvalue' in orthogonality_dict
+            - Updates modeling_approach metric in table_data
+            - Sets 'Modeling approach' status to COMPUTED
         """
         # Loop over each data set in the orthogonality dictionary
         for set_key, set_data in self.orthogonality_dict.items():
@@ -1796,22 +2006,16 @@ class Orthogonality(QObject):
             set_data["modeling_approach"]["edges"] = [x_edges, y_edges]
 
             # 2) Calculate bin-coverage term C_pert
-            #    p_square = total number of bins = nb_bins * nb_bins
             p_square = self.bin_number * self.bin_number
-            #    sum_bin = count of occupied bins (unmasked entries)
             sum_bin = h_color.count()
-            #    C_pert = occupied_bins / (0.63 * total_bins)
             c_pert = sum_bin / (0.63 * p_square)
 
             # 3) Perform OLS regression of y vs. x to get R²
             regression_result = linregress(x, y)
-            R2 = regression_result.rvalue**2
-            #    Store full regression result for later inspection
+            R2 = regression_result.rvalue ** 2
             set_data["linregress"] = regression_result
 
-            #    Correlation term C_peaks = 1 - R²
             c_peaks = 1.0 - R2
-            #    Store C_peaks in the dictionary (named linregress_rvalue for consistency)
             set_data["linregress_rvalue"] = c_peaks
 
             # 4) Compute overall orthogonality = C_pert * C_peaks
@@ -1829,7 +2033,20 @@ class Orthogonality(QObject):
 
         self.om_function_map["Modeling approach"]["status"] = FuncStatus.COMPUTED
 
-    def compute_conditional_entropy(self):
+    def compute_conditional_entropy(self) -> None:
+        """Compute conditional entropy-based orthogonality metric for each set.
+
+        Measures orthogonality using information theory: how much information about Y
+        is gained from knowing X. Higher conditional entropy relative to Y's entropy
+        indicates better orthogonality.
+
+        Formula: H(Y|X) / H(Y)
+
+        Side Effects:
+            - Updates 'conditional_entropy' with value, histogram, and edges in orthogonality_dict
+            - Updates conditional_entropy metric in table_data
+            - Sets 'Conditional entropy' status to COMPUTED
+        """
         for set_key in self.orthogonality_dict.keys():
             set_data = self.orthogonality_dict[set_key]
             x = set_data["x_values"]
@@ -1851,14 +2068,14 @@ class Orthogonality(QObject):
 
             # 3) Entropies
             px_nz = px[px > 0]
-            H_x = -np.sum(px_nz * np.log2(px_nz))
+            H_x = sum(px_nz * np.log2(px_nz))
             py_nz = py[py > 0]
-            H_y = -np.sum(py_nz * np.log2(py_nz))
+            H_y = sum(py_nz * np.log2(py_nz))
 
             pxy_nz = pxy.flatten()[pxy.flatten() > 0]
-            H_xy = -np.sum(pxy_nz * np.log2(pxy_nz))
+            H_xy = sum(pxy_nz * np.log2(pxy_nz))
 
-            # 4) Conditional entropy & orthogonality
+            # 4) Conditional entropy
             H_y_given_x = H_xy - H_x
             conditional_entropy = H_y_given_x / H_y
 
@@ -1876,13 +2093,26 @@ class Orthogonality(QObject):
 
         self.om_function_map["Conditional entropy"]["status"] = FuncStatus.COMPUTED
 
-    def compute_geometric_approach(self):
+    def compute_geometric_approach(self) -> None:
+        """Compute geometric orthogonality metric based on 2D peak capacity geometry.
+
+        Uses the angle between dimensions (beta) and peak capacities to compute
+        the practical peak capacity based on geometric considerations.
+
+        Requires retention_time_df_2d_peaks to be loaded first.
+
+        Side Effects:
+            - Updates geometric_approach metric in table_data
+            - Sets 'Geometric approach' status to COMPUTED
+
+        Note:
+            Uses standardized retention times and peak capacity data to compute
+            the angle beta via arccos(correlation) and geometric formulas.
+        """
         for set_key in self.orthogonality_dict.keys():
             set_data = self.orthogonality_dict[set_key]
-            x = np.array(set_data["x_values"])  # first‐dimension retention (normalized)
-            y = np.array(
-                set_data["y_values"]
-            )  # second‐dimension retention (normalized)
+            x = np.array(set_data["x_values"])
+            y = np.array(set_data["y_values"])
 
             D1_title = set_data["x_title"]
             D2_title = set_data["y_title"]
@@ -1901,9 +2131,7 @@ class Orthogonality(QObject):
             K[D2_title] = (K[D2_title] - mu_2) / sigma_2
 
             # Compute Pearson correlation C12 on the standardized columns
-            C12 = K[D1_title].corr(
-                K[D2_title]
-            )  # avoid tiny rounding‐error outside [−1,1]
+            C12 = K[D1_title].corr(K[D2_title])
 
             #  Compute beta = arccos(C12)  (radians)
             beta = acos(C12)
@@ -1934,12 +2162,20 @@ class Orthogonality(QObject):
         self.om_function_map["Geometric approach"]["status"] = FuncStatus.COMPUTED
 
     def load_data_frame_2d_peak(self, filepath: str, sheetname: str) -> None:
-        """
-        Loads 2D peak capacity data from an Excel file and updates the orthogonality dictionary, score, and table data.
+        """Load 2D peak capacity data from an Excel file.
 
-        Parameters:
+        Args:
             filepath (str): Path to the Excel file.
             sheetname (str): Name of the sheet to load.
+
+        Side Effects:
+            - Loads data into retention_time_df_2d_peaks
+            - Updates '2d_peak_capacity' in orthogonality_dict and table_data for each set
+            - Updates combination_df with peak capacity information
+            - Sets status to 'peak_capacity_loaded' on success or 'error' on failure
+
+        Raises:
+            Exception: Re-raises any exception after setting status to 'error'.
         """
         try:
             # Load data and clean columns once (no redundant file reading)
@@ -1955,9 +2191,7 @@ class Orthogonality(QObject):
                 expected_title = f"{columns[col1_idx]} vs {columns[col2_idx]}"
 
                 # Calculate 2D peak capacity
-                x_peak = self.retention_time_df_2d_peaks.iloc[
-                    0, col1_idx
-                ]  # Use named constant for row index
+                x_peak = self.retention_time_df_2d_peaks.iloc[0, col1_idx]
                 y_peak = self.retention_time_df_2d_peaks.iloc[0, col2_idx]
                 peak_capacity = x_peak * y_peak
 
@@ -1976,12 +2210,6 @@ class Orthogonality(QObject):
                     self.update_metrics(set_key, "2d_peak_capacity", peak_capacity)
 
                 else:
-                    # Guard clause for title validation
-                    # if self.orthogonality_dict[set_key]['title'] != expected_title:
-                    #     raise ValueError(
-                    #         f"Title mismatch: Computed for {set_key} '{expected_title}' vs Existing '{self.orthogonality_dict[set_key]['title']}'"
-                    #     )
-
                     # Use helper function for updates
                     self.update_metrics(
                         set_key,
@@ -2015,47 +2243,6 @@ class Orthogonality(QObject):
             self.status = "peak_capacity_loaded"
 
         except Exception as e:
-            # Proper error handling with logging
             print(f"Error loading 2D peaks: {str(e)}")
             self.status = "error"
-            raise  # Re-raise for upstream handling
-
-    def load_gradient_end_time(self, filepath: str, sheetname: str) -> None:
-        """
-        Loads 2D peak capacity data from an Excel file and updates the orthogonality dictionary, score, and table data.
-
-        Parameters:
-            filepath (str): Path to the Excel file.
-            sheetname (str): Name of the sheet to load.
-        """
-        try:
-
-            self.gradient_end_time_df = load_simple_table(filepath, sheetname)
-
-        except Exception as e:
-            # Proper error handling with logging
-            print(f"Error loading gradient time: {str(e)}")
-            self.status = "error"
-            raise  # Re-raise for upstream handling
-
-    def load_void_time(self, filepath: str, sheetname: str) -> None:
-        """
-        Loads 2D peak capacity data from an Excel file and updates the orthogonality dictionary, score, and table data.
-
-        Parameters:
-            filepath (str): Path to the Excel file.
-            sheetname (str): Name of the sheet to load.
-        """
-        try:
-
-            # Read table, assuming headers are on the second row (row index 1, i.e., header=1)
-            self.void_time_df = load_simple_table(filepath, sheetname)
-            # Drop columns where the name starts with 'Unnamed'
-
-            print(self.void_time_df)
-
-        except Exception as e:
-            # Proper error handling with logging
-            print(f"Error loading end time: {str(e)}")
-            self.status = "error"
-            raise  # Re-raise for upstream handling
+            raise
