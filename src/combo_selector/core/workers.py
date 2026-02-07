@@ -1,22 +1,71 @@
+"""Worker threads for asynchronous computation in the 2DComboSelector application.
+
+This module provides QRunnable worker classes for offloading computationally intensive
+tasks to background threads, keeping the GUI responsive. Each worker class handles
+a specific type of computation:
+
+- RedundancyWorker: Processes correlation heatmaps and redundancy checks
+- ResultsWorker: Computes final results and rankings
+- ResultsWorkerComputeCustomOMScore: Computes custom orthogonality scores
+- OMWorkerComputeOM: Computes orthogonality metrics
+- OMWorkerUpdateNumBin: Updates bin numbers for grid-based metrics
+- TableDataWorker: Formats table data for display
+
+All workers follow the Qt threading model using QRunnable and emit signals
+to communicate with the main thread.
+"""
+
 import logging
 
 from PySide6.QtCore import QObject, QRunnable, Signal, Slot
 
-# Setup logger
-
 
 class RedundancyWorkerSignals(QObject):
+    """Signal container for RedundancyWorker.
+
+    Attributes:
+        finished (Signal): Emitted when redundancy computation is complete.
+    """
     finished = Signal()
 
 
 class RedundancyWorker(QRunnable):
+    """Background worker for computing metric redundancy analysis.
+
+    Processes correlation heatmap generation and identifies groups of correlated
+    orthogonality metrics that may be redundant. Runs in a separate thread to
+    avoid blocking the GUI.
+
+    Attributes:
+        page: Reference to the RedundancyCheckPage instance.
+        signals (RedundancyWorkerSignals): Signal object for communication with main thread.
+    """
+
     def __init__(self, page):
+        """Initialize the redundancy worker.
+
+        Args:
+            page: RedundancyCheckPage instance containing the UI and data model.
+        """
         super().__init__()
         self.page = page  # This is an instance of RedundancyCheckPage
         self.signals = RedundancyWorkerSignals()
 
     @Slot()
     def run(self):
+        """Execute redundancy analysis in background thread.
+
+        Performs the following operations:
+        1. Plots correlation heatmap of orthogonality metrics
+        2. Updates correlation group table showing related metrics
+        3. Emits finished signal upon completion
+
+        Side Effects:
+            - Updates page's correlation heatmap visualization
+            - Updates correlation group table
+            - Emits finished signal
+            - Logs exceptions if errors occur
+        """
         try:
             self.page.plot_correlation_heat_map()
 
@@ -28,12 +77,35 @@ class RedundancyWorker(QRunnable):
 
 
 class ResultsWorkerSignals(QObject):
+    """Signal container for ResultsWorker classes.
+
+    Attributes:
+        finished (Signal): Emitted when computation is complete.
+        progress (Signal[int]): Emitted with progress percentage (0-100).
+    """
     finished = Signal()
     progress = Signal(int)
 
 
 class ResultsWorker(QRunnable):
+    """Background worker for computing final results with suggested scores.
+
+    Computes suggested orthogonality scores based on correlation groups,
+    calculates practical 2D peak capacities, and generates the final results table.
+
+    Attributes:
+        page: Reference to the ResultsPage instance.
+        om_list: List of orthogonality metrics to use.
+        signals (ResultsWorkerSignals): Signal object for communication.
+    """
+
     def __init__(self, page, om_list):
+        """Initialize the results worker.
+
+        Args:
+            page: ResultsPage instance containing UI and data model.
+            om_list: List of orthogonality metric names.
+        """
         super().__init__()
         self.page = page
         self.om_list = om_list
@@ -41,6 +113,21 @@ class ResultsWorker(QRunnable):
 
     @Slot()
     def run(self):
+        """Execute results computation in background thread.
+
+        Performs the following operations in sequence:
+        1. Computes suggested orthogonality scores
+        2. Calculates practical 2D peak capacities
+        3. Creates final results table with rankings
+        4. Emits finished signal
+
+        Side Effects:
+            - Updates model's suggested scores
+            - Updates practical 2D peak capacity values
+            - Creates results table in model
+            - Emits finished signal
+            - Logs exceptions if errors occur
+        """
         try:
 
             self.page.get_model().compute_suggested_score()
@@ -55,13 +142,46 @@ class ResultsWorker(QRunnable):
 
 
 class ResultsWorkerComputeCustomOMScore(QRunnable):
+    """Background worker for computing custom orthogonality scores.
+
+    Computes a custom orthogonality score based on user-selected metrics,
+    then calculates practical 2D peak capacity and generates the results table.
+    Emits progress updates during computation.
+
+    Attributes:
+        page: Reference to the ResultsPage instance.
+        signals (ResultsWorkerSignals): Signal object for communication.
+    """
+
     def __init__(self, page):
+        """Initialize the custom score worker.
+
+        Args:
+            page: ResultsPage instance containing UI and data model.
+        """
         super().__init__()
         self.page = page
         self.signals = ResultsWorkerSignals()
 
     @Slot()
     def run(self):
+        """Execute custom score computation with progress reporting.
+
+        Performs the following operations:
+        1. Gets checked metrics from the page (progress: 30%)
+        2. Computes custom orthogonality score (progress: 70%)
+        3. Calculates practical 2D peak capacities (progress: 95%)
+        4. Creates final results table
+        5. Emits finished signal
+
+        Side Effects:
+            - Emits progress signals at 30%, 70%, and 95%
+            - Updates model's computed scores
+            - Updates practical 2D peak capacity values
+            - Creates results table in model
+            - Emits finished signal
+            - Logs debug message and exceptions
+        """
         try:
             metric_list = self.page.om_list.get_checked_items()
             self.signals.progress.emit(30)
@@ -78,22 +198,56 @@ class ResultsWorkerComputeCustomOMScore(QRunnable):
 
 
 class OMWorkerSignals(QObject):
+    """Signal container for orthogonality metric workers.
+
+    Attributes:
+        progress (Signal[int]): Emitted with progress percentage (0-100).
+        finished (Signal): Emitted when computation is complete.
+    """
     progress = Signal(int)
     finished = Signal()
 
 
-# om_worker_thread.py
-
-
 class OMWorkerComputeOM(QRunnable):
+    """Background worker for computing orthogonality metrics.
+
+    Computes the selected orthogonality metrics (convex hull, bin box, correlations,
+    etc.) in a background thread to avoid freezing the GUI during intensive calculations.
+
+    Attributes:
+        metric_list (list): List of metric names (UI format) to compute.
+        model (Orthogonality): The orthogonality data model.
+        signals (OMWorkerSignals): Signal object for progress and completion.
+    """
+
     def __init__(self, metric_list, model):
+        """Initialize the orthogonality metric computation worker.
+
+        Args:
+            metric_list (list): List of metric names to compute (e.g., 
+                               ['Convex hull relative area', 'Bin box counting']).
+            model (Orthogonality): Orthogonality model instance.
+        """
         super().__init__()
         self.metric_list = metric_list
-        self.model = model  # not just a function now
+        self.model = model
         self.signals = OMWorkerSignals()
 
     @Slot()
     def run(self):
+        """Execute orthogonality metric computation with progress reporting.
+
+        Delegates computation to the model's compute_orthogonality_metric method,
+        which handles progress updates and metric calculations. Always emits
+        finished signal, even if an exception occurs.
+
+        Side Effects:
+            - Emits progress signals during computation (0-100%)
+            - Updates model's orthogonality_dict with computed metrics
+            - Updates model's table_data
+            - Always emits finished signal in finally block
+            - Logs exceptions if errors occur
+        """
         try:
             self.model.compute_orthogonality_metric(
                 self.metric_list, self.signals.progress
@@ -105,15 +259,47 @@ class OMWorkerComputeOM(QRunnable):
 
 
 class OMWorkerUpdateNumBin(QRunnable):
+    """Background worker for updating bin numbers in grid-based metrics.
+
+    Updates the number of bins used in bin box counting, Gilar-Watson, and
+    modeling approach metrics. This requires recomputing affected metrics
+    with the new bin configuration.
+
+    Attributes:
+        nb_bin (int): New number of bins per axis.
+        checked_metric_list (list): List of currently selected metrics.
+        model (Orthogonality): The orthogonality data model.
+        signals (OMWorkerSignals): Signal object for progress and completion.
+    """
+
     def __init__(self, nb_bin, checked_metric_list, model):
+        """Initialize the bin number update worker.
+
+        Args:
+            nb_bin (int): Number of bins per axis (e.g., 14 for 14x14 grid).
+            checked_metric_list (list): List of selected metric names.
+            model (Orthogonality): Orthogonality model instance.
+        """
         super().__init__()
-        self.checked_metric_list = checked_metric_list  # not just a function now
-        self.model = model  # not just a function now
+        self.checked_metric_list = checked_metric_list
+        self.model = model
         self.nb_bin = nb_bin
         self.signals = OMWorkerSignals()
 
     @Slot()
     def run(self):
+        """Execute bin number update with progress reporting.
+
+        Updates the model's bin_number property and recomputes bin-dependent
+        metrics. Always emits finished signal, even if an exception occurs.
+
+        Side Effects:
+            - Updates model's bin_number attribute
+            - Emits progress signals during recomputation
+            - Recomputes bin-dependent metrics if they were previously computed
+            - Always emits finished signal in finally block
+            - Logs exceptions if errors occur
+        """
         try:
             self.model.update_num_bins(
                 self.nb_bin, self.checked_metric_list, self.signals.progress
@@ -126,11 +312,35 @@ class OMWorkerUpdateNumBin(QRunnable):
 
 
 class TableDataWorkerSignals(QObject):
+    """Signal container for TableDataWorker.
+
+    Attributes:
+        finished (Signal[object, object, object]): Emitted with (formatted_data, row_count, col_count)
+                                                   when formatting is complete.
+    """
     finished = Signal(object, object, object)  # formatted_data, row_count, col_count
 
 
 class TableDataWorker(QRunnable):
+    """Background worker for formatting table data for display.
+
+    Converts pandas DataFrame data into formatted strings suitable for display
+    in Qt table widgets. Applies custom formatting rules based on column types
+    (e.g., integers for peak capacities, 3 decimal places for floats).
+
+    Attributes:
+        data (pd.DataFrame): Raw data to format.
+        header_labels (list): Column header names for determining format rules.
+        signals (TableDataWorkerSignals): Signal object for returning results.
+    """
+
     def __init__(self, data, header_labels):
+        """Initialize the table data formatting worker.
+
+        Args:
+            data (pd.DataFrame): DataFrame containing the data to format.
+            header_labels (list): List of column header names.
+        """
         super().__init__()
         self.data = data
         self.header_labels = header_labels
@@ -138,10 +348,32 @@ class TableDataWorker(QRunnable):
 
     @Slot()
     def run(self):
+        """Execute table data formatting in background thread.
+
+        Formats each cell according to column-specific rules:
+        - Peak capacity columns: Rounded integers
+        - Float columns: 3 decimal places
+        - Other columns: String conversion
+
+        Side Effects:
+            - Emits finished signal with (formatted_data, row_count, col_count)
+
+        Note:
+            Uses a nested format_value function to apply column-specific formatting.
+        """
         data_cast = self.data.astype(object)
         data_list = data_cast.values.tolist()
 
         def format_value(val, col_idx):
+            """Format a single cell value based on its column.
+
+            Args:
+                val: The value to format.
+                col_idx (int): Column index for determining format rules.
+
+            Returns:
+                str: Formatted string representation of the value.
+            """
             label = (
                 self.header_labels[col_idx] if col_idx < len(self.header_labels) else ""
             )

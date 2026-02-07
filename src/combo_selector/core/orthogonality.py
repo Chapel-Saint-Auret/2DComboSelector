@@ -201,7 +201,7 @@ class Orthogonality(QObject):
     """Main class for computing and managing orthogonality metrics for 2D chromatography analysis.
 
     This class handles loading retention time data,normalization of retention time, computing various orthogonality metrics,
-    and managing results for multi-dimensional chromatography column selection.
+    and managing results for multidimensional chromatography column selection.
 
     Signals:
         progressChanged: Qt signal emitting progress updates (int) during metric computation.
@@ -553,14 +553,12 @@ class Orthogonality(QObject):
             },
         }
 
-    def update_num_bins(self, nb_bin: int, metric_list=None, progress_cb=None) -> None:
+    def update_num_bins(self, nb_bin: int) -> None:
         """Set the number of bins for box calculations and update dependent properties.
 
         Args:
             nb_bin (int): Number of bins to use for box-based calculations.
                          Must be a positive integer.
-            metric_list (list, optional): List of metrics to recompute.
-            progress_cb (Signal, optional): Progress callback signal for updates.
 
         Raises:
             ValueError: If input is not a positive integer.
@@ -668,9 +666,7 @@ class Orthogonality(QObject):
         if self.orthogonality_metric_corr_matrix_df.empty:
             return pd.DataFrame()
 
-        correlated_pair = {}
         orig_corr = self.orthogonality_metric_corr_matrix_df.corr()
-        c = orig_corr.abs()
 
         correlated_metric = set()
 
@@ -687,7 +683,7 @@ class Orthogonality(QObject):
                     row_metric_list.append(column_metric_name)
 
             # convert list in to set() to sort metric name, it will ease the process
-            # to remove dupplicate groupe of correlated metric
+            # to remove duplicate group of correlated metric
             row_metric_list = sorted(set(row_metric_list))
 
             # you cannot add list in set() object
@@ -861,12 +857,12 @@ class Orthogonality(QObject):
         Side Effects:
             Updates orthogonality_result_df with final results and rankings.
         """
-        if self.use_suggested_score:
-            om_score = "suggested_score"
-            om_score_label = "Suggested score"
-        else:
-            om_score = "computed_score"
-            om_score_label = "Computed score"
+        # if self.use_suggested_score:
+        #     om_score = "suggested_score"
+        #     om_score_label = "Suggested score"
+        # else:
+        #     om_score = "computed_score"
+        #     om_score_label = "Computed score"
 
         column_name = [
             "set_number",
@@ -1814,7 +1810,6 @@ class Orthogonality(QObject):
 
         for set_key in self.orthogonality_dict.keys():
             set_data = self.orthogonality_dict[set_key]
-            x, y = set_data["x_values"], set_data["y_values"]
 
             ao = set_data["a_mean"]
             go = set_data["g_mean"]
@@ -1919,7 +1914,6 @@ class Orthogonality(QObject):
             The actual computation is delegated to compute_percent_fit_for_set function.
         """
         sets = list(self.orthogonality_dict.items())
-        results = []
 
         with ThreadPoolExecutor() as executor:
             futures = [

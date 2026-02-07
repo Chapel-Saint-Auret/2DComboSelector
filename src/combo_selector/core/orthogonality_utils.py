@@ -1,3 +1,14 @@
+"""Utility functions for orthogonality calculations in 2D chromatography analysis.
+
+This module provides helper functions for:
+- Loading data from Excel files
+- Normalizing retention time series
+- Computing geometric relationships between points and curves
+- Calculating bin box histograms
+- Computing percent fit metrics
+- Clustering correlated metrics
+"""
+
 import os
 import re
 import sys
@@ -6,14 +17,25 @@ import numpy as np
 import pandas as pd
 from scipy.optimize import minimize_scalar
 from scipy.stats import tmean, tstd
+from collections import Counter
 
 
-def resource_path(relative_path):
-    """
-    Get absolute path to resource, works for dev and for PyInstaller bundle.
+def resource_path(relative_path: str) -> str:
+    """Get absolute path to resource, works for dev environement and for PyInstaller bundle.
 
-    :param relative_path: Path relative to this file, e.g. 'resources/icons/myicon.svg'
-    :return: Absolute path usable by Qt
+    This function resolves paths correctly whether running from source
+    or from a PyInstaller-bundled executable.
+
+    Args:
+        relative_path (str): Path relative to this file, 
+                            e.g. 'resources/icons/myicon.svg'
+
+    Returns:
+        str: Absolute path .
+
+    Example:
+        >>> icon_path = resource_path('resources/icons/app.svg')
+        >>> # Returns full path whether in dev or bundled mode
     """
     try:
         # PyInstaller creates a temp folder and stores its path in _MEIPASS
@@ -25,10 +47,32 @@ def resource_path(relative_path):
     return os.path.join(base_path, relative_path)
 
 
-def load_simple_table(filepath, sheetname=0):
+def load_simple_table(filepath: str, sheetname: str = 0) -> pd.DataFrame:
+    """Load a simple 2-row or 2-column table from an Excel file.
+
+    Handles two table orientations:
+    - Horizontal: 2 rows x N columns (row 0 = headers, row 1 = values)
+    - Vertical: N rows x 2 columns (col 0 = headers, col 1 = values)
+
+    Args:
+        filepath (str): Path to the Excel file.
+        sheetname (str | int, optional): Name or index of the sheet to load. 
+                                         Defaults to 0 (first sheet).
+
+    Returns:
+        pd.DataFrame: Single-row DataFrame with column headers and values.
+
+    Raises:
+        ValueError: If table shape is not 2xN or Nx2.
+
+    Example:
+        >>> dataframe = load_simple_table("peak_capacities.xlsx", "Sheet1")
+        >>> # Returns DataFrame with peak capacity values
+    """
     df = pd.read_excel(filepath, sheet_name=sheetname, header=None)
     df = df.dropna(how="all").dropna(axis=1, how="all")
-    # Check shape to decide
+
+    # Check shape to decide orientation
     if df.shape[0] == 2 and df.shape[1] >= 2:
         # Horizontal: first row is header
         columns = df.iloc[0]
@@ -45,14 +89,41 @@ def load_simple_table(filepath, sheetname=0):
 
 
 def load_table_with_header_anywhere(
-    filepath, sheetname=0, min_header_cols=2, auto_fix_duplicates=True
-):
+        filepath: str,
+        sheetname: str | int = 0,
+        min_header_cols: int = 2,
+        auto_fix_duplicates: bool = True
+) -> pd.DataFrame:
+    """Load a table from Excel, automatically detecting the header row.
+
+    This function searches for the first row with at least `min_header_cols`
+    non-NaN values and treats it as the header. It handles various Excel
+    formatting issues including:
+    - Headers not on the first row
+    - Whitespace in column names
+    - Duplicate column names
+    - Unnamed columns
+
+    Args:
+        filepath (str): Path to the Excel file.
+        sheetname (str | int, optional): Name or index of the sheet. Defaults to 0.
+        min_header_cols (int, optional): Minimum number of non-NaN values required
+                                         for a row to be considered a header. Defaults to 2.
+        auto_fix_duplicates (bool, optional): If True, allows pandas to auto-rename
+                                             duplicate columns with .1, .2 suffixes.
+                                             If False, raises ValueError. Defaults to True.
+
+    Returns:
+        pd.DataFrame: Loaded table with cleaned column names.
+
+    Raises:
+        ValueError: If no header row is found or if duplicate columns exist and
+                   auto_fix_duplicates is False.
+
+    Example:
+        >>> dataframe = load_table_with_header_anywhere("data.xlsx", "Retention Times")
+        >>> # Automatically finds header row and loads data
     """
-    Loads the first table in an Excel sheet, starting from the first row
-    with at least `min_header_cols` non-NaN values (assumed header).
-    Strips whitespace from column names and warns or fixes duplicates.
-    """
-    from collections import Counter
 
     # Load all as raw (no header), strings to avoid type problems
     raw = pd.read_excel(filepath, sheet_name=sheetname, header=None, dtype=str)
@@ -80,7 +151,6 @@ def load_table_with_header_anywhere(
         print("⚠️ Warning: Duplicate columns found:", duplicates)
         if auto_fix_duplicates:
             # Pandas will already have renamed with .1, .2, etc. Keep those for now
-            # Optionally, you could further rename or alert here.
             print("Duplicates were auto-renamed by pandas with .1, .2 etc.")
         else:
             raise ValueError(f"Duplicate column names found: {duplicates}")
@@ -88,17 +158,48 @@ def load_table_with_header_anywhere(
     return df
 
 
-# --- Usage example ---
-# df_norm_rt = load_table_with_header_anywhere("Data Soraya 5.xlsx", sheetname="Normalize RT")
-# print(df_norm_rt)
+def extract_set_number(name: str) -> int | None:
+    """Extract the numeric set number from a set name string.
 
+    Args:
+        name (str): Set name containing a number, e.g., 'Set 1', 'Set 42'.
 
-def extract_set_number(name):
+    Returns:
+        int | None: The extracted integer, or None if no digits are found.
+
+    Example:
+        >>> extract_set_number("Set 15")
+        15
+        >>> extract_set_number("Set ABC")
+        None
+    """
     match = re.search(r"\d+", name)  # Find the first sequence of digits
     return int(match.group()) if match else None
 
 
-def normalize_x_y_series(x_series, y_series):
+def normalize_x_y_series(
+        x_series: pd.Series,
+        y_series: pd.Series
+) -> tuple[pd.Series, pd.Series]:
+    """Normalize two pandas Series using min-max normalization to [0, 1] range.
+
+    Formula: (value - min) / (max - min)
+
+    Args:
+        x_series (pd.Series): X-coordinate series to normalize.
+        y_series (pd.Series): Y-coordinate series to normalize.
+
+    Returns:
+        tuple[pd.Series, pd.Series]: Normalized x_series and y_series.
+                                     Negative values are replaced with empty strings.
+
+    Example:
+        >>> x = pd.Series([1, 2, 3, 4, 5])
+        >>> y = pd.Series([10, 20, 30, 40, 50])
+        >>> x_norm, y_norm = normalize_x_y_series(x, y)
+        >>> # x_norm: [0.0, 0.25, 0.5, 0.75, 1.0]
+        >>> # y_norm: [0.0, 0.25, 0.5, 0.75, 1.0]
+    """
     x_min = min(x_series)
     x_max = max(x_series)
 
@@ -112,22 +213,25 @@ def normalize_x_y_series(x_series, y_series):
         lambda y: (y - y_min) / (y_max - y_min) if y >= 0 else ""
     )
 
-    # cast value to float to avoid issue introduced by empty string
     return x_norm_series, y_norm_series
 
 
-def point_is_above_curve(x, y, curve):
-    """
-    Determines whether a given point (x, y) lies above a specified curve.
+def point_is_above_curve(x: float, y: float, curve: callable) -> bool:
+    """Determine whether a point (x, y) lies above a curve.
 
-    Parameters:
+    Args:
         x (float): The x-coordinate of the point.
         y (float): The y-coordinate of the point.
-        curve (callable): A function representing the curve. It should take a single argument (x)
-                          and return the corresponding y-value on the curve.
+        curve (callable): A function representing the curve. Takes x as input
+                         and returns the y-value on the curve.
 
     Returns:
-        bool: True if the point (x, y) is above the curve, False otherwise.
+        bool: True if the point is above the curve, False otherwise.
+
+    Example:
+        >>> curve = lambda x: x**2  # Parabola
+        >>> point_is_above_curve(0.5, 0.5, curve)
+        True  # Point (0.5, 0.5) is above y = x²
     """
     # Evaluate the curve at the given x-coordinate
     curve_y = curve(x)
@@ -139,18 +243,22 @@ def point_is_above_curve(x, y, curve):
         return False  # The point is on or below the curve
 
 
-def point_is_below_curve(x, y, curve):
-    """
-    Determines whether a given point (x, y) lies below a specified curve.
+def point_is_below_curve(x: float, y: float, curve: callable) -> bool:
+    """Determine whether a point (x, y) lies below a curve.
 
-    Parameters:
+    Args:
         x (float): The x-coordinate of the point.
         y (float): The y-coordinate of the point.
-        curve (callable): A function representing the curve. It should take a single argument (x)
-                          and return the corresponding y-value on the curve.
+        curve (callable): A function representing the curve. Takes x as input
+                         and returns the y-value on the curve.
 
     Returns:
-        bool: True if the point (x, y) is below the curve, False otherwise.
+        bool: True if the point is below the curve, False otherwise.
+
+    Example:
+        >>> curve = lambda x: x**2  # Parabola
+        >>> point_is_below_curve(0.5, 0.1, curve)
+        True  # Point (0.5, 0.1) is below y = x²
     """
     # Evaluate the curve at the given x-coordinate
     curve_y = curve(x)
@@ -162,19 +270,28 @@ def point_is_below_curve(x, y, curve):
         return False  # The point is on or above the curve
 
 
-def get_list_of_point_above_curve(x_series, y_series, curve):
-    """
-    Returns a list of points that lie above a specified curve.
+def get_list_of_point_above_curve(
+        x_series: np.ndarray | pd.Series,
+        y_series: np.ndarray | pd.Series,
+        curve: callable
+) -> list[tuple[float, float]]:
+    """Filter points that lie above a specified curve.
 
-    Parameters:
+    Args:
         x_series (array-like): The x-coordinates of the points.
         y_series (array-like): The y-coordinates of the points.
-        curve (callable): A function representing the curve. It should take a single argument (x)
-                          and return the corresponding y-value on the curve.
+        curve (callable): A function representing the curve. Takes x as input
+                         and returns the y-value on the curve.
 
     Returns:
-        list: A list of tuples, where each tuple contains the (x, y) coordinates of a point
-              that lies above the curve.
+        list[tuple[float, float]]: List of (x, y) tuples for points above the curve.
+
+    Example:
+        >>> x = np.array([0.2, 0.5, 0.8])
+        >>> y = np.array([0.1, 0.3, 0.7])
+        >>> curve = lambda x: x**2
+        >>> points = get_list_of_point_above_curve(x, y, curve)
+        >>> # Returns points where y > x²
     """
     point_above = []
 
@@ -187,19 +304,28 @@ def get_list_of_point_above_curve(x_series, y_series, curve):
     return point_above
 
 
-def get_list_of_point_below_curve(x_series, y_series, curve):
-    """
-    Returns a list of points that lie below a specified curve.
+def get_list_of_point_below_curve(
+        x_series: np.ndarray | pd.Series,
+        y_series: np.ndarray | pd.Series,
+        curve: callable
+) -> list[tuple[float, float]]:
+    """Filter points that lie below a specified curve.
 
-    Parameters:
+    Args:
         x_series (array-like): The x-coordinates of the points.
         y_series (array-like): The y-coordinates of the points.
-        curve (callable): A function representing the curve. It should take a single argument (x)
-                          and return the corresponding y-value on the curve.
+        curve (callable): A function representing the curve. Takes x as input
+                         and returns the y-value on the curve.
 
     Returns:
-        list: A list of tuples, where each tuple contains the (x, y) coordinates of a point
-              that lies below the curve.
+        list[tuple[float, float]]: List of (x, y) tuples for points below the curve.
+
+    Example:
+        >>> x = np.array([0.2, 0.5, 0.8])
+        >>> y = np.array([0.01, 0.1, 0.3])
+        >>> curve = lambda x: x**2
+        >>> points = get_list_of_point_below_curve(x, y, curve)
+        >>> # Returns points where y < x²
     """
     point_below = []
 
@@ -212,19 +338,33 @@ def get_list_of_point_below_curve(x_series, y_series, curve):
     return point_below
 
 
-def compute_bin_box_mask_color(x, y, nb_boxes):
-    """
-    Computes a masked 2D histogram (bin box mask color) for the given x and y data.
+def compute_bin_box_mask_color(
+        x: np.ndarray | pd.Series,
+        y: np.ndarray | pd.Series,
+        nb_boxes: int
+) -> tuple[np.ma.MaskedArray, np.ndarray, np.ndarray]:
+    """Compute a masked 2D histogram showing which bins contain data points.
 
-    Parameters:
+    Creates a 2D histogram over [0, 1] x [0, 1] space and masks empty bins.
+    This is used for bin box counting orthogonality metrics.
+
+    Args:
         x (array-like): The x-coordinates of the data points.
         y (array-like): The y-coordinates of the data points.
         nb_boxes (int): The number of bins along each axis.
 
     Returns:
-        numpy.ma.MaskedArray: A masked array representing the 2D histogram, where bins with no data points are masked.
-    """
+        tuple[np.ma.MaskedArray, np.ndarray, np.ndarray]: 
+            - Masked histogram (transposed), with empty bins masked
+            - x bin edges
+            - y bin edges
 
+    Example:
+        >>> x = np.random.rand(100)
+        >>> y = np.random.rand(100)
+        >>> hist, x_edges, y_edges = compute_bin_box_mask_color(x, y, 10)
+        >>> # hist.count() gives number of occupied bins
+    """
     # Compute the 2D histogram edges based on the range [0, 1]
     h, x_edges, y_edges = np.histogram2d([0, 1], [0, 1], bins=(nb_boxes, nb_boxes))
 
@@ -250,24 +390,77 @@ def compute_bin_box_mask_color(x, y, nb_boxes):
     return h_color.T, x_edges, y_edges
 
 
-def compute_percent_fit_for_set(set_key, set_data):
-    def objective(x, peak, curve):
+def compute_percent_fit_for_set(
+        set_key: str,
+        set_data: dict
+) -> tuple[str, dict]:
+    """Compute the %FIT orthogonality metric for a single set.
+
+    The %FIT metric measures how well peaks fit to quadratic regression curves.
+    It evaluates both X vs Y and Y vs X regressions, computing minimal distances
+    for points above and below each curve.
+
+    Args:
+        set_key (str): Identifier for the set (e.g., 'Set 1').
+        set_data (dict): Dictionary containing 'x_values' and 'y_values' keys
+                        with retention time data.
+
+    Returns:
+        tuple[str, dict]: 
+            - set_key: The input set identifier
+            - result: Dictionary containing:
+                - 'quadratic_reg_xy': Quadratic model for X vs Y
+                - 'quadratic_reg_yx': Quadratic model for Y vs X
+                - 'percent_fit': Dict with delta values and final %FIT value
+
+    Note:
+        This function uses multithreading internally for peak optimization.
+        The %FIT value ranges from 0 (poor fit) to 1 (perfect fit).
+
+    Example:
+        >>> set_data = {'x_values': x_series, 'y_values': y_series}
+        >>> set_key, result = compute_percent_fit_for_set('Set 1', set_data)
+        >>> percent_fit_value = result['percent_fit']['value']
+    """
+
+    def objective(x: float, peak: tuple, curve: callable) -> float:
+        """Objective function for minimizing distance from peak to curve.
+
+        Args:
+            x (float): X-coordinate on curve to evaluate.
+            peak (tuple): (x, y) coordinates of the peak.
+            curve (callable): Curve function.
+
+        Returns:
+            float: Squared Euclidean distance from peak to curve at x.
+        """
         y = curve(x)
         return (x - peak[0]) ** 2 + (y - peak[1]) ** 2
 
-    def compute_minimal_distances1(peaks, curve):
-        results = []
-        for peak in peaks:
-            res = minimize_scalar(
-                objective, method="bounded", bounds=(0.0, 1.0), args=(peak, curve)
-            )
-            results.append(res.x)  # Or res.fun for actual minimal value
-        return results
+    def compute_minimal_distances(
+            peaks: list,
+            curve: callable,
+            num_points: int = 50,
+            fine_range: float = 0.01
+    ) -> list[float]:
+        """Compute minimal distance from each peak to curve with refinement.
 
-    def compute_minimal_distances(peaks, curve, num_points=50, fine_range=0.01):
+        Uses coarse grid search followed by fine optimization for efficiency.
+        Multithreaded for performance.
+
+        Args:
+            peaks (list): List of (x, y) peak coordinates.
+            curve (callable): Curve function.
+            num_points (int, optional): Number of points in coarse grid. Defaults to 50.
+            fine_range (float, optional): Range for fine optimization. Defaults to 0.01.
+
+        Returns:
+            list[float]: X-coordinates on curve closest to each peak.
+        """
         xs = np.linspace(0, 1, num_points)
 
-        def optimize_peak(peak):
+        def optimize_peak(peak: tuple) -> float:
+            """Optimize distance for a single peak."""
             ys = curve(xs)
             dists = (xs - peak[0]) ** 2 + (ys - peak[1]) ** 2
             min_idx = np.argmin(dists)
@@ -285,20 +478,17 @@ def compute_percent_fit_for_set(set_key, set_data):
             results = list(executor.map(optimize_peak, peaks))
         return results
 
-    set_number = set_key
-
-    if set_key == "Set 270":
-        toto = 2
     x, y = set_data["x_values"], set_data["y_values"]
     quadratic_model_xy = np.poly1d(np.polyfit(x, y, 2))
     quadratic_model_yx = np.poly1d(np.polyfit(x, y, 2))
 
-    # Your helpers must return list of (x, y) tuples!
+    # Separate peaks above and below curves
     peak_above_xy = get_list_of_point_above_curve(x, y, quadratic_model_xy)
     peak_above_yx = get_list_of_point_above_curve(y, x, quadratic_model_yx)
     peak_below_xy = get_list_of_point_below_curve(x, y, quadratic_model_xy)
     peak_below_yx = get_list_of_point_below_curve(y, x, quadratic_model_yx)
 
+    # Compute minimal distances
     minimal_distance_below_xy = compute_minimal_distances(
         peak_below_xy, quadratic_model_xy
     )
@@ -312,6 +502,7 @@ def compute_percent_fit_for_set(set_key, set_data):
         peak_above_yx, quadratic_model_yx
     )
 
+    # Compute statistics for distances
     xy1_avg = tmean(minimal_distance_below_xy) if minimal_distance_below_xy else 0
     yx1_avg = tmean(minimal_distance_below_yx) if minimal_distance_below_yx else 0
     xy1_sd = (
@@ -330,11 +521,13 @@ def compute_percent_fit_for_set(set_key, set_data):
         tstd(minimal_distance_above_yx) if len(minimal_distance_above_yx) > 1 else 0
     )
 
+    # Compute delta values (normalized fit metrics)
     delta_xy_avg = ((1 - abs(1 - (xy1_avg * 4))) + (1 - abs(1 - (xy2_avg * 4)))) / 2
     delta_xy_sd = ((1 - abs(1 - (xy1_sd * 7))) + (1 - abs(1 - (xy2_sd * 7)))) / 2
     delta_yx_avg = ((1 - abs(1 - (yx1_avg * 4))) + (1 - abs(1 - (yx2_avg * 4)))) / 2
     delta_yx_sd = ((1 - abs(1 - (yx1_sd * 7))) + (1 - abs(1 - (yx2_sd * 7)))) / 2
 
+    # Final %FIT metric (mean of all delta values)
     percent_fit = (delta_xy_avg + delta_xy_sd + delta_yx_avg + delta_yx_sd) / 4
 
     # Return all needed info to update set_data in main thread
@@ -352,7 +545,31 @@ def compute_percent_fit_for_set(set_key, set_data):
     return set_key, result
 
 
-def cluster_and_fuse(data):
+def cluster_and_fuse(data: list[tuple]) -> tuple[list[list[tuple]], list[list]]:
+    """Cluster tuples that share common items and fuse them into groups.
+
+    Uses breadth-first search (BFS) to identify connected components where
+    tuples are connected if they share at least one common item.
+
+    Args:
+        data (list[tuple]): List of tuples, where each tuple contains items
+                           (e.g., metric names) that may overlap with other tuples.
+
+    Returns:
+        tuple[list[list[tuple]], list[list]]:
+            - grouped: List of clusters, each containing the original tuples
+            - fused: List of clusters, each containing unique items in first-seen order
+
+    Example:
+        >>> data = [('A', 'B'), ('B', 'C'), ('D', 'E')]
+        >>> grouped, fused = cluster_and_fuse(data)
+        >>> # grouped = [[('A', 'B'), ('B', 'C')], [('D', 'E')]]
+        >>> # fused = [['A', 'B', 'C'], ['D', 'E']]
+
+    Note:
+        Used for grouping correlated orthogonality metrics that share common
+        correlations into coherent clusters.
+    """
     # 1) Build a mapping: item → list of tuple-indices
     item_to_idxs = {}
     for idx, tpl in enumerate(data):
@@ -362,7 +579,7 @@ def cluster_and_fuse(data):
             elif idx not in item_to_idxs[item]:
                 item_to_idxs[item].append(idx)
 
-    visited = []  # indices we’ve already enqueued/seen
+    visited = []  # indices we've already enqueued/seen
     clusters = []  # list of connected components (each is a list of indices)
 
     # 2) For each tuple-index, do a BFS (using a plain list as queue)
