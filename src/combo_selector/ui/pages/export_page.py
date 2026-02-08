@@ -1,20 +1,22 @@
+"""Export page for saving figures and data tables from orthogonality analysis.
+
+This module provides the ExportPage class which handles:
+- Exporting figures for each set and metric type
+- Exporting data tables to Excel format
+- Live preview of figures before export
+- Batch export with custom directory structure
+"""
+
 import os
-
-import matplotlib
-
-matplotlib.use("Agg")  # make sure we’re using the non-GUI “Agg” backend
-
 from functools import partial
 
 import pandas as pd
 from matplotlib.backends.backend_qtagg import FigureCanvas
 from matplotlib.figure import Figure
-from PySide6.QtCore import QSize, Qt, QTimer
-from PySide6.QtGui import QColor
+from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QFileDialog,
     QFrame,
-    QGraphicsDropShadowEffect,
     QGroupBox,
     QHBoxLayout,
     QLabel,
@@ -24,6 +26,7 @@ from PySide6.QtWidgets import (
     QSizePolicy,
     QSplitter,
     QVBoxLayout,
+    QWidget,
 )
 
 from combo_selector.core.plot_utils import PlotUtils
@@ -31,39 +34,55 @@ from combo_selector.ui.widgets.checkable_combo_list import CheckableComboList
 from combo_selector.ui.widgets.checkable_tree_list import CheckableTreeList
 from combo_selector.ui.widgets.custom_toolbar import CustomToolbar
 from combo_selector.ui.widgets.line_widget import LineWidget
-from combo_selector.ui.widgets.neumorphism import *
+from combo_selector.ui.widgets.neumorphism import BoxShadow
 from combo_selector.ui.widgets.style_table import StyledTable
 from combo_selector.utils import resource_path
 
-PLOT_SIZE = QSize(600, 400)
+# Get icon path for dropdown arrow
 drop_down_icon_path = resource_path("icons/drop_down_arrow.png").replace("\\", "/")
 
 
 class ExportPage(QFrame):
-    def __init__(self, model=None, title="Unnamed"):
-        """
-        Initialize the ExportPage.
+    """Page for exporting figures and tables from orthogonality analysis.
 
-        Layout:
-          - Top row: left input panel (export options) + right figure visualization
-          - (Optional) Table section is prepared but not added to splitter by default
+    Provides a user interface for:
+    - Selecting which sets and metrics to export as figures
+    - Choosing export directories and folder structures
+    - Previewing figures before export
+    - Exporting data tables to Excel with multiple sheets
+    - Batch processing multiple figures with high resolution (600 DPI)
+
+    Attributes:
+        model: Reference to the Orthogonality data model.
+        fig (Figure): Matplotlib figure for rendering plots.
+        canvas (FigureCanvas): Qt canvas for displaying matplotlib figures.
+        axe (Axes): Main matplotlib axes for plotting.
+        plot_utils (PlotUtils): Utility class for generating various plot types.
+        plot_functions_map (dict): Maps plot type names to their rendering functions.
+        table_functions_map (dict): Maps table names to model getter methods.
+        orthogonality_dict (dict): Dictionary of computed orthogonality metrics.
+    """
+
+    def __init__(self, model=None, title: str = "Unnamed"):
+        """Initialize the ExportPage with figure export and table export panels.
+
+        Args:
+            model: Orthogonality model instance containing computed data.
+            title (str, optional): Page title (currently unused). Defaults to "Unnamed".
+
+        Layout Structure:
+            - Top section:
+                - Left: Export options panel (figures and tables)
+                - Right: Figure preview/visualization
+            - Bottom section (hidden by default): Table preview
         """
         super().__init__()
 
-        # --- state ------------------------------------------------------------
-        self.blink_timer = QTimer()
-        self.blink_step = 0
-        self.blink_ax = None
-        self.animations = []
-        self.highlighted_ax = None
-        self.selected_scatter_collection = None
-        self.selected_axe = None
-        self.full_scatter_collection = None
-        self.selected_set = "Set 1"
-        self.orthogonality_dict = None
+        # --- Data model -------------------------------------------------------
         self.model = model
+        self.orthogonality_dict = None
 
-        # --- plotting setup ---------------------------------------------------
+        # --- Plotting setup ---------------------------------------------------
         self.fig = Figure(figsize=(15, 15))
         self.canvas = FigureCanvas(self.fig)
         self.toolbar = CustomToolbar(self.canvas)
@@ -76,6 +95,7 @@ class ExportPage(QFrame):
         self.plot_utils = PlotUtils(fig=self.fig)
         self.plot_utils.set_axe(self.axe)
 
+        # Map plot type names to rendering functions
         self.plot_functions_map = {
             "Convex Hull": partial(self.plot_convex_hull),
             "Bin Box": partial(self.plot_bin_box),
@@ -87,6 +107,7 @@ class ExportPage(QFrame):
             "%BIN": partial(self.plot_utils.plot_percent_bin),
         }
 
+        # Map table names to model getter methods
         self.table_functions_map = {
             "Normalized retention table": self.model.get_normalized_retention_time_df,
             "2D Combination table": self.model.get_combination_df,
@@ -95,7 +116,7 @@ class ExportPage(QFrame):
             "Final result and ranking table": self.model.get_orthogonality_result_df,
         }
 
-        # --- page frame & outer layout ---------------------------------------
+        # --- Page frame & outer layout ----------------------------------------
         self.setFrameShape(QFrame.StyledPanel)
         self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self.main_layout = QVBoxLayout(self)
@@ -130,7 +151,6 @@ class ExportPage(QFrame):
         user_input_scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
 
         user_input_frame = QFrame()
-        # user_input_frame.setStyleSheet("background-color: lightgrey; border-radius: 10px;")
         user_input_frame.setFixedWidth(290)
 
         user_input_frame_layout = QVBoxLayout(user_input_frame)
@@ -145,39 +165,7 @@ class ExportPage(QFrame):
         input_layout.addWidget(input_title)
         input_layout.addWidget(user_input_scroll_area)
 
-        # Info group (stylesheet unchanged)
-        info_group = QGroupBox("Info")
-        info_group.setStyleSheet("""
-            QGroupBox {
-                font-size: 14px;
-                font-weight: bold;
-                background-color: #e7e7e7;
-                color: #154E9D;
-                border: 1px solid #d0d4da;
-                border-radius: 12px;
-                margin-top: 25px;
-            }
-            QGroupBox::title {
-                subcontrol-origin: margin;
-                subcontrol-position: top left;
-                padding: 0px;
-                margin-top: -8px;
-            }
-            QLabel {
-                background-color: transparent;
-                color: #3f4c5a;
-            }
-        """)
-        info_layout = QVBoxLayout()
-        info_layout.addWidget(QLabel("Number of conditions:"))
-        self.condition_label = QLabel("---")
-        info_layout.addWidget(self.condition_label)
-        info_layout.addWidget(QLabel("Number of combinations:"))
-        self.combination_label = QLabel("---")
-        info_layout.addWidget(self.combination_label)
-        info_group.setLayout(info_layout)
-
-        # Export figure group (stylesheet unchanged)
+        # Export figure group
         export_figure_grp = QGroupBox("Export data set figure")
         export_figure_grp.setStyleSheet(f"""
              QGroupBox {{
@@ -195,7 +183,7 @@ class ExportPage(QFrame):
                 padding: 0px;
                 margin-top: -8px;
             }}
-                QPushButton {{
+            QPushButton {{
                 background-color: #d5dcf9;
                 color: #2C3346;
                 border: none;
@@ -213,15 +201,14 @@ class ExportPage(QFrame):
                 background-color: #E5E9F5;
                 color: #FFFFFF;
             }}
-               QLabel {{
-            background-color: transparent;
-            color: #2C3E50;
-            font-family: "Segoe UI";
-            font-weight: bold;
+            QLabel {{
+                background-color: transparent;
+                color: #2C3E50;
+                font-family: "Segoe UI";
+                font-weight: bold;
             }}
-
             QComboBox::drop-down {{
-            border: none;
+                border: none;
             }}
             QComboBox::down-arrow {{
                 image: url("{drop_down_icon_path}");
@@ -230,7 +217,7 @@ class ExportPage(QFrame):
 
         form_layout = QVBoxLayout()
 
-        # export directory
+        # Export directory
         self.figure_export_directory_lineEdit = QLineEdit()
         self.figure_export_directory_lineEdit.setText(os.getcwd())
         self.export_figure_directory_btn = QPushButton("...")
@@ -242,12 +229,12 @@ class ExportPage(QFrame):
         form_layout.addWidget(QLabel("Export directory:"))
         form_layout.addLayout(export_directory_hlayout)
 
-        # folder name
+        # Folder name
         self.figure_folder_name_lineEdit = QLineEdit("Figure")
         form_layout.addWidget(QLabel("Folder name:"))
         form_layout.addWidget(self.figure_folder_name_lineEdit)
 
-        # figure type + list
+        # Figure type + list
         self.figure_type_chklist = CheckableComboList()
         form_layout.addWidget(QLabel("Figure type:"))
         form_layout.addWidget(self.figure_type_chklist)
@@ -261,7 +248,7 @@ class ExportPage(QFrame):
 
         export_figure_grp.setLayout(form_layout)
 
-        # Export table group (stylesheet unchanged)
+        # Export table group
         export_table_grp = QGroupBox("Export table(s)")
         export_table_layout = QVBoxLayout()
         export_table_grp.setLayout(export_table_layout)
@@ -281,7 +268,7 @@ class ExportPage(QFrame):
                 padding: 0px;
                 margin-top: -8px;
             }
-                QPushButton {
+            QPushButton {
                 background-color: #d5dcf9;
                 color: #2C3346;
                 border: none;
@@ -302,13 +289,6 @@ class ExportPage(QFrame):
             QLabel {
                 background-color: transparent;
                 color: #3f4c5a;
-            }
-
-            QComboBox::drop-down {
-            border: none;
-            }
-            QComboBox::down-arrow {
-                image: url(./drop_down_arrow.png);
             }
         """)
 
@@ -348,11 +328,9 @@ class ExportPage(QFrame):
         user_input_frame_layout.addWidget(export_figure_grp)
         user_input_frame_layout.addWidget(LineWidget("Horizontal"))
         user_input_frame_layout.addWidget(export_table_grp)
-        # user_input_frame_layout.addWidget(info_group)
-        # user_input_frame_layout.addWidget(LineWidget('Horizontal'))
         user_input_frame_layout.addStretch()
 
-        # ----- Right: Plot card (styles unchanged) ----------------------------
+        # ----- Right: Plot card -----------------------------------------------
         plot_frame = QFrame()
         plot_frame.setStyleSheet("""
             background-color: #e7e7e7;
@@ -387,7 +365,7 @@ class ExportPage(QFrame):
         self.top_frame_shadow = BoxShadow()
         top_frame.setGraphicsEffect(self.top_frame_shadow)
 
-        # === (Optional) table section prepared, not added to splitter =========
+        # === (Optional) table section - not shown by default ==================
         table_frame = QWidget()
         table_frame_layout = QHBoxLayout(table_frame)
         table_frame_layout.setContentsMargins(20, 20, 20, 20)
@@ -402,13 +380,13 @@ class ExportPage(QFrame):
         self.table_frame_shadow = BoxShadow()
         self.styled_table.setGraphicsEffect(self.table_frame_shadow)
 
-        # === Splitter & wiring ================================================
+        # === Splitter & signal connections ====================================
         self.main_splitter = QSplitter(Qt.Vertical, self)
         self.main_splitter.addWidget(top_frame)
-        # self.main_splitter.addWidget(table_frame)  # intentionally not shown by default
+        # table_frame is prepared but not added to splitter by default
         self.main_layout.addWidget(self.main_splitter)
 
-        # --- signals -----------------------------------------------------------
+        # --- Signal connections -----------------------------------------------
         self.export_figure_directory_btn.clicked.connect(self.create_figure_directory)
         self.export_table_directory_btn.clicked.connect(
             self.select_export_file_directory
@@ -416,7 +394,17 @@ class ExportPage(QFrame):
         self.save_figure_btn.clicked.connect(self.save_figure_list)
         self.export_table_btn.clicked.connect(self.export_tables)
 
-    def init_page(self, om_list):
+    def init_page(self, om_list: list) -> None:
+        """Initialize the page with available orthogonality metrics and data sets.
+
+        Args:
+            om_list (list): List of orthogonality metric names available for export.
+
+        Side Effects:
+            - Loads orthogonality data from model
+            - Populates figure type checklist with metric names
+            - Populates figure list checklist with set identifiers
+        """
         self.orthogonality_dict = self.model.get_orthogonality_dict()
         self.plot_utils.set_orthogonality_data(self.model.get_orthogonality_dict())
         data_sets_list = list(self.orthogonality_dict.keys())
@@ -426,17 +414,40 @@ class ExportPage(QFrame):
         self.figure_type_chklist.clear()
         self.figure_type_chklist.add_items(om_list)
 
-    def create_figure_directory(self):
+    def create_figure_directory(self) -> None:
+        """Open directory selection dialog for figure export location.
+
+        Side Effects:
+            Updates figure_export_directory_lineEdit with selected directory path.
+        """
         directory = QFileDialog.getExistingDirectory(self)
         if directory:
             self.figure_export_directory_lineEdit.setText(directory)
 
-    def select_export_file_directory(self):
+    def select_export_file_directory(self) -> None:
+        """Open directory selection dialog for table export location.
+
+        Side Effects:
+            Updates table_export_directory_lineEdit with selected directory path.
+        """
         directory = QFileDialog.getExistingDirectory(self)
         if directory:
             self.table_export_directory_lineEdit.setText(directory)
 
-    def export_tables(self):
+    def export_tables(self) -> None:
+        """Export selected tables to a single Excel file with multiple sheets.
+
+        Creates an Excel file with each selected table on a separate sheet.
+        Uses pandas ExcelWriter with openpyxl engine.
+
+        Side Effects:
+            - Creates Excel file at specified location
+            - Each table becomes a separate sheet in the workbook
+
+        Note:
+            Table names are used as sheet names. Long names may be truncated
+            by Excel's 31-character sheet name limit.
+        """
         select_directory = self.table_export_directory_lineEdit.text()
         file_path = f"{select_directory}/{self.export_filename.text()}"
         table_to_export_list = self.table_selection.get_checked_items()
@@ -446,7 +457,30 @@ class ExportPage(QFrame):
                 df = self.table_functions_map[table_name]()
                 df.to_excel(writer, sheet_name=table_name, index=False)
 
-    def save_figure_list(self):
+    def save_figure_list(self) -> None:
+        """Batch export selected figures with organized directory structure.
+
+        Creates a directory structure:
+        - Main folder (user-specified name)
+          - Subfolder for each plot type
+            - Individual PNG files for each set
+
+        Side Effects:
+            - Creates directories if they don't exist
+            - Saves high-resolution PNG files (600 DPI)
+            - One file per combination of (plot_type, set)
+
+        Directory Structure Example:
+            Figure/
+            ├── Convex Hull/
+            │   ├── Set 1.png
+            │   ├── Set 2.png
+            │   └── ...
+            ├── Bin Box/
+            │   ├── Set 1.png
+            │   └── ...
+            └── ...
+        """
         chosen_directory = self.figure_export_directory_lineEdit.text()
         chosen_folder_name = (
             f"{chosen_directory}/{self.figure_folder_name_lineEdit.text()}"
@@ -462,9 +496,6 @@ class ExportPage(QFrame):
                 subdirectory_type_name = f"{chosen_folder_name}/{plot_type}"
                 if not os.path.exists(subdirectory_type_name):
                     os.mkdir(subdirectory_type_name)
-                # self.orthogonality_metric_combo.blockSignals(True)
-                # self.orthogonality_metric_combo.setCurrentText(plot_type)
-                # self.orthogonality_metric_combo.blockSignals(False)
 
                 for figure_set_nb in figure_list_chklist:
                     self.save_figure(
@@ -473,53 +504,112 @@ class ExportPage(QFrame):
                         dirname=subdirectory_type_name,
                     )
 
-    def save_figure(self, plot_type, set_nb, dirname):
+    def save_figure(self, plot_type: str, set_nb: str, dirname: str) -> None:
+        """Render and save a single figure to disk.
 
-        # 1) Grab the Figure from your persistent canvas
+        Args:
+            plot_type (str): Type of plot (e.g., "Convex Hull", "Bin Box").
+            set_nb (str): Set identifier (e.g., "Set 1", "Set 2").
+            dirname (str): Directory path where the PNG file will be saved.
 
-        # 2) Totally clear it, then re-add one Axes
+        Side Effects:
+            - Clears the current figure
+            - Renders base scatter plot
+            - Overlays the specified plot type
+            - Saves as PNG with 600 DPI, tight bounding box, transparent background
+
+        File Naming:
+            Files are named "{set_nb}.png" (e.g., "Set 1.png")
+        """
+        # Clear previous plot
         self.plot_utils.clean_figure()
-        # ax = fig.add_subplot(111)
-        #
-        # self.plot_utils.set_axe(ax)
 
+        # Render base scatter plot if data is loaded
         if self.model.get_status() in ["loaded", "peak_capacity_loaded"]:
             self.plot_utils.plot_scatter(set_number=set_nb, dirname="")
 
+        # Overlay the specific plot type
         if plot_type in self.plot_functions_map:
-            self.plot_functions_map[plot_type](
-                set_number=set_nb
-            )  # Call the corresponding function
+            self.plot_functions_map[plot_type](set_number=set_nb)
 
+        # Save with high resolution
         filename = f"{dirname}/{set_nb}.png"
         self.canvas.figure.savefig(
             filename, dpi=600, bbox_inches="tight", transparent=True
         )
 
-    def plot_convex_hull(self, set_number):
+    # =========================================================================
+    # Plot wrapper methods - delegate to plot_utils
+    # =========================================================================
+
+    def plot_convex_hull(self, set_number: str) -> None:
+        """Render convex hull plot for the specified set.
+
+        Args:
+            set_number (str): Set identifier (e.g., "Set 1").
+        """
         self.plot_utils.plot_convex_hull(set_number=set_number)
 
-    def plot_percent_bin(self, set_number):
+    def plot_percent_bin(self, set_number: str) -> None:
+        """Render %BIN plot for the specified set.
+
+        Args:
+            set_number (str): Set identifier (e.g., "Set 1").
+        """
         self.plot_utils.plot_percent_bin(set_number=set_number)
 
-    def plot_bin_box(self, set_number):
+    def plot_bin_box(self, set_number: str) -> None:
+        """Render bin box counting plot for the specified set.
+
+        Args:
+            set_number (str): Set identifier (e.g., "Set 1").
+        """
         self.plot_utils.plot_bin_box(set_number=set_number)
 
-    # Plot methods
-    def plot_asterisk(self, set_number):
+    def plot_asterisk(self, set_number: str) -> None:
+        """Render asterisk stability diagram for the specified set.
+
+        Args:
+            set_number (str): Set identifier (e.g., "Set 1").
+        """
         self.plot_utils.plot_asterisk(set_number=set_number)
 
-    def plot_linear_reg(self, set_number):
+    def plot_linear_reg(self, set_number: str) -> None:
+        """Render linear regression plot with correlation statistics.
+
+        Args:
+            set_number (str): Set identifier (e.g., "Set 1").
+        """
         self.plot_utils.plot_linear_reg(set_number=set_number)
 
-    def plot_percent_fit_xy(self, set_number):
+    def plot_percent_fit_xy(self, set_number: str) -> None:
+        """Render %FIT plot for X vs Y direction.
+
+        Args:
+            set_number (str): Set identifier (e.g., "Set 1").
+        """
         self.plot_utils.plot_percent_fit_xy(set_number=set_number)
 
-    def plot_percent_fit_yx(self, set_number):
+    def plot_percent_fit_yx(self, set_number: str) -> None:
+        """Render %FIT plot for Y vs X direction.
+
+        Args:
+            set_number (str): Set identifier (e.g., "Set 1").
+        """
         self.plot_utils.plot_percent_fit_yx(set_number=set_number)
 
-    def plot_conditional_entropy(self, set_number):
+    def plot_conditional_entropy(self, set_number: str) -> None:
+        """Render conditional entropy heatmap for the specified set.
+
+        Args:
+            set_number (str): Set identifier (e.g., "Set 1").
+        """
         self.plot_utils.plot_conditional_entropy(set_number=set_number)
 
-    def plot_modeling_approach(self, set_number):
+    def plot_modeling_approach(self, set_number: str) -> None:
+        """Render modeling approach plot with bin grid and regression line.
+
+        Args:
+            set_number (str): Set identifier (e.g., "Set 1").
+        """
         self.plot_utils.plot_modeling_approach(set_number=set_number)

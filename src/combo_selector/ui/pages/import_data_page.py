@@ -1,13 +1,22 @@
-import openpyxl
+"""Data import and normalization page for retention time data.
+
+This module provides the ImportDataPage class which handles:
+- Importing retention time data from Excel files
+- Importing experimental 1D peak capacities
+- Optional void time and gradient end time data
+- Three normalization methods (Min-Max, Void-Max, WOSEL)
+- NaN value cleaning
+- Display of normalized retention timetable
+"""
+
 import pandas as pd
-from PySide6.QtCore import QSize, Qt, Signal
-from PySide6.QtGui import QColor, QIcon
+from PySide6.QtCore import Qt, Signal, QSize
+from PySide6.QtGui import QIcon
 from PySide6.QtSvgWidgets import QSvgWidget
 from PySide6.QtWidgets import (
     QButtonGroup,
     QFileDialog,
     QFrame,
-    QGraphicsDropShadowEffect,
     QGroupBox,
     QHBoxLayout,
     QInputDialog,
@@ -24,34 +33,64 @@ from PySide6.QtWidgets import (
 )
 
 from combo_selector.ui.widgets.nan_policy_widget import NanPolicyDialog
-from combo_selector.ui.widgets.neumorphism import *
+from combo_selector.ui.widgets.neumorphism import BoxShadow
 from combo_selector.ui.widgets.status_icon import Status
 from combo_selector.ui.widgets.style_table import StyledTable
 from combo_selector.utils import resource_path
 
-PLOT_SIZE = QSize(600, 400)
+# Icon size for folder buttons
 ICON_SIZE = QSize(28, 28)
 
 
 class ImportDataPage(QFrame):
+    """Page for importing and normalizing chromatography retention time data.
+
+    Provides a user interface for:
+    - Loading retention time data from Excel files
+    - Loading experimental 1D peak capacity data
+    - Optionally loading void time and gradient end time
+    - Selecting normalization method with visual formula display
+    - Cleaning NaN values with customizable policies
+    - Viewing normalized data in an interactive table
+
+    The page is divided into three main sections:
+    - Top-left: Data import controls
+    - Top-right: Normalization method selection with SVG formulas
+    - Bottom: Table displaying normalized retention times
+
+    Attributes:
+        model: Reference to the Orthogonality data model.
+        nan_policy_dialog (NanPolicyDialog): Dialog for handling NaN values.
+        normalized_data_table (StyledTable): Table displaying retention time data.
+        radio_button_group (QButtonGroup): Exclusive radio buttons for scaling methods.
+        scaling_method_svg_qstack (QStackedWidget): Stack of SVG formula displays.
+
+    Signals:
+        retention_time_loaded: Emitted when retention time data is successfully loaded.
+        exp_peak_capacities_loaded: Emitted when peak capacity data is loaded.
+        retention_time_normalized: Emitted when data normalization is complete.
+    """
 
     retention_time_loaded = Signal()
     exp_peak_capacities_loaded = Signal()
     retention_time_normalized = Signal()
 
-    def __init__(self, model=None, title: str = "Unnamed") -> None:
-        """
-        Initialize the ImportDataPage.
+    def __init__(self, model=None) -> None:
+        """Initialize the ImportDataPage with data import and normalization controls.
 
-        - Left panel: data import for retention times, experimental 1D peak capacities,
-          optional void time and gradient end time.
-        - Right panel: scaling method selection.
-        - Bottom panel: normalized retention-time table.
+        Args:
+            model: Orthogonality model instance for data management.
 
+        Layout Structure:
+            - Top section (side-by-side):
+                - Left: Data import panel (retention times, peak capacities, optional data)
+                - Right: Normalization method selection (Min-Max, Void-Max, WOSEL)
+            - Bottom section:
+                - Normalized retention timetable (resizable via splitter)
         """
         super().__init__()
 
-        # --- model & frame setup ------------------------------------------------
+        # --- Model & frame setup ----------------------------------------------
         self.model = model
         self.nan_policy_dialog = NanPolicyDialog(model=self.model)
         self.setFrameShape(QFrame.StyledPanel)
@@ -61,7 +100,7 @@ class ImportDataPage(QFrame):
         self.main_layout.setContentsMargins(0, 0, 0, 0)
         self.main_layout.setSpacing(0)
 
-        # === TOP AREA (two cards) ==============================================
+        # === TOP AREA (two cards) =============================================
         top_frame = QFrame()
         top_frame_layout = QHBoxLayout(top_frame)
         top_frame_layout.setContentsMargins(50, 50, 50, 50)
@@ -70,6 +109,61 @@ class ImportDataPage(QFrame):
         # ----------------------------------------------------------------------
         # Left card: Data import
         # ----------------------------------------------------------------------
+        data_import_frame = self._create_data_import_card()
+
+        # ----------------------------------------------------------------------
+        # Right card: Separation Space Scaling
+        # ----------------------------------------------------------------------
+        normalization_section = self._create_normalization_card()
+
+        # Card shadow on the whole top row
+        self.top_frame_shadow = BoxShadow()
+        top_frame.setGraphicsEffect(self.top_frame_shadow)
+
+        # === BOTTOM AREA (normalized table) ===================================
+        table_frame = QWidget()
+        table_frame.setMinimumHeight(100)
+        table_frame_layout = QHBoxLayout(table_frame)
+        table_frame_layout.setContentsMargins(20, 20, 20, 20)
+
+        self.normalized_data_table = StyledTable("Normalized Retention time table")
+        self.normalized_data_table.set_header_label(
+            ["Peak #", "Condition 1", "Condition 2", "...", "Condition n"]
+        )
+        self.normalized_data_table.set_default_row_count(10)
+        table_frame_layout.addWidget(self.normalized_data_table)
+
+        self.table_frame_shadow = BoxShadow()
+        self.normalized_data_table.setGraphicsEffect(self.table_frame_shadow)
+
+        # === Final assembly ===================================================
+        top_frame_layout.addWidget(data_import_frame, 50)
+        top_frame_layout.addWidget(normalization_section, 50)
+
+        self.main_splitter = QSplitter(Qt.Orientation.Vertical, self)
+        self.main_splitter.addWidget(top_frame)
+        self.main_splitter.addWidget(table_frame)
+        self.main_splitter.setSizes([415, 293])
+
+        self.main_layout.addWidget(self.main_splitter)
+
+        # === Signal connections ===============================================
+        self.radio_button_group.buttonClicked.connect(self.change_norm_svg)
+        self.normalize_btn.clicked.connect(self.normalize_retention_time)
+        self.add_ret_time_btn.clicked.connect(self.load_retention_data)
+        self.add_2D_peak_data_btn.clicked.connect(
+            self.load_experimental_peak_capacities
+        )
+        self.clean_retention_time_btn.clicked.connect(self.show_nan_policy_dialog)
+        self.add_void_time_btn.clicked.connect(self.load_void_time_data)
+        self.add_gradient_end_time_btn.clicked.connect(self.load_gradient_end_time_data)
+
+    def _create_data_import_card(self) -> QFrame:
+        """Create the left card containing data import controls.
+
+        Returns:
+            QFrame: Configured frame with import buttons and status indicators.
+        """
         data_import_frame = QFrame()
         data_import_layout = QVBoxLayout(data_import_frame)
         data_import_layout.setSpacing(0)
@@ -155,7 +249,7 @@ class ImportDataPage(QFrame):
         peak_layout.addWidget(self.add_2D_peak_data_btn)
         peak_layout.addWidget(self.twoD_peak_status)
 
-        # Void time (hidden until needed)
+        # Void time (hidden until Void-Max or WOSEL is selected)
         self.add_void_time_btn = QPushButton(
             QIcon(resource_path("icons/folder_icon.png")), "Import"
         )
@@ -176,7 +270,7 @@ class ImportDataPage(QFrame):
         self.void_time_label = QLabel("Void time:")
         self.void_time_label.setVisible(False)
 
-        # Gradient end time (hidden until needed)
+        # Gradient end time (hidden until WOSEL is selected)
         self.add_gradient_end_time_btn = QPushButton(
             QIcon(resource_path("icons/folder_icon.png")), "Import"
         )
@@ -212,9 +306,14 @@ class ImportDataPage(QFrame):
         data_import_layout.addWidget(data_import_title)
         data_import_layout.addWidget(data_import_input_frame)
 
-        # ----------------------------------------------------------------------
-        # Right card: Separation Space Scaling
-        # ----------------------------------------------------------------------
+        return data_import_frame
+
+    def _create_normalization_card(self) -> QFrame:
+        """Create the right card containing normalization method selection.
+
+        Returns:
+            QFrame: Configured frame with radio buttons and SVG formula displays.
+        """
         separation_space_scaling_title = QLabel("Separation Space Scaling")
         separation_space_scaling_title.setFixedHeight(30)
         separation_space_scaling_title.setObjectName("TitleBar")
@@ -363,57 +462,22 @@ class ImportDataPage(QFrame):
         normalization_layout.addWidget(separation_space_scaling_title)
         normalization_layout.addWidget(select_scaling_input_frame)
 
-        # Card shadow on the whole top row
-        self.top_frame_shadow = BoxShadow()
-        top_frame.setGraphicsEffect(self.top_frame_shadow)
+        return normalization_section
 
-        # === BOTTOM AREA (normalized table) ====================================
-        table_frame = QWidget()
-        table_frame.setMinimumHeight(100)
-        table_frame_layout = QHBoxLayout(table_frame)
-        table_frame_layout.setContentsMargins(20, 20, 20, 20)
+    # ==========================================================================
+    # Event Handlers & Data Operations
+    # ==========================================================================
 
-        self.normalized_data_table = StyledTable("Normalized Retention time table")
-        self.normalized_data_table.set_header_label(
-            ["Peak #", "Condition 1", "Condition 2", "...", "Condition n"]
-        )
-        self.normalized_data_table.set_default_row_count(10)
-        table_frame_layout.addWidget(self.normalized_data_table)
+    def change_norm_svg(self) -> None:
+        """Update the displayed normalization formula and show/hide optional inputs.
 
-        self.table_frame_shadow = BoxShadow()
-        self.normalized_data_table.setGraphicsEffect(self.table_frame_shadow)
+        Called when a different normalization radio button is selected.
 
-        # === Final assembly ====================================================
-        top_frame_layout.addWidget(data_import_frame, 50)
-        top_frame_layout.addWidget(normalization_section, 50)
-
-        self.main_splitter = QSplitter(Qt.Orientation.Vertical, self)
-        self.main_splitter.addWidget(top_frame)
-        self.main_splitter.addWidget(table_frame)
-        self.main_splitter.setSizes([415, 293])
-
-        self.main_layout.addWidget(self.main_splitter)
-
-        # === Signals ===========================================================
-        self.main_splitter.splitterMoved.connect(self.table_collapsed)
-        self.radio_button_group.buttonClicked.connect(self.change_norm_svg)
-        self.normalize_btn.clicked.connect(self.normalize_retention_time)
-        self.add_ret_time_btn.clicked.connect(self.load_retention_data)
-        self.add_2D_peak_data_btn.clicked.connect(
-            self.load_experimental_peak_capacities
-        )
-        self.clean_retention_time_btn.clicked.connect(self.show_nan_policy_dialog)
-        self.add_void_time_btn.clicked.connect(self.load_void_time_data)
-        self.add_gradient_end_time_btn.clicked.connect(self.load_gradient_end_time_data)
-
-    # ==============================
-    # Data Handling & Selection
-    # =============================*
-    #
-    def table_collapsed(self):
-        print(self.main_splitter.sizes())
-
-    def change_norm_svg(self):
+        Side Effects:
+            - Changes the displayed SVG formula
+            - Shows/hides void time input for Void-Max and WOSEL
+            - Shows/hides gradient end time input for WOSEL only
+        """
         button_checked = self.radio_button_group.checkedButton()
         method = button_checked.objectName()
 
@@ -424,32 +488,46 @@ class ImportDataPage(QFrame):
             self.void_time_label.setVisible(False)
             self.gradient_end_time_label.setVisible(False)
 
-        if method == "void_max":
+        elif method == "void_max":
             self.scaling_method_svg_qstack.setCurrentIndex(1)
             self.void_time_widget.setVisible(True)
             self.void_time_label.setVisible(True)
             self.gradient_end_time_widget.setVisible(False)
             self.gradient_end_time_label.setVisible(False)
 
-        if method == "wosel":
+        elif method == "wosel":
             self.scaling_method_svg_qstack.setCurrentIndex(2)
             self.void_time_widget.setVisible(True)
             self.void_time_label.setVisible(True)
             self.gradient_end_time_widget.setVisible(True)
             self.gradient_end_time_label.setVisible(True)
 
-    def normalize_retention_time(self):
+    def normalize_retention_time(self) -> None:
+        """Normalize retention time data using the selected scaling method.
+
+        Side Effects:
+            - Normalizes data in the model
+            - Updates the normalized data table display
+            - Emits retention_time_normalized signal
+        """
         button_checked = self.radio_button_group.checkedButton()
         method = button_checked.objectName()
         self.model.normalize_retention_time(method)
 
         data = self.model.get_normalized_retention_time_df()
-
         self.normalized_data_table.async_set_table_data(data)
 
         self.retention_time_normalized.emit()
 
-    def show_nan_policy_dialog(self):
+    def show_nan_policy_dialog(self) -> None:
+        """Open the NaN policy dialog for cleaning missing values.
+
+        Side Effects:
+            - Shows NaN policy dialog
+            - Updates retention time data after cleaning
+            - Updates the table display
+            - Emits retention_time_loaded signal
+        """
         self.nan_policy_dialog.exec()
 
         data = self.model.get_retention_time_df()
@@ -458,25 +536,30 @@ class ImportDataPage(QFrame):
         self.retention_time_loaded.emit()
 
     def load_retention_data(self) -> None:
-        """
-        Opens a file dialog to select and load an Excel file containing normalized retention data.
+        """Load retention time data from an Excel file.
 
-        - Allows the user to select an Excel file and choose a sheet.
-        - Loads the selected sheet into the `Orthogonality` model.
-        - Updates the UI components accordingly.
-        - Displays an error message and updates the GUI if loading fails.
+        Opens a file dialog for Excel file selection, prompts for sheet selection,
+        and loads the data into the model. Handles NaN values if present.
+
+        Side Effects:
+            - Opens file and sheet selection dialogs
+            - Loads data into model
+            - Updates UI status indicators
+            - Updates table display
+            - May show NaN policy dialog if NaN values are present
+            - Emits retention_time_loaded signal on success
+            - Shows error messages on failure
 
         Raises:
-            - FileNotFoundError: If the user cancels the file selection.
-            - ValueError: If the selected sheet is invalid.
-            - Exception: For unexpected errors.
+            ValueError: If no sheet is selected.
+            Exception: For unexpected file loading errors.
         """
         file_path, _ = QFileDialog.getOpenFileName(
             self, "Open Excel File", "", "Excel Files (*.xlsx *.xls)"
         )
 
         if not file_path:
-            return  # User canceled the selection
+            return  # User canceled
 
         try:
             sheet_names = pd.ExcelFile(file_path, engine="openpyxl").sheet_names
@@ -503,31 +586,35 @@ class ImportDataPage(QFrame):
             self.add_ret_time_filename.setText(file_path)
 
             data = self.model.get_retention_time_df()
-
             self.normalized_data_table.set_header_label(list(data.columns))
-
             self.normalized_data_table.async_set_table_data(data)
 
-            # display wi
+            # Show NaN policy dialog if needed
             if self.model.get_has_nan_value():
                 self.nan_policy_dialog.exec_()
-
                 data = self.model.get_retention_time_df()
                 self.normalized_data_table.async_set_table_data(data)
 
             self.retention_time_loaded.emit()
 
         except ValueError as e:
-            self.ret_time_import_status.set_error()  # Ensure GUI shows failure status
+            self.ret_time_import_status.set_error()
             QMessageBox.warning(self, "Warning", str(e))
         except Exception as e:
-            self.ret_time_import_status.set_error()  # Ensure GUI shows failure status
+            self.ret_time_import_status.set_error()
             QMessageBox.critical(
                 self, "Error", f"An unexpected error occurred:\n{str(e)}"
             )
 
-    def load_experimental_peak_capacities(self):
-        print(self.main_splitter.sizes())
+    def load_experimental_peak_capacities(self) -> None:
+        """Load experimental 1D peak capacity data from an Excel file.
+
+        Side Effects:
+            - Opens file and sheet selection dialogs
+            - Loads data into model
+            - Updates UI status indicators
+            - Emits exp_peak_capacities_loaded signal on success
+        """
         fileName = QFileDialog.getOpenFileName(
             self, "Open Excel File", "", "Excel Files (*.xlsx *.xls)"
         )
@@ -539,7 +626,7 @@ class ImportDataPage(QFrame):
                 sheet, ok = QInputDialog.getItem(
                     self, "Select excel sheet", "select sheet", sheet_names_list
                 )
-            except:
+            except Exception:
                 ok = False
 
             if ok:
@@ -558,7 +645,16 @@ class ImportDataPage(QFrame):
             else:
                 self.twoD_peak_status.set_error()
 
-    def load_gradient_end_time_data(self):
+    def load_gradient_end_time_data(self) -> None:
+        """Load gradient end time data from an Excel file.
+
+        Required for WOSEL normalization method.
+
+        Side Effects:
+            - Opens file and sheet selection dialogs
+            - Loads data into model
+            - Updates UI status indicators
+        """
         fileName = QFileDialog.getOpenFileName(
             self, "Open Excel File", "", "Excel Files (*.xlsx *.xls)"
         )
@@ -570,7 +666,7 @@ class ImportDataPage(QFrame):
                 sheet, ok = QInputDialog.getItem(
                     self, "Select excel sheet", "select sheet", sheet_names_list
                 )
-            except:
+            except Exception:
                 ok = False
 
             if ok:
@@ -586,7 +682,16 @@ class ImportDataPage(QFrame):
             else:
                 self.gradient_end_time_import_status.set_error()
 
-    def load_void_time_data(self):
+    def load_void_time_data(self) -> None:
+        """Load void time data from an Excel file.
+
+        Required for Void-Max and WOSEL normalization methods.
+
+        Side Effects:
+            - Opens file and sheet selection dialogs
+            - Loads data into model
+            - Updates UI status indicators
+        """
         fileName = QFileDialog.getOpenFileName(
             self, "Open Excel File", "", "Excel Files (*.xlsx *.xls)"
         )
@@ -598,7 +703,7 @@ class ImportDataPage(QFrame):
                 sheet, ok = QInputDialog.getItem(
                     self, "Select excel sheet", "select sheet", sheet_names_list
                 )
-            except:
+            except Exception:
                 ok = False
 
             if ok:
@@ -613,13 +718,3 @@ class ImportDataPage(QFrame):
                     self.add_void_time_filename.setText(fileName[0])
             else:
                 self.void_time_import_status.set_error()
-
-
-if __name__ == "__main__":
-
-    app = QApplication(sys.argv)
-
-    w = ImportDataPage()
-
-    w.show()
-    app.exec()

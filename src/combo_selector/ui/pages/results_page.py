@@ -1,19 +1,25 @@
+"""Results page for ranking and visualizing orthogonality scores.
+
+This module provides the ResultsPage class which handles:
+- Computing custom orthogonality scores from selected metrics
+- Ranking 2D combinations based on different criteria
+- Visualizing score vs. peak capacity correlations
+- Side-by-side comparison of up to 4 scores
+- Custom filtering of results by combination type
+- Progress tracking with circular progress bar overlay
+"""
+
 import logging
 
-import numpy as np
 import pandas as pd
 from matplotlib.backends.backend_qtagg import FigureCanvas
 from matplotlib.figure import Figure
-from PySide6.QtCore import QThreadPool, QTimer
-from PySide6.QtSvgWidgets import QSvgWidget
+from PySide6.QtCore import QThreadPool, QTimer, Qt
 from PySide6.QtWidgets import (
     QApplication,
     QButtonGroup,
-    QCheckBox,
     QComboBox,
     QFrame,
-    QGraphicsDropShadowEffect,
-    QGridLayout,
     QGroupBox,
     QHBoxLayout,
     QHeaderView,
@@ -34,13 +40,14 @@ from combo_selector.ui.widgets.circle_progress_bar import RoundProgressBar
 from combo_selector.ui.widgets.custom_filter_dialog import CustomFilterDialog
 from combo_selector.ui.widgets.custom_toolbar import CustomToolbar
 from combo_selector.ui.widgets.line_widget import LineWidget
-from combo_selector.ui.widgets.neumorphism import *
+from combo_selector.ui.widgets.neumorphism import BoxShadow
 from combo_selector.ui.widgets.style_table import StyledTable
 from combo_selector.utils import resource_path
 
-PLOT_SIZE = QSize(600, 400)
+# Dropdown arrow icon path
 drop_down_icon_path = resource_path("icons/drop_down_arrow.png").replace("\\", "/")
 
+# Maps UI metric names to model data frame column names
 UI_TO_MODEL_MAPPING = {
     "Suggested score": "suggested_score",
     "Computed score": "computed_score",
@@ -63,38 +70,54 @@ UI_TO_MODEL_MAPPING = {
 
 
 class ResultsPage(QFrame):
-    def __init__(self, model=None, title="Unnamed"):
-        """
-        Initialize the ResultsPage.
+    """Page for computing, ranking, and visualizing final results.
 
-        Layout:
-          - Top: input panel (left) + result visualization (right)
-          - Bottom: final result & ranking table
-          - Overlay: circular progress bar during computations
+    Provides a comprehensive interface for:
+    - Computing custom orthogonality scores from selected metrics
+    - Choosing between suggested score vs. computed score
+    - Ranking combinations by score or peak capacity
+    - Comparing 1-4 scores side-by-side in scatter plots
+    - Filtering results by combination type (custom filters)
+    - Viewing final results in sortable/filterable table
+
+    The page uses background threads to compute custom scores without
+    freezing the UI, and displays progress with an animated circular bar.
+
+    Attributes:
+        model: Reference to the Orthogonality data model.
+        thread pool (QThreadPool): Thread pool for background computations.
+        om_selector_map (dict): Maps plot indices to selectors and axes.
+        selected_score (str): Currently selected score name.
+        selected_axe: Currently selected matplotlib axes.
+        progress_overlay (QWidget): Transparent overlay showing progress bar.
+    """
+
+    def __init__(self, model=None):
+        """Initialize the Results Page with controls and visualizations.
+
+        Args:
+            model: Orthogonality model instance containing computed metrics.
+
+        Layout Structure:
+            - Top section (side-by-side):
+                - Left: Input panel (ranking, score calculation, comparison)
+                - Right: Plot area (1-4 subplots for score comparisons)
+            - Bottom section:
+                - Results table with rankings
+            - Overlay:
+                - Circular progress bar during computations
         """
         super().__init__()
 
-        # --- state ------------------------------------------------------------
+        # --- State & threading ---------------------------------------------
         self.threadpool = QThreadPool()
-        self.orthogonality_filter_marker = None
-        self.orthogonality_scatter_default = None
         self.selected_score = None
-        self.selected_metric = None
-        self.scatter_collection = None
-        self.blink_step = 0
-        self.blink_ax = None
-        self.animations = []
-        self.highlighted_ax = None
+        self.selected_axe = None
         self.selected_scatter_collection = None
         self.selected_filtered_scatter_point = {}
-        self.selected_axe = None
-        self.full_scatter_collection = None
-        self.selected_set = "Set 1"
-        self.orthogonality_dict = None
-        self.scatter_point_group = {}
         self.model = model
 
-        # --- base frame & outer layout ---------------------------------------
+        # --- Base frame & layout -------------------------------------------
         self.setFrameShape(QFrame.StyledPanel)
         self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
 
@@ -103,13 +126,80 @@ class ResultsPage(QFrame):
         self.main_layout.setContentsMargins(0, 0, 0, 0)
         self.main_layout.setSpacing(0)
 
-        # === TOP AREA (input + plot) ==========================================
+        # === TOP AREA ======================================================
+        top_frame = self._create_top_section()
+
+        # === BOTTOM AREA: table ============================================
+        table_frame = self._create_table_section()
+
+        # === Progress overlay ==============================================
+        self.progress_overlay = self._create_progress_overlay()
+
+        # === Splitter & stacked layout =====================================
+        self.main_splitter = QSplitter(Qt.Vertical, self)
+        self.main_splitter.addWidget(top_frame)
+        self.main_splitter.addWidget(table_frame)
+        self.main_splitter.setSizes([486, 204])
+        self.main_layout.addWidget(self.main_splitter)
+
+        self.stack = QStackedLayout()
+        self.stack.setStackingMode(QStackedLayout.StackingMode.StackAll)
+        self.stack.addWidget(self.main_widget)
+        self.stack.addWidget(self.progress_overlay)
+        self.stack.setCurrentWidget(self.progress_overlay)
+
+        self.base_layout = QVBoxLayout(self)
+        self.base_layout.setContentsMargins(0, 0, 0, 0)
+        self.base_layout.addLayout(self.stack)
+
+        self.progress_overlay.setGeometry(self.stack.geometry())
+        self.progress_overlay.raise_()
+
+        # --- Signal connections --------------------------------------------
+        self.custom_filter_widget.filter_regexp_changed.connect(self.filter_table)
+        self.select_ranking_type.currentTextChanged.connect(self.set_ranking_argument)
+        self.radio_button_group.buttonClicked.connect(
+            self.set_use_suggested_om_score_flag
+        )
+        self.compute_score_btn.clicked.connect(self.start_om_computation)
+        self.compare_number.currentTextChanged.connect(self.update_om_selector_state)
+
+        for index, data in self.om_selector_map.items():
+            data["selector"].currentTextChanged.connect(
+                lambda _, k=index: self.on_selector_changed(k)
+            )
+
+    def _create_top_section(self) -> QFrame:
+        """Create the top section with input panel and plot area.
+
+        Returns:
+            QFrame: Configured top frame with input and plot sections.
+        """
         top_frame = QFrame()
         top_frame_layout = QHBoxLayout(top_frame)
         top_frame_layout.setContentsMargins(50, 50, 50, 50)
         top_frame_layout.setSpacing(80)
 
-        # ----- Left: Input column ---------------------------------------------
+        # Left: Input section
+        input_section = self._create_input_panel()
+
+        # Right: Plot section
+        plot_frame = self._create_plot_panel()
+
+        top_frame_layout.addWidget(input_section)
+        top_frame_layout.addWidget(plot_frame)
+
+        self.top_frame_shadow = BoxShadow()
+        top_frame.setGraphicsEffect(self.top_frame_shadow)
+
+        return top_frame
+
+    def _create_input_panel(self) -> QFrame:
+        """Create the left input panel with all controls.
+
+        Returns:
+            QFrame: Input section containing all control groups.
+        """
         input_title = QLabel("Input")
         input_title.setFixedHeight(30)
         input_title.setObjectName("TitleBar")
@@ -144,69 +234,27 @@ class ResultsPage(QFrame):
         input_layout.addWidget(input_title)
         input_layout.addWidget(user_input_scroll_area)
 
-        # --- Score Calculation group (stylesheet UNCHANGED) -------------------
+        # Create control groups
+        ranking_selection_group = self._create_ranking_group()
+        orthogonality_score_group = self._create_score_calculation_group()
+        orthogonality_compare_score_group = self._create_score_comparison_group()
+
+        user_input_frame_layout.addWidget(ranking_selection_group)
+        user_input_frame_layout.addWidget(LineWidget("Horizontal"))
+        user_input_frame_layout.addWidget(orthogonality_score_group)
+        user_input_frame_layout.addWidget(LineWidget("Horizontal"))
+        user_input_frame_layout.addWidget(orthogonality_compare_score_group)
+
+        return input_section
+
+    def _create_ranking_group(self) -> QGroupBox:
+        """Create ranking selection group.
+
+        Returns:
+            QGroupBox: Group box with ranking type selector.
+        """
         ranking_selection_group = QGroupBox("Ranking")
-        ranking_selection_group.setStyleSheet(f"""
-                    QGroupBox {{
-                        font-size: 14px;
-                        font-weight: bold;
-                        background-color: #e7e7e7;
-                        color: #154E9D;
-                        border: 1px solid #d0d4da;
-                        border-radius: 12px;
-                        margin-top: 25px;
-
-                    }}
-
-                        QPushButton {{
-                        background-color: #d5dcf9;
-                        color: #2C3346;
-                        border: none;
-                        border-radius: 6px;
-                        padding: 8px 16px;
-                        font-weight: 500;
-                    }}
-                    QPushButton:hover {{
-                        background-color: #bcc8f5;
-                    }}
-                    QPushButton:pressed {{
-                        background-color: #8fa3ef;
-                    }}
-                    QPushButton:disabled {{
-                        background-color: #E5E9F5;
-                        color: #FFFFFF;
-                    }}
-
-                    QGroupBox::title {{
-                        subcontrol-origin: margin;
-                        subcontrol-position: top left;
-                        padding: 0px;
-                        margin-top: -8px;
-                    }}
-                    QLabel {{
-                    background-color: transparent;
-                    color: #2C3E50;
-                    font-family: "Segoe UI";
-                    font-weight: bold;
-                    }}
-
-                    QRadioButton, QCheckBox {{
-                        background-color: transparent;
-                    color: #2C3E50;              /* dark slate navy */
-                        font-family: "Segoe UI";
-        			    font-weight: bold;
-                    }}
-                    QComboBox:hover {{
-                        border: 1px solid #a6b2c0;
-                    }}
-                    QComboBox::drop-down {{
-                        border:none;
-                    }}
-
-                    QComboBox::down-arrow {{
-                        image: url("{drop_down_icon_path}");
-                    }}
-                """)
+        ranking_selection_group.setStyleSheet(self._get_group_stylesheet())
 
         ranking_layout = QVBoxLayout()
         ranking_layout.setContentsMargins(5, 5, 5, 5)
@@ -220,69 +268,17 @@ class ResultsPage(QFrame):
         ranking_layout.addWidget(self.select_ranking_type)
         ranking_layout.addSpacing(20)
 
-        # --- Score Calculation group (stylesheet UNCHANGED) -------------------
+        return ranking_selection_group
+
+    def _create_score_calculation_group(self) -> QGroupBox:
+        """Create orthogonality score calculation group.
+
+        Returns:
+            QGroupBox: Group box with metric selection and compute button.
+        """
         orthogonality_score_group = QGroupBox("Orthogonality score calculation")
-        orthogonality_score_group.setStyleSheet(f"""
-            QGroupBox {{
-                font-size: 14px;
-                font-weight: bold;
-                background-color: #e7e7e7;
-                color: #154E9D;
-                border: 1px solid #d0d4da;
-                border-radius: 12px;
-                margin-top: 25px;
+        orthogonality_score_group.setStyleSheet(self._get_group_stylesheet())
 
-            }}
-
-                QPushButton {{
-                background-color: #d5dcf9;
-                color: #2C3346;
-                border: none;
-                border-radius: 6px;
-                padding: 8px 16px;
-                font-weight: 500;
-            }}
-            QPushButton:hover {{
-                background-color: #bcc8f5;
-            }}
-            QPushButton:pressed {{
-                background-color: #8fa3ef;
-            }}
-            QPushButton:disabled {{
-                background-color: #E5E9F5;
-                color: #FFFFFF;
-            }}
-
-            QGroupBox::title {{
-                subcontrol-origin: margin;
-                subcontrol-position: top left;
-                padding: 0px;
-                margin-top: -8px;
-            }}
-            QLabel {{
-            background-color: transparent;
-            color: #2C3E50;
-            font-family: "Segoe UI";
-            font-weight: bold;
-            }}
-
-            QRadioButton, QCheckBox {{
-                background-color: transparent;
-            color: #2C3E50;              /* dark slate navy */
-                font-family: "Segoe UI";
-			    font-weight: bold;
-            }}
-            QComboBox:hover {{
-                border: 1px solid #a6b2c0;
-            }}
-            QComboBox::drop-down {{
-                border:none;
-            }}
-
-            QComboBox::down-arrow {{
-                image: url("{drop_down_icon_path}");
-            }}
-        """)
         orthogonality_score_layout = QVBoxLayout()
         orthogonality_score_layout.setContentsMargins(5, 5, 5, 5)
 
@@ -290,7 +286,7 @@ class ResultsPage(QFrame):
         self.om_list.setFixedHeight(175)
         self.compute_score_btn = QPushButton("Compute score")
 
-        self.use_suggested_btn = QRadioButton("Use suggested core")
+        self.use_suggested_btn = QRadioButton("Use suggested score")
         self.use_suggested_btn.setChecked(True)
         self.use_computed_btn = QRadioButton("Use computed score")
 
@@ -309,16 +305,21 @@ class ResultsPage(QFrame):
         orthogonality_score_layout.addWidget(self.compute_score_btn)
         orthogonality_score_group.setLayout(orthogonality_score_layout)
 
-        # --- Score Comparison group (stylesheet UNCHANGED) --------------------
+        return orthogonality_score_group
+
+    def _create_score_comparison_group(self) -> QGroupBox:
+        """Create score comparison group for side-by-side plots.
+
+        Returns:
+            QGroupBox: Group box with score selectors.
+        """
         orthogonality_compare_score_group = QGroupBox("Orthogonality score comparison")
-        orthogonality_compare_score_group.setStyleSheet(
-            orthogonality_score_group.styleSheet()
-        )
+        orthogonality_compare_score_group.setStyleSheet(self._get_group_stylesheet())
 
         self.om_selection_layout = QVBoxLayout()
         self.om_selection_layout.addWidget(QLabel("Number of score to compare:"))
         self.compare_number = QComboBox()
-        self.compare_number.addItems(["1", "2", "3", "4"])
+        self.compare_number.addItems(["1", "2"])
         self.om_selection_layout.addWidget(self.compare_number)
         self.om_selection_layout.addSpacing(20)
 
@@ -332,92 +333,36 @@ class ResultsPage(QFrame):
 
         self.add_dataset_selector("Select Score 1:", self.om_selector1)
         self.add_dataset_selector("Select Score 2:", self.om_selector2)
-        self.add_dataset_selector("Select Score 3:", self.om_selector3)
-        self.add_dataset_selector("Select Score 4:", self.om_selector4)
+        # self.add_dataset_selector("Select Score 3:", self.om_selector3)
+        # self.add_dataset_selector("Select Score 4:", self.om_selector4)
 
         self.om_selector_list = [
             self.om_selector1,
-            self.om_selector2,
-            self.om_selector3,
-            self.om_selector4,
+            self.om_selector2
+            # self.om_selector3,
+            # self.om_selector4,
         ]
+
         self.om_selector_map = {
-            "0": {
-                "selector": self.om_selector1,
+            str(i): {
+                "selector": selector,
                 "axe": None,
                 "scatter_collection": None,
                 "filtered_scatter_point": {},
-            },
-            "1": {
-                "selector": self.om_selector2,
-                "axe": None,
-                "scatter_collection": None,
-                "filtered_scatter_point": {},
-            },
-            "2": {
-                "selector": self.om_selector3,
-                "axe": None,
-                "scatter_collection": None,
-                "filtered_scatter_point": {},
-            },
-            "3": {
-                "selector": self.om_selector4,
-                "axe": None,
-                "scatter_collection": None,
-                "filtered_scatter_point": {},
-            },
+            }
+            for i, selector in enumerate(self.om_selector_list)
         }
+
         orthogonality_compare_score_group.setLayout(self.om_selection_layout)
 
-        # --- Info group (stylesheet UNCHANGED) --------------------------------
-        info_page_group = QGroupBox("Info")
-        info_page_group.setStyleSheet("""
-            QGroupBox {
-                font-size: 14px;
-                font-weight: bold;
-                background-color: #e7e7e7;
-                color: #154E9D;
-                border: 1px solid #d0d4da;
-                border-radius: 12px;
-                margin-top: 25px;
-            }
-            QGroupBox::title {
-                subcontrol-origin: margin;
-                subcontrol-position: top left;
-                padding: 0px;
-                margin-top: -8px;
-            }
-            QLabel {
-                background-color: transparent;
-                color: #3f4c5a;
-            }
-        """)
-        info_page_layout = QVBoxLayout()
-        self.textEdit = QLabel()
-        self.textEdit.setTextFormat(Qt.TextFormat.RichText)
-        self.textEdit.setWordWrap(True)
-        self.textEdit.setText("""
-            <p><strong><u>Info 1</u>:</strong><br>
-            The table groups metrics that are correlated based on the selected threshold.
-            Metrics in the same group have a correlation value <strong>equal to or above</strong> the threshold.</p>
-            <p><strong><u>Info 2</u>:</strong><br>
-            The <strong>correlation threshold tolerance</strong> allows flexibility in detecting correlated metrics.</p>
-        """)
-        self.om_score_formula = QSvgWidget()
-        self.om_score_formula.load("om_suggested_score_infos.svg")
-        info_page_layout.addWidget(self.om_score_formula)
-        info_page_group.setLayout(info_page_layout)
+        return orthogonality_compare_score_group
 
-        # Assemble input column
-        user_input_frame_layout.addWidget(ranking_selection_group)
-        user_input_frame_layout.addWidget(LineWidget("Horizontal"))
-        user_input_frame_layout.addWidget(orthogonality_score_group)
-        user_input_frame_layout.addWidget(LineWidget("Horizontal"))
-        user_input_frame_layout.addWidget(orthogonality_compare_score_group)
-        user_input_frame_layout.addWidget(LineWidget("Horizontal"))
-        # user_input_frame_layout.addWidget(info_page_group)
+    def _create_plot_panel(self) -> QFrame:
+        """Create the right plot panel for result visualization.
 
-        # ----- Right: Plot card (styles UNCHANGED) ----------------------------
+        Returns:
+            QFrame: Plot frame containing toolbar and canvas.
+        """
         plot_frame = QFrame()
         plot_frame.setStyleSheet("""
             background-color: #e7e7e7;
@@ -437,11 +382,11 @@ class ResultsPage(QFrame):
             color: white;
             font-weight:bold;
             font-size: 16px;
-            font-weight: bold;
             padding: 6px 12px;
             border-top-left-radius: 10px;
             border-top-right-radius: 10px;
         """)
+
         self.fig = Figure(figsize=(10, 6))
         self.canvas = FigureCanvas(self.fig)
         self.toolbar = CustomToolbar(self.canvas)
@@ -453,13 +398,14 @@ class ResultsPage(QFrame):
         plot_frame_layout.addWidget(self.toolbar)
         plot_frame_layout.addWidget(self.canvas)
 
-        # Assemble top row
-        top_frame_layout.addWidget(input_section)
-        top_frame_layout.addWidget(plot_frame)
-        self.top_frame_shadow = BoxShadow()
-        top_frame.setGraphicsEffect(self.top_frame_shadow)
+        return plot_frame
 
-        # === BOTTOM AREA (table) ==============================================
+    def _create_table_section(self) -> QWidget:
+        """Create the bottom table section for results display.
+
+        Returns:
+            QWidget: Table frame containing styled results table.
+        """
         table_frame = QWidget()
         table_frame_layout = QHBoxLayout(table_frame)
         table_frame_layout.setContentsMargins(20, 20, 20, 20)
@@ -478,7 +424,6 @@ class ResultsPage(QFrame):
         self.styled_table.get_header().setSectionResizeMode(0, QHeaderView.Fixed)
         self.styled_table.get_header().setSectionResizeMode(1, QHeaderView.Stretch)
         self.styled_table.get_header().setSectionResizeMode(5, QHeaderView.Fixed)
-
         self.styled_table.set_default_row_count(10)
 
         self.custom_filter_widget = CustomFilterDialog(self)
@@ -491,142 +436,317 @@ class ResultsPage(QFrame):
         self.table_frame_shadow = BoxShadow()
         self.styled_table.setGraphicsEffect(self.table_frame_shadow)
 
-        # === Overlay (progress) ===============================================
+        return table_frame
+
+    def _create_progress_overlay(self) -> QWidget:
+        """Create the progress bar overlay widget.
+
+        Returns:
+            QWidget: Transparent overlay with circular progress bar.
+        """
         self.progress_bar = RoundProgressBar()
         self.progress_bar.rpb_setBarStyle("Pizza")
 
-        self.progress_overlay = QWidget(self)
-        self.progress_overlay.setAttribute(Qt.WA_TransparentForMouseEvents)
-        self.progress_overlay.setStyleSheet("background-color: transparent;")
-        self.progress_overlay.hide()
+        progress_overlay = QWidget(self)
+        progress_overlay.setAttribute(Qt.WA_TransparentForMouseEvents)
+        progress_overlay.setStyleSheet("background-color: transparent;")
+        progress_overlay.hide()
 
-        overlay_layout = QVBoxLayout(self.progress_overlay)
+        overlay_layout = QVBoxLayout(progress_overlay)
         overlay_layout.setContentsMargins(0, 0, 0, 0)
         overlay_layout.addStretch()
         overlay_layout.addWidget(self.progress_bar, alignment=Qt.AlignCenter)
         overlay_layout.addStretch()
 
-        # === Splitter & stacked layout ========================================
-        self.main_splitter = QSplitter(Qt.Vertical, self)
-        self.main_splitter.addWidget(top_frame)
-        self.main_splitter.addWidget(table_frame)
-        self.main_splitter.setSizes([486, 204])
-        self.main_layout.addWidget(self.main_splitter)
+        return progress_overlay
 
-        self.stack = QStackedLayout()
-        self.stack.setStackingMode(QStackedLayout.StackingMode.StackAll)
-        self.stack.addWidget(self.main_widget)
-        self.stack.addWidget(self.progress_overlay)
-        self.stack.setCurrentWidget(self.progress_overlay)  # default view
+    def _get_group_stylesheet(self) -> str:
+        """Get the standard group box stylesheet.
 
-        self.base_layout = QVBoxLayout(self)
-        self.base_layout.setContentsMargins(0, 0, 0, 0)
-        self.base_layout.addLayout(self.stack)
+        Returns:
+            str: QSS stylesheet string for group boxes.
+        """
+        return f"""
+            QGroupBox {{
+                font-size: 14px;
+                font-weight: bold;
+                background-color: #e7e7e7;
+                color: #154E9D;
+                border: 1px solid #d0d4da;
+                border-radius: 12px;
+                margin-top: 25px;
+            }}
+            QPushButton {{
+                background-color: #d5dcf9;
+                color: #2C3346;
+                border: none;
+                border-radius: 6px;
+                padding: 8px 16px;
+                font-weight: 500;
+            }}
+            QPushButton:hover {{ background-color: #bcc8f5; }}
+            QPushButton:pressed {{ background-color: #8fa3ef; }}
+            QPushButton:disabled {{ 
+                background-color: #E5E9F5;
+                color: #FFFFFF;
+            }}
+            QGroupBox::title {{
+                subcontrol-origin: margin;
+                subcontrol-position: top left;
+                padding: 0px;
+                margin-top: -8px;
+            }}
+            QLabel {{
+                background-color: transparent;
+                color: #2C3E50;
+                font-family: "Segoe UI";
+                font-weight: bold;
+            }}
+            QRadioButton, QCheckBox {{
+                background-color: transparent;
+                color: #2C3E50;
+                font-family: "Segoe UI";
+                font-weight: bold;
+            }}
+            QComboBox:hover {{ border: 1px solid #a6b2c0; }}
+            QComboBox::drop-down {{ border:none; }}
+            QComboBox::down-arrow {{ image: url("{drop_down_icon_path}"); }}
+        """
 
-        self.progress_overlay.setGeometry(self.stack.geometry())
-        self.progress_overlay.raise_()
+    def add_dataset_selector(self, label_text: str, combobox: QComboBox) -> None:
+        """Add a labeled combo box to the score selection layout.
 
-        # --- signals -----------------------------------------------------------
-        self.custom_filter_widget.filter_regexp_changed.connect(self.filter_table)
-        self.select_ranking_type.currentTextChanged.connect(self.set_ranking_argument)
-        self.radio_button_group.buttonClicked.connect(
-            self.set_use_suggested_om_score_flag
-        )
-        self.compute_score_btn.clicked.connect(self.start_om_computation)
-        self.compare_number.currentTextChanged.connect(self.update_om_selector_state)
-        for index, data in self.om_selector_map.items():
-            data["selector"].currentTextChanged.connect(
-                lambda _, k=index: self.on_selector_changed(k)
-            )
-
-    def get_model(self):
-        return self.model
-
-    def filter_table(self, regexp):
-        self.styled_table.set_proxy_filter_regexp(regexp)
-
-    def add_dataset_selector(self, label_text, combobox):
+        Args:
+            label_text (str): Label text for the combo box.
+            combobox (QComboBox): The combo box widget to add.
+        """
         container = QVBoxLayout()
         container.setSpacing(2)
         container.addWidget(QLabel(label_text))
         container.addWidget(combobox)
         self.om_selection_layout.addLayout(container)
 
-    def create_filter_groupbox(self):
+    def resizeEvent(self, event) -> None:
+        """Keep progress overlay synchronized with window size.
 
-        grid_layout = QGridLayout()
+        Args:
+            event: Resize event from Qt.
+        """
+        super().resizeEvent(event)
+        self.progress_overlay.setGeometry(self.stack.geometry())
 
-        # Add widgets to grid_layout
-        self.filter_button_group = QButtonGroup()
-        self.filter_button_group.setExclusive(False)
+    # ==========================================================================
+    # Page Initialization
+    # ==========================================================================
 
-        self.hilic_vs_hilic = QCheckBox("HILIC x HILIC")
-        self.rplc_vs_rplc = QCheckBox("RPLC x RPLC")
-        self.rplc_vs_hilic = QCheckBox("HILIC x RPLC")
+    def init_page(self, om_list: list) -> None:
+        """Initialize the page with computed metrics.
 
-        self.hilic_vs_hilic.setCheckState(Qt.CheckState.Checked)
-        self.rplc_vs_rplc.setCheckState(Qt.CheckState.Checked)
-        self.rplc_vs_hilic.setCheckState(Qt.CheckState.Checked)
+        Args:
+            om_list (list): List of computed orthogonality metric names.
 
-        self.hilic_vs_hilic.setObjectName("HILIC x HILIC")
-        self.rplc_vs_rplc.setObjectName("RPLC x RPLC")
-        self.rplc_vs_hilic.setObjectName("HILIC x RPLC")
-
-        self.filter_button_group.addButton(self.hilic_vs_hilic)
-        self.filter_button_group.addButton(self.rplc_vs_rplc)
-        self.filter_button_group.addButton(self.rplc_vs_hilic)
-
-        grid_layout.addWidget(QLabel("Filters:"), 0, 0)
-        grid_layout.addWidget(self.hilic_vs_hilic, 1, 0)
-        grid_layout.addWidget(self.rplc_vs_rplc, 2, 0)
-        grid_layout.addWidget(self.rplc_vs_hilic, 3, 0)
-
-        return grid_layout
-
-    def init_page(self, om_list):
-
-        logging.debug("Running ResultsWorker: update_orthogonality_metric_list")
+        Side Effects:
+            - Updates metric list in checklist
+            - Populates score selectors
+            - Updates plot layout
+            - Loads results table
+            - Triggers initial plots
+        """
+        logging.debug("Running ResultsPage: update_orthogonality_metric_list")
         self.update_orthogonality_metric_list(om_list)
 
-        logging.debug("Running ResultsWorker: populate_om_score_selector")
+        logging.debug("Running ResultsPage: populate_om_score_selector")
         self.populate_om_score_selector()
 
-        # logging.debug("Running ResultsWorker: build_filtered_point")
-        # self.build_filtered_point()
-
-        logging.debug("Running ResultsWorker: update_om_selector_state")
+        logging.debug("Running ResultsPage: update_om_selector_state")
         self.update_om_selector_state()
 
-        logging.debug("Running ResultsWorker: update_results_table")
+        logging.debug("Running ResultsPage: update_results_table")
         self.update_results_table()
 
         number_of_selectors = int(self.compare_number.currentText())
         for i in range(number_of_selectors):
             self.handle_selector_change(str(i), emit_plot=True)
 
-    def update_om_selector_state(self):
+    def update_orthogonality_metric_list(self, om_list: list) -> None:
+        """Update the metric checklist with available metrics.
+
+        Args:
+            om_list (list): List of metric names to display.
+
+        Side Effects:
+            - Clears and repopulates om_list widget
+            - Blocks signals during update
+        """
+        self.om_list.blockSignals(True)
+        self.om_list.clear()
+        self.om_list.add_items(om_list)
+        self.om_list.blockSignals(False)
+
+    def populate_om_score_selector(self) -> None:
+        """Populate score selectors with available scores.
+
+        Side Effects:
+            - Updates all score selector combo boxes
+            - Includes suggested, computed, and individual metric scores
+        """
+        om_list = self.om_list.get_items()
+        om_score_list = ["Suggested score", "Computed score"] + om_list
+
+        for data in self.om_selector_map.values():
+            om_score_selector = data["selector"]
+            om_score_selector.blockSignals(True)
+            om_score_selector.clear()
+            om_score_selector.addItems(om_score_list)
+            om_score_selector.blockSignals(False)
+
+    # ==========================================================================
+    # Score Computation
+    # ==========================================================================
+
+    def start_om_computation(self) -> None:
+        """Start custom orthogonality score computation in background thread.
+
+        Side Effects:
+            - Creates worker thread
+            - Connects progress and finished signals
+            - Starts computation in thread pool
+            - Updates results when complete
+        """
+        worker = ResultsWorkerComputeCustomOMScore(self)
+        worker.signals.progress.connect(self.handle_progress_update)
+        worker.signals.finished.connect(self.handle_finished)
+        self.threadpool.start(worker)
+
+    def compute_custom_orthogonality_metric_score(self) -> None:
+        """Compute custom score from checked metrics.
+
+        Side Effects:
+            - Computes weighted score from selected metrics
+            - Updates practical 2D peak capacity
+            - Recreates results table
+        """
+        metric_list = self.om_list.get_checked_items()
+        self.model.compute_custom_orthogonality_score(metric_list)
+        self.model.compute_practical_2d_peak_capacity()
+        self.model.create_results_table()
+
+    def handle_progress_update(self, value: int) -> None:
+        """Update progress bar during computation.
+
+        Args:
+            value (int): Progress percentage (0-100).
+
+        Side Effects:
+            - Shows/hides progress overlay
+            - Updates progress bar value
+            - Forces UI repaint
+        """
+        if value == 0:
+            self.progress_overlay.hide()
+        else:
+            self.stack.setCurrentWidget(self.progress_overlay)
+            self.progress_overlay.show()
+            self.progress_bar.rpb_setValue(value)
+            self.progress_bar.repaint()
+
+        if value == 100:
+            self.progress_bar.repaint()
+
+        QApplication.processEvents()
+
+    def handle_finished(self) -> None:
+        """Handle computation completion.
+
+        Side Effects:
+            - Sets progress to 100%
+            - Schedules overlay hide after 800ms
+            - Updates results table
+            - Refreshes plots
+        """
+        logging.info("Computation done")
+        self.progress_bar.rpb_setValue(100)
+        self.progress_bar.repaint()
+        QTimer.singleShot(800, self.hide_progress_overlay)
+
+        self.update_results_table()
+        self.plot_orthogonality_vs_2d_peaks()
+
+    def hide_progress_overlay(self) -> None:
+        """Hide the progress overlay and return to main view."""
+        self.progress_overlay.hide()
+        self.stack.setCurrentWidget(self.main_widget)
+
+    # ==========================================================================
+    # Plot Layout & Visualization
+    # ==========================================================================
+
+    def update_om_selector_state(self) -> None:
+        """Enable/disable score selectors based on comparison number.
+
+        Side Effects:
+            - Enables/disables selector combo boxes
+            - Updates plot layout
+            - Triggers plot updates for active selectors
+        """
         number_of_selectors = int(self.compare_number.currentText())
 
-        [
-            (
-                self.om_selector_list[i].setDisabled(False)
-                if i < number_of_selectors
-                else self.om_selector_list[i].setDisabled(True)
-            )
-            for i, selector in enumerate(self.om_selector_list)
-        ]
+        for i, selector in enumerate(self.om_selector_list):
+            selector.setDisabled(i >= number_of_selectors)
 
         self.update_plot_layout()
-
-        # [self.on_selector_changed(str(i)) for i in range(number_of_selectors)]
 
         for i in range(number_of_selectors):
             self.handle_selector_change(str(i), emit_plot=False)
 
-    def handle_selector_change(self, index: str, emit_plot: bool = True):
+    def update_plot_layout(self) -> None:
+        """Reconfigure plot layout based on number of comparisons.
+
+        Creates 1-4 subplots depending on comparison number.
+
+        Side Effects:
+            - Clears existing figure
+            - Creates new subplots
+            - Resets scatter collections
+            - Updates om_selector_map
         """
-        Handles logic for selector change.
-        This can be reused without triggering signals during initialization.
+        number_of_selectors = self.compare_number.currentText()
+        plot_key = number_of_selectors + "PLOT"
+
+        plot_layout_map = {
+            "1PLOT": [111, None, None, None],
+            "2PLOT": [121, 122, None, None],
+            # "3PLOT": [221, 222, 223, None],
+            # "4PLOT": [221, 222, 223, 224],
+        }
+
+        layout_list = plot_layout_map[plot_key]
+        self.fig.clear()
+
+        for i, layout in enumerate(layout_list):
+            index = str(i)
+            if layout is not None:
+                axe = self.fig.add_subplot(layout)
+                self.fig.subplots_adjust(wspace=0.5, hspace=0.5)
+                axe.set_box_aspect(1)
+                self.draw_figure()
+
+                self.om_selector_map[index]["axe"] = axe
+                self.om_selector_map[index]["filtered_scatter_point"] = {}
+            else:
+                self.om_selector_map[index]["axe"] = None
+                self.om_selector_map[index]["filtered_scatter_point"] = None
+
+    def handle_selector_change(self, index: str, emit_plot: bool = True) -> None:
+        """Handle score selector change.
+
+        Args:
+            index (str): Index of the changed selector ("0"-"3").
+            emit_plot (bool): Whether to trigger plot update.
+
+        Side Effects:
+            - Updates selected score and axes
+            - Plots if emit_plot is True
         """
         selector = self.om_selector_map[index]["selector"]
         self.selected_score = selector.currentText()
@@ -641,192 +761,33 @@ class ResultsPage(QFrame):
             )
             self.plot_orthogonality_vs_2d_peaks()
 
-    def on_selector_changed(self, index: str):
-        """Slot triggered by QComboBox.currentTextChanged"""
+    def on_selector_changed(self, index: str) -> None:
+        """Slot triggered by QComboBox.currentTextChanged.
+
+        Args:
+            index (str): Index of the changed selector.
+        """
         self.handle_selector_change(index)
 
-    def populate_om_score_selector(self):
-
-        om_list = self.om_list.get_items()
-
-        om_score_list = ["Suggested score", "Computed score"] + om_list
-
-        for index, data in self.om_selector_map.items():
-            om_score_selector = data["selector"]
-            om_score_selector.blockSignals(True)
-            om_score_selector.clear()
-            om_score_selector.addItems(om_score_list)
-            om_score_selector.blockSignals(False)
-
-    def update_plot_layout(self):
-        # get the number of plot to compare
-        number_of_selectors = self.compare_number.currentText()
-
-        # create a key string based on the compare number value in order to know which ploy layout to select
-        plot_key = number_of_selectors + "PLOT"
-
-        # plot layout map that contains the list of plot layout to display based on the compare number
-        plot_layout_map = {
-            "1PLOT": [111, None, None, None],
-            "2PLOT": [121, 122, None, None],
-            "3PLOT": [221, 222, 223, None],
-            "4PLOT": [221, 222, 223, 224],
-        }
-
-        # get list of layout
-        layout_list = plot_layout_map[plot_key]
-
-        self.fig.clear()
-        # self.remove_all_axes()
-
-        for i, layout in enumerate(layout_list):
-            index = str(i)
-            # initialize selector axe and scatter point selection
-            if layout is not None:
-                axe = self.fig.add_subplot(layout)
-                self.fig.subplots_adjust(wspace=0.5, hspace=0.5)
-                axe.set_box_aspect(1)
-
-                self.draw_figure()
-
-                # since the figure has been cleares, all the previous axes and scatter collection need to be reinitialized
-                # if it's not done the filtered_scatter_point won be attached to any axe because it has been deleted
-                self.om_selector_map[index]["axe"] = axe
-                self.om_selector_map[index]["filtered_scatter_point"] = {}
-
-                # self.om_selector_map[index]['scatter_collection'] = axe.scatter([], [], s=15, color='silver', edgecolor='black', linewidths=0.8)
-            else:
-                self.om_selector_map[index]["axe"] = None
-                self.om_selector_map[index]["filtered_scatter_point"] = None
-                # self.om_selector_map[index]['scatter_collection'] = None
-
-    def filter_button_clicked(self):
-        number_of_selectors = int(self.compare_number.currentText())
-
-        # [self.on_selector_changed1(str(i)) for i in range(number_of_selectors)]
-
-        for i in range(number_of_selectors):
-            self.handle_selector_change(str(i), emit_plot=True)
-
-    def draw_figure(self):
+    def draw_figure(self) -> None:
+        """Redraw the matplotlib figure canvas."""
         self.fig.canvas.draw()
         self.fig.canvas.flush_events()
 
-    def on_selector_changed1(self, index):
-        selector = self.om_selector_map[index]["selector"]
-        self.selected_score = selector.currentText()
-        self.selected_axe = self.om_selector_map[index]["axe"]
-        self.selected_filtered_scatter_point = self.om_selector_map[index][
-            "filtered_scatter_point"
-        ]
+    def plot_orthogonality_vs_2d_peaks(self) -> None:
+        """Plot selected score vs. 2D peak capacity scatter plot.
 
-        if self.selected_axe and self.selected_score:
-            print("PLot OM vs 2D")
-            self.plot_orthogonality_vs_2d_peaks()
-
-    def set_ranking_argument(self):
-        ranking_argument = self.select_ranking_type.currentText()
-        self.model.set_orthogonality_ranking_argument(ranking_argument)
-        self.update_results_table()
-
-    def set_use_suggested_om_score_flag(self):
-
-        if self.use_suggested_btn.isChecked():
-            flag = True
-            # self.compute_score_btn.setDisabled(True)
-        else:
-            flag = False
-            # self.compute_score_btn.setDisabled(False)
-
-        self.model.suggested_om_score_flag(flag)
-        # self.model.compute_suggested_score()
-        self.model.compute_practical_2d_peak_capacity()
-        self.model.create_results_table()
-        self.update_results_table()
-
-    def update_orthogonality_metric_list(self, om_list):
-        self.om_list.blockSignals(True)
-        self.om_list.clear()
-        self.om_list.add_items(om_list)
-        self.om_list.blockSignals(False)
-
-    def update_suggested_score_data(self):
-        self.model.compute_suggested_score()
-        self.model.compute_practical_2d_peak_capacity()
-
-        self.model.create_results_table()
-        self.update_results_table()
-
-    def compute_custom_orthogonality_metric_score(self):
-        metric_list = self.om_list.get_checked_items()
-        self.model.compute_custom_orthogonality_score(metric_list)
-        self.model.compute_practical_2d_peak_capacity()
-        self.model.create_results_table()
-
-    def start_om_computation(self, metric_list):
-        worker = ResultsWorkerComputeCustomOMScore(self)
-
-        worker.signals.progress.connect(self.handle_progress_update)
-        worker.signals.finished.connect(self.handle_finished)
-
-        self.threadpool.start(worker)
-
-        # self.populate_om_score_selector()
-        self.update_results_table()
-        # this is just to update self.filter_subset_dict with the new computed value (maybe there is a mor optimize way to do it)
-        # it a lazy option
-        self.build_filtered_point()
-        self.plot_orthogonality_vs_2d_peaks()
-
-    def handle_progress_update(self, value: int):
-        print(f"[RECEIVED] Progress update: {value}")
-
-        if value == 0:
-            self.progress_overlay.hide()
-        else:
-            self.stack.setCurrentWidget(self.progress_overlay)
-            self.progress_overlay.show()
-            self.progress_bar.rpb_setValue(value)
-            self.progress_bar.repaint()
-
-        if value == 100:
-            self.progress_bar.repaint()
-
-        QApplication.processEvents()
-
-    def handle_finished(self):
-        print("Computation done")
-        self.progress_bar.rpb_setValue(100)  # Final visual update
-        self.progress_bar.repaint()
-        QTimer.singleShot(800, self.hide_progress_overlay)
-
-        # self.populate_om_score_selector()
-        self.update_results_table()
-        # this is just to update self.filter_subset_dict with the new computed value (maybe there is a mor optimize way to do it)
-        # it a lazy option
-        # self.build_filtered_point()
-        self.plot_orthogonality_vs_2d_peaks()
-
-    def hide_progress_overlay(self):
-        self.progress_overlay.hide()
-        self.stack.setCurrentWidget(self.main_widget)
-
-    def update_results_table(self):
-        data = self.model.get_orthogonality_result_df()
-        self.styled_table.async_set_table_data(data)
-        self.styled_table.set_table_proxy()
-
-    def plot_orthogonality_vs_2d_peaks(self):
+        Side Effects:
+            - Removes old scatter collection if exists
+            - Creates new scatter plot
+            - Sets axes labels
+            - Redraws canvas
+        """
         if self.model.get_status() not in ["peak_capacity_loaded"]:
             return
 
         if not self.selected_score:
             return
-
-        # will be used when filtered are implemented
-        # if not hasattr(self, "orthogonality_score"):
-        #     print("[plot_orthogonality_vs_2d_peaks] Missing orthogonality_score")
-        #     return
 
         orthogonality_score_dict = self.model.get_orthogonality_score_df()
         orthogonality_score_df = pd.DataFrame.from_dict(
@@ -838,11 +799,9 @@ class ResultsPage(QFrame):
         x = orthogonality_score_df[score]
         y = orthogonality_score_df["2d_peak_capacity"]
 
-        # Set axes titles
         self.selected_axe.set_xlabel(self.selected_score, fontsize=12)
         self.selected_axe.set_ylabel("Hypothetical 2D peak capacity", fontsize=12)
 
-        # self.display_filtered_point()
         if self.selected_scatter_collection in self.selected_axe.collections:
             self.selected_scatter_collection.remove()
             self.selected_scatter_collection = None
@@ -851,249 +810,59 @@ class ResultsPage(QFrame):
             x, y, s=20, color="silver", edgecolor="black", linewidths=0.9
         )
 
-        # Hide the legend and update the figure
         self.fig.legend().set_visible(False)
         self.fig.canvas.draw()
         self.fig.canvas.flush_events()
 
-    def build_filtered_point(self):
-        # for group in self.selected_filtered_scatter_point:
-        #     scatter = self.selected_filtered_scatter_point[group]
-        #
-        #     if scatter in self.selected_axe.collections:
-        #         scatter.remove()
-        #         scatter = None
+    # ==========================================================================
+    # Ranking & Filtering
+    # ==========================================================================
 
-        self.orthogonality_score = self.model.get_orthogonality_score_df()
-        data_frame = pd.DataFrame.from_dict(self.orthogonality_score, orient="index")
+    def set_ranking_argument(self) -> None:
+        """Update ranking criterion and refresh table.
 
-        self.filter_subset_dict = {}
-        button_list = self.filter_button_group.buttons()
-        button_name_list = [button.objectName() for button in button_list]
+        Side Effects:
+            - Sets ranking argument in model
+            - Updates results table
+        """
+        ranking_argument = self.select_ranking_type.currentText()
+        self.model.set_orthogonality_ranking_argument(ranking_argument)
+        self.update_results_table()
 
-        def get_filter_column_nb(filter):
-            # Iterate over columns
-            for col in self.filter_df.columns:
-                if filter in self.filter_df[col].values:
-                    column_number = col
-                    break
-            # return the column number of the filter name
-            return column_number
+    def set_use_suggested_om_score_flag(self) -> None:
+        """Toggle between suggested and computed score.
 
-        regular_expresion_map = {
-            "HILIC x HILIC": r"HILIC.*vs.*HILIC",
-            "RPLC x RPLC": r"RPLC.*vs.*RPLC",
-            "HILIC x RPLC": r"HILIC.*vs.*RPLC",
-            "pH3 x pH8": r"pH\s?3(?!\.\d).*vs.*pH\s?8(?!\.\d)",
-            "pH3 x pH5.5": r"pH\s?3(?!\.\d).*vs.*pH\s?5.5(?!\.\d)",
-            "pH5.5 x pH8": r"pH\s?5.5(?!\.\d).*vs.*pH\s?8(?!\.\d)",
-            "MeOH x ACN": r"MeOH.*vs.*ACN",
-        }
+        Side Effects:
+            - Sets suggested score flag in model
+            - Recomputes practical 2D peak capacity
+            - Recreates results table
+            - Updates table display
+        """
+        flag = self.use_suggested_btn.isChecked()
+        self.model.suggested_om_score_flag(flag)
+        self.model.compute_practical_2d_peak_capacity()
+        self.model.create_results_table()
+        self.update_results_table()
 
-        data_frame_mask2 = pd.Series(False, index=range(len(data_frame)))
+    def update_results_table(self) -> None:
+        """Update the results table with latest data.
 
-        for button_name in button_name_list:
-            reg_exp1 = regular_expresion_map[button_name]
-            data_frame_mask1 = data_frame["title"].str.contains(reg_exp1)
+        Side Effects:
+            - Fetches results dataframe from model
+            - Loads data asynchronously into table
+            - Sets up sorting/filtering proxy
+        """
+        data = self.model.get_orthogonality_result_df()
+        self.styled_table.async_set_table_data(data)
+        self.styled_table.set_table_proxy()
 
-            # Split the original string into words
-            words = reg_exp1.split(".*")
-            # Reverse the order of the words
-            swapped_words = words[::-1]
-            # Combine the reversed words with separators
-            reg_exp2 = ".*".join(swapped_words)
-            data_frame_mask2.index = data_frame_mask1.index
-            # if swapped word is the same we don't want to double the mask which would lead to have double scatter point of same subset of datas
-            if reg_exp1 != reg_exp2:
-                data_frame_mask2 = data_frame["title"].str.contains(reg_exp2)
-            else:
-                # that's a workaround, proper way would be to just set a dataframe mask of False, same size of data_frame
+    def filter_table(self, regexp: str) -> None:
+        """Apply custom filter to results table.
 
-                data_frame_mask2.index = data_frame_mask1.index
+        Args:
+            regexp (str): Regular expression filter pattern.
 
-            self.filter_subset_dict[button_name] = [
-                {"mask": data_frame_mask1, "data_frame1": data_frame[data_frame_mask1]},
-                {"mask": data_frame_mask2, "data_frame2": data_frame[data_frame_mask2]},
-            ]
-
-    def display_filtered_point(self):
-        # self.orthogonality_dict = self.model.get_orthogonality_dict()
-        if self.orthogonality_scatter_default in self.selected_axe.collections:
-            self.orthogonality_scatter_default.remove()
-            self.orthogonality_scatter_default = None
-
-        score = UI_TO_MODEL_MAPPING[self.selected_score]
-
-        button_list = self.filter_button_group.buttons()
-        checked_button_list = [
-            button.objectName() for button in button_list if button.isChecked()
-        ]
-        button_name_list = [button.objectName() for button in button_list]
-
-        def get_filter_column_nb(filter):
-            # Iterate over columns
-            for col in self.filter_df.columns:
-                if filter in self.filter_df[col].values:
-                    column_number = col
-                    break
-            # return the column number of the filter name
-            return column_number
-
-        def check_if_filter_exclusively_in_same_column():
-            # check if all checked filter button are exclusively in the same column (in GUI it means same row)
-            if button_name_list:
-                filter_column_list = np.array(
-                    [get_filter_column_nb(checked) for checked in button_name_list]
-                )
-
-                return np.all(filter_column_list == filter_column_list[0])
-            else:
-                return False
-
-        def set_scatter_visibility():
-            for button in self.selected_filtered_scatter_point:
-                scatter_point = self.selected_filtered_scatter_point[button]
-                # edge, face = scatter_point
-                face = scatter_point
-
-                if button in checked_button_list:
-                    # edge.set_visible(True)
-                    face.set_visible(True)
-                else:
-                    # edge.set_visible(False)
-                    face.set_visible(False)
-
-        filter_marker_map = {
-            "HILIC x HILIC": {
-                "MARKER": "s",
-                "COLOR": "lightgray",
-                "FACECOLOR": "k",
-                "EDGECOLOR": "k",
-                "LABEL": "HILIC x HILIC",
-            },
-            "RPLC x RPLC": {
-                "MARKER": "o",
-                "COLOR": "lightgray",
-                "FACECOLOR": "k",
-                "EDGECOLOR": "k",
-                "LABEL": "RPLC x RPLC",
-            },
-            "HILIC x RPLC": {
-                "MARKER": "^",
-                "COLOR": "lightgray",
-                "FACECOLOR": "k",
-                "EDGECOLOR": "k",
-                "LABEL": "HILIC x RPLC",
-            },
-            "pH3 x pH8": {
-                "MARKER": None,
-                "COLOR": "red",
-                "FACECOLOR": None,
-                "EDGECOLOR": "red",
-            },
-            "pH3 x pH5.5": {
-                "MARKER": None,
-                "COLOR": "green",
-                "FACECOLOR": None,
-                "EDGECOLOR": "green",
-            },
-            "pH5.5 x pH8": {
-                "MARKER": None,
-                "COLOR": "blue",
-                "FACECOLOR": None,
-                "EDGECOLOR": "blue",
-            },
-            "MeOH x ACN": {
-                "MARKER": None,
-                "COLOR": "brown",
-                "FACECOLOR": None,
-                "EDGECOLOR": "brown",
-            },
-        }
-
-        data_frame_mask = False
-        if self.filter_subset_dict:
-            for checked_filter in self.filter_subset_dict:
-                data_frame_mask1 = self.filter_subset_dict[checked_filter][0]["mask"]
-                data_frame_mask2 = self.filter_subset_dict[checked_filter][1]["mask"]
-                data_frame_mask = (data_frame_mask | data_frame_mask1) | (
-                    data_frame_mask | data_frame_mask2
-                )
-
-        if button_name_list:
-            # for key in self.displayed_filter_keys:
-
-            # Initialize a set to keep track of displayed keys
-
-            # self.orthoganality_scatter = self._ax.scatter(x_full, y_full,s=20, color='k',facecolor='None', alpha=0.05)
-            final_dataframe = pd.DataFrame()
-            # if check_if_filter_exclusively_in_same_column():
-            # if checked_button_list:
-            # self.orthogonality_filter_marker = None
-            for button_name in self.filter_subset_dict:
-
-                # Skip if already plotted
-                subset1 = self.filter_subset_dict[button_name][0]["data_frame1"]
-                subset2 = self.filter_subset_dict[button_name][1]["data_frame2"]
-
-                # Concatenate the two DataFrames vertically
-                subset = pd.concat([subset1, subset2], axis=0)
-                final_dataframe = pd.concat([final_dataframe, subset], axis=1)
-                # Reset the index of the merged DataFrame
-                subset = subset.reset_index(drop=True)
-
-                x = subset[score]
-                y = subset["2d_peak_capacity"]
-
-                if button_name not in list(self.selected_filtered_scatter_point.keys()):
-
-                    scatter = self.selected_axe.scatter(
-                        x,
-                        y,
-                        s=20,
-                        marker=filter_marker_map[button_name]["MARKER"],
-                        color=filter_marker_map[button_name]["COLOR"],
-                        label=filter_marker_map[button_name]["LABEL"],
-                        # color=None,
-                        # facecolor=filter_marker_map[button_name]['FACECOLOR'],
-                        # facecolor='None',
-                        # edgecolor=filter_marker_map[button_name]['EDGECOLOR'],
-                        # edgecolor=filter_marker_map[button_name]['EDGECOLOR'],
-                        edgecolor="black",
-                        # alpha=0.5,
-                        linewidths=0.8,
-                    )
-
-                    # scatter_face = self.orthogonality_axes.scatter(x, y,
-                    #                                  s=20,
-                    #                                  marker=filter_marker_map[button_name]['MARKER'],
-                    #                                  # color=filter_marker_map[button_name]['COLOR'],
-                    #                                  facecolor=filter_marker_map[button_name]['FACECOLOR'],
-                    #                                  # edgecolor=filter_marker_map[button_name]['EDGECOLOR'],
-                    #                                  edgecolor='None')
-                    #                                  # alpha=0.3,
-                    #                                 # linewidths=0)
-
-                    # self.scatter_point_group[button_name] = (scatter_edge, scatter_face)
-                    self.selected_filtered_scatter_point[button_name] = scatter
-                else:
-                    # if they are present in group just update their value with scatter plot offset
-                    # means that selected score has been changes so scatter point needs to be updated
-                    # accordingly
-                    scatter = self.selected_filtered_scatter_point[button_name]
-                    scatter.set_offsets(list(zip(x, y)))
-                # Add the key to the set to mark it as displayed
-            # else:
-            #     x = [self.orthogonality_score[key][score] for key in self.orthogonality_score]
-            #     y = [self.orthogonality_score[key]['2d_peak_capacity'] for key in self.orthogonality_score]
-            #     self.orthogonality_scatter_default = self.selected_axe.scatter(x, y, s=15, color='silver',
-            #                                                                          edgecolor='black',
-            #                                                                          linewidths=0.8)
-            #     self.selected_scatter_collection.set_offsets(list(zip(x, y)))
-            #     # self.orthogonality_scatter_default = self.orthogonality_axes.scatter(x, y, s=20, color='k', alpha=0.4,linewidths=2)
-
-            set_scatter_visibility()
-
-        # self.fig.legend().set_visible(False)
-        self.fig.canvas.draw()
-        self.fig.canvas.flush_events()
+        Side Effects:
+            - Applies filter to table proxy model
+        """
+        self.styled_table.set_proxy_filter_regexp(regexp)

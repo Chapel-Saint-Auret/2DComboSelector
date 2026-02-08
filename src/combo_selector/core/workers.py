@@ -100,7 +100,7 @@ class ResultsWorker(QRunnable):
     """
 
     def __init__(self, page, om_list):
-        """Initialize the results worker.
+        """Initialize the results' worker.
 
         Args:
             page: ResultsPage instance containing UI and data model.

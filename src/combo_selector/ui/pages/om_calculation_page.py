@@ -1,20 +1,25 @@
+"""Orthogonality metric calculation and visualization page.
+
+This module provides the OMCalculationPage class which handles:
+- Selection and computation of orthogonality metrics
+- Side-by-side comparison of up to 4 metrics
+- Interactive visualization of metric results
+- Progress tracking with circular progress bar overlay
+- Results table display with sorting and filtering
+"""
+
 from functools import partial
 
-import matplotlib as mpl
-from matplotlib import collections
 from matplotlib.backends.backend_qtagg import FigureCanvas
 from matplotlib.figure import Figure
-from PySide6.QtCore import QModelIndex, QSize, Qt, QThreadPool, QTimer, Signal
-from PySide6.QtGui import QColor, QIcon
+from PySide6.QtCore import Qt, QThreadPool, QTimer, Signal
 from PySide6.QtWidgets import (
     QApplication,
     QComboBox,
     QFrame,
-    QGraphicsDropShadowEffect,
     QGroupBox,
     QHBoxLayout,
     QLabel,
-    QMessageBox,
     QPushButton,
     QScrollArea,
     QSizePolicy,
@@ -32,15 +37,14 @@ from combo_selector.ui.widgets.checkable_tree_list import CheckableTreeList
 from combo_selector.ui.widgets.circle_progress_bar import RoundProgressBar
 from combo_selector.ui.widgets.custom_toolbar import CustomToolbar
 from combo_selector.ui.widgets.line_widget import LineWidget
-from combo_selector.ui.widgets.neumorphism import *
+from combo_selector.ui.widgets.neumorphism import BoxShadow
 from combo_selector.ui.widgets.style_table import StyledTable
 from combo_selector.utils import resource_path
 
-PLOT_SIZE = QSize(600, 400)
-ICON_SIZE = QSize(28, 28)
+# Dropdown arrow icon path
 drop_down_icon_path = resource_path("icons/drop_down_arrow.png").replace("\\", "/")
 
-
+# Maps metric names (from model) to plot visualization names
 METRIC_PLOT_MAP = {
     "Convex hull relative area": "Convex Hull",
     "Bin box counting": "Bin Box",
@@ -50,44 +54,74 @@ METRIC_PLOT_MAP = {
     "Asterisk equations": "Asterisk",
     "%FIT": "%FIT yx",
     "%BIN": "%BIN",
-    "Gilar-Watson method": None,
+    "Gilar-Watson method": None,  # No visualization
     "Modeling approach": "Modeling approach",
     "Geometric approach": "Geometric approach",
     "Conditional entropy": "Conditional entropy",
-    "NND Arithm mean": None,
-    "NND Geom mean": None,
-    "NND Harm mean": None,
-    "NND mean": None,
+    "NND Arithm mean": None,  # No visualization
+    "NND Geom mean": None,  # No visualization
+    "NND Harm mean": None,  # No visualization
+    "NND mean": None,  # No visualization
 }
 
 
 class OMCalculationPage(QFrame):
+    """Page for computing and visualizing orthogonality metrics.
+
+    Provides a comprehensive interface for:
+    - Selecting metrics to compute from a checklist
+    - Computing metrics in background threads with progress tracking
+    - Comparing 1-4 metrics side-by-side
+    - Interactive selection of data sets
+    - Adjusting bin numbers for grid-based metrics
+    - Viewing computed results in a sortable table
+
+    The page uses a stacked layout to overlay a progress indicator during
+    long-running computations, keeping the UI responsive.
+
+    Attributes:
+        model (Orthogonality): Data model containing chromatography data.
+        thread pool (QThreadPool): Thread pool for background computations.
+        plot_utils (PlotUtils): Utility for generating metric visualizations.
+        om_selector_map (dict): Maps plot indices to selectors and axes.
+        selected_metric_list (list): Currently computed metric names.
+        progress_overlay (QWidget): Transparent overlay showing progress bar.
+
+    Signals:
+        metric_computed (list): Emitted when metrics finish computing.
+                               Carries [metric_names, plot_names].
+        gui_update_requested: Emitted when GUI update is needed (unused).
+    """
+
     metric_computed = Signal(list)
     gui_update_requested = Signal()
 
     def __init__(self, model: Orthogonality = None) -> None:
-        """
-        Initialize the OMCalculationPage.
+        """Initialize the OMCalculationPage with controls and visualizations.
 
-        Layout:
-          - Top: input (left) + OM visualization (right)
-          - Bottom: OM result table
-          - Overlay: circular progress bar during computations
+        Args:
+            model (Orthogonality, optional): Data model instance.
+
+        Layout Structure:
+            - Top section (side-by-side):
+                - Left: Input panel (metric selection, bin number, display options)
+                - Right: Plot area (1-4 subplots based on comparison number)
+            - Bottom section:
+                - Results table showing computed metric values
+            - Overlay:
+                - Circular progress bar during computations
         """
         super().__init__()
 
-        # --- model & state ----------------------------------------------------
+        # --- Model & state ------------------------------------------------
         self.model = model
         self.selected_metric_list = []
         self.threadpool = QThreadPool()
-        self.selected_scatter_collection = None
-        self.selected_metric = None  # First metric in the list
-        self.artist_list = []
-        self.arrow_list = []
+        self.selected_metric = None
         self.selected_set = "Set 1"
         self.orthogonality_dict = {}
 
-        # --- plotting setup ---------------------------------------------------
+        # --- Plotting setup -----------------------------------------------
         self.fig = Figure(figsize=(15, 15))
         self.canvas = FigureCanvas(self.fig)
         self.toolbar = CustomToolbar(self.canvas)
@@ -110,7 +144,7 @@ class OMCalculationPage(QFrame):
             "Conditional entropy": partial(self.plot_utils.plot_conditional_entropy),
         }
 
-        # --- base frame & main container -------------------------------------
+        # --- Base frame & main container ----------------------------------
         self.setFrameShape(QFrame.StyledPanel)
         self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
 
@@ -119,13 +153,79 @@ class OMCalculationPage(QFrame):
         self.main_layout.setContentsMargins(0, 0, 0, 0)
         self.main_layout.setSpacing(0)
 
-        # === TOP AREA =========================================================
+        # === TOP AREA =====================================================
+        top_frame = self._create_top_section()
+
+        # === BOTTOM AREA: table ===========================================
+        table_frame = self._create_table_section()
+
+        # === Overlay (progress) ===========================================
+        self.progress_overlay = self._create_progress_overlay()
+
+        # === Splitter + stacking ==========================================
+        self.main_splitter = QSplitter(Qt.Vertical, self)
+        self.main_splitter.addWidget(top_frame)
+        self.main_splitter.addWidget(table_frame)
+        self.main_splitter.setSizes([486, 204])
+        self.main_layout.addWidget(self.main_splitter)
+
+        self.stack = QStackedLayout()
+        self.stack.setStackingMode(QStackedLayout.StackingMode.StackAll)
+        self.stack.addWidget(self.main_widget)
+        self.stack.addWidget(self.progress_overlay)
+        self.stack.setCurrentWidget(self.progress_overlay)
+
+        self.base_layout = QVBoxLayout(self)
+        self.base_layout.setContentsMargins(0, 0, 0, 0)
+        self.base_layout.addLayout(self.stack)
+
+        self.progress_overlay.setGeometry(self.stack.geometry())
+        self.progress_overlay.raise_()
+
+        # --- Signal wiring ------------------------------------------------
+        self.compare_number.currentTextChanged.connect(self.update_om_selector_state)
+        for index, data in self.om_selector_map.items():
+            data["selector"].currentTextChanged.connect(
+                lambda _, k=index: self.on_selector_changed(k)
+            )
+        self.om_calculate_btn.clicked.connect(self.compute_orthogonality_metric)
+        self.nb_bin.editingFinished.connect(self.update_bin_box_number)
+        self.dataset_selector.currentTextChanged.connect(
+            self.data_set_selection_changed_from_combobox
+        )
+
+    def _create_top_section(self) -> QFrame:
+        """Create the top section with input panel and plot area.
+
+        Returns:
+            QFrame: Configured top frame with input and plot sections.
+        """
         top_frame = QFrame()
         top_frame_layout = QHBoxLayout(top_frame)
         top_frame_layout.setContentsMargins(50, 50, 50, 50)
         top_frame_layout.setSpacing(80)
 
-        # ----- Left: Input card ----------------------------------------------
+        # Left: Input card
+        input_section = self._create_input_panel()
+
+        # Right: Plot card
+        plot_frame = self._create_plot_panel()
+
+        # Assemble
+        top_frame_layout.addWidget(input_section)
+        top_frame_layout.addWidget(plot_frame)
+
+        self.top_frame_shadow = BoxShadow()
+        top_frame.setGraphicsEffect(self.top_frame_shadow)
+
+        return top_frame
+
+    def _create_input_panel(self) -> QFrame:
+        """Create the left input panel with metric selection and options.
+
+        Returns:
+            QFrame: Input section containing metric checklist and selectors.
+        """
         input_title = QLabel("Input")
         input_title.setFixedHeight(30)
         input_title.setObjectName("TitleBar")
@@ -160,7 +260,24 @@ class OMCalculationPage(QFrame):
         input_layout.addWidget(input_title)
         input_layout.addWidget(user_input_scroll_area)
 
-        # OM calculation group (stylesheet unchanged)
+        # OM calculation group
+        om_computing_group = self._create_om_calculation_group()
+
+        # OM selection group
+        data_selection_group = self._create_om_selection_group()
+
+        user_input_frame_layout.addWidget(om_computing_group)
+        user_input_frame_layout.addWidget(LineWidget("Horizontal"))
+        user_input_frame_layout.addWidget(data_selection_group)
+
+        return input_section
+
+    def _create_om_calculation_group(self) -> QGroupBox:
+        """Create the OM calculation group with metric checklist.
+
+        Returns:
+            QGroupBox: Group box containing metric checklist and compute button.
+        """
         om_computing_group = QGroupBox("OM calculation")
         om_calculation_layout = QVBoxLayout()
         om_computing_group.setLayout(om_calculation_layout)
@@ -180,7 +297,7 @@ class OMCalculationPage(QFrame):
                 padding: 0px;
                 margin-top: -8px;
             }
-                QPushButton {
+            QPushButton {
                 background-color: #d5dcf9;
                 color: #2C3346;
                 border: none;
@@ -188,48 +305,25 @@ class OMCalculationPage(QFrame):
                 padding: 8px 16px;
                 font-weight: 500;
             }
-            QPushButton:hover {
-                background-color: #bcc8f5;
-            }
-            QPushButton:pressed {
-                background-color: #8fa3ef;
-            }
-            QPushButton:disabled {
-                background-color: #E5E9F5;
-                color: #FFFFFF;
-            }
-                           QLabel {
-            background-color: transparent;
-            }
-
+            QPushButton:hover { background-color: #bcc8f5; }
+            QPushButton:pressed { background-color: #8fa3ef; }
+            QPushButton:disabled { background-color: #E5E9F5; color: #FFFFFF; }
+            QLabel { background-color: transparent; }
             QCheckBox::indicator {
-                width: 16px;
-                height: 16px;
+                width: 16px; height: 16px;
                 border: 1px solid #154E9D;
                 border-radius: 3px;
                 background: white;
             }
-
             QCheckBox::indicator:checked {
                 background: #154E9D;
                 border: 1px solid #154E9D;
             }
-
-            QCheckBox::indicator:unchecked {
-                background: white;
-                border: 1px solid #154E9D;
-            }
-
-            QCheckBox::indicator:disabled {
-                background: #d0d0d0;
-                border: 1px solid #b0b0b0;
-            }
-
-             QLabel#sub-title {
-            background-color: transparent;
-            color: #2C3E50;
-            font-family: "Segoe UI";
-            font-weight: bold;
+            QLabel#sub-title {
+                background-color: transparent;
+                color: #2C3E50;
+                font-family: "Segoe UI";
+                font-weight: bold;
             }
         """)
 
@@ -279,7 +373,14 @@ class OMCalculationPage(QFrame):
         om_calculation_layout.addSpacing(15)
         om_calculation_layout.addWidget(self.om_calculate_btn)
 
-        # OM selection group (stylesheet unchanged)
+        return om_computing_group
+
+    def _create_om_selection_group(self) -> QGroupBox:
+        """Create the OM selection group for comparing metrics.
+
+        Returns:
+            QGroupBox: Group box with dataset and metric selectors.
+        """
         data_selection_group = QGroupBox("OM selection")
         data_selection_group.setStyleSheet(f"""
             QGroupBox {{
@@ -298,28 +399,23 @@ class OMCalculationPage(QFrame):
                 margin-top: -8px;
             }}
             QLabel {{
-            background-color: transparent;
-            color: #2C3E50;
-            font-family: "Segoe UI";
-            font-weight: bold;
+                background-color: transparent;
+                color: #2C3E50;
+                font-family: "Segoe UI";
+                font-weight: bold;
             }}
-
-
-            QComboBox::drop-down {{
-                border:none;
-            }}
-
+            QComboBox::drop-down {{ border:none; }}
             QComboBox::down-arrow {{
                 image: url("{drop_down_icon_path}");
             }}
-
         """)
 
         self.om_selection_layout = QVBoxLayout()
         self.om_selection_layout.setSpacing(6)
+
         self.om_selection_layout.addWidget(QLabel("Number of metric to compare:"))
         self.compare_number = QComboBox()
-        self.compare_number.addItems(["1", "2", "3", "4"])
+        self.compare_number.addItems(["1", "2"])
         self.om_selection_layout.addWidget(self.compare_number)
         self.om_selection_layout.addSpacing(20)
 
@@ -327,6 +423,7 @@ class OMCalculationPage(QFrame):
         self.dataset_selector = QComboBox()
         self.om_selection_layout.addWidget(self.dataset_selector)
 
+        # Create 4 metric selectors
         self.om_selector1 = QComboBox()
         self.om_selector2 = QComboBox()
         self.om_selector3 = QComboBox()
@@ -337,79 +434,41 @@ class OMCalculationPage(QFrame):
 
         self.add_dataset_selector("Select OM 1:", self.om_selector1)
         self.add_dataset_selector("Select OM 2:", self.om_selector2)
-        self.add_dataset_selector("Select OM 3:", self.om_selector3)
-        self.add_dataset_selector("Select OM 4:", self.om_selector4)
+        # self.add_dataset_selector("Select OM 3:", self.om_selector3)
+        # self.add_dataset_selector("Select OM 4:", self.om_selector4)
 
         self.om_selector_list = [
             self.om_selector1,
-            self.om_selector2,
-            self.om_selector3,
-            self.om_selector4,
+            self.om_selector2
+            # self.om_selector3,
+            # self.om_selector4,
         ]
+
+        # Map to track selector, axes, and scatter collections
         self.om_selector_map = {
-            "0": {
-                "selector": self.om_selector1,
+            str(i): {
+                "selector": selector,
                 "axe": None,
                 "scatter_collection": None,
-            },
-            "1": {
-                "selector": self.om_selector2,
-                "axe": None,
-                "scatter_collection": None,
-            },
-            "2": {
-                "selector": self.om_selector3,
-                "axe": None,
-                "scatter_collection": None,
-            },
-            "3": {
-                "selector": self.om_selector4,
-                "axe": None,
-                "scatter_collection": None,
-            },
+            }
+            for i, selector in enumerate(self.om_selector_list)
         }
 
         data_selection_group.setLayout(self.om_selection_layout)
+        return data_selection_group
 
-        # (Optional) Tips group (stylesheet unchanged; currently not added to layout)
-        page_tips_group = QGroupBox("Tips")
-        page_tips_group.setStyleSheet("""
-            QGroupBox {
-                font-size: 14px;
-                font-weight: bold;
-                background-color: #e7e7e7;
-                color: #154E9D;
-                border: 1px solid #d0d4da;
-                border-radius: 12px;
-                margin-top: 25px;
-            }
-            QGroupBox::title {
-                subcontrol-origin: margin;
-                subcontrol-position: top left;
-                padding: 0px;
-                margin-top: -8px;
-            }
-        """)
-        page_tips_layout = QVBoxLayout()
-        self.textEdit = QLabel()
-        self.textEdit.setTextFormat(Qt.TextFormat.RichText)
-        self.textEdit.setWordWrap(True)
-        page_tips_layout.addWidget(self.textEdit)
-        page_tips_group.setLayout(page_tips_layout)
+    def _create_plot_panel(self) -> QFrame:
+        """Create the right plot panel for metric visualization.
 
-        user_input_frame_layout.addWidget(om_computing_group)
-        user_input_frame_layout.addWidget(LineWidget("Horizontal"))
-        user_input_frame_layout.addWidget(data_selection_group)
-        # user_input_frame_layout.addWidget(LineWidget("Horizontal"))
-        # user_input_frame_layout.addWidget(page_tips_group)
-
-        # ----- Right: Plot card (styles unchanged) ----------------------------
+        Returns:
+            QFrame: Plot frame containing toolbar and canvas.
+        """
         plot_frame = QFrame()
         plot_frame.setStyleSheet("""
-               background-color: #e7e7e7;
-               border-top-left-radius: 10px;
-               border-top-right-radius: 10px;
-           """)
+            background-color: #e7e7e7;
+            border-top-left-radius: 10px;
+            border-top-right-radius: 10px;
+        """)
         plot_frame_layout = QVBoxLayout(plot_frame)
         plot_frame_layout.setContentsMargins(0, 0, 0, 0)
 
@@ -423,22 +482,23 @@ class OMCalculationPage(QFrame):
             color: white;
             font-weight:bold;
             font-size: 16px;
-            font-weight: bold;
             padding: 6px 12px;
             border-top-left-radius: 10px;
             border-top-right-radius: 10px;
         """)
+
         plot_frame_layout.addWidget(plot_title)
         plot_frame_layout.addWidget(self.toolbar)
         plot_frame_layout.addWidget(self.canvas)
 
-        # Assemble top row
-        top_frame_layout.addWidget(input_section)
-        top_frame_layout.addWidget(plot_frame)
-        self.top_frame_shadow = BoxShadow()
-        top_frame.setGraphicsEffect(self.top_frame_shadow)
+        return plot_frame
 
-        # === BOTTOM AREA: table ===============================================
+    def _create_table_section(self) -> QWidget:
+        """Create the bottom table section for results display.
+
+        Returns:
+            QWidget: Table frame containing styled results table.
+        """
         table_frame = QWidget()
         table_frame_layout = QHBoxLayout(table_frame)
         table_frame_layout.setContentsMargins(20, 20, 20, 20)
@@ -453,217 +513,288 @@ class OMCalculationPage(QFrame):
         self.table_frame_shadow = BoxShadow()
         self.styled_table.setGraphicsEffect(self.table_frame_shadow)
 
-        # === Overlay (progress) ===============================================
+        return table_frame
+
+    def _create_progress_overlay(self) -> QWidget:
+        """Create the progress bar overlay widget.
+
+        Returns:
+            QWidget: Transparent overlay with circular progress bar.
+        """
         self.progress_bar = RoundProgressBar()
         self.progress_bar.rpb_setBarStyle("Pizza")
 
-        self.progress_overlay = QWidget(self)
-        self.progress_overlay.setAttribute(Qt.WA_TransparentForMouseEvents)
-        self.progress_overlay.setStyleSheet("background-color: transparent;")
-        self.progress_overlay.hide()
+        progress_overlay = QWidget(self)
+        progress_overlay.setAttribute(Qt.WA_TransparentForMouseEvents)
+        progress_overlay.setStyleSheet("background-color: transparent;")
+        progress_overlay.hide()
 
-        overlay_layout = QVBoxLayout(self.progress_overlay)
+        overlay_layout = QVBoxLayout(progress_overlay)
         overlay_layout.setContentsMargins(0, 0, 0, 0)
         overlay_layout.addStretch()
         overlay_layout.addWidget(self.progress_bar, alignment=Qt.AlignCenter)
         overlay_layout.addStretch()
 
-        # === Splitter + stacking ==============================================
-        self.main_splitter = QSplitter(Qt.Vertical, self)
-        self.main_splitter.addWidget(top_frame)
-        self.main_splitter.addWidget(table_frame)
-        self.main_splitter.setSizes([486, 204])
-        self.main_layout.addWidget(self.main_splitter)
+        return progress_overlay
 
-        self.stack = QStackedLayout()
-        self.stack.setStackingMode(QStackedLayout.StackingMode.StackAll)
-        self.stack.addWidget(self.main_widget)
-        self.stack.addWidget(self.progress_overlay)
-        self.stack.setCurrentWidget(self.progress_overlay)  # default view
+    def add_dataset_selector(self, label_text: str, combobox: QComboBox) -> None:
+        """Add a labeled combo box to the OM selection layout.
 
-        self.base_layout = QVBoxLayout(self)
-        self.base_layout.setContentsMargins(0, 0, 0, 0)
-        self.base_layout.addLayout(self.stack)
-
-        self.progress_overlay.setGeometry(self.stack.geometry())
-        self.progress_overlay.raise_()
-
-        # --- signal wiring ----------------------------------------------------
-        self.compare_number.currentTextChanged.connect(self.update_om_selector_state)
-        for index, data in self.om_selector_map.items():
-            data["selector"].currentTextChanged.connect(
-                lambda _, k=index: self.on_selector_changed(k)
-            )
-        self.om_calculate_btn.clicked.connect(self.compute_orthogonality_metric)
-        self.nb_bin.editingFinished.connect(self.update_bin_box_number)
-        self.dataset_selector.currentTextChanged.connect(
-            self.data_set_selection_changed_from_combobox
-        )
-        # self.styled_table.selectionChanged.connect(self.data_set_selection_changed_from_table)
-
-    def add_dataset_selector(self, label_text, combobox):
+        Args:
+            label_text (str): Label text for the combo box.
+            combobox (QComboBox): The combo box widget to add.
+        """
         container = QVBoxLayout()
         container.setSpacing(2)
         container.addWidget(QLabel(label_text))
         container.addWidget(combobox)
         self.om_selection_layout.addLayout(container)
 
-    # Override resizeEvent to keep overlay in sync
-    def resizeEvent(self, event):
+    def resizeEvent(self, event) -> None:
+        """Keep progress overlay synchronized with window size.
+
+        Args:
+            event: Resize event from Qt.
+        """
         super().resizeEvent(event)
         self.progress_overlay.setGeometry(self.stack.geometry())
 
-    def start_om_computation(self, metric_list):
-        worker = OMWorkerComputeOM(metric_list, self.model)
+    # ==========================================================================
+    # Worker Thread Management
+    # ==========================================================================
 
+    def start_om_computation(self, metric_list: list) -> None:
+        """Start orthogonality metric computation in background thread.
+
+        Args:
+            metric_list (list): List of metric names to compute.
+
+        Side Effects:
+            - Creates worker thread
+            - Connects progress and finished signals
+            - Starts computation in thread pool
+        """
+        worker = OMWorkerComputeOM(metric_list, self.model)
         worker.signals.progress.connect(self.handle_progress_update)
         worker.signals.finished.connect(self.handle_finished)
-
         self.threadpool.start(worker)
 
-    def start_update_bin_number(self, nb_bin):
-        checked_metric_list = self.om_tree_list.get_checked_items()
+    def handle_progress_update(self, value: int) -> None:
+        """Update progress bar during computation.
 
-        # TODO this was to only compute the metric if any of these metric were selected
-        # remove the threading if not necessary
+        Args:
+            value (int): Progress percentage (0-100).
 
-        if any(
-            metric in checked_metric_list
-            for metric in [
-                "Bin box counting",
-                "Modeling approach",
-                "Gilar-Watson method",
-            ]
-        ):
-
-            worker = OMWorkerUpdateNumBin(nb_bin, checked_metric_list, self.model)
-
-            worker.signals.progress.connect(self.handle_progress_update)
-
-            # TODO find a better way to compute the metric once bin number has been updated
-            # this is commented because this call this will update table and trigger computed_metric signal
-            # the issue is that when bin number is updated, I should find a way to compute metric if they have at least
-            # been computed once otherwise it means I compute the metric without clicking on compute metric button
-            # worker.signals.finished.connect(self.handle_finished)
-
-            self.threadpool.start(worker)
-        else:
+        Side Effects:
+            - Shows/hides progress overlay
+            - Updates progress bar value
+            - Forces UI repaint
+        """
+        if not self.om_tree_list.get_checked_items():
             return
 
-    def handle_progress_update(self, value: int):
-        if self.om_tree_list.get_checked_items():
-
-            if value == 0:
-                self.progress_overlay.hide()
-            else:
-                self.stack.setCurrentWidget(self.progress_overlay)
-                self.progress_overlay.show()
-                self.progress_bar.rpb_setValue(value)
-                self.progress_bar.repaint()
-
-            if value == 100:
-                self.progress_bar.repaint()
-
-            QApplication.processEvents()
+        if value == 0:
+            self.progress_overlay.hide()
         else:
-            return
-
-    def handle_finished(self):
-        if self.om_tree_list.get_checked_items():
-            self.progress_bar.rpb_setValue(100)  # Final visual update
+            self.stack.setCurrentWidget(self.progress_overlay)
+            self.progress_overlay.show()
+            self.progress_bar.rpb_setValue(value)
             self.progress_bar.repaint()
-            QTimer.singleShot(800, self.hide_progress_overlay)
 
-            self.update_orthogonality_table()
-            self.data_sets_change()
-            self.metric_computed.emit(
-                [self.om_tree_list.get_checked_items(), self.selected_metric_list]
-            )
-        else:
+        if value == 100:
+            self.progress_bar.repaint()
+
+        QApplication.processEvents()
+
+    def handle_finished(self) -> None:
+        """Handle computation completion.
+
+        Side Effects:
+            - Sets progress to 100%
+            - Schedules overlay hide after 800ms
+            - Updates results table
+            - Refreshes plot displays
+            - Emits metric_computed signal
+        """
+        if not self.om_tree_list.get_checked_items():
             return
 
-    def hide_progress_overlay(self):
+        self.progress_bar.rpb_setValue(100)
+        self.progress_bar.repaint()
+        QTimer.singleShot(800, self.hide_progress_overlay)
+
+        self.update_orthogonality_table()
+        self.data_sets_change()
+        self.metric_computed.emit(
+            [self.om_tree_list.get_checked_items(), self.selected_metric_list]
+        )
+
+    def hide_progress_overlay(self) -> None:
+        """Hide the progress overlay and return to main view."""
         self.progress_overlay.hide()
         self.stack.setCurrentWidget(self.main_widget)
 
-    def init_page(self):
+    # ==========================================================================
+    # Page Initialization & Updates
+    # ==========================================================================
+
+    def init_page(self) -> None:
+        """Initialize the page with fresh data.
+
+        Side Effects:
+            - Clears metric selections
+            - Resets table
+            - Loads orthogonality data
+            - Resets computation state
+            - Populates selectors
+        """
         self.om_tree_list.unchecked_all()
         self.styled_table.clean_table()
         self.styled_table.set_header_label(
             ["Set #", "2D Combination", "OM 1", "OM 2", "...", "OM n"]
         )
-        # self.styled_table.set_table_data(pd.DataFrame())
         self.plot_utils.set_orthogonality_data(self.model.get_orthogonality_dict())
         self.model.reset_om_status_computation_state()
         self.populate_selector()
         self.update_om_selector_state()
 
-    def clear_axis_except_pathcollections(self, ax):
-        """Clear all elements from the axis except PathCollection objects (e.g., scatter plots)."""
+    def populate_selector(self) -> None:
+        """Populate dataset selector with available sets.
 
-        # Remove all lines
-        for line in ax.get_lines():
-            line.remove()
+        Side Effects:
+            - Updates dataset_selector combo box
+            - Clears metric selectors
+            - Blocks signals during updates
+        """
+        self.orthogonality_dict = self.model.get_orthogonality_dict()
+        if not self.orthogonality_dict:
+            return
 
-        for text in ax.texts:
-            text.remove()
+        data_sets_list = list(self.orthogonality_dict.keys())
 
-        # Remove all QuadMesh objects (used in pcolormesh, heatmaps)
-        for quadmesh in ax.findobj(mpl.collections.QuadMesh):
-            quadmesh.remove()
+        self.dataset_selector.blockSignals(True)
+        self.dataset_selector.clear()
+        self.dataset_selector.addItems(data_sets_list)
+        self.dataset_selector.blockSignals(False)
 
-        # Remove all artists except PathCollection (scatter plots)
-        for artist in ax.get_children():
-            if isinstance(artist, mpl.legend.Legend):
-                artist.remove()  # Remove legend
-            elif isinstance(artist, mpl.axis.Axis):
-                artist.set_visible(False)  # Hide ticks/labels
+        # Clear metric selectors
+        for data in self.om_selector_map.values():
+            om_selector = data["selector"]
+            om_selector.blockSignals(True)
+            om_selector.clear()
+            om_selector.blockSignals(False)
 
-        # Refresh the figure
-        # ax.figure.canvas.draw_idle()
+    def compute_orthogonality_metric(self) -> None:
+        """Begin orthogonality metric computation.
 
-    def update_om_selector_state(self):
+        Side Effects:
+            - Shows progress overlay
+            - Starts worker thread
+            - Updates metric selectors with plot names
+            - Filters and deduplicates metric list
+        """
+        self.selected_metric_list = self.om_tree_list.get_checked_items()
 
-        # TODO number_of_selector should be a class attribute (when compare_number currentTextChanged)
-        number_of_selectors = int(self.compare_number.currentText())
+        self.stack.setCurrentWidget(self.progress_overlay)
+        self.progress_overlay.show()
+        self.progress_bar.rpb_setValue(0)
+        self.progress_bar.repaint()
+        QApplication.processEvents()
 
-        [
-            (
-                self.om_selector_list[i].setDisabled(False)
-                if i < number_of_selectors
-                else self.om_selector_list[i].setDisabled(True)
-            )
-            for i, selector in enumerate(self.om_selector_list)
+        self.start_om_computation(self.selected_metric_list)
+
+        # Convert to plot names
+        self.selected_metric_list = [
+            METRIC_PLOT_MAP[metric] for metric in self.selected_metric_list
         ]
 
-        self.update_plot_layout()
+        # Remove None and duplicates
+        self.selected_metric_list = [
+            metric for metric in self.selected_metric_list if metric
+        ]
+        self.selected_metric_list = list(dict.fromkeys(self.selected_metric_list))
 
+        # Update selectors
+        for data in self.om_selector_map.values():
+            om_selector = data["selector"]
+            om_selector.blockSignals(True)
+            om_selector.clear()
+            om_selector.addItems(self.selected_metric_list)
+            om_selector.blockSignals(False)
+
+    def update_bin_box_number(self) -> None:
+        """Update the number of bins for grid-based metrics.
+
+        Side Effects:
+            - Updates model's bin_number
+            - Invalidates bin-dependent metrics
+        """
+        self.model.update_num_bins(self.nb_bin.value())
+
+    def update_orthogonality_table(self) -> None:
+        """Update the results table with computed metric values.
+
+        Side Effects:
+            - Fetches data from model
+            - Updates table headers
+            - Loads data asynchronously
+            - Sets up filtering proxy
+        """
+        data = self.model.get_orthogonality_metric_df()
+        self.styled_table.set_header_label(list(data.columns))
+        self.styled_table.async_set_table_data(data)
+        self.styled_table.set_table_proxy()
+
+    # ==========================================================================
+    # Plot Layout & Display Management
+    # ==========================================================================
+
+    def update_om_selector_state(self) -> None:
+        """Enable/disable metric selectors based on comparison number.
+
+        Side Effects:
+            - Enables/disables selector combo boxes
+            - Updates plot layout
+            - Refreshes displayed plots
+        """
+        number_of_selectors = int(self.compare_number.currentText())
+
+        for i, selector in enumerate(self.om_selector_list):
+            selector.setDisabled(i >= number_of_selectors)
+
+        self.update_plot_layout()
         self.refresh_displayed_plot()
 
-    def update_plot_layout(self):
-        # get the number of plot to compare
-        number_of_selectors = self.compare_number.currentText()
+    def update_plot_layout(self) -> None:
+        """Reconfigure plot layout based on number of comparisons.
 
-        # create a key string based on the compare number value in order to know which ploy layout to select
+        Creates 1-4 subplots depending on comparison number:
+        - 1: Single plot (1x1)
+        - 2: Side-by-side (1x2)
+        - 3: Three plots (2x2 with one empty)
+        - 4: Four plots (2x2 grid)
+
+        Side Effects:
+            - Clears existing figure
+            - Creates new subplots
+            - Initializes scatter collections
+            - Updates om_selector_map
+        """
+        number_of_selectors = self.compare_number.currentText()
         plot_key = number_of_selectors + "PLOT"
 
-        # plot layout map that contains the list of plot layout to display based on the compare number
         plot_layout_map = {
             "1PLOT": [111, None, None, None],
-            "2PLOT": [121, 122, None, None],
-            "3PLOT": [221, 222, 223, None],
-            "4PLOT": [221, 222, 223, 224],
+            "2PLOT": [121, 122, None, None]
+            # "3PLOT": [221, 222, 223, None],
+            # "4PLOT": [221, 222, 223, 224],
         }
 
-        # get list of layout
         layout_list = plot_layout_map[plot_key]
-
         self.fig.clear()
-        # self.remove_all_axes()
 
         for i, layout in enumerate(layout_list):
             index = str(i)
-            # initialize selector axe and scatter point selection
             if layout is not None:
                 axe = self.fig.add_subplot(layout)
                 self.fig.subplots_adjust(wspace=0.5, hspace=0.5)
@@ -681,161 +812,83 @@ class OMCalculationPage(QFrame):
                 self.om_selector_map[index]["axe"] = None
                 self.om_selector_map[index]["scatter_collection"] = None
 
-        # self.update_figure()
+    def on_selector_changed(self, index: str) -> None:
+        """Handle metric selector change.
 
-    def on_selector_changed(self, index):
-        """Handle combobox text change and get the corresponding axe."""
+        Args:
+            index (str): Index of the changed selector ("0"-"3").
+
+        Side Effects:
+            - Updates selected metric
+            - Configures plot_utils for correct axes
+            - Triggers figure update
+        """
         selector = self.om_selector_map[index]["selector"]
         self.selected_metric = selector.currentText()
         self.plot_utils.set_axe(self.om_selector_map[index]["axe"])
         self.plot_utils.set_scatter_collection(
             self.om_selector_map[index]["scatter_collection"]
         )
-
         self.update_figure()
 
-    def populate_selector(self):
+    def refresh_displayed_plot(self) -> None:
+        """Refresh all displayed plots based on current selections.
+
+        Side Effects:
+            - Calls on_selector_changed for each active selector
         """
-        Updates the dataset selection combo box and figure list with the available data sets.
+        number_of_selectors = int(self.compare_number.currentText())
+        [self.on_selector_changed(str(i)) for i in range(number_of_selectors)]
 
-        - Retrieves the list of available data sets from `self.orthogonality_dict`.
-        - Updates `self.set_combo` with the new dataset options.
-        - Ensures signals are blocked during updates to prevent unwanted UI triggers.
+    def draw_figure(self) -> None:
+        """Redraw the matplotlib figure canvas."""
+        self.fig.canvas.draw()
+        self.fig.canvas.flush_events()
 
-        Notes:
-        - This method should be called after loading new data.
-        - If no data sets are available, the combo boxes remain unchanged.
+    def update_figure(self) -> None:
+        """Update the figure with scatter plot and selected metric overlay.
+
+        Side Effects:
+            - Cleans current axes
+            - Plots base scatter
+            - Overlays selected metric visualization
         """
-        self.orthogonality_dict = self.model.get_orthogonality_dict()
-        if not self.orthogonality_dict:
-            return  # No data available, prevent unnecessary UI updates
+        if self.selected_axe is None:
+            return
 
-        data_sets_list = list(self.orthogonality_dict.keys())
+        self.plot_utils.clean_figure()
 
-        self.dataset_selector.blockSignals(True)  # Prevent UI signal loops
+        if self.model.get_status() in ["loaded", "peak_capacity_loaded"]:
+            self.plot_utils.plot_scatter()
+        else:
+            return
 
-        self.dataset_selector.clear()
+        if self.selected_metric is None:
+            return
 
-        self.dataset_selector.addItems(data_sets_list)
+        if self.selected_metric in self.plot_functions_map:
+            self.plot_functions_map[self.selected_metric]()
 
-        self.dataset_selector.blockSignals(False)
-
-        # clear selector list in case previous data were loaded
-        for index, data in self.om_selector_map.items():
-            om_selector = data["selector"]
-
-            om_selector.blockSignals(True)
-            om_selector.clear()
-            om_selector.blockSignals(False)
-
-    def compute_orthogonality_metric(self) -> None:
-        self.selected_metric_list = self.om_tree_list.get_checked_items()
-
-        # self.model.compute_orthogonality_metric(self.selected_metric_list)
-        self.stack.setCurrentWidget(self.progress_overlay)
-        self.progress_overlay.show()
-        self.progress_bar.rpb_setValue(0)
-        self.progress_bar.repaint()
-        QApplication.processEvents()
-
-        self.start_om_computation(self.selected_metric_list)
-        self.selected_metric_list = [
-            METRIC_PLOT_MAP[metric] for metric in self.selected_metric_list
-        ]
-
-        # remove None item
-        self.selected_metric_list = [
-            metric for metric in self.selected_metric_list if metric
-        ]
-
-        # rermove doublon from list (when converting a list into dict it removes dupplicate keys)
-        self.selected_metric_list = list(dict.fromkeys(self.selected_metric_list))
-
-        for index, data in self.om_selector_map.items():
-            om_selector = data["selector"]
-
-            om_selector.blockSignals(True)
-            om_selector.clear()
-            om_selector.addItems(self.selected_metric_list)
-            om_selector.blockSignals(False)
-
-        #
-        # self.update_orthogonality_table()
-        #
-        # self.data_sets_change()
-
-        # self.metric_computed.emit([self.om_tree_list.get_checked_items(),self.selected_metric_list])
-
-    def _on_om_computed(self, original_metric_list: list):
-        # now the model has filled its dataframes; we can continue
-        # exactly the same as before, e.g.:
-
-        # remap to plotting names
-        plot_list = [METRIC_PLOT_MAP[m] for m in original_metric_list]
-        plot_list = [m for m in plot_list if m]
-        plot_list = list(dict.fromkeys(plot_list))
-
-        for idx, data in self.om_selector_map.items():
-            sel = data["selector"]
-            sel.blockSignals(True)
-            sel.clear()
-            sel.addItems(plot_list)
-            sel.blockSignals(False)
-
-        self.update_orthogonality_table()
-        self.data_sets_change()
-        self.metric_computed.emit([original_metric_list, plot_list])
-
-    def update_bin_box_number(self):
-
-        # simply update the number of bin and reset computed metric status for the metric that use bin number
-        self.model.update_num_bins(self.nb_bin.value())
-
-        # self.stack.setCurrentWidget(self.progress_overlay)
-        # self.progress_overlay.show()
-        # self.progress_bar.rpb_setValue(0)
-        # self.progress_bar.repaint()
-        # QApplication.processEvents()
-        #
-        # self.start_update_bin_number(self.nb_bin.value())
-        #
-        # self.refresh_displayed_plot()
-        #
-        # if self.selected_metric_list:
-        #     self.metric_computed.emit([self.om_tree_list.get_checked_items(), self.selected_metric_list])
-
-    def select_orthogonality(self):
-        self.model.set_orthogonality_value("orthogonality_score")
-
-    def update_orthogonality_table(self):
-        data = self.model.get_orthogonality_metric_df()
-
-        self.styled_table.set_header_label(list(data.columns))
-        self.styled_table.async_set_table_data(data)
-        self.styled_table.set_table_proxy()
+    # ==========================================================================
+    # Dataset Selection Handlers
+    # ==========================================================================
 
     def data_sets_change(self, data_set: str = None) -> None:
-        """
-        Handles dataset selection from the dropdown menu and updates the UI accordingly.
+        """Handle dataset selection change.
 
-        - Updates the current dataset based on the selection.
-        - Highlights the corresponding row in the table view.
-        - Refreshes the displayed figure to reflect the new dataset.
+        Args:
+            data_set (str, optional): Dataset name to switch to.
+                                     If None, uses dataset_selector value.
 
-        Parameters:
-            data_set (str, optional): The dataset name to switch to.
-                                      If None, it is retrieved from `self.set_combo`.
-
-        Notes:
-        - If triggered by the dropdown, `data_set` is None, so the function retrieves the selected value.
-        - Updates both the dropdown and table selection to stay synchronized.
-        - Calls `update_figure()` to refresh the visualization.
+        Side Effects:
+            - Updates selected_set
+            - Synchronizes table and combo box selections
+            - Refreshes plot display
         """
         if data_set is None:
             self.selected_set = self.dataset_selector.currentText()
             index_at_row = self.get_index_from()
 
-            # Prevent unnecessary signal emissions while selecting the row
             self.styled_table.get_table_view().blockSignals(True)
             self.styled_table.get_table_view().selectionModel().blockSignals(True)
             self.styled_table.get_table_view().selectRow(index_at_row)
@@ -848,169 +901,54 @@ class OMCalculationPage(QFrame):
             self.dataset_selector.blockSignals(False)
 
         self.plot_utils.set_set_number(self.selected_set)
-
         self.refresh_displayed_plot()
 
-    def get_index_from(self) -> int:
-        """
-        Retrieves the row index corresponding to the currently selected dataset.
-
-        - Iterates through the table model to find a match with `self.selected_set`.
-        - Uses the proxy model to access the displayed data.
-
-        Returns:g
-            int: The row index of the selected dataset, or -1 if not found.
-
-        Notes:
-        - This function assumes that dataset names are stored in the first column.
-        - If no match is found, returns -1 to indicate failure.
-        """
-        row_count = self.styled_table.get_row_count()
-
-        for row in range(row_count):
-            model_index = self.styled_table.get_proxy_model().index(
-                row, 0
-            )  # Column 0 assumed to contain dataset names
-            if f"Set {model_index.data()}" == self.selected_set:
-                return row
-
-        return -1  # Explicitly return -1 if no match is found
-
-    def table_item_clicked(self, index: QModelIndex) -> None:
-        """
-        Handles table row selection and updates the dataset accordingly.
-
-        - Retrieves the dataset name from the selected row.
-        - Calls `data_sets_change()` to synchronize the dropdown selection.
-
-        Parameters:
-            index (QModelIndex): The index of the clicked item (not used in current logic).
-
-        Notes:
-        - Only the first selected row is considered if multiple rows are selected.
-        - Assumes dataset names are stored in the first column.
-        """
-        model_index_list = self.styled_table.get_selected_rows()
-
-        if not model_index_list:
-            return  # No selection, exit early
-
-        self.data_sets_change(f"Set {model_index_list[0].data()}")
-
     def data_set_selection_changed_from_combobox(self) -> None:
-        """
-        Handles dataset selection changes from the combo box.
+        """Handle dataset selection from combo box.
 
-        - Updates the current dataset name.
-        - Selects the corresponding row in the table view.
-        - Refreshes the figure to display the selected dataset.
-
-        Notes:
-        - This function ensures synchronization between the combo box selection and the table view.
-        - Calls `get_index_from()` to retrieve the correct row index.
-        - If no matching row is found, no row selection is applied.
+        Side Effects:
+            - Updates selected_set
+            - Selects corresponding table row
+            - Refreshes plot display
         """
         self.selected_set = self.dataset_selector.currentText()
         index_at_row = self.get_index_from()
 
         if index_at_row != -1:
-            # signal is triggered by QItemSelectionModel not the QTableView when selecting a row
             self.styled_table.get_table_view().selectionModel().blockSignals(True)
             self.styled_table.select_row(index_at_row)
             self.styled_table.get_table_view().selectionModel().blockSignals(True)
 
         self.plot_utils.set_set_number(self.selected_set)
-
         self.refresh_displayed_plot()
 
-    def data_set_selection_changed_from_table(self) -> None:
+    def get_index_from(self) -> int:
+        """Get table row index for currently selected dataset.
+
+        Returns:
+            int: Row index, or -1 if not found.
         """
-        Handles dataset selection changes from the table view.
+        row_count = self.styled_table.get_row_count()
 
-        - Retrieves the selected dataset from the table view.
-        - Synchronizes the combo box with the selected dataset.
-        - Updates the visualization based on the current tab.
+        for row in range(row_count):
+            model_index = self.styled_table.get_proxy_model().index(row, 0)
+            if f"Set {model_index.data()}" == self.selected_set:
+                return row
 
-        Notes:
-        - Only the first selected row is considered if multiple rows are selected.
-        - The combo box is blocked during updates to prevent signal loops.
-        - If the "Calculations" tab is active, the selected dataset blinks on the orthogonality plot.
-        - Otherwise, the standard figure update is triggered.
-        """
-        model_index_list = self.styled_table.get_selected_rows()
+        return -1
 
-        if not model_index_list:
-            return  # No selection, exit early
+    # ==========================================================================
+    # Plot Wrapper Methods
+    # ==========================================================================
 
-        proxy_model = self.styled_table.get_proxy_model()
-        model_index = proxy_model.mapToSource(model_index_list[0])
-        self.selected_set = f"Set {model_index.data()}"
+    def plot_convex_hull(self) -> None:
+        """Plot convex hull visualization."""
+        self.plot_utils.plot_convex_hull()
 
-        self.dataset_selector.blockSignals(True)
-        self.dataset_selector.setCurrentText(self.selected_set)
-        self.dataset_selector.blockSignals(False)
-
-        self.refresh_displayed_plot()
-
-    def refresh_displayed_plot(self):
-        # Refresh the displayed figure
-        number_of_selectors = int(self.compare_number.currentText())
-
-        [self.on_selector_changed(str(i)) for i in range(number_of_selectors)]
-
-    def draw_figure(self):
-        self.fig.canvas.draw()
-        self.fig.canvas.flush_events()
-
-    def update_figure(self):
-
-        # if no axe is selected no need to update figure
-        if self.selected_axe is None:
-            return
-
-        self.plot_utils.clean_figure()
-
-        if self.model.get_status() in ["loaded", "peak_capacity_loaded"]:
-            # self.plot_scatter()
-            self.plot_utils.plot_scatter()
-        else:
-            return
-
-        # Execute the appropriate method based on combo box selection
-        # current_metric = self.computed_metric.currentText()
-
-        # if self.selected_metric in ['Bin Box']:
-        #     self.bin_box_input_widget.setHidden(False)
-        # else:
-        #     self.bin_box_input_widget.setHidden(True)
-
-        # No metric has been computed yet so no need to plot them
-        if self.selected_metric is None:
-            return
-
-        if self.selected_metric in self.plot_functions_map:
-            self.plot_functions_map[
-                self.selected_metric
-            ]()  # Call the corresponding function
-
-    def plot_percent_bin(self):
-        self.plot_utils.plot_percent_bin()
-
-    def plot_bin_box(self):
+    def plot_bin_box(self) -> None:
+        """Plot bin box counting visualization."""
         self.plot_utils.plot_bin_box()
 
-    # Plot methods
-    def plot_asterisk(self):
-        self.plot_utils.plot_asterisk()
-
-    def plot_linear_reg(self):
+    def plot_linear_reg(self) -> None:
+        """Plot linear regression with correlations."""
         self.plot_utils.plot_linear_reg()
-
-    def plot_percent_fit_xy(self):
-        self.plot_utils.plot_percent_fit_xy()
-
-    def plot_percent_fit_yx(self):
-        self.plot_utils.plot_percent_fit_yx()
-
-    def plot_convex_hull(self):
-        self.plot_utils.plot_convex_hull()

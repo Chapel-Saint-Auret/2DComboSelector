@@ -1,3 +1,4 @@
+import sys
 from PySide6.QtCore import QSize, Qt, Signal
 from PySide6.QtSvgWidgets import QSvgWidget
 from PySide6.QtWidgets import (
@@ -8,7 +9,6 @@ from PySide6.QtWidgets import (
     QLabel,
     QScrollArea,
     QSizePolicy,
-    QSplitter,
     QVBoxLayout,
 )
 
