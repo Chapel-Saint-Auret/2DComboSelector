@@ -169,6 +169,9 @@ class ResultsPage(QFrame):
                 lambda _, k=index: self.on_selector_changed(k)
             )
 
+    def get_model(self):
+        return self.model
+
     def _create_top_section(self) -> QFrame:
         """Create the top section with input panel and plot area.
 
@@ -338,9 +341,9 @@ class ResultsPage(QFrame):
 
         self.om_selector_list = [
             self.om_selector1,
-            self.om_selector2
-            # self.om_selector3,
-            # self.om_selector4,
+            self.om_selector2,
+            self.om_selector3,
+            self.om_selector4,
         ]
 
         self.om_selector_map = {
@@ -725,6 +728,10 @@ class ResultsPage(QFrame):
 
         for i, layout in enumerate(layout_list):
             index = str(i)
+            print('index')
+            print(index)
+            print('layout')
+            print(layout)
             if layout is not None:
                 axe = self.fig.add_subplot(layout)
                 self.fig.subplots_adjust(wspace=0.5, hspace=0.5)

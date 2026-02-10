@@ -577,12 +577,12 @@ class Orthogonality(QObject):
 
         Args:
             metric_list (list): List of metric names (UI format) to compute.
-            progress_cb (Signal): Qt Signal for emitting progress percentage (0-100).
+            progress_cb (Signal): Qt Signal for emitting progress (percentage, metric_name).
 
         Side Effects:
             - Computes all uncomputed metrics in metric_list
             - Updates orthogonality_metric_df and orthogonality_metric_corr_matrix_df
-            - Emits progress updates via progress_cb
+            - Emits progress updates via progress_cb with (int, str) format
         """
         total_weight = sum(
             METRIC_WEIGHTS.get(metric, DEFAULT_WEIGHT)
@@ -593,10 +593,19 @@ class Orthogonality(QObject):
 
         for metric in metric_list:
             if self.om_function_map[metric]["status"] != FuncStatus.COMPUTED:
+                # Emit progress with current metric name BEFORE computing
+                percent = int((accumulated_weight / total_weight) * 100) if total_weight > 0 else 0
+                progress_cb.emit(percent, metric)  # Changed: now emits (percent, metric_name)
+
+                # Compute the metric
                 self.om_function_map[metric]["func"]()
+
+                # Update accumulated weight
                 accumulated_weight += METRIC_WEIGHTS.get(metric, DEFAULT_WEIGHT)
-                percent = int((accumulated_weight / total_weight) * 100)
-                progress_cb.emit(percent)
+
+        # Emit 100% completion with last metric
+        last_metric = metric_list[-1] if metric_list else ""
+        progress_cb.emit(100, last_metric)
 
         # get column index of orthogonality metric in table_data
         column_index = [

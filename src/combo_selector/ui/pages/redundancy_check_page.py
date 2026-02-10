@@ -364,6 +364,9 @@ class RedundancyCheckPage(QFrame):
 
         return info_page_group
 
+    def get_model(self):
+        return self.model
+
     def _create_plot_panel(self) -> QFrame:
         """Create the right plot panel for correlation heatmap.
 

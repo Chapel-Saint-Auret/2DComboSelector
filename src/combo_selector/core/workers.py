@@ -16,6 +16,7 @@ to communicate with the main thread.
 """
 
 import logging
+import traceback
 
 from PySide6.QtCore import QObject, QRunnable, Signal, Slot
 
@@ -197,15 +198,25 @@ class ResultsWorkerComputeCustomOMScore(QRunnable):
             logging.exception(f"[ResultsWorker] Error: {e}")
 
 
+# Add these imports at the top of workers.py
+import traceback
+import numpy as np
+import pandas as pd
+
+
 class OMWorkerSignals(QObject):
     """Signal container for orthogonality metric workers.
 
     Attributes:
-        progress (Signal[int]): Emitted with progress percentage (0-100).
+        progress (Signal[int, str]): Emitted with (percentage, metric_name).
         finished (Signal): Emitted when computation is complete.
+        error (Signal[tuple]): Emitted with (exception, traceback_string).
+        result (Signal[object]): Emitted with computation result.
     """
-    progress = Signal(int)
     finished = Signal()
+    error = Signal(tuple)
+    result = Signal(object)
+    progress = Signal(int, str)  # (percentage, metric_name)
 
 
 class OMWorkerComputeOM(QRunnable):
@@ -224,7 +235,7 @@ class OMWorkerComputeOM(QRunnable):
         """Initialize the orthogonality metric computation worker.
 
         Args:
-            metric_list (list): List of metric names to compute (e.g., 
+            metric_list (list): List of metric names to compute (e.g.,
                                ['Convex hull relative area', 'Bin box counting']).
             model (Orthogonality): Orthogonality model instance.
         """
@@ -237,25 +248,102 @@ class OMWorkerComputeOM(QRunnable):
     def run(self):
         """Execute orthogonality metric computation with progress reporting.
 
-        Delegates computation to the model's compute_orthogonality_metric method,
-        which handles progress updates and metric calculations. Always emits
+        Computes each metric individually using the model's om_function_map,
+        emitting progress updates for each metric. Always emits
         finished signal, even if an exception occurs.
 
         Side Effects:
             - Emits progress signals during computation (0-100%)
             - Updates model's orthogonality_dict with computed metrics
             - Updates model's table_data
+            - Updates model's orthogonality_metric_df DataFrames
             - Always emits finished signal in finally block
             - Logs exceptions if errors occur
         """
         try:
-            self.model.compute_orthogonality_metric(
-                self.metric_list, self.signals.progress
+            # Import these here to avoid circular dependencies
+            from combo_selector.core.orthogonality import (
+                METRIC_MAPPING,
+                UI_TO_MODEL_MAPPING,
+                METRIC_WEIGHTS,
+                DEFAULT_WEIGHT,
+                FuncStatus
             )
+
+            # Calculate total weight for progress tracking
+            total_weight = sum(
+                METRIC_WEIGHTS.get(metric, DEFAULT_WEIGHT)
+                for metric in self.metric_list
+                if self.model.om_function_map[metric]["status"] != FuncStatus.COMPUTED
+            )
+            accumulated_weight = 0
+
+            for metric_name in self.metric_list:
+                if self.model.om_function_map[metric_name]["status"] != FuncStatus.COMPUTED:
+                    # Emit progress with current metric name BEFORE computing
+                    progress_percent = int((accumulated_weight / total_weight) * 100) if total_weight > 0 else 0
+                    self.signals.progress.emit(progress_percent, metric_name)
+
+                    # Compute the metric using the function from om_function_map
+                    self.model.om_function_map[metric_name]["func"]()
+
+                    # Mark as computed
+                    self.model.om_function_map[metric_name]["status"] = FuncStatus.COMPUTED
+
+                    # Update accumulated weight
+                    accumulated_weight += METRIC_WEIGHTS.get(metric_name, DEFAULT_WEIGHT)
+
+            # Emit 100% completion with last metric
+            last_metric = self.metric_list[-1] if self.metric_list else ""
+            self.signals.progress.emit(100, last_metric)
+
+            # Update the DataFrames (replicate end of model's compute_orthogonality_metric)
+            self._update_metric_dataframes()
+
         except Exception as e:
+            self.signals.error.emit((e, traceback.format_exc()))
             logging.exception(f"[OMWorkerComputeOM] Error: {e}")
         finally:
             self.signals.finished.emit()
+
+    def _update_metric_dataframes(self):
+        """Update orthogonality metric DataFrames after all computations.
+
+        This replicates the DataFrame update logic from the model's
+        compute_orthogonality_metric method.
+
+        Side Effects:
+            - Updates model.orthogonality_metric_df
+            - Updates model.orthogonality_metric_corr_matrix_df
+        """
+        from combo_selector.core.orthogonality import METRIC_MAPPING, UI_TO_MODEL_MAPPING
+
+        # Get column indices for the computed metrics
+        column_index = [
+            METRIC_MAPPING[UI_TO_MODEL_MAPPING[metric]]["table_index"]
+            for metric in self.metric_list
+        ]
+
+        orthogonality_table_df = pd.DataFrame(self.model.table_data)
+
+        # Correlation matrix table only contains metric with no set number and combination title
+        self.model.orthogonality_metric_df = orthogonality_table_df.iloc[
+            :, np.r_[column_index]
+        ]
+
+        # Add column name
+        self.model.orthogonality_metric_df.columns = self.metric_list
+
+        self.model.orthogonality_metric_corr_matrix_df = self.model.orthogonality_metric_df
+
+        # 0 and 1 indexes are for set number and combination title
+        column_index = [0, 1] + column_index
+        self.model.orthogonality_metric_df = orthogonality_table_df.iloc[
+            :, np.r_[column_index]
+        ]
+
+        # Adding column names directly
+        self.model.orthogonality_metric_df.columns = ["Set #", "2D Combination"] + self.metric_list
 
 
 class OMWorkerUpdateNumBin(QRunnable):

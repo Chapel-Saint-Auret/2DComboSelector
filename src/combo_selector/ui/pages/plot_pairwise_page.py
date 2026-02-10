@@ -273,9 +273,9 @@ class PlotPairWisePage(QFrame):
 
         self.dataset_selector_list = [
             self.dataset_selector1,
-            self.dataset_selector2
-            # self.dataset_selector3,
-            # self.dataset_selector4,
+            self.dataset_selector2,
+            self.dataset_selector3,
+            self.dataset_selector4,
         ]
 
         # Map to track selectors, axes, and scatter collections

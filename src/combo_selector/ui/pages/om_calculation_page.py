@@ -4,7 +4,7 @@ This module provides the OMCalculationPage class which handles:
 - Selection and computation of orthogonality metrics
 - Side-by-side comparison of up to 4 metrics
 - Interactive visualization of metric results
-- Progress tracking with circular progress bar overlay
+- Modal progress tracking with circular progress bar overlay and dynamic status messages
 - Results table display with sorting and filtering
 """
 
@@ -32,7 +32,7 @@ from PySide6.QtWidgets import (
 
 from combo_selector.core.orthogonality import Orthogonality
 from combo_selector.core.plot_utils import PlotUtils
-from combo_selector.core.workers import OMWorkerComputeOM, OMWorkerUpdateNumBin
+from combo_selector.core.workers import OMWorkerComputeOM
 from combo_selector.ui.widgets.checkable_tree_list import CheckableTreeList
 from combo_selector.ui.widgets.circle_progress_bar import RoundProgressBar
 from combo_selector.ui.widgets.custom_toolbar import CustomToolbar
@@ -70,14 +70,15 @@ class OMCalculationPage(QFrame):
 
     Provides a comprehensive interface for:
     - Selecting metrics to compute from a checklist
-    - Computing metrics in background threads with progress tracking
+    - Computing metrics in background threads with modal progress tracking
     - Comparing 1-4 metrics side-by-side
     - Interactive selection of data sets
     - Adjusting bin numbers for grid-based metrics
     - Viewing computed results in a sortable table
 
-    The page uses a stacked layout to overlay a progress indicator during
-    long-running computations, keeping the UI responsive.
+    The page uses a modal overlay that appears only during computation,
+    blocking user interaction and displaying dynamic status messages
+    showing which specific metric is currently being computed.
 
     Attributes:
         model (Orthogonality): Data model containing chromatography data.
@@ -85,16 +86,15 @@ class OMCalculationPage(QFrame):
         plot_utils (PlotUtils): Utility for generating metric visualizations.
         om_selector_map (dict): Maps plot indices to selectors and axes.
         selected_metric_list (list): Currently computed metric names.
-        progress_overlay (QWidget): Transparent overlay showing progress bar.
+        progress_overlay (QWidget): Modal overlay showing progress bar.
+        progress_status_label (QLabel): Label showing current operation status.
 
     Signals:
         metric_computed (list): Emitted when metrics finish computing.
                                Carries [metric_names, plot_names].
-        gui_update_requested: Emitted when GUI update is needed (unused).
     """
 
     metric_computed = Signal(list)
-    gui_update_requested = Signal()
 
     def __init__(self, model: Orthogonality = None) -> None:
         """Initialize the OMCalculationPage with controls and visualizations.
@@ -108,8 +108,9 @@ class OMCalculationPage(QFrame):
                 - Right: Plot area (1-4 subplots based on comparison number)
             - Bottom section:
                 - Results table showing computed metric values
-            - Overlay:
-                - Circular progress bar during computations
+            - Modal Overlay (shown only during computation):
+                - Circular progress bar with dynamic status label
+                - Blocks all user interaction
         """
         super().__init__()
 
@@ -173,14 +174,10 @@ class OMCalculationPage(QFrame):
         self.stack.setStackingMode(QStackedLayout.StackingMode.StackAll)
         self.stack.addWidget(self.main_widget)
         self.stack.addWidget(self.progress_overlay)
-        self.stack.setCurrentWidget(self.progress_overlay)
 
         self.base_layout = QVBoxLayout(self)
         self.base_layout.setContentsMargins(0, 0, 0, 0)
         self.base_layout.addLayout(self.stack)
-
-        self.progress_overlay.setGeometry(self.stack.geometry())
-        self.progress_overlay.raise_()
 
         # --- Signal wiring ------------------------------------------------
         self.compare_number.currentTextChanged.connect(self.update_om_selector_state)
@@ -434,14 +431,14 @@ class OMCalculationPage(QFrame):
 
         self.add_dataset_selector("Select OM 1:", self.om_selector1)
         self.add_dataset_selector("Select OM 2:", self.om_selector2)
-        # self.add_dataset_selector("Select OM 3:", self.om_selector3)
-        # self.add_dataset_selector("Select OM 4:", self.om_selector4)
+        self.add_dataset_selector("Select OM 3:", self.om_selector3)
+        self.add_dataset_selector("Select OM 4:", self.om_selector4)
 
         self.om_selector_list = [
             self.om_selector1,
-            self.om_selector2
-            # self.om_selector3,
-            # self.om_selector4,
+            self.om_selector2,
+            self.om_selector3,
+            self.om_selector4,
         ]
 
         # Map to track selector, axes, and scatter collections
@@ -516,23 +513,37 @@ class OMCalculationPage(QFrame):
         return table_frame
 
     def _create_progress_overlay(self) -> QWidget:
-        """Create the progress bar overlay widget.
+        """Create the modal progress bar overlay widget with status label.
 
         Returns:
-            QWidget: Transparent overlay with circular progress bar.
+            QWidget: Modal semi-transparent overlay with circular progress bar and status.
         """
         self.progress_bar = RoundProgressBar()
         self.progress_bar.rpb_setBarStyle("Pizza")
 
+        # Add status label
+        self.progress_status_label = QLabel("Computing metrics...")
+        self.progress_status_label.setStyleSheet("""
+            QLabel {
+                color: #183881;
+                font-size: 16px;
+                font-weight: bold;
+                background-color: transparent;
+            }
+        """)
+        self.progress_status_label.setAlignment(Qt.AlignCenter)
+
         progress_overlay = QWidget(self)
-        progress_overlay.setAttribute(Qt.WA_TransparentForMouseEvents)
-        progress_overlay.setStyleSheet("background-color: transparent;")
-        progress_overlay.hide()
+        # Modal - blocks user interaction (do not set WA_TransparentForMouseEvents)
+        progress_overlay.setStyleSheet("background-color: rgba(247, 249, 252, 230);")
+        progress_overlay.hide()  # Start hidden
 
         overlay_layout = QVBoxLayout(progress_overlay)
         overlay_layout.setContentsMargins(0, 0, 0, 0)
         overlay_layout.addStretch()
         overlay_layout.addWidget(self.progress_bar, alignment=Qt.AlignCenter)
+        overlay_layout.addSpacing(20)
+        overlay_layout.addWidget(self.progress_status_label, alignment=Qt.AlignCenter)
         overlay_layout.addStretch()
 
         return progress_overlay
@@ -557,7 +568,8 @@ class OMCalculationPage(QFrame):
             event: Resize event from Qt.
         """
         super().resizeEvent(event)
-        self.progress_overlay.setGeometry(self.stack.geometry())
+        if self.progress_overlay.isVisible():
+            self.progress_overlay.setGeometry(self.rect())
 
     # ==========================================================================
     # Worker Thread Management
@@ -579,60 +591,127 @@ class OMCalculationPage(QFrame):
         worker.signals.finished.connect(self.handle_finished)
         self.threadpool.start(worker)
 
-    def handle_progress_update(self, value: int) -> None:
-        """Update progress bar during computation.
+    def handle_progress_update(self, value: int, current_metric: str = "") -> None:
+        """Update progress bar during computation with current metric name.
 
         Args:
             value (int): Progress percentage (0-100).
+            current_metric (str): Name of the metric currently being computed.
 
         Side Effects:
-            - Shows/hides progress overlay
+            - Ensures overlay is visible
             - Updates progress bar value
+            - Updates status message with current metric name
             - Forces UI repaint
         """
         if not self.om_tree_list.get_checked_items():
+            # No items checked, hide overlay
+            self.progress_overlay.hide()
             return
 
-        if value == 0:
-            self.progress_overlay.hide()
-        else:
-            self.stack.setCurrentWidget(self.progress_overlay)
+        # Ensure overlay is visible during progress updates
+        if not self.progress_overlay.isVisible():
+            self.progress_overlay.setGeometry(self.rect())
+            self.progress_overlay.raise_()
             self.progress_overlay.show()
-            self.progress_bar.rpb_setValue(value)
-            self.progress_bar.repaint()
 
-        if value == 100:
-            self.progress_bar.repaint()
+        self.progress_bar.rpb_setValue(value)
 
+        # Update status message based on progress with current metric name
+        if value < 100:
+            if current_metric:
+                # Show which specific metric is being computed
+                self.progress_status_label.setText(
+                    f"Computing: {current_metric}... {value}%"
+                )
+            else:
+                # Fallback if metric name not provided (backward compatibility)
+                num_metrics = len(self.om_tree_list.get_checked_items())
+                dots = "." * ((value // 10) % 4)
+                self.progress_status_label.setText(
+                    f"Computing {num_metrics} metric{'s' if num_metrics > 1 else ''}{dots} {value}%"
+                )
+
+        self.progress_bar.repaint()
         QApplication.processEvents()
 
     def handle_finished(self) -> None:
-        """Handle computation completion.
+        """Handle computation completion with staged progress updates.
 
         Side Effects:
             - Sets progress to 100%
-            - Schedules overlay hide after 800ms
-            - Updates results table
-            - Refreshes plot displays
-            - Emits metric_computed signal
+            - Shows completion message
+            - Triggers table update then final results preparation
+            - Hides overlay after all operations complete
         """
         if not self.om_tree_list.get_checked_items():
+            # No items checked, hide overlay immediately
+            self.hide_progress_overlay()
             return
 
+        # Ensure overlay is visible for completion stages
+        if not self.progress_overlay.isVisible():
+            self.progress_overlay.setGeometry(self.rect())
+            self.progress_overlay.raise_()
+            self.progress_overlay.show()
+
+        # Stage 1: Computation complete
         self.progress_bar.rpb_setValue(100)
+        self.progress_status_label.setText("✓ Computation complete")
         self.progress_bar.repaint()
-        QTimer.singleShot(800, self.hide_progress_overlay)
+        QApplication.processEvents()
+
+        # Stage 2: Updating table
+        QTimer.singleShot(300, self._update_table_stage)
+
+    def _update_table_stage(self) -> None:
+        """Stage 2: Update the results table.
+
+        Side Effects:
+            - Updates status message
+            - Updates orthogonality table
+            - Schedules final results preparation
+        """
+        self.progress_status_label.setText("Updating table...")
+        QApplication.processEvents()
 
         self.update_orthogonality_table()
+
+        # Final stage: plots + results preparation (includes redundancy computation)
+        QTimer.singleShot(500, self._finalize_results)
+
+    def _finalize_results(self) -> None:
+        """Final stage: Refresh plots and prepare results.
+
+        Side Effects:
+            - Updates status message
+            - Refreshes data set plots
+            - Emits metric_computed signal (triggers redundancy computation in main window)
+            - Hides overlay immediately after completion
+
+        Note:
+            The metric_computed signal triggers heavy processing in the main window
+            to prepare the redundancy page. The overlay hides immediately to avoid
+            appearing frozen, and the main window becomes responsive again.
+        """
+        self.progress_status_label.setText("Preparing results...")
+        QApplication.processEvents()
+
+        # Refresh plots
         self.data_sets_change()
+
+        # Trigger redundancy computation in main window (the actual heavy work)
         self.metric_computed.emit(
             [self.om_tree_list.get_checked_items(), self.selected_metric_list]
         )
 
+        # Hide immediately - no artificial delay
+        # User can now interact while redundancy computation happens in background
+        self.hide_progress_overlay()
+
     def hide_progress_overlay(self) -> None:
-        """Hide the progress overlay and return to main view."""
+        """Hide the progress overlay and return to normal view."""
         self.progress_overlay.hide()
-        self.stack.setCurrentWidget(self.main_widget)
 
     # ==========================================================================
     # Page Initialization & Updates
@@ -688,16 +767,24 @@ class OMCalculationPage(QFrame):
         """Begin orthogonality metric computation.
 
         Side Effects:
-            - Shows progress overlay
+            - Hides any existing overlay first (cleanup from previous run)
+            - Shows modal progress overlay (blocks user interaction)
             - Starts worker thread
             - Updates metric selectors with plot names
             - Filters and deduplicates metric list
         """
         self.selected_metric_list = self.om_tree_list.get_checked_items()
 
-        self.stack.setCurrentWidget(self.progress_overlay)
-        self.progress_overlay.show()
+        # First, ensure overlay is hidden and reset (cleanup from previous run)
+        self.progress_overlay.hide()
+        QApplication.processEvents()
+
+        # Now show modal overlay at start of computation with fresh state
+        self.progress_overlay.setGeometry(self.rect())
+        self.progress_overlay.raise_()
         self.progress_bar.rpb_setValue(0)
+        self.progress_status_label.setText("Starting computation...")
+        self.progress_overlay.show()  # Show after setting values
         self.progress_bar.repaint()
         QApplication.processEvents()
 
@@ -917,7 +1004,7 @@ class OMCalculationPage(QFrame):
         if index_at_row != -1:
             self.styled_table.get_table_view().selectionModel().blockSignals(True)
             self.styled_table.select_row(index_at_row)
-            self.styled_table.get_table_view().selectionModel().blockSignals(True)
+            self.styled_table.get_table_view().selectionModel().blockSignals(False)
 
         self.plot_utils.set_set_number(self.selected_set)
         self.refresh_displayed_plot()
