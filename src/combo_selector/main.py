@@ -181,6 +181,7 @@ class ComboSelectorMain(CustomMainWindow):
             - Caches metric lists for later use
             - Starts redundancy worker in background thread
             - Worker completion triggers results page initialization
+            - Hides OM calculation overlay when complete
         """
         self._cached_metric_list = metric_list[0]
         self.metric_list_for_figure = metric_list[1]
@@ -188,9 +189,18 @@ class ComboSelectorMain(CustomMainWindow):
         if self._cached_metric_list:
             self.redundancy_worker = RedundancyWorker(self.redundancy_page)
             self.redundancy_worker.signals.finished.connect(
-                self._start_results_worker_after_redundancy
+                self._on_redundancy_finished
             )
             self.threadpool.start(self.redundancy_worker)
+
+    def _on_redundancy_finished(self):
+        """Called when redundancy computation finishes."""
+        # Hide the OM calculation overlay now that redundancy is done
+        self.om_calculation_page.hide_progress_overlay()
+
+        # Continue with results worker
+        print("Continue with results worker")
+        self._start_results_worker_after_redundancy()
 
     def update_results_with_new_exp_peak_capacities(self) -> None:
         """Update results when experimental peak capacities are loaded.

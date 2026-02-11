@@ -436,7 +436,7 @@ class OrthogonalityTableView(QTableView):
             self.setModel(model)
 
         # Table appearance
-        self.setShowGrid(False)
+        self.setShowGrid(True)
         self.setAlternatingRowColors(False)
         self.setSelectionBehavior(QAbstractItemView.SelectRows)
         self.setSortingEnabled(True)

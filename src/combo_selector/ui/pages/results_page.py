@@ -728,10 +728,6 @@ class ResultsPage(QFrame):
 
         for i, layout in enumerate(layout_list):
             index = str(i)
-            print('index')
-            print(index)
-            print('layout')
-            print(layout)
             if layout is not None:
                 axe = self.fig.add_subplot(layout)
                 self.fig.subplots_adjust(wspace=0.5, hspace=0.5)

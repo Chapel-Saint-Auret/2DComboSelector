@@ -122,6 +122,13 @@ class OMCalculationPage(QFrame):
         self.selected_set = "Set 1"
         self.orthogonality_dict = {}
 
+        # Timer for animating progress during intensive computations
+        self._progress_animation_timer = QTimer(self)
+        self._progress_animation_timer.timeout.connect(self._animate_progress)
+        self._current_metric = ""
+        self._current_progress = 0
+        self._animation_counter = 0
+
         # --- Plotting setup -----------------------------------------------
         self.fig = Figure(figsize=(15, 15))
         self.canvas = FigureCanvas(self.fig)
@@ -602,6 +609,7 @@ class OMCalculationPage(QFrame):
             - Ensures overlay is visible
             - Updates progress bar value
             - Updates status message with current metric name
+            - Starts animation timer for intensive metrics
             - Forces UI repaint
         """
         if not self.om_tree_list.get_checked_items():
@@ -615,25 +623,69 @@ class OMCalculationPage(QFrame):
             self.progress_overlay.raise_()
             self.progress_overlay.show()
 
+        # Store current state for animation
+        self._current_metric = current_metric
+        self._current_progress = value
+
         self.progress_bar.rpb_setValue(value)
 
-        # Update status message based on progress with current metric name
+        # Update status message
         if value < 100:
-            if current_metric:
-                # Show which specific metric is being computed
-                self.progress_status_label.setText(
-                    f"Computing: {current_metric}... {value}%"
-                )
+            if current_metric == "%FIT":
+                # Start animation timer for %FIT (updates every 500ms)
+                if not self._progress_animation_timer.isActive():
+                    self._animation_counter = 0
+                    self._progress_animation_timer.start(500)  # Update every 500ms
+
+                # Initial message
+                self._update_fit_message()
             else:
-                # Fallback if metric name not provided (backward compatibility)
-                num_metrics = len(self.om_tree_list.get_checked_items())
-                dots = "." * ((value // 10) % 4)
-                self.progress_status_label.setText(
-                    f"Computing {num_metrics} metric{'s' if num_metrics > 1 else ''}{dots} {value}%"
-                )
+                # Stop animation timer for other metrics
+                self._progress_animation_timer.stop()
+
+                if current_metric:
+                    # Standard message for other metrics
+                    self.progress_status_label.setText(
+                        f"Computing: {current_metric}... {value}%"
+                    )
+                else:
+                    # Fallback if metric name not provided
+                    num_metrics = len(self.om_tree_list.get_checked_items())
+                    dots = "." * ((value // 10) % 4)
+                    self.progress_status_label.setText(
+                        f"Computing {num_metrics} metric{'s' if num_metrics > 1 else ''}{dots} {value}%"
+                    )
+        else:
+            # Stop animation when complete
+            self._progress_animation_timer.stop()
 
         self.progress_bar.repaint()
         QApplication.processEvents()
+
+    def _animate_progress(self) -> None:
+        """Called by timer to animate progress message for intensive computations."""
+        self._animation_counter += 1
+        if self._current_metric == "%FIT":
+            self._update_fit_message()
+
+    def _update_fit_message(self) -> None:
+        """Update the %FIT progress message with animation."""
+        messages = [
+            "may take time...",
+            "processing data...",
+            "still computing...",
+            "almost there..."
+        ]
+
+        # Animated dots
+        dots = "." * (self._animation_counter % 4)
+
+        # Rotating message
+        msg_index = (self._animation_counter // 21) % len(messages)  # Change message every 1.5 seconds
+
+        self.progress_status_label.setText(
+            f"Computing: %FIT{dots} {self._current_progress}% ({messages[msg_index]})"
+        )
 
     def handle_finished(self) -> None:
         """Handle computation completion with staged progress updates.
@@ -644,8 +696,11 @@ class OMCalculationPage(QFrame):
             - Triggers table update then final results preparation
             - Hides overlay after all operations complete
         """
+        """Handle computation completion with staged progress updates."""
+        # Stop animation timer
+        self._progress_animation_timer.stop()
+
         if not self.om_tree_list.get_checked_items():
-            # No items checked, hide overlay immediately
             self.hide_progress_overlay()
             return
 
@@ -687,12 +742,11 @@ class OMCalculationPage(QFrame):
             - Updates status message
             - Refreshes data set plots
             - Emits metric_computed signal (triggers redundancy computation in main window)
-            - Hides overlay immediately after completion
+            - KEEPS overlay visible - main window will hide it when redundancy completes
 
         Note:
             The metric_computed signal triggers heavy processing in the main window
-            to prepare the redundancy page. The overlay hides immediately to avoid
-            appearing frozen, and the main window becomes responsive again.
+            to prepare the redundancy page. We keep the overlay visible until that completes.
         """
         self.progress_status_label.setText("Preparing results...")
         QApplication.processEvents()
@@ -701,13 +755,12 @@ class OMCalculationPage(QFrame):
         self.data_sets_change()
 
         # Trigger redundancy computation in main window (the actual heavy work)
+        # Don't hide overlay yet - let main window hide it when done
         self.metric_computed.emit(
             [self.om_tree_list.get_checked_items(), self.selected_metric_list]
         )
 
-        # Hide immediately - no artificial delay
-        # User can now interact while redundancy computation happens in background
-        self.hide_progress_overlay()
+        # DON'T hide overlay here - it will be hidden by main window after redundancy
 
     def hide_progress_overlay(self) -> None:
         """Hide the progress overlay and return to normal view."""

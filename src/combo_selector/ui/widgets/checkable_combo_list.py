@@ -1,19 +1,13 @@
-"""Checkable combo box widget with multi-select support.
+"""Custom combo box widget with checkable items for multi-selection.
 
-This module provides a custom QComboBox that displays checkboxes next to
-each item, allowing users to select multiple items. The selected items are
+Provides a dropdown list where each item has a checkbox, allowing
+users to select multiple items from a list. Selected items are
 displayed in the combo box's line edit, separated by semicolons.
-
-The widget supports two modes:
-- Exclusive: Only one item can be checked at a time (radio button behavior)
-- Multi-select: Multiple items can be checked simultaneously (default)
 """
 
-import sys
-
-from PySide6.QtCore import Qt, QTimer, Signal
+from PySide6.QtCore import Qt, Signal
 from PySide6.QtGui import QStandardItem, QStandardItemModel
-from PySide6.QtWidgets import QApplication, QComboBox, QDialog, QVBoxLayout
+from PySide6.QtWidgets import QComboBox
 
 
 class CheckableComboList(QComboBox):
@@ -73,7 +67,7 @@ class CheckableComboList(QComboBox):
         self.update_text()
 
     def add_item(self, text: str) -> None:
-        """Add a checkable item to the combo box.
+        """Add a single checkable item to the combo box.
 
         Args:
             text (str): Text to display for the item.
@@ -81,6 +75,9 @@ class CheckableComboList(QComboBox):
         Side Effects:
             - Creates new checkable item in model
             - Updates combo box model
+
+        Note:
+            For adding multiple items, use add_items() for better performance.
         """
         row = self.model.rowCount()
         new_item = QStandardItem(text)
@@ -93,18 +90,74 @@ class CheckableComboList(QComboBox):
         self.setModel(self.model)
 
     def add_items(self, item_text_list: list[str]) -> None:
-        """Add multiple checkable items to the combo box.
+        """Add multiple checkable items to the combo box efficiently.
+
+        Optimized for bulk operations - sets the model only once after
+        all items are added, rather than after each individual item.
 
         Args:
             item_text_list (list[str]): List of item texts to add.
 
         Side Effects:
             - Stores item list
-            - Adds each item to the model
+            - Adds all items to the model in batch
+            - Sets model only once for performance
         """
+        if not item_text_list:
+            return
+
         self.item_list = item_text_list
-        for text in item_text_list:
-            self.add_item(text)
+
+        # Block signals and model updates during bulk operation
+        self.blockSignals(True)
+        self.model.blockSignals(True)
+
+        try:
+            # Add all items to model without updating view each time
+            for text in item_text_list:
+                row = self.model.rowCount()
+                new_item = QStandardItem(text)
+                new_item.setFlags(Qt.ItemIsUserCheckable | Qt.ItemIsEnabled)
+                new_item.setData(Qt.Unchecked, Qt.CheckStateRole)
+                self.model.setItem(row, 0, new_item)
+
+            # Set the model only ONCE after all items are added
+            self.setModel(self.model)
+
+        finally:
+            # Re-enable signals
+            self.model.blockSignals(False)
+            self.blockSignals(False)
+
+    def clear(self) -> None:
+        """Clear all items from the combo box efficiently.
+
+        Side Effects:
+            - Clears the model
+            - Resets item list
+            - Clears checked items
+            - Updates display text
+        """
+        # Block signals during clear operation
+        self.blockSignals(True)
+        self.model.blockSignals(True)
+
+        try:
+            # Clear model
+            self.model.clear()
+
+            # Reset state
+            self.item_list = []
+            self.checked_items = []
+            self.display_text = ""
+
+            # Update line edit
+            self.lineEdit().clear()
+
+        finally:
+            # Re-enable signals
+            self.model.blockSignals(False)
+            self.blockSignals(False)
 
     def get_checked_item(self) -> list[str]:
         """Get list of currently checked item texts.
@@ -122,89 +175,79 @@ class CheckableComboList(QComboBox):
         """
         return self.item_list
 
-    def set_checked_items(self, item_text_list: list[str]) -> None:
-        """Programmatically check specific items.
+    def set_checked_items(self, checked_items: list[str]) -> None:
+        """Set which items should be checked.
 
         Args:
-            item_text_list (list[str]): List of item texts to check.
+            checked_items (list[str]): List of item texts to check.
 
         Side Effects:
-            - Sets check state for matching items
+            - Updates check state for matching items
             - Updates display text
         """
-        for item_text in item_text_list:
-            index = self.findText(item_text)
-            if index != -1:
-                self.model.item(index).setCheckState(Qt.Checked)
+        self.blockSignals(True)
+        self.model.blockSignals(True)
 
-        self.update()
+        try:
+            for i in range(self.model.rowCount()):
+                item = self.model.item(i, 0)
+                if item.text() in checked_items:
+                    item.setCheckState(Qt.Checked)
+                else:
+                    item.setCheckState(Qt.Unchecked)
 
-    def update(self, item: QStandardItem = None) -> None:
-        """Update the display text and checked items list.
+            self.update_text()
 
-        Called when an item's check state changes. Handles both
-        exclusive (single-select) and multi-select modes.
+        finally:
+            self.model.blockSignals(False)
+            self.blockSignals(False)
+
+    def update(self, item: QStandardItem) -> None:
+        """Handle item check state changes.
 
         Args:
-            item (QStandardItem, optional): The item that was changed.
+            item (QStandardItem): Item whose check state changed.
 
         Side Effects:
-            - Updates display_text and checked_items
-            - In exclusive mode, unchecks all other items
-            - Schedules text update via QTimer
+            - In exclusive mode, unchecks other items
+            - Updates checked items list
+            - Updates display text
+            - Emits item_checked signal
         """
-        self.display_text = ""
-        self.checked_items = []
+        if self.exclusive:
+            # Uncheck all other items in exclusive mode
+            if item.checkState() == Qt.Checked:
+                self.blockSignals(True)
+                for i in range(self.model.rowCount()):
+                    other_item = self.model.item(i, 0)
+                    if other_item != item:
+                        other_item.setCheckState(Qt.Unchecked)
+                self.blockSignals(False)
 
-        if self.exclusive and item:
-            # Exclusive mode: uncheck all except the clicked item
-            index_clicked = item.index().row()
-            self.display_text = self.model.item(index_clicked, 0).text()
-
-            for i in range(self.model.rowCount()):
-                if i == index_clicked:
-                    self.checked_items.append(self.model.item(i, 0).text())
-                else:
-                    self.model.blockSignals(True)
-                    self.model.item(i).setCheckState(Qt.Unchecked)
-                    self.model.blockSignals(False)
-        else:
-            # Multi-select mode: collect all checked items
-            for i in range(self.model.rowCount()):
-                if self.model.item(i, 0).checkState() == Qt.Checked:
-                    self.display_text += self.model.item(i, 0).text() + "; "
-                    self.checked_items.append(self.model.item(i, 0).text())
-
-        # Schedule text update (deferred to avoid recursion issues)
-        QTimer.singleShot(0, self.update_text)
+        self.update_text()
+        self.item_checked.emit(self.checked_items)
 
     def update_text(self) -> None:
-        """Update the line edit with the current display text.
+        """Update the display text with currently checked items.
 
         Side Effects:
-            - Sets line edit text to display_text (checked items)
+            - Collects checked items
+            - Updates line edit text (semicolon-separated)
         """
+        checked = []
+        for i in range(self.model.rowCount()):
+            item = self.model.item(i, 0)
+            if item and item.checkState() == Qt.Checked:
+                checked.append(item.text())
+
+        self.checked_items = checked
+        self.display_text = "; ".join(checked) if checked else ""
         self.lineEdit().setText(self.display_text)
 
+    def showPopup(self) -> None:
+        """Show the dropdown popup.
 
-# =============================================================================
-# Usage Example
-# =============================================================================
-
-if __name__ == "__main__":
-    """Simple usage example showing multi-select and exclusive modes."""
-
-    app = QApplication(sys.argv)
-
-    window = QDialog()
-    window.setWindowTitle("CheckableComboList Example")
-    layout = QVBoxLayout(window)
-
-    # Multi-select example
-    combo = CheckableComboList(placeholder="Select items...")
-    combo.add_items(["Option 1", "Option 2", "Option 3"])
-    combo.set_checked_items(["Option 1", "Option 2"])
-    layout.addWidget(combo)
-
-    window.show()
-    sys.exit(app.exec())
+        Overridden to ensure first item is not auto-selected.
+        """
+        super().showPopup()
+        self.setCurrentIndex(-1)
