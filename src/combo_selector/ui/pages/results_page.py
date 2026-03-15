@@ -738,13 +738,14 @@ class ResultsPage(QFrame):
                 axe = self.fig.add_subplot(layout)
                 self.fig.subplots_adjust(wspace=0.5, hspace=0.5)
                 axe.set_box_aspect(1)
-                self.draw_figure()
 
                 self.om_selector_map[index]["axe"] = axe
                 self.om_selector_map[index]["filtered_scatter_point"] = {}
             else:
                 self.om_selector_map[index]["axe"] = None
                 self.om_selector_map[index]["filtered_scatter_point"] = None
+
+        self.draw_figure()
 
     def handle_selector_change(self, index: str, emit_plot: bool = True) -> None:
         """Handle score selector change.
