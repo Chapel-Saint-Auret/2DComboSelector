@@ -36,6 +36,7 @@ from combo_selector.ui.widgets.nan_policy_widget import NanPolicyDialog
 from combo_selector.ui.widgets.neumorphism import BoxShadow
 from combo_selector.ui.widgets.status_icon import Status
 from combo_selector.ui.widgets.style_table import StyledTable
+from combo_selector.ui.widgets.section_help_button import SectionHelpButton
 from combo_selector.utils import resource_path
 
 # Icon size for folder buttons
@@ -200,7 +201,7 @@ class ImportDataPage(QFrame):
             QPushButton:disabled { background-color: #E5E9F5; color: #FFFFFF; }
             """)
 
-        data_import_title = QLabel("Data import")
+        data_import_title = QLabel("A: Data import")
         data_import_title.setFixedHeight(30)
         data_import_title.setObjectName("TitleBar")
         data_import_title.setAlignment(Qt.AlignVCenter | Qt.AlignLeft)
@@ -314,7 +315,7 @@ class ImportDataPage(QFrame):
         Returns:
             QFrame: Configured frame with radio buttons and SVG formula displays.
         """
-        separation_space_scaling_title = QLabel("Separation Space Scaling")
+        separation_space_scaling_title = QLabel("B: Data normalization")
         separation_space_scaling_title.setFixedHeight(30)
         separation_space_scaling_title.setObjectName("TitleBar")
         separation_space_scaling_title.setAlignment(Qt.AlignVCenter | Qt.AlignLeft)
@@ -373,7 +374,13 @@ class ImportDataPage(QFrame):
             QPushButton:disabled { background-color: #E5E9F5; color: #FFFFFF; }
             """)
 
+        SectionHelpButton.for_group(group=scaling_method_group,
+                                    title="Scaling method",
+                                    markdown_path="no_help_found.md")
+
         self.normalize_btn = QPushButton("Normalize data")
+
+        self.normalization_status = Status()
 
         # Radio buttons (exclusive)
         self.min_max_scaling_btn = QRadioButton("Min-Max scaling")
@@ -446,9 +453,13 @@ class ImportDataPage(QFrame):
         scale_col.addLayout(scale_row)
         scale_col.addStretch()
 
+        normalization_button_layout = QHBoxLayout()
+        normalization_button_layout.addWidget(self.normalize_btn)
+        normalization_button_layout.addWidget(self.normalization_status)
+
         scaling_method_layout.addLayout(scale_col)
         scaling_method_layout.addSpacing(10)
-        scaling_method_layout.addWidget(self.normalize_btn, alignment=Qt.AlignCenter)
+        scaling_method_layout.addLayout(normalization_button_layout)
 
         select_scaling_input_frame_layout.addWidget(scaling_method_group)
 
@@ -497,8 +508,8 @@ class ImportDataPage(QFrame):
 
         elif method == "wosel":
             self.scaling_method_svg_qstack.setCurrentIndex(2)
-            self.void_time_widget.setVisible(True)
-            self.void_time_label.setVisible(True)
+            self.void_time_widget.setVisible(False)
+            self.void_time_label.setVisible(False)
             self.gradient_end_time_widget.setVisible(True)
             self.gradient_end_time_label.setVisible(True)
 
@@ -512,7 +523,19 @@ class ImportDataPage(QFrame):
         """
         button_checked = self.radio_button_group.checkedButton()
         method = button_checked.objectName()
-        self.model.normalize_retention_time(method)
+
+        try:
+            self.model.normalize_retention_time(method)
+            self.normalization_status.set_valid()
+
+
+        except Exception as e:
+            self.normalization_status.set_error()
+            QMessageBox.critical(
+                self, "Error", f"Cannot normalize data:\n{str(e)}"
+            )
+
+
 
         data = self.model.get_normalized_retention_time_df()
         self.normalized_data_table.async_set_table_data(data)
@@ -583,6 +606,7 @@ class ImportDataPage(QFrame):
 
             # Successful load: update UI
             self.ret_time_import_status.set_valid()
+            self.normalization_status.set_wait()
             self.add_ret_time_filename.setText(file_path)
 
             data = self.model.get_retention_time_df()
