@@ -1009,8 +1009,6 @@ class OMCalculationPage(QFrame):
                 axe.set_xlim(0, 1)
                 axe.set_ylim(0, 1)
 
-                self.draw_figure()
-
                 self.om_selector_map[index]["axe"] = axe
                 self.om_selector_map[index]["scatter_collection"] = axe.scatter(
                     [], [], s=20, c="k", marker="o", alpha=0.5
@@ -1018,6 +1016,8 @@ class OMCalculationPage(QFrame):
             else:
                 self.om_selector_map[index]["axe"] = None
                 self.om_selector_map[index]["scatter_collection"] = None
+
+        self.draw_figure()
 
     def on_selector_changed(self, index: str) -> None:
         """Handle metric selector change.

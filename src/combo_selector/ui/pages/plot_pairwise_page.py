@@ -589,13 +589,13 @@ class PlotPairWisePage(QFrame):
             axe.set_xlim(0, 1)
             axe.set_ylim(0, 1)
 
-            self.fig.canvas.draw()
-            self.fig.canvas.flush_events()
-
             self.dataset_selector_map[index]["axe"] = axe
             self.dataset_selector_map[index]["scatter_collection"] = axe.scatter(
                 [], [], s=20, c="k", marker="o", alpha=0.5
             )
+
+        self.fig.canvas.draw()
+        self.fig.canvas.flush_events()
 
     def on_selector_changed(self, index: str) -> None:
         """Handle dataset selector change.
