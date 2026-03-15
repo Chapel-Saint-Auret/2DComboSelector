@@ -32,9 +32,13 @@ from PySide6.QtWidgets import (
     QCheckBox,
     QAbstractItemView,
     QListView,
-    QDialogButtonBox,
+    QDialogButtonBox, QTableView, QPushButton,
 )
 from PySide6.QtGui import QStandardItem, QStandardItemModel
+
+from combo_selector.ui.widgets.color_picker import ColorPicker
+
+CHROM_MODE = ['RPLC', 'HILIC', 'IEX', 'SEC', 'HIC', 'SFC','vs']
 
 
 class CustomComboBox(QComboBox):
@@ -117,6 +121,7 @@ class CustomFilterDialog(QDialog):
         self.filter_condition_tree_view = QTreeView()
         self.filter_condition_tree_view.setFixedWidth(310)
         self.filter_condition_tree_view.setMinimumHeight(220)
+        self.filter_condition_tree_view.setUniformRowHeights(True)
 
         self.delegate = CustomDelegate()
         self.filter_condition_tree_view.setItemDelegate(self.delegate)
@@ -209,6 +214,20 @@ class CustomFilterDialog(QDialog):
                 font-size: 14px;
             }
         """)
+    def build_filter_list(self,combination_list):
+
+        chromatographic_mode = []
+
+        for combination in combination_list:
+            tokens = re.findall(r'\b[A-Za-z0-9-]+\b', combination)
+
+            tokens_cleaned = [token for token in tokens if token in CHROM_MODE]
+
+            chromatographic_mode.append(' '.join(tokens_cleaned))
+
+
+        chromatographic_mode = list(set(tuple(x) for x in chromatographic_mode))
+
 
     def selected_filter_changed(self) -> None:
         """Build and emit regex pattern from selected filters.
@@ -220,10 +239,16 @@ class CustomFilterDialog(QDialog):
             - Emits filter_regexp_changed signal with regex pattern
             - Closes the dialog (accept)
         """
+        self.filtered_listview.update_selected_filter_list()
+
         selected_filter = self.filtered_listview.get_selected_filters()
 
-        parts = []
-        for s in selected_filter:
+
+        for key in selected_filter:
+            parts = []
+
+            s = key
+
             # Extract word tokens (ignore "vs")
             toks = re.findall(r'\b[A-Za-z0-9-]+\b', s)
             toks = [t for t in toks if t.lower() != 'vs']
@@ -234,8 +259,11 @@ class CustomFilterDialog(QDialog):
                 parts.append(rf'\b{a}\b.*?vs.*?\b{b}\b')
                 parts.append(rf'\b{b}\b.*?vs.*?\b{a}\b')
 
-        filter_regexp = re.compile('|'.join(parts), flags=re.IGNORECASE)
-        self.filter_regexp_changed.emit(filter_regexp.pattern)
+            filter_regexp = re.compile('|'.join(parts), flags=re.IGNORECASE)
+
+            selected_filter[key]["regexp"] = filter_regexp.pattern
+
+        self.filter_regexp_changed.emit(selected_filter)
         self.accept()
 
     def insert_parent_item(self, text: str) -> None:
@@ -364,6 +392,13 @@ class CustomDelegate(QStyledItemDelegate):
         super().__init__()
         self.previous_qty_value = 0
 
+    def sizeHint(self, option, index):
+        # Get the standard size
+        size = super().sizeHint(option, index)
+        # Add a buffer (e.g., 10 pixels) so the ComboBox has breathing room
+        size.setHeight(size.height() + 10)
+        return size
+
     def createEditor(self, parent, option, index):
         """Create appropriate editor widget for the cell.
 
@@ -393,7 +428,9 @@ class CustomDelegate(QStyledItemDelegate):
                 combo = CustomComboBox(
                     parent, ['RPLC', 'HILIC', 'IEX', 'SEC', 'HIC', 'SFC']
                 )
+                combo.setFixedHeight(20)
                 combo.setCurrentIndex(combo.get_item_index(value))
+                combo.setStyleSheet("margin: 0px; padding: 0px;")
                 return combo
             elif index.parent().row() == 1:
                 # Organic modifiers
@@ -455,17 +492,14 @@ class CustomDelegate(QStyledItemDelegate):
                 model.setData(index, editor.text())
 
     def updateEditorGeometry(self, editor, option, index):
-        """Set editor geometry to match cell.
-
-        Args:
-            editor (QWidget): Editor widget.
-            option (QStyleOptionViewItem): Style options.
-            index (QModelIndex): Cell index.
-        """
-        editor.setGeometry(option.rect)
+        # This ensures the editor fills the newly expanded sizeHint area
+        rect = option.rect
+        # Optional: adjust the height specifically for the ComboBox if needed
+        # rect.setHeight(rect.height() - 2)
+        editor.setGeometry(rect)
 
 
-class MultiListView(QListView):
+class MultiListView(QTableView):
     """List view with multi-select and space-to-toggle-checkbox support.
 
     Allows toggling check state of multiple selected items with spacebar.
@@ -475,6 +509,22 @@ class MultiListView(QListView):
         """Initialize the multi-select list view."""
         super().__init__(parent)
         self.setSelectionMode(QAbstractItemView.ExtendedSelection)
+        self.setShowGrid(False)
+        self.horizontalHeader().setStretchLastSection(False)
+        self.resizeColumnsToContents()
+        # self.horizontalHeader().hide()
+        self.verticalHeader().hide()
+
+        # Assuming your view is named 'tree_view'
+        header = self.horizontalHeader()
+        # header.setStretchLastSection(True)
+        # Set the first column (index 0) to Stretch
+        # header.setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
+
+        # Optional: Set other columns to fit their contents exactly
+        # header.setSectionResizeMode(1, QHeaderView.ResizeMode.ResizeToContents)
+        # header.setSectionResizeMode(2, QHeaderView.ResizeMode.Fixed)
+
 
     def keyPressEvent(self, event):
         """Toggle checkbox state on spacebar press.
@@ -579,6 +629,7 @@ class FilteredListView(QWidget):
                 self.invalidateFilter()
 
         self.model = QStandardItemModel(self)
+        self.model.setHorizontalHeaderLabels(['Combination','Color'])
         self.proxy = InnerProxyModel()
         self.proxy.setSourceModel(self.model)
         self.listView.setModel(self.proxy)
@@ -601,10 +652,23 @@ class FilteredListView(QWidget):
         """
         self.model.clear()
         self.__data = data
-        for d in self.__data:
+        for row, d in enumerate(self.__data):
             item = QStandardItem(d)
             item.setCheckable(True)
-            self.model.appendRow(item)
+
+            self.model.setItem(row, 0, item)
+            self.model.setItem(row, 1, QStandardItem())
+
+            # 1. Get the index from the SOURCE model
+            source_index = self.model.index(row, 1)
+
+            # 2. Map it to the PROXY model index (which the View uses)
+            proxy_index = self.proxy.mapFromSource(source_index)
+
+            # 3. Create the button and set it using the PROXY index
+            btn = ColorPicker("basic")
+            self.listView.setIndexWidget(proxy_index, btn)
+
 
         self.update_selected_filter_list()
 
@@ -623,15 +687,25 @@ class FilteredListView(QWidget):
             - Updates self.filters
             - Emits filterChanged signal
         """
-        self.filters = []
+        self.filters = {}
 
         for row in range(self.model.rowCount()):
-            idx = self.model.index(row, 0)
-            text = self.model.data(idx, Qt.DisplayRole)
-            checked = self.model.data(idx, Qt.CheckStateRole)
+            text_idx = self.model.index(row, 0)
+            color_idx = self.model.index(row, 1)
+            text = self.model.data(text_idx, Qt.DisplayRole)
+            # color = self.model.data(color_idx, Qt.DisplayRole)
+            checked = self.model.data(text_idx, Qt.CheckStateRole)
+
+            # 2. Map it to the PROXY model index (which the View uses)
+            color_proxy_index = self.proxy.mapFromSource(color_idx)
+
+            color_picker = self.listView.indexWidget(color_proxy_index)
+
+            if color_picker:
+                color = color_picker.get_color()
 
             if checked:
-                self.filters.append(text)
+                self.filters[text] = {"regexp": text,"color":color}
 
         self.filterChanged.emit(self.filters)
 
