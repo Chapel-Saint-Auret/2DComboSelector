@@ -9,10 +9,11 @@ from PySide6.QtWidgets import (
     QLabel,
     QScrollArea,
     QSizePolicy,
-    QVBoxLayout,
+    QVBoxLayout, QPushButton,
 )
 
 from combo_selector.utils import resource_path
+from combo_selector.ui.widgets.info_dialog import InfoPopupDialog, HOW_IT_WORKS_TEXT,USER_GUIDE_TEXT,BEFORE_YOU_BEGIN_TEXT
 
 PLOT_SIZE = QSize(600, 400)
 
@@ -131,6 +132,73 @@ class HomePage(QFrame):
 
         home_content_frame_layout.addWidget(self.tool_presentation)
 
+        help_content_frame = QFrame()
+        help_content_frame.setFrameStyle(QFrame.StyledPanel | QFrame.Plain)
+        help_button_layout = QHBoxLayout(help_content_frame)
+
+        self.how_it_works = QPushButton('HOW IT WORKS?')
+        self.how_it_works.setFixedSize(250,250)
+        self.how_it_works.setStyleSheet("""
+                QPushButton {
+                    background-color: #232b43;
+                    color: white;            /* Text Color */
+                    font-size: 18px;           /* Font Size */
+                    font-family: Arial;        /* Font Family */
+                    font-weight: bold;         /* Font Weight */
+                    border-radius: 5px;        /* Optional: Rounded corners */
+                    padding: 10px;             /* Optional: Space around text */
+                }
+                
+                QPushButton:hover {
+                    background-color: #3d3d3d; /* Change color on hover */
+                }
+            """)
+
+        self.before_you_begin = QPushButton('BEFORE YOU BEGIN?')
+        self.before_you_begin.setFixedSize(250, 250)
+        self.before_you_begin.setStyleSheet("""
+                QPushButton {
+                    border-radius: 10px;
+                    background-color: #005575;
+                    color: white;            /* Text Color */
+                    font-size: 18px;           /* Font Size */
+                    font-family: Arial;        /* Font Family */
+                    font-weight: bold;         /* Font Weight */
+                    border-radius: 5px;        /* Optional: Rounded corners */
+                    padding: 10px;             /* Optional: Space around text */
+                }
+                
+                QPushButton:hover {
+                    background-color: #3d3d3d; /* Change color on hover */
+                }
+            """)
+
+
+        self.user_guide = QPushButton('USER GUIDE')
+        self.user_guide.setFixedSize(250, 250)
+        self.user_guide.setStyleSheet("background-color: #00b4af;")
+        self.user_guide.setStyleSheet("""
+                QPushButton {
+                    background-color: #008394;
+                    color: white;            /* Text Color */
+                    font-size: 18px;           /* Font Size */
+                    font-family: Arial;        /* Font Family */
+                    font-weight: bold;         /* Font Weight */
+                    border-radius: 5px;        /* Optional: Rounded corners */
+                    padding: 10px;             /* Optional: Space around text */
+                }
+                
+                QPushButton:hover {
+                    background-color: #3d3d3d; /* Change color on hover */
+                }
+            """)
+
+        help_button_layout.addWidget(self.how_it_works)
+        help_button_layout.addWidget(self.before_you_begin)
+        help_button_layout.addWidget(self.user_guide)
+
+
+
         # top_frame_layout.addWidget(user_input_scroll_area)
         # top_frame_layout.addWidget(home_content_frame)
 
@@ -140,7 +208,28 @@ class HomePage(QFrame):
 
         # self.main_layout.addWidget(self.main_splitter)
         self.main_layout.addWidget(home_content_frame)
+        self.main_layout.addWidget(help_content_frame)
 
+        cards = [
+            ("HOW IT WORKS?", HOW_IT_WORKS_TEXT),
+            ("BEFORE YOU BEGIN?", BEFORE_YOU_BEGIN_TEXT),
+            ("USER GUIDE", USER_GUIDE_TEXT),
+        ]
+
+        self.how_it_works.clicked.connect(
+            lambda checked, l="HOW IT WORKS?", c=HOW_IT_WORKS_TEXT:
+                InfoPopupDialog(title=l, content=c, parent=self).exec()
+        )
+
+        self.before_you_begin.clicked.connect(
+            lambda checked, l="BEFORE YOU BEGIN?", c=BEFORE_YOU_BEGIN_TEXT:
+                InfoPopupDialog(title=l, content=c, parent=self).exec()
+        )
+
+        self.user_guide.clicked.connect(
+            lambda checked, l="USER GUIDE", c=USER_GUIDE_TEXT:
+            InfoPopupDialog(title=l, content=c, parent=self).exec()
+        )
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
