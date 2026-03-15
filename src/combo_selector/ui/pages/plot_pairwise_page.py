@@ -408,8 +408,11 @@ class PlotPairWisePage(QFrame):
             border-top-right-radius: 10px;
         """)
 
-        self.fig = Figure(figsize=(15, 15))
+        self.fig = Figure(figsize=(15, 15),constrained_layout = True)
+
         self.canvas = FigureCanvas(self.fig)
+        self.canvas.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        self.canvas.updateGeometry()
         self.toolbar = CustomToolbar(self.canvas)
 
         self._ax = self.canvas.figure.add_subplot(1, 1, 1)
@@ -581,7 +584,7 @@ class PlotPairWisePage(QFrame):
         for i, layout in enumerate(layout_list):
             index = str(i)
             axe = self.canvas.figure.add_subplot(layout)
-            self.canvas.figure.subplots_adjust(wspace=0.5, hspace=0.5)
+            # self.canvas.figure.subplots_adjust(wspace=0.5, hspace=0.5)
             axe.set_box_aspect(1)
             axe.set_xlim(0, 1)
             axe.set_ylim(0, 1)
@@ -618,7 +621,7 @@ class PlotPairWisePage(QFrame):
         Side Effects:
             - Plots scatter if data is available
         """
-        if self.model.get_status() in ["loaded", "peak_capacity_loaded"]:
+        if self.model.get_status() in ["loaded", "peak_capacity_loaded","normalized"]:
             self.plot_scatter()
 
     def plot_scatter(self, set_nb: str = None, dirname: str = "") -> None:
