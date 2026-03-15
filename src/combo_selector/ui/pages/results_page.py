@@ -238,13 +238,13 @@ class ResultsPage(QFrame):
         input_layout.addWidget(user_input_scroll_area)
 
         # Create control groups
-        ranking_selection_group = self._create_ranking_group()
         orthogonality_score_group = self._create_score_calculation_group()
+        ranking_selection_group = self._create_ranking_group()
         orthogonality_compare_score_group = self._create_score_comparison_group()
 
-        user_input_frame_layout.addWidget(ranking_selection_group)
-        user_input_frame_layout.addWidget(LineWidget("Horizontal"))
         user_input_frame_layout.addWidget(orthogonality_score_group)
+        user_input_frame_layout.addWidget(LineWidget("Horizontal"))
+        user_input_frame_layout.addWidget(ranking_selection_group)
         user_input_frame_layout.addWidget(LineWidget("Horizontal"))
         user_input_frame_layout.addWidget(orthogonality_compare_score_group)
 
@@ -266,7 +266,7 @@ class ResultsPage(QFrame):
         ranking_layout.addWidget(QLabel("Ranking based on:"))
         self.select_ranking_type = QComboBox()
         self.select_ranking_type.addItems(
-            ["Suggested score", "Computed score", "Practical 2D peak capacity"]
+            ["Orthogonality score", "Practical 2D peak capacity","Heinisch inspired method"]
         )
         ranking_layout.addWidget(self.select_ranking_type)
         ranking_layout.addSpacing(20)
@@ -298,10 +298,12 @@ class ResultsPage(QFrame):
         self.radio_button_group.addButton(self.use_computed_btn)
         self.radio_button_group.setExclusive(True)
 
-        orthogonality_score_layout.addWidget(
-            QLabel("Practical 2D peak capacity Calculation:")
-        )
-        orthogonality_score_layout.addWidget(self.use_suggested_btn)
+        use_suggested_layout = QHBoxLayout()
+        use_suggested_layout.addWidget(self.use_suggested_btn)
+        # use_suggested_layout.addWidget(SectionHelpButton(title="Suggested score",
+        #                                                    markdown_path="no_help_found.md",
+        #                                                    parent=orthogonality_score_group))
+        orthogonality_score_layout.addLayout(use_suggested_layout)
         orthogonality_score_layout.addWidget(self.use_computed_btn)
         orthogonality_score_layout.addWidget(QLabel("Computed OM list:"))
         orthogonality_score_layout.addWidget(self.om_list)
@@ -418,12 +420,17 @@ class ResultsPage(QFrame):
             [
                 "Set #",
                 "2D Combination",
-                "Suggested score",
-                "Computed score",
-                "Practical 2D peak capacity",
-                "Ranking",
+                "Orthogonality score",
+                "Orthogonality ranking",
+                "Coverage score (𝛾)",
+                "Distribution score (U)",
+                "Agreement index",
+                "Outlier metric flag",
+                "Practical peak capacity",
             ]
         )
+
+
         self.styled_table.get_header().setSectionResizeMode(0, QHeaderView.Fixed)
         self.styled_table.get_header().setSectionResizeMode(1, QHeaderView.Stretch)
         self.styled_table.get_header().setSectionResizeMode(5, QHeaderView.Fixed)
@@ -631,8 +638,7 @@ class ResultsPage(QFrame):
         """
         metric_list = self.om_list.get_checked_items()
         self.model.compute_custom_orthogonality_score(metric_list)
-        self.model.compute_practical_2d_peak_capacity()
-        self.model.create_results_table()
+        self.model.update_table_results()
 
     def handle_progress_update(self, value: int) -> None:
         """Update progress bar during computation.
@@ -762,6 +768,7 @@ class ResultsPage(QFrame):
             logging.debug(
                 f"Plot OM vs 2D for index {index} with score {self.selected_score}"
             )
+            return
             self.plot_orthogonality_vs_2d_peaks()
 
     def on_selector_changed(self, index: str) -> None:
@@ -813,7 +820,11 @@ class ResultsPage(QFrame):
             x, y, s=20, color="silver", edgecolor="black", linewidths=0.9
         )
 
-        self.fig.legend().set_visible(False)
+        # 3) Hide legend if present
+        leg = self.selected_axe.get_legend()
+        if leg:
+            leg.set_visible(False)
+
         self.fig.canvas.draw()
         self.fig.canvas.flush_events()
 
@@ -843,8 +854,7 @@ class ResultsPage(QFrame):
         """
         flag = self.use_suggested_btn.isChecked()
         self.model.suggested_om_score_flag(flag)
-        self.model.compute_practical_2d_peak_capacity()
-        self.model.create_results_table()
+        self.model.update_table_results()
         self.update_results_table()
 
     def update_results_table(self) -> None:
@@ -858,8 +868,9 @@ class ResultsPage(QFrame):
         data = self.model.get_orthogonality_result_df()
         self.styled_table.async_set_table_data(data)
         self.styled_table.set_table_proxy()
+        self.custom_filter_widget.build_filter_list(list(data["2D Combination"]))
 
-    def filter_table(self, regexp: str) -> None:
+    def filter_table(self, filter_dict: dict) -> None:
         """Apply custom filter to results table.
 
         Args:
@@ -868,4 +879,73 @@ class ResultsPage(QFrame):
         Side Effects:
             - Applies filter to table proxy model
         """
-        self.styled_table.set_proxy_filter_regexp(regexp)
+        self.build_filtered_point(filter_dict)
+        self.display_filtered_point()
+
+        list_of_patterns = []
+        for key in filter_dict:
+            list_of_patterns.append(filter_dict[key]["regexp"])
+
+        combined_pattern = "|".join(list_of_patterns)
+
+        self.styled_table.set_proxy_filter_regexp(combined_pattern)
+
+    def build_filtered_point(self, combination: dict) -> None:
+        # for group in self.selected_filtered_scatter_point:
+        #     scatter = self.selected_filtered_scatter_point[group]
+        #
+        #     if scatter in self.selected_axe.collections:
+        #         scatter.remove()
+        #         scatter = None
+
+        # combination = {"filter_name": {"regexp": regexp,"color":"#AF23A5"}}
+
+        self.orthogonality_score= self.model.get_orthogonality_score_df()
+        data_frame = pd.DataFrame.from_dict(self.orthogonality_score, orient='index')
+
+        self.filter_subset_dict = {}
+
+
+        for filter_name in combination:
+            regexp = combination[filter_name]["regexp"]
+            color = combination[filter_name]["color"]
+
+            data_frame_mask1 = data_frame['title'].str.contains(regexp)
+
+            self.filter_subset_dict[filter_name] = {'mask': data_frame_mask1,
+                                                     'data_frame1': data_frame[data_frame_mask1],
+                                                     'color':color}
+
+    def display_filtered_point(self):
+
+        score = UI_TO_MODEL_MAPPING[self.selected_score]
+
+        # To clear ALL scatter collections at once:
+        while self.selected_axe.collections:
+            self.selected_axe.collections[0].remove()
+
+        if self.filter_subset_dict:
+
+            for filter_name in self.filter_subset_dict:
+                subset = self.filter_subset_dict[filter_name]['data_frame1']
+                facecolor = self.filter_subset_dict[filter_name]['color']
+
+                x = subset[score]
+                y = subset['2d_peak_capacity']
+
+                scatter = self.selected_axe.scatter(x, y, s=20, color=facecolor, edgecolor="black", linewidths=0.9)
+
+        else:
+            self.plot_orthogonality_vs_2d_peaks()
+
+
+
+
+
+            # self.selected_scatter_collection.set_offsets(list(zip(x, y)))
+
+
+
+
+        self.fig.canvas.draw()
+        self.fig.canvas.flush_events()
