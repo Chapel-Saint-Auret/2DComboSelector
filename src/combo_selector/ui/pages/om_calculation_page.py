@@ -27,7 +27,7 @@ from PySide6.QtWidgets import (
     QSplitter,
     QStackedLayout,
     QVBoxLayout,
-    QWidget,
+    QWidget, QStackedWidget,
 )
 
 from combo_selector.core.orthogonality import Orthogonality
@@ -39,6 +39,8 @@ from combo_selector.ui.widgets.custom_toolbar import CustomToolbar
 from combo_selector.ui.widgets.line_widget import LineWidget
 from combo_selector.ui.widgets.neumorphism import BoxShadow
 from combo_selector.ui.widgets.style_table import StyledTable
+from combo_selector.ui.widgets.section_help_button import SectionHelpButton
+from combo_selector.ui.widgets.animated_toogle_button import AnimatedSegmentedToggle
 from combo_selector.utils import resource_path
 
 # Dropdown arrow icon path
@@ -130,7 +132,7 @@ class OMCalculationPage(QFrame):
         self._animation_counter = 0
 
         # --- Plotting setup -----------------------------------------------
-        self.fig = Figure(figsize=(15, 15))
+        self.fig = Figure(figsize=(15, 15),constrained_layout = True)
         self.canvas = FigureCanvas(self.fig)
         self.toolbar = CustomToolbar(self.canvas)
 
@@ -165,6 +167,7 @@ class OMCalculationPage(QFrame):
         top_frame = self._create_top_section()
 
         # === BOTTOM AREA: table ===========================================
+        # 1. Setup the Stacked Widget
         table_frame = self._create_table_section()
 
         # === Overlay (progress) ===========================================
@@ -197,6 +200,18 @@ class OMCalculationPage(QFrame):
         self.dataset_selector.currentTextChanged.connect(
             self.data_set_selection_changed_from_combobox
         )
+
+        # 4. Connect Buttons
+        self.table_toggle_button.changed.connect(lambda i, t: self.table_frame_stack.setCurrentIndex(i))
+
+    def go_next(self):
+        curr = self.table_frame_stack.currentIndex()
+        self.table_frame_stack.setCurrentIndex((curr + 1) % self.table_frame_stack.count())
+
+    def go_prev(self):
+        curr = self.table_frame_stack.currentIndex()
+        self.table_frame_stack.setCurrentIndex((curr - 1) % self.table_frame_stack.count())
+
 
     def _create_top_section(self) -> QFrame:
         """Create the top section with input panel and plot area.
@@ -266,6 +281,9 @@ class OMCalculationPage(QFrame):
 
         # OM calculation group
         om_computing_group = self._create_om_calculation_group()
+        SectionHelpButton.for_group(group=om_computing_group,
+                                    title="Input section",
+                                    markdown_path="no_help_found.md")
 
         # OM selection group
         data_selection_group = self._create_om_selection_group()
@@ -354,7 +372,7 @@ class OMCalculationPage(QFrame):
         self.footnote = QLabel()
         self.footnote.setTextFormat(Qt.TextFormat.RichText)
         self.footnote.setWordWrap(True)
-        self.footnote.setText("<strong>NND</strong>: Nearest Neighbor Distance")
+        self.footnote.setText("<strong>OM</strong>: Orthogonoality metric<br><strong>NND</strong>: Nearest Neighbor Distance")
         self.footnote.setStyleSheet("font-size: 8pt;")
 
         number_of_bin_layout = QHBoxLayout()
@@ -363,8 +381,10 @@ class OMCalculationPage(QFrame):
         self.nb_bin.setValue(14)
         self.nb_bin_label = QLabel("Number of bin box:")
         self.nb_bin_label.setObjectName("sub-title")
-        number_of_bin_layout.addWidget(self.nb_bin_label)
-        number_of_bin_layout.addWidget(self.nb_bin)
+
+        #TODO disable
+        # number_of_bin_layout.addWidget(self.nb_bin_label)
+        # number_of_bin_layout.addWidget(self.nb_bin)
 
         select_metric_title = QLabel("Select metrics to compute:")
         select_metric_title.setObjectName("sub-title")
@@ -503,8 +523,36 @@ class OMCalculationPage(QFrame):
         Returns:
             QWidget: Table frame containing styled results table.
         """
+        self.table_frame_stack = QStackedWidget()
+
+        # 2. Navigation Buttons (as seen in your image)
+        nav_layout = QHBoxLayout()
+        self.btn_prev = QPushButton("<")
+        self.btn_next = QPushButton(">")
+
+        self.table_toggle_button = AnimatedSegmentedToggle(("value based", "ranking based"))
+
+        # Style the buttons to look like your image
+        nav_style = """
+            QPushButton {
+                border: 2px solid black;
+                border-radius: 8px;
+                font-weight: bold;
+                min-width: 5px;
+                min-height: 5px;
+                background-color: white;
+            }
+            QPushButton:pressed { background-color: black; color: white; }
+        """
+        self.btn_prev.setStyleSheet(nav_style)
+        self.btn_next.setStyleSheet(nav_style)
+
+        nav_layout.addStretch()  # Push buttons to the right
+        nav_layout.addWidget(self.table_toggle_button)
+
+
         table_frame = QWidget()
-        table_frame_layout = QHBoxLayout(table_frame)
+        table_frame_layout = QVBoxLayout(table_frame)
         table_frame_layout.setContentsMargins(20, 20, 20, 20)
 
         self.styled_table = StyledTable("OM result table")
@@ -512,10 +560,24 @@ class OMCalculationPage(QFrame):
             ["Set #", "2D Combination", "OM 1", "OM 2", "...", "OM n"]
         )
         self.styled_table.set_default_row_count(10)
-        table_frame_layout.addWidget(self.styled_table)
 
-        self.table_frame_shadow = BoxShadow()
-        self.styled_table.setGraphicsEffect(self.table_frame_shadow)
+        self.metric_ranking_table = StyledTable("OM ranking table",value_format=".2f")
+        self.metric_ranking_table.set_header_label(
+            ["Set #", "2D Combination", "Rank OM 1", "Rank OM 2", "...", "Rank OM n"]
+        )
+        self.metric_ranking_table.set_default_row_count(10)
+
+        self.table_frame_stack.addWidget(self.styled_table)
+        self.table_frame_stack.addWidget(self.metric_ranking_table)
+
+        table_frame_layout.addLayout(nav_layout)
+        table_frame_layout.addWidget(self.table_frame_stack)
+
+        self.metric_table_shadow = BoxShadow()
+        self.ranking_table_shadow = BoxShadow()
+        self.styled_table.setGraphicsEffect(self.metric_table_shadow)
+        self.metric_ranking_table.setGraphicsEffect(self.ranking_table_shadow)
+
 
         return table_frame
 
@@ -885,6 +947,11 @@ class OMCalculationPage(QFrame):
         self.styled_table.async_set_table_data(data)
         self.styled_table.set_table_proxy()
 
+        om_metric_ranking =  self.model.get_orthogonality_metric_ranking_df()
+        self.metric_ranking_table.set_header_label(list(om_metric_ranking.columns))
+        self.metric_ranking_table.async_set_table_data(om_metric_ranking, value_format =".2f" )
+        self.metric_ranking_table.set_table_proxy()
+
     # ==========================================================================
     # Plot Layout & Display Management
     # ==========================================================================
@@ -998,7 +1065,7 @@ class OMCalculationPage(QFrame):
 
         self.plot_utils.clean_figure()
 
-        if self.model.get_status() in ["loaded", "peak_capacity_loaded"]:
+        if self.model.get_status() in ["loaded", "peak_capacity_loaded","normalized"]:
             self.plot_utils.plot_scatter()
         else:
             return
