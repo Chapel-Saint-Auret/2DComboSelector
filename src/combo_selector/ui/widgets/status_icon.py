@@ -67,6 +67,7 @@ class Status(QWidget):
         layout.setContentsMargins(0, 0, 0, 0)
 
         self.qstack = QStackedWidget()
+        self.qstack.setStyleSheet("""background-color:none;""")
         layout.addWidget(self.qstack)
 
         # Load and scale icons
@@ -107,6 +108,7 @@ class Status(QWidget):
 
         # Set default state
         self.qstack.setCurrentIndex(0)
+
 
     def set_error(self) -> None:
         """Set status to error/NOK state (red X).

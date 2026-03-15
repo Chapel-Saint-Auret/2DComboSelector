@@ -162,7 +162,7 @@ class OrthogonalityTableModel(QAbstractTableModel):
         >>> model.set_data(df)
     """
 
-    def __init__(self, data: pd.DataFrame = None):
+    def __init__(self,  data: pd.DataFrame = None):
         """Initialize the table model.
 
         Args:
@@ -279,6 +279,8 @@ class OrthogonalityTableModel(QAbstractTableModel):
         # Type-based formatting
         if isinstance(val, (int, np.integer)):
             return str(val)
+        elif val == np.nan:
+            return "NA"
         elif isinstance(val, (float, np.floating)):
             return f"{val:.3f}"
         elif isinstance(val, (str, tuple)):
@@ -323,7 +325,7 @@ class OrthogonalityTableModel(QAbstractTableModel):
 
         elif role == Qt.BackgroundRole:
             val = str(self._formatted_data[r][c]).strip().lower()
-            if val == "nan":
+            if val == 'na':
                 return QBrush(QColor("#ff9999"))  # Red background for NaN
             return None
 
@@ -463,15 +465,6 @@ class OrthogonalityTableView(QTableView):
         self.setHorizontalScrollMode(QAbstractItemView.ScrollPerPixel)
 
     def setModel(self, model: OrthogonalityTableModel) -> None:
-        """Set model with automatic proxy model setup.
-
-        Args:
-            model (OrthogonalityTableModel): Source model.
-
-        Side Effects:
-            - Creates OrthogonalityTableSortProxy
-            - Enables sorting and filtering
-        """
         self._proxyModel = OrthogonalityTableSortProxy()
         self._proxyModel.setSortRole(Qt.UserRole)
         self._proxyModel.setDynamicSortFilter(True)
@@ -480,6 +473,14 @@ class OrthogonalityTableView(QTableView):
         self._proxyModel.setFilterKeyColumn(-1)
 
         super().setModel(self._proxyModel)
+
+        # Forcer tri ascendant colonne 0 initial
+        self.sortByColumn(0, Qt.AscendingOrder)
+
+        # ✅ Réappliquer le tri ascendant après chaque reset du modèle
+        model.modelReset.connect(
+            lambda: self.sortByColumn(0, Qt.AscendingOrder)
+        )
 
     def getSelectedIndexes(self) -> list:
         """Get selected indexes mapped to source model.

@@ -70,7 +70,7 @@ class NanPolicyDialog(QDialog):
         super().__init__()
 
         self.model = model
-        self.setWindowTitle("NaN Retention Time Policy")
+        self.setWindowTitle("Retention Time Policy")
 
         main_layout = QVBoxLayout(self)
 
@@ -80,7 +80,7 @@ class NanPolicyDialog(QDialog):
         )
 
         # Create group box with styling
-        groupbox = QGroupBox("Missing retention times (NaN)")
+        groupbox = QGroupBox("Missing retention times: NA (not applicable)")
         groupbox.setStyleSheet("""
             QGroupBox {
                 font-size: 14px;
@@ -113,13 +113,13 @@ class NanPolicyDialog(QDialog):
 
         # Summary text
         summary = QLabel(
-            "Missing retention time values (NaN) have been detected across the dataset"
+            "Missing retention time values have been detected across the dataset"
         )
         summary.setWordWrap(True)
 
         # Option 1: Remove peaks above threshold
         self.option_remove = QRadioButton(
-            'Option 1: Remove peak(s) if number of conditions with "NaN" '
+            'Option 1: Remove compound if number of conditions with "NA" '
             'retention time exceeds'
         )
         self.option_remove.setChecked(True)
@@ -127,7 +127,7 @@ class NanPolicyDialog(QDialog):
 
         # Option 2: Keep all peaks
         self.option_keep = QRadioButton(
-            "Option 2: Keep peaks and leave NaNs blank."
+            "Option 2: Keep compound(s) and replace NA with empty field."
         )
         self.option_keep.setObjectName("option 2")
 
@@ -152,7 +152,7 @@ class NanPolicyDialog(QDialog):
 
         # Explanatory note
         note = QLabel(
-            'Note: Peak(s) with fewer "NaN" retention times than the threshold '
+            'Note: Compound(s) with fewer "NA" retention times than the threshold '
             'are kept, and the missing values remain blank.'
         )
         note.setWordWrap(True)
