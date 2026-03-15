@@ -30,7 +30,7 @@ from PySide6.QtWidgets import (
     QSizePolicy,
     QSplitter,
     QVBoxLayout,
-    QWidget,
+    QWidget, QComboBox,
 )
 
 from combo_selector.ui.widgets.custom_toolbar import CustomToolbar
@@ -42,18 +42,18 @@ from combo_selector.utils import resource_path
 
 # Maps full metric names to abbreviated display names for heatmap labels
 METRIC_CORR_MAP = {
-    "Convex hull relative area": "Convex hull",
-    "Bin box counting": "Bin box",
-    "Gilar-Watson method": "Gilar-Watson",
-    "Modeling approach": "Mod approach",
-    "Conditional entropy": "Cond entropy",
-    "Pearson Correlation": "Pear corr",
-    "Spearman Correlation": "Spea corr",
-    "Kendall Correlation": "Kend corr",
+    "Convex hull relative area": "CH Area",
+    "Bin box counting": "Bin Box",
+    "Gilar-Watson method": "Gilar-W",
+    "Modeling approach": "Mod App",
+    "Conditional entropy": "Cond Ent",
+    "Pearson Correlation": "Pearson",
+    "Spearman Correlation": "Spearman",
+    "Kendall Correlation": "Kendall",
     "Asterisk equations": "Asterisk",
-    "NND Arithm mean": "NND Amean",
-    "NND Geom mean": "NND Gmean",
-    "NND Harm mean": "NND Hmean",
+    "NND Arithm mean": "NND-A",
+    "NND Geom mean": "NND-G",
+    "NND Harm mean": "NND-H",
     "%FIT": "%FIT",
     "%BIN": "%BIN",
 }
@@ -109,8 +109,10 @@ class RedundancyCheckPage(QFrame):
         super().__init__()
 
         # --- State ---------------------------------------------------------
+        self.selected_correlation_matrix = None
         self.model = model
         self.corr_matrix = None
+        self.ranking_corr_matrix = None
         self.heatmap_mask = True
         self.highlight_heatmap_mask = False
 
@@ -151,6 +153,7 @@ class RedundancyCheckPage(QFrame):
             self.plot_correlation_heat_map
         )
         self.show_triangle_grp.buttonClicked.connect(self.plot_correlation_heat_map)
+        self.select_correlation_matrix.currentIndexChanged.connect(self.plot_correlation_heat_map)
 
     def _create_top_section(self) -> QFrame:
         """Create the top section with input panel and heatmap.
@@ -198,19 +201,19 @@ class RedundancyCheckPage(QFrame):
         """)
 
         user_input_scroll_area = QScrollArea()
-        user_input_scroll_area.setFixedWidth(290)
+        user_input_scroll_area.setFixedWidth(340)
         user_input_scroll_area.setWidgetResizable(True)
         user_input_scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
         user_input_scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
 
         user_input_frame = QFrame()
-        user_input_frame.setFixedWidth(290)
+        user_input_frame.setFixedWidth(300)
         user_input_frame_layout = QVBoxLayout(user_input_frame)
         user_input_frame_layout.setContentsMargins(20, 20, 20, 20)
         user_input_scroll_area.setWidget(user_input_frame)
 
         input_section = QFrame()
-        input_section.setFixedWidth(290)
+        input_section.setFixedWidth(300)
         input_layout = QVBoxLayout(input_section)
         input_layout.setSpacing(0)
         input_layout.setContentsMargins(0, 0, 0, 0)
@@ -224,9 +227,9 @@ class RedundancyCheckPage(QFrame):
         info_page_group = self._create_info_group()
 
         user_input_frame_layout.addWidget(correlation_parameter_group)
-        user_input_frame_layout.addWidget(LineWidget("Horizontal"))
+        # user_input_frame_layout.addWidget(LineWidget("Horizontal"))
         user_input_frame_layout.addStretch()
-        user_input_frame_layout.addWidget(info_page_group)
+        # user_input_frame_layout.addWidget(info_page_group)
 
         return input_section
 
@@ -270,6 +273,11 @@ class RedundancyCheckPage(QFrame):
         correlation_parameter_layout = QVBoxLayout()
         form_layout = QFormLayout()
 
+        self.select_correlation_matrix = QComboBox()
+        self.select_correlation_matrix.addItems(["value based",
+                                                 "ranking based",
+                                                 "coverage vs distribution"])
+
         self.corr_mat_cmap = QComboBoxCmap()
         self.corr_mat_cmap.setCurrentText("BrBG")
 
@@ -286,6 +294,9 @@ class RedundancyCheckPage(QFrame):
             will be included.</p>
         """)
 
+        self.show_cbar = QCheckBox("Show color bar")
+        self.show_cbar.setChecked(False)
+
         self.highlight_threshold = QCheckBox("Show correlated metric")
         self.highlight_threshold.setChecked(False)
 
@@ -299,15 +310,19 @@ class RedundancyCheckPage(QFrame):
         self.upper_triangle_matrix.setChecked(False)
 
         self.show_triangle_grp = QButtonGroup()
+        self.show_triangle_grp.addButton(self.show_cbar)
         self.show_triangle_grp.addButton(self.lower_triangle_matrix)
         self.show_triangle_grp.addButton(self.upper_triangle_matrix)
         self.show_triangle_grp.setExclusive(False)
 
+        form_layout.addRow("Matrix type:", self.select_correlation_matrix)
         form_layout.addRow("Color:", self.corr_mat_cmap)
         form_layout.addRow("Correlation threshold:", self.correlation_threshold)
         form_layout.addRow("Threshold tolerance:", self.correlation_threshold_tolerance)
 
         correlation_parameter_layout.addLayout(form_layout)
+        correlation_parameter_layout.addWidget(LineWidget())
+        correlation_parameter_layout.addWidget(self.show_cbar)
         correlation_parameter_layout.addWidget(self.highlight_threshold)
         correlation_parameter_layout.addWidget(self.hierarchical_clustering)
         correlation_parameter_layout.addWidget(self.lower_triangle_matrix)
@@ -397,11 +412,12 @@ class RedundancyCheckPage(QFrame):
             border-top-right-radius: 10px;
         """)
 
-        self.fig = Figure(figsize=(15, 15))
+        self.fig = Figure(figsize=(15, 15),constrained_layout = True)
+        self.fig.suptitle('Inter-metric correlation heatmap', fontsize=13)
         self.canvas = FigureCanvas(self.fig)
         self.toolbar = CustomToolbar(self.canvas)
 
-        self.fig.subplots_adjust(bottom=0.170)  # Space for long labels
+        self.fig.subplots_adjust(bottom=0.170,wspace=0.300)  # Space for long labels
         self._ax = self.canvas.figure.add_subplot(1, 1, 1)
         self._ax.set_box_aspect(1)
         self._ax.set_xlim(0, 1)
@@ -423,8 +439,8 @@ class RedundancyCheckPage(QFrame):
         table_frame_layout = QHBoxLayout(table_frame)
         table_frame_layout.setContentsMargins(20, 20, 20, 20)
 
-        self.styled_table = StyledTable("Orthogonality result correlation table")
-        self.styled_table.set_header_label(["Group", "Correlated OM"])
+        self.styled_table = StyledTable("Grouped metric table")
+        self.styled_table.set_header_label(["Group", "Correlated OM",'Category'])
         self.styled_table.set_default_row_count(10)
         table_frame_layout.addWidget(self.styled_table)
 
@@ -446,7 +462,7 @@ class RedundancyCheckPage(QFrame):
             - Updates correlation groups table
         """
         self.styled_table.clean_table()
-        self.styled_table.set_header_label(["Group", "Correlated OM"])
+        self.styled_table.set_header_label(["Group", "Correlated OM",'Category'])
 
         if self.model.get_orthogonality_metric_corr_matrix_df().empty:
             return
@@ -470,10 +486,25 @@ class RedundancyCheckPage(QFrame):
             - Highlights threshold if enabled
         """
         self.fig.clf()
+        self.fig.suptitle('Inter-metric correlation heatmap', fontsize=13)
         self.fig.patch.set_facecolor("white")
         self._ax = self.fig.add_subplot()
+        # self._ax = self.fig.add_subplot(121)
+        # self._ax2 = self.fig.add_subplot(122)
 
         self.corr_matrix = self.model.get_orthogonality_metric_corr_matrix_df().corr()
+        self.ranking_corr_matrix = self.model.get_orthogonality_metric_ranking_corr_matrix_df().corr()
+
+        if self.select_correlation_matrix.currentText() == 'value based':
+            self.selected_correlation_matrix = self.model.get_orthogonality_metric_corr_matrix_df().corr()
+            self._ax.set_title('Value based',color='0.7')
+
+        if self.select_correlation_matrix.currentText() == 'ranking based':
+            self.selected_correlation_matrix = self.model.get_orthogonality_metric_ranking_corr_matrix_df().corr()
+            self._ax.set_title('Ranking based',color='0.7')
+
+        if self.select_correlation_matrix.currentText() == 'coverage vs distribution':
+            self.selected_correlation_matrix = self.model.get_coverage_distribution_matrix_df()
 
         if self.corr_matrix.empty:
             return
@@ -488,22 +519,52 @@ class RedundancyCheckPage(QFrame):
         if self.hierarchical_clustering.checkState() == Qt.Checked:
             self.corr_matrix = self.cluster_corr(self.corr_matrix)
 
+        if self.show_cbar.checkState() == Qt.Checked:
+            cbar_state = True
+        else:
+            cbar_state = False
+
         # Determine triangle mask
         if self.lower_triangle_matrix.checkState() == Qt.Checked:
-            self.heatmap_mask = np.triu(np.ones_like(self.corr_matrix, dtype=bool))
+            self.heatmap_mask = np.triu(np.ones_like(self.selected_correlation_matrix, dtype=bool))
         elif self.upper_triangle_matrix.checkState() == Qt.Checked:
-            self.heatmap_mask = np.tril(np.ones_like(self.corr_matrix, dtype=bool))
+            self.heatmap_mask = np.tril(np.ones_like(self.selected_correlation_matrix, dtype=bool))
         else:
-            self.heatmap_mask = np.zeros_like(self.corr_matrix, dtype=bool)
+            self.heatmap_mask = np.zeros_like(self.selected_correlation_matrix, dtype=bool)
 
         # Plot heatmap
-        g = sns.heatmap(
-            self.corr_matrix,
+        # g = sns.heatmap(
+        #     self.corr_matrix,
+        #     mask=self.heatmap_mask,
+        #     vmin=self.corr_matrix.values.min(),
+        #     vmax=1,
+        #     square=True,
+        #     cmap=cmap,
+        #     cbar=False,
+        #     linewidths=0.1,
+        #     annot=True,
+        #     annot_kws={"fontsize": 6},
+        #     xticklabels=1,
+        #     yticklabels=1,
+        #     ax=self._ax,
+        # )
+        #
+        # g.set_xticklabels(metric_list, fontsize=7)
+        # g.set_yticklabels(metric_list, rotation=0, fontsize=7)
+
+
+        v = sns.heatmap(
+            self.selected_correlation_matrix,
             mask=self.heatmap_mask,
-            vmin=self.corr_matrix.values.min(),
             vmax=1,
             square=True,
             cmap=cmap,
+            cbar=cbar_state,
+            cbar_kws={
+                "shrink": 0.6,  # shorter bar (60% of default height)
+                "fraction": 0.04,  # thinner bar width
+                "pad": 0.02  # gap from heatmap
+            },
             linewidths=0.1,
             annot=True,
             annot_kws={"fontsize": 6},
@@ -512,8 +573,8 @@ class RedundancyCheckPage(QFrame):
             ax=self._ax,
         )
 
-        g.set_xticklabels(metric_list, fontsize=7)
-        g.set_yticklabels(metric_list, rotation=0, fontsize=7)
+        v.set_xticklabels(metric_list, fontsize=7)
+        v.set_yticklabels(metric_list, rotation=0, fontsize=7)
 
         self.highlight_correlation_threshold()
 
@@ -531,7 +592,9 @@ class RedundancyCheckPage(QFrame):
             - Redraws canvas
         """
         quadmesh = self._ax.collections[0]
+        quadmesh2 = self._ax2.collections[0]
         quadmesh.set_cmap(cmap)
+        quadmesh2.set_cmap(cmap)
         self.fig.canvas.draw_idle()
 
     def highlight_correlation_threshold(self) -> None:
@@ -593,6 +656,10 @@ class RedundancyCheckPage(QFrame):
         self.model.create_correlation_group(threshold=threshold, tol=tolerance)
 
         correlation_group_table = self.model.get_correlation_group_df()
+
+        self.model.fill_correlation_group_category()
+
+        self.model.build_coverage_distribution_matrix()
 
         self.styled_table.async_set_table_data(correlation_group_table)
         self.styled_table.set_table_proxy()
