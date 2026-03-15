@@ -310,25 +310,27 @@ class CustomMainWindow(QMainWindow):
         self.status_label.setText(text)
         QTimer.singleShot(3000, lambda: self.status_label.setText(""))
 
-    def add_side_bar_item(self, text: str, widget: QWidget, icon: str = None) -> None:
+    def add_side_bar_item(self, text: str, widget: QWidget, icon: str = None,has_page: bool  = True) -> None:
         """Add a page to the sidebar navigation.
 
         Args:
             text (str): Display text for the menu item.
             widget (QWidget): Page widget to display when selected.
             icon (str, optional): Path to icon image file.
-
+            has_page ( bool, optional): Whether the menu item has a page or not.
         Side Effects:
             - Adds widget to stacked widget
             - Adds menu item to sidebar
             - Updates page index map
         """
-        self.content_qstack.addWidget(widget)
         self.side_bar_menu.get_menu_list().add_item(text, icon)
 
-        widget_index = self.content_qstack.indexOf(widget)
-        self.page_index_map[text] = {"index": widget_index}
-
+        if has_page:
+            self.content_qstack.addWidget(widget)
+            widget_index = self.content_qstack.indexOf(widget)
+            self.page_index_map[text] = {"index": widget_index,'has_page':has_page,"widget":widget}
+        else:
+            self.page_index_map[text] = {"index": -1, 'has_page': has_page, "widget": widget}
     def page_change(self, item_clicked) -> None:
         """Handle page change when sidebar item is clicked.
 
@@ -340,7 +342,13 @@ class CustomMainWindow(QMainWindow):
         """
         page_name = item_clicked.text()
         page_index = self.page_index_map[page_name]["index"]
-        self.content_qstack.setCurrentIndex(page_index)
+
+        if self.page_index_map[page_name]["has_page"]:
+            self.content_qstack.setCurrentIndex(page_index)
+        else:
+            widget = self.page_index_map[page_name]["widget"]
+            widget.exec()
+
 
     def moveWindow(self, event) -> None:
         """Handle window dragging via title bar.
