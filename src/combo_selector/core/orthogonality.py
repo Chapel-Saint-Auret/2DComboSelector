@@ -10,7 +10,8 @@ from numpy import sum
 from scipy.cluster.hierarchy import linkage
 from scipy.spatial import ConvexHull
 from scipy.spatial.distance import pdist
-from scipy.stats import gmean, hmean, kendalltau, linregress, pearsonr, spearmanr
+from scipy import ndimage
+from scipy.stats import gmean, hmean, kendalltau, linregress, pearsonr, spearmanr,iqr,median_abs_deviation
 
 from combo_selector.core.orthogonality_utils import *
 
@@ -111,17 +112,17 @@ METRIC_MAPPING = {
         "include_in_score": True,
         "include_in_corr_mat": False,
     },
-    "computed_score": {
+    "orthogonality_score": {
         "table_index": 20,
         "include_in_score": True,
         "include_in_corr_mat": False,
     },
-    "suggested_score": {
+    "orthogonality_ranking": {
         "table_index": 21,
         "include_in_score": True,
         "include_in_corr_mat": False,
     },
-    "orthogonality_factor": {
+    "coverage_score": {
         "table_index": 22,
         "include_in_score": True,
         "include_in_corr_mat": False,
@@ -131,31 +132,53 @@ METRIC_MAPPING = {
         "include_in_score": True,
         "include_in_corr_mat": False,
     },
-    "orthogonality_value": {
+    "heinisch": {
         "table_index": 24,
         "include_in_score": True,
         "include_in_corr_mat": False,
     },
-    "gilar-watson": {
+    "orthogonality_value": {
         "table_index": 25,
         "include_in_score": True,
-        "include_in_corr_mat": True,
+        "include_in_corr_mat": False,
     },
-    "modeling_approach": {
+    "gilar-watson": {
         "table_index": 26,
         "include_in_score": True,
         "include_in_corr_mat": True,
     },
-    "conditional_entropy": {
+    "modeling_approach": {
         "table_index": 27,
         "include_in_score": True,
         "include_in_corr_mat": True,
     },
-    "geometric_approach": {
+    "conditional_entropy": {
         "table_index": 28,
         "include_in_score": True,
         "include_in_corr_mat": True,
     },
+    "geometric_approach": {
+        "table_index": 29,
+        "include_in_score": True,
+        "include_in_corr_mat": True,
+    },
+    "distribution_score": {
+        "table_index": 30,
+        "include_in_score": True,
+        "include_in_corr_mat": True,
+    },
+    "agreement_index": {
+        "table_index": 31,
+        "include_in_score": True,
+        "include_in_corr_mat": True,
+    },
+    "outlier_metric_flag": {
+        "table_index": 32,
+        "include_in_score": True,
+        "include_in_corr_mat": True,
+    },
+
+
 }
 
 UI_TO_MODEL_MAPPING = {
@@ -226,7 +249,16 @@ class Orthogonality(QObject):
         super().__init__()
         self.column_names = []
         self.orthogonality_metric_df = None
+        self.orthogonality_group_ranking_df = None
+        self.orthogonality_metric_ranking_df = None
+        self.orthogonality_metric_ranking_corr_matrix_df = None
         self.correlation_group_df = None
+        self.coverage_distribution_df = None
+        self.coverage_score_df = pd.DataFrame()
+        self.metric_rho_coverage = None
+        self.group_rho_coverage = None
+        self.group_rho_distribution = None
+        self.metric_rho_distribution = None
         self.orthogonality_result_df = None
         self.retention_time_df = None
         self.norm_ret_time_table = None
@@ -345,6 +377,16 @@ class Orthogonality(QObject):
         """
         return self.orthogonality_metric_df
 
+
+    def get_orthogonality_metric_ranking_df(self) -> pd.DataFrame:
+        """Get the orthogonality metrics ranking DataFrame.
+
+        Returns:
+            pd.DataFrame: DataFrame containing all computed orthogonality metrics ranking
+                         for each column combination set.
+        """
+        return self.orthogonality_metric_ranking_df
+
     def get_orthogonality_metric_corr_matrix_df(self) -> pd.DataFrame:
         """Get the orthogonality metric correlation matrix DataFrame.
 
@@ -352,6 +394,22 @@ class Orthogonality(QObject):
             pd.DataFrame: Correlation matrix of orthogonality metrics.
         """
         return self.orthogonality_metric_corr_matrix_df
+
+    def get_orthogonality_metric_ranking_corr_matrix_df(self) -> pd.DataFrame:
+        """Get the orthogonality metric ranking correlation matrix DataFrame.
+
+        Returns:
+            pd.DataFrame: Correlation matrix of orthogonality metrics.
+        """
+        return self.orthogonality_metric_ranking_corr_matrix_df
+
+    def get_coverage_distribution_matrix_df(self) -> pd.DataFrame:
+        """Get the coverage vs distribution correlation matrix DataFrame.
+
+        Returns:
+            pd.DataFrame: coverage vs distribution correlation matrix DataFrame.
+        """
+        return self.coverage_distribution_df
 
     def get_orthogonality_result_df(self) -> pd.DataFrame:
         """Get the final orthogonality results DataFrame with rankings.
@@ -476,6 +534,7 @@ class Orthogonality(QObject):
             "orthogonality_factor": 0,
             "orthogonality_value": 0,
             "practical_2d_peak": 0,
+            "heinisch": 0,
             "2d_peak_capacity": "no data loaded",
         }
 
@@ -572,68 +631,6 @@ class Orthogonality(QObject):
         for metric in ["Bin box counting", "Modeling approach", "Gilar-Watson method"]:
             self.om_function_map[metric]["status"] = FuncStatus.NOT_COMPUTED
 
-    def compute_orthogonality_metric(self, metric_list: list, progress_cb: Signal) -> None:
-        """Compute orthogonality metrics for all sets and emit progress updates.
-
-        Args:
-            metric_list (list): List of metric names (UI format) to compute.
-            progress_cb (Signal): Qt Signal for emitting progress (percentage, metric_name).
-
-        Side Effects:
-            - Computes all uncomputed metrics in metric_list
-            - Updates orthogonality_metric_df and orthogonality_metric_corr_matrix_df
-            - Emits progress updates via progress_cb with (int, str) format
-        """
-        total_weight = sum(
-            METRIC_WEIGHTS.get(metric, DEFAULT_WEIGHT)
-            for metric in metric_list
-            if self.om_function_map[metric]["status"] != FuncStatus.COMPUTED
-        )
-        accumulated_weight = 0
-
-        for metric in metric_list:
-            if self.om_function_map[metric]["status"] != FuncStatus.COMPUTED:
-                # Emit progress with current metric name BEFORE computing
-                percent = int((accumulated_weight / total_weight) * 100) if total_weight > 0 else 0
-                progress_cb.emit(percent, metric)  # Changed: now emits (percent, metric_name)
-
-                # Compute the metric
-                self.om_function_map[metric]["func"]()
-
-                # Update accumulated weight
-                accumulated_weight += METRIC_WEIGHTS.get(metric, DEFAULT_WEIGHT)
-
-        # Emit 100% completion with last metric
-        last_metric = metric_list[-1] if metric_list else ""
-        progress_cb.emit(100, last_metric)
-
-        # get column index of orthogonality metric in table_data
-        column_index = [
-            METRIC_MAPPING[UI_TO_MODEL_MAPPING[metric]]["table_index"]
-            for metric in metric_list
-        ]
-
-        orthogonality_table_df = pd.DataFrame(self.table_data)
-
-        # correlation matrix table only contains metric with no set number and combination title
-        self.orthogonality_metric_df = orthogonality_table_df.iloc[
-            :, np.r_[column_index]
-        ]
-
-        # add column name
-        self.orthogonality_metric_df.columns = metric_list
-
-        self.orthogonality_metric_corr_matrix_df = self.orthogonality_metric_df
-
-        # 0 and 1 indexes are for set number and combination title
-        column_index = [0, 1] + column_index
-        self.orthogonality_metric_df = orthogonality_table_df.iloc[
-            :, np.r_[column_index]
-        ]
-
-        # Adding column names directly
-        self.orthogonality_metric_df.columns = ["Set #", "2D Combination"] + metric_list
-
     def set_orthogonality_value(self, selected_orthogonality: str) -> None:
         """Set the orthogonality value for each set based on a selected metric.
 
@@ -718,6 +715,156 @@ class Orthogonality(QObject):
         ]
 
         return self.correlation_group_df
+
+    def compute_rho_coverage(self):
+
+        coverage_anchor = self.orthogonality_metric_ranking_df['Bin box counting']
+
+        # dictionary of rho coverage value per group
+        self.group_rho_coverage = {}
+
+        # dictionary of rho coverage value per metric
+        self.metric_rho_coverage = {}
+
+        temp_df = self.correlation_group_df.rename(columns={'Correlated OM': 'Correlated_OM'})
+
+        for row in temp_df.itertuples():
+            group = row.Group
+            rho_coverage_list = []
+
+            correlated_metric_list =  row.Correlated_OM
+
+            for metric in correlated_metric_list:
+                values = self.orthogonality_metric_ranking_df[metric]
+                rho_coverage = spearmanr(coverage_anchor,values)[0]
+
+                rho_coverage_list.append(abs(rho_coverage))
+                self.metric_rho_coverage[metric] = abs(rho_coverage)
+
+            self.metric_rho_coverage = dict(sorted(self.metric_rho_coverage.items()))
+            self.group_rho_coverage[group] = tmean(rho_coverage_list)
+
+    def compute_rho_distribution(self):
+
+        self.compute_cc_mean()
+
+        om_dataframe = pd.DataFrame(self.orthogonality_score).T
+
+        distribution_anchor = om_dataframe['cc_mean'].rank(ascending=False, method='average')
+
+        # dictionary of rho distribution value per group
+        self.group_rho_distribution = {}
+
+        # dictionary of rho coverage value per metric
+        self.metric_rho_distribution = {}
+
+        temp_df = self.correlation_group_df.rename(columns={'Correlated OM': 'Correlated_OM'})
+
+        for row in temp_df.itertuples():
+            group = row.Group
+            rho_distribution_list = []
+
+            correlated_metric_list =  row.Correlated_OM
+
+            for metric in correlated_metric_list:
+                values = self.orthogonality_metric_ranking_df[metric]
+                rho_distribution = spearmanr(distribution_anchor,values)[0]
+
+                rho_distribution_list.append(abs(rho_distribution))
+                self.metric_rho_distribution[metric] = abs(rho_distribution)
+
+            self.metric_rho_distribution = dict(sorted(self.metric_rho_distribution.items()))
+            self.group_rho_distribution[group] = tmean(rho_distribution_list)
+
+    def build_coverage_distribution_matrix(self):
+        self.coverage_distribution_df = pd.DataFrame({"rho coverage ": self.metric_rho_coverage,
+                                                      "rho distribution": self.metric_rho_distribution
+                                                      })
+
+        self.coverage_distribution_df.index.name = "Metric"
+
+        self.coverage_distribution_df = self.coverage_distribution_df.T
+
+    def fill_correlation_group_category(self):
+
+        self.compute_rho_coverage()
+        self.compute_rho_distribution()
+
+        category_list = []
+
+        for group in self.group_rho_coverage.keys():
+
+            rho_coverage = self.group_rho_coverage[group]
+            rho_distribution = self.group_rho_distribution[group]
+
+            if rho_coverage >= 0.9 > rho_distribution:
+                category = 'Coverage-like'
+            elif rho_distribution >= 0.9 > rho_coverage:
+                category = 'Distribution-like'
+            elif rho_coverage >= 0.9 and rho_distribution >= 0.9:
+                category = 'Hybrid'
+            else:
+                category = 'Other'
+
+            category_list.append(category)
+
+        self.correlation_group_df['Category'] = category_list
+
+    def update_metric_dataframes(self,metric_list):
+        """Update orthogonality metric DataFrames after all computations.
+
+        This replicates the DataFrame update logic from the model's
+        compute_orthogonality_metric method.
+
+        Side Effects:
+            - Updates model.orthogonality_metric_df
+            - Updates model.orthogonality_metric_corr_matrix_df
+        """
+
+        # Get column indices for the computed metrics
+        column_index = [
+            METRIC_MAPPING[UI_TO_MODEL_MAPPING[metric]]["table_index"]
+            for metric in metric_list
+        ]
+
+        orthogonality_table_df = pd.DataFrame(self.table_data)
+
+        # For Correlation matrix table only contains metric with no set number and combination title
+        self.orthogonality_metric_df = orthogonality_table_df.iloc[
+            :, np.r_[column_index]
+        ]
+
+        # Add column name
+        self.orthogonality_metric_df.columns = metric_list
+        self.orthogonality_metric_corr_matrix_df = self.orthogonality_metric_df
+
+        # rank each metric result across the combination
+        self.orthogonality_metric_ranking_corr_matrix_df = self.orthogonality_metric_ranking_df = \
+            self.orthogonality_metric_df.rank(ascending=False, method='average')
+
+        def force_scale(col):
+            return ((col - col.min()) / (col.max() - col.min())) * (self.nb_combination - 1) + 1
+
+        self.orthogonality_metric_ranking_df = self.orthogonality_metric_ranking_df.apply(force_scale).round(2)
+
+        # 0 and 1 indexes are for set number and combination title
+        column_index = [0, 1] + column_index
+        self.orthogonality_metric_df = orthogonality_table_df.iloc[
+            :, np.r_[column_index]
+        ]
+
+        #set and combination title dataframe
+        set_and_title_df = orthogonality_table_df.iloc[:, np.r_[0,1]]
+
+        self.orthogonality_metric_ranking_df = pd.concat([set_and_title_df, self.orthogonality_metric_ranking_df], axis=1)
+
+
+        # Adding column names directly
+        self.orthogonality_metric_df.columns = self.orthogonality_metric_ranking_df.columns = \
+            (["Set #", "2D Combination"] + metric_list)
+
+    def update_metric_ranking_dataframe(self):
+        self.orthogonality_metric_ranking_df = self.orthogonality_metric_df.rank(ascending=False, method='average')
 
     def compute_custom_orthogonality_score(self, metric_list: list) -> None:
         """Compute a custom orthogonality score as the mean of selected metrics.
@@ -820,43 +967,6 @@ class Orthogonality(QObject):
                 om_score,
                 table_row_index=set_number - 1,
             )
-
-    def compute_practical_2d_peak_capacity(self) -> None:
-        """Compute practical 2D peak capacity for each set.
-
-        Practical 2D peak capacity = orthogonality_score * hypothetical_2d_peak_capacity
-        Uses either suggested_score or computed_score based on use_suggested_score flag.
-
-        Side Effects:
-            Updates practical_2d_peak_capacity in orthogonality_score and table_data
-            for each set.
-
-        Note:
-            Only runs if status is 'peak_capacity_loaded'.
-        """
-        if self.status not in ["peak_capacity_loaded"]:
-            return
-
-        if self.use_suggested_score:
-            om_score = "suggested_score"
-        else:
-            om_score = "computed_score"
-
-        # Iterate through each set in the orthogonality dictionary
-        for index, data_set in enumerate(self.orthogonality_dict):
-            practical_2d_peak_capacity = (
-                    self.orthogonality_score[data_set][om_score]
-                    * self.orthogonality_score[data_set]["2d_peak_capacity"]
-            )
-
-            set_number = extract_set_number(data_set)
-            self.update_metrics(
-                data_set,
-                "practical_2d_peak_capacity",
-                practical_2d_peak_capacity,
-                table_row_index=set_number - 1,
-            )
-
     def create_results_table(self) -> None:
         """Create the final results DataFrame with scores and rankings.
 
@@ -875,10 +985,7 @@ class Orthogonality(QObject):
 
         column_name = [
             "set_number",
-            "title",
-            "suggested_score",
-            "computed_score",
-            "practical_2d_peak_capacity",
+            "title"
         ]
 
         # get column index of orthogonality metric in table_data
@@ -895,21 +1002,25 @@ class Orthogonality(QObject):
         self.orthogonality_result_df.columns = [
             "Set #",
             "2D Combination",
-            "Suggested score",
-            "Computed score",
-            "Practical 2D peak capacity",
         ]
 
-        self.orthogonality_result_df.fillna(0)
+        # self.orthogonality_result_df.fillna(0)
+        #
+        # self.orthogonality_result_df["Ranking"] = (
+        #     self.orthogonality_result_df["Practical 2D peak capacity"]
+        #     .rank(method="dense", ascending=False)
+        #     .astype("Int64", errors="ignore")
+        # )
 
-        self.orthogonality_result_df["Ranking"] = (
-            self.orthogonality_result_df["Practical 2D peak capacity"]
-            .rank(method="dense", ascending=False)
-            .astype("Int64", errors="ignore")
-        )
+    def update_table_results(self) -> None:
 
-        self.set_orthogonality_ranking_argument("Practical 2D peak capacity")
-
+        self.compute_consensus_orthogonality_score()
+        self.compute_consensus_orthogonality_ranking()
+        self.compute_coverage_score()
+        self.compute_distribution_score()
+        self.compute_agreement_index()
+        self.compute_outlier_metric_flag()
+        self.compute_practical_2d_peak_capacity()
     def set_orthogonality_ranking_argument(self, argument: str) -> None:
         """Set the ranking criterion for the results table.
 
@@ -924,6 +1035,140 @@ class Orthogonality(QObject):
             .rank(method="dense", ascending=False)
             .astype("Int64", errors="ignore")
         )
+
+    def compute_consensus_orthogonality_ranking(self):
+
+        self.orthogonality_group_ranking_df = pd.DataFrame()
+        metric_rank_df = self.orthogonality_metric_ranking_df.copy()
+
+        for group, correlated_metric_list in zip(self.correlation_group_df['Group'],
+                                                 self.correlation_group_df['Correlated OM']):
+
+            self.orthogonality_group_ranking_df[group] = metric_rank_df[correlated_metric_list].median(axis=1)
+
+
+        consensus_orthogonality_ranking_df = self.orthogonality_group_ranking_df.sum(axis=1)
+
+        consensus_orthogonality_ranking_df = consensus_orthogonality_ranking_df.rank(ascending=True, method='average')
+
+        self.orthogonality_result_df['Orthogonality ranking'] = consensus_orthogonality_ranking_df
+
+    def compute_consensus_orthogonality_score(self):
+
+        self.consensus_orthogonality_score_df = pd.DataFrame()
+        metric_df = self.orthogonality_metric_df.copy()
+
+        for group, correlated_metric_list in zip(self.correlation_group_df['Group'],
+                                                 self.correlation_group_df['Correlated OM']):
+
+            self.consensus_orthogonality_score_df[group] = metric_df[correlated_metric_list].median(axis=1)
+
+
+        self.consensus_orthogonality_score_df = self.consensus_orthogonality_score_df.median(axis=1)
+
+        # self.consensus_orthogonality_score_df = self.consensus_orthogonality_score_df.rank(ascending=False, method='average')
+
+        self.orthogonality_result_df['Orthogonality score'] = self.consensus_orthogonality_score_df
+
+    def compute_coverage_score(self):
+
+        self.coverage_score_df = pd.DataFrame()
+        metric_df = self.orthogonality_metric_df.copy()
+
+        coverage_metric = []
+        for category, correlated_metric_list in zip(self.correlation_group_df['Category'],
+                                                 self.correlation_group_df['Correlated OM']):
+            if category == "Coverage-like":
+                coverage_metric += correlated_metric_list
+
+        self.coverage_score_df = metric_df[coverage_metric].median(axis=1)
+
+        self.orthogonality_result_df['Coverage score'] = self.coverage_score_df
+
+    def compute_distribution_score(self):
+
+        self.distribution_score_df = pd.DataFrame()
+        metric_df = self.orthogonality_metric_df.copy()
+
+        distribution_metric = []
+        for category, correlated_metric_list in zip(self.correlation_group_df['Category'],
+                                                    self.correlation_group_df['Correlated OM']):
+            if category == "Distribution-like":
+                distribution_metric += correlated_metric_list
+
+        self.distribution_score_df = metric_df[distribution_metric].median(axis=1)
+
+        self.orthogonality_result_df['Distribution score'] = self.distribution_score_df
+
+    def compute_agreement_index(self):
+
+        agreement_index_df = self.orthogonality_group_ranking_df.apply(iqr, axis=1)
+
+        agreement_index_df = 1 - (agreement_index_df / (self.nb_combination - 1))
+
+        self.orthogonality_result_df['Agreement index'] = agreement_index_df
+
+    def compute_outlier_metric_flag(self):
+
+        def compute_deviations(ranks, median):
+            return [abs(rank - median) for rank in ranks]
+
+        def compute_outlier_flag(deviations,threshold):
+            return [dev>threshold for dev in deviations]
+
+        def write_outlier_result(group_and_count):
+            result = [
+                f"{group_letter}: {count}"
+                for group_letter, count in group_and_count
+                if count > 0  # ✅ seulement les outliers
+            ]
+            return ", ".join(result) if result else "No outliers"
+
+        rank_per_metric_per_group = pd.DataFrame()
+        metric_rank_df = self.orthogonality_metric_ranking_df.copy()
+        tau = 3
+
+        for group, correlated_metric_list in zip(self.correlation_group_df['Group'],
+                                                 self.correlation_group_df['Correlated OM']):
+
+            rank_per_metric_per_group[group] = metric_rank_df[correlated_metric_list].apply(list, axis=1)
+
+        median_g = self.orthogonality_group_ranking_df
+
+        mad_g = rank_per_metric_per_group.map(lambda x: median_abs_deviation(x))
+
+        deviation = rank_per_metric_per_group.combine(median_g, lambda s1, s2: pd.Series([compute_deviations(a, b) for a, b in zip(s1, s2)]))
+
+        outlier_flag = deviation.combine(mad_g*tau, lambda s1, s2: pd.Series([compute_outlier_flag(a, b) for a, b in zip(s1, s2)]))
+
+        outlier_count = outlier_flag.map(lambda x: sum(x)).apply(list,axis=1)
+
+        outlier_group = outlier_flag.apply(lambda row: row.index.tolist(),axis=1)
+
+        outlier_metric_flag = outlier_group.T.combine(outlier_count.T, lambda s1,s2: write_outlier_result(zip(s1,s2)))
+
+        self.orthogonality_result_df['Outlier metric flag'] = outlier_metric_flag
+
+
+    def compute_practical_2d_peak_capacity(self) -> None:
+        """Compute practical 2D peak capacity for each set.
+
+        Practical 2D peak capacity = orthogonality_score * hypothetical_2d_peak_capacity
+        Uses either suggested_score or computed_score based on use_suggested_score flag.
+
+        Side Effects:
+            Updates practical_2d_peak_capacity in orthogonality_score and table_data
+            for each set.
+
+        Note:
+            Only runs if status is 'peak_capacity_loaded'.
+        """
+        if self.status not in ["peak_capacity_loaded"]:
+            return
+
+        if not self.coverage_score_df.empty:
+            self.orthogonality_result_df['Practical peak capacity'] = (
+                    self.combination_df['Hypothetical 2D peak capacity']*self.coverage_score_df)
 
     def compute_orthogonality_factor(self, method_list: list) -> None:
         """Compute the orthogonality factor as the product of selected method values.
@@ -1240,6 +1485,8 @@ class Orthogonality(QObject):
         if method == "wosel":
             self.normalize_retention_time_wosel()
 
+        self.status = "normalized"
+
     def clean_nan_value(self, option: str) -> None:
         """Handle NaN values in retention time data according to the specified option.
 
@@ -1379,10 +1626,10 @@ class Orthogonality(QObject):
 
             # check there is nan value in data frame
             self.has_nan_value = self.retention_time_df.isnull().any().any()
-
             self.column_names = self.retention_time_df.columns.tolist()
             self.nb_condition = num_columns = len(self.column_names)
             self.nb_peaks = len(self.retention_time_df.iloc[:, 0])
+            self.bin_number = round(sqrt(self.nb_peaks))
 
             # Initialize loop parameters
             self.retention_time_df.insert(
@@ -1409,11 +1656,15 @@ class Orthogonality(QObject):
                     self.update_metrics(set_key, "set_number", set_number)
                     self.update_metrics(set_key, "title", set_title)
                     self.update_metrics(set_key, "nb_peaks", self.nb_peaks)
-                    self.update_metrics(set_key, "suggested_score", 0)
-                    self.update_metrics(set_key, "computed_score", 0)
-                    self.update_metrics(set_key, "orthogonality_factor", 0)
+                    self.update_metrics(set_key, "orthogonality_score", 0)
+                    self.update_metrics(set_key, "orthogonality_ranking", 0)
+                    self.update_metrics(set_key, "coverage_score", 0)
+                    self.update_metrics(set_key, "distribution_score", 0)
+                    self.update_metrics(set_key, "agreement_index", 0)
+                    self.update_metrics(set_key, "outlier_metric_flag", 0)
                     self.update_metrics(set_key, "orthogonality_value", 0)
                     self.update_metrics(set_key, "practical_2d_peak_capacity", 0)
+                    self.update_metrics(set_key, "heinisch", 0)
 
                     # Determine column types
                     column1_type = "HILIC" if current_column < 8 else "RPLC"
@@ -1475,10 +1726,15 @@ class Orthogonality(QObject):
                             "sad_dev_ns": 0,
                             "sad_dev_fs": 0,
                         },
-                        "computed_score": 0,
-                        "orthogonality_factor": 0,
+                        "orthogonality_score": 0,
+                        "orthogonality_ranking": 0,
+                        "coverage_score": 0,
+                        "distribution_score": 0,
+                        "agreement_index": 0,
+                        "outlier_metric_flag": 0,
                         "orthogonality_value": 0,
                         "practical_2d_peak": 0,
+                        "heinisch": 0,
                         "2d_peak_capacity": "no data loaded",
                     }
                     set_number += 1
@@ -1510,14 +1766,13 @@ class Orthogonality(QObject):
             Returns 0 if points are collinear or duplicate points reduce rank to 1.
         """
         for set_key in self.orthogonality_dict.keys():
-            print(set_key)
             set_data = self.orthogonality_dict[set_key]
             x, y = set_data["x_values"], set_data["y_values"]
 
             # Stack the x and y coordinates into a 2D array of shape (n_points, 2)
             subset = np.vstack((x, y)).T
 
-            # remove duplicate point
+            # remove duplicate pointS
             subset = np.unique(subset, axis=0)
 
             # check that points all lie on a 1D subspace, the rank will be 1.
@@ -1965,8 +2220,7 @@ class Orthogonality(QObject):
             sum_bin = h_color.count()
 
             orthogonality = (sum_bin - self.bin_number) / (
-                    (0.63 * p_square) - self.bin_number
-            )
+                    (0.63 * p_square))
 
             set_data["gilar-watson"]["color_mask"] = h_color
             set_data["gilar-watson"]["edges"] = [x_edges, y_edges]

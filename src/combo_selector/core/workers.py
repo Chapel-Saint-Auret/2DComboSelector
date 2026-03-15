@@ -16,7 +16,7 @@ to communicate with the main thread.
 """
 
 import logging
-import traceback
+import math
 
 from PySide6.QtCore import QObject, QRunnable, Signal, Slot
 
@@ -131,11 +131,9 @@ class ResultsWorker(QRunnable):
         """
         try:
 
-            self.page.get_model().compute_suggested_score()
-
-            self.page.get_model().compute_practical_2d_peak_capacity()
-
+            # self.page.get_model().compute_suggested_score()
             self.page.get_model().create_results_table()
+            # self.page.get_model().compute_practical_2d_peak_capacity()
 
             self.signals.finished.emit()
         except Exception as e:
@@ -188,9 +186,7 @@ class ResultsWorkerComputeCustomOMScore(QRunnable):
             self.signals.progress.emit(30)
             self.page.get_model().compute_custom_orthogonality_score(metric_list)
             self.signals.progress.emit(70)
-            self.page.get_model().compute_practical_2d_peak_capacity()
-            self.signals.progress.emit(95)
-            self.page.get_model().create_results_table()
+            self.page.get_model().update_table_results()
 
             logging.debug("ResultsWorker finished")
             self.signals.finished.emit()
@@ -298,7 +294,7 @@ class OMWorkerComputeOM(QRunnable):
             self.signals.progress.emit(100, last_metric)
 
             # Update the DataFrames (replicate end of model's compute_orthogonality_metric)
-            self._update_metric_dataframes()
+            self.model.update_metric_dataframes(metric_list=self.metric_list)
 
         except Exception as e:
             self.signals.error.emit((e, traceback.format_exc()))
@@ -422,7 +418,7 @@ class TableDataWorker(QRunnable):
         signals (TableDataWorkerSignals): Signal object for returning results.
     """
 
-    def __init__(self, data, header_labels):
+    def __init__(self, data, header_labels,value_format):
         """Initialize the table data formatting worker.
 
         Args:
@@ -431,6 +427,7 @@ class TableDataWorker(QRunnable):
         """
         super().__init__()
         self.data = data
+        self.value_format = value_format
         self.header_labels = header_labels
         self.signals = TableDataWorkerSignals()
 
@@ -470,8 +467,14 @@ class TableDataWorker(QRunnable):
                     return str(int(round(float(val))))
                 except Exception:
                     return str(val)
-            if isinstance(val, (int, float)):
-                return f"{val:.3f}" if isinstance(val, float) else str(val)
+            elif isinstance(val, (int, float)):
+                if isinstance(val, float):
+                    if math.isnan(val):
+                        return "NA"
+                    else:
+                        return f"{val:{self.value_format}}"
+                else:
+                    return str(val)
             return str(val)
 
         formatted_data = [
