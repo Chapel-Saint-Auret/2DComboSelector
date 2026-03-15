@@ -63,13 +63,14 @@ class StyledTable(QWidget):
 
     selectionChanged = Signal()
 
-    def __init__(self, title: str = ""):
+    def __init__(self, title: str = "",value_format = ".3f"):
         """Initialize the styled table widget.
 
         Args:
             title (str): Title text for the title bar.
         """
         super().__init__()
+
 
         self.threadpool = QThreadPool()
 
@@ -142,6 +143,9 @@ class StyledTable(QWidget):
             column=column, tooltip=tooltip, widget_to_show=widget_to_show
         )
 
+    def add_help_button(self,column):
+        pass
+
     def selection_changed(self) -> None:
         """Handle selection changes and emit signal.
 
@@ -150,34 +154,41 @@ class StyledTable(QWidget):
         """
         self.selectionChanged.emit()
 
-    def async_set_table_data(self, df: pd.DataFrame) -> None:
+    def async_set_table_data(self, df: pd.DataFrame,value_format:str = ".3f") -> None:
         """Load table data asynchronously using thread pool.
 
         Args:
             df (pd.DataFrame): Data to load.
+            value_format(str): Format string for column values.
 
         Side Effects:
             - Starts worker thread for data formatting
             - Calls handle_data() when complete
         """
-        worker = TableDataWorker(df, self.model.get_header_label())
+        worker = TableDataWorker(df, self.model.get_header_label(),value_format=value_format)
         worker.signals.finished.connect(self.handle_data)
         self.threadpool.start(worker)
 
     def handle_data(self, data: list, rows: int, cols: int) -> None:
-        """Handle formatted data from async worker.
-
-        Args:
-            data (list): Formatted data.
-            rows (int): Number of rows.
-            cols (int): Number of columns.
-
-        Side Effects:
-            - Applies formatted data to model
-        """
+        """Handle formatted data from async worker."""
         self.model.apply_formatted_data(data, rows, cols)
 
-    def set_table_data(self, data: pd.DataFrame) -> None:
+        # ✅ Appliquer le resize APRÈS que les données sont chargées
+        header = self.table.horizontalHeader()
+        header.setResizeContentsPrecision(-1)
+
+        for i in range(cols):
+            if i == cols - 1:
+                header.setSectionResizeMode(i, QHeaderView.Interactive)
+                self.table.setColumnWidth(i, 250)
+            else:
+                header.setSectionResizeMode(i, QHeaderView.ResizeToContents)
+
+    def resize_column_width(self):
+        self.table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeToContents)
+        self.table.horizontalHeader().setSectionResizeMode(1, QHeaderView.Stretch)
+
+    def set_section_resize_mode(self) -> None:
         """Set table data synchronously with auto-sizing.
 
         Args:
@@ -189,7 +200,6 @@ class StyledTable(QWidget):
             - Configures column resize modes
             - Stretches column 1 (Combination column)
         """
-        self.model.set_data(data)
 
         # Add padding to columns
         for col in range(self.model.columnCount(QModelIndex())):
