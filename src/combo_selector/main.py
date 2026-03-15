@@ -35,6 +35,7 @@ from combo_selector.ui.pages.redundancy_check_page import RedundancyCheckPage
 from combo_selector.ui.pages.results_page import ResultsPage
 from combo_selector.ui.widgets.custom_main_window import CustomMainWindow
 from combo_selector.utils import resource_path
+from combo_selector.ui.widgets.info_dialog import AboutDialog
 
 
 class ComboSelectorMain(CustomMainWindow):
@@ -91,35 +92,41 @@ class ComboSelectorMain(CustomMainWindow):
         self.results_page = ResultsPage(self.model)
         self.export_page = ExportPage(self.model)
 
+        self.about_page = AboutDialog(self)
+
         # --- Sidebar navigation setup --------------------------------------
         self.add_side_bar_item(
             "Home", self.home_page, resource_path("icons/home_icon.png")
         )
         self.add_side_bar_item(
-            "Retention Time\nNormalization",
+            "Data import &\nnormalization",
             self.import_data_page,
-            resource_path("icons/norm_icon.svg"),
+            resource_path("icons/norm_icon.png"),
         )
         self.add_side_bar_item(
-            "Data plotting\nPairwise",
+            "Data plotting\npairwise",
             self.plot_page,
             resource_path("icons/pairwise_icon.png"),
         )
         self.add_side_bar_item(
-            "Orthogonality Metric \nCalculation",
+            "Orthogonality\nevaluation",
             self.om_calculation_page,
             resource_path("icons/om_icon.png"),
         )
         self.add_side_bar_item(
-            "Redundancy\nCheck",
+            "Metric\nanalysis",
             self.redundancy_page,
             resource_path("icons/redund_icon.png"),
         )
         self.add_side_bar_item(
-            "Results", self.results_page, resource_path("icons/rank_icon.png")
+            "Final evaluation &\nranking", self.results_page, resource_path("icons/rank_icon.png")
         )
         self.add_side_bar_item(
             "Export", self.export_page, resource_path("icons/export_icon.png")
+        )
+
+        self.add_side_bar_item(
+            "About",self.about_page, resource_path("icons/about.png"),has_page=False
         )
 
         # --- Signal connections --------------------------------------------
@@ -199,8 +206,10 @@ class ComboSelectorMain(CustomMainWindow):
         self.om_calculation_page.hide_progress_overlay()
 
         # Continue with results worker
-        print("Continue with results worker")
-        self._start_results_worker_after_redundancy()
+        self.results_page.init_page(self._cached_metric_list)
+        self.set_status_text("Result page ready!")
+        self.export_page.init_page(self.metric_list_for_figure)
+        self.set_status_text("Export page ready!")
 
     def update_results_with_new_exp_peak_capacities(self) -> None:
         """Update results when experimental peak capacities are loaded.
@@ -228,30 +237,12 @@ class ComboSelectorMain(CustomMainWindow):
             - Creates and starts ResultsWorker in background thread
             - Worker completion triggers page initialization
         """
-        self.results_worker = ResultsWorker(
-            self.results_page, self._cached_metric_list
-        )
-        self.results_worker.signals.finished.connect(self._on_results_worker_finished)
-        self.threadpool.start(self.results_worker)
 
-    def _on_results_worker_finished(self) -> None:
-        """Handle completion of results worker.
-
-        Called when the results worker has finished computing scores
-        and rankings. Initializes the results and export pages with
-        the final data.
-
-        Side Effects:
-            - Initializes results page with metric list
-            - Updates status bar message
-            - Initializes export page with figure metrics
-            - Updates status bar message again
-        """
+        self.model.create_results_table()
         self.results_page.init_page(self._cached_metric_list)
         self.set_status_text("Result page ready!")
         self.export_page.init_page(self.metric_list_for_figure)
         self.set_status_text("Export page ready!")
-
 
 def main():
     """Main application entry point.
