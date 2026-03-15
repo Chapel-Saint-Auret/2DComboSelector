@@ -27,6 +27,7 @@ from PySide6.QtWidgets import (
 )
 
 from combo_selector.utils import resource_path
+from combo_selector.ui.widgets.section_help_button import SectionHelpButton
 
 
 class HeaderButton(QHeaderView):
@@ -136,6 +137,25 @@ class HeaderButton(QHeaderView):
         btn.clicked.connect(
             lambda checked=False, col=column: self._on_button_clicked(col)
         )
+
+        btn.show()
+        self._buttons[column] = btn
+        self._reposition_buttons()
+
+    def add_header_help_button(
+            self,
+            column: int,
+            title: str,
+            markdown_path: str
+    ) -> None:
+
+        if column in self._buttons:
+            return  # Already added
+
+        btn = SectionHelpButton(title=title,
+                                markdown_path=markdown_path,
+                                parent=self)
+
 
         btn.show()
         self._buttons[column] = btn
@@ -300,7 +320,7 @@ if __name__ == "__main__":
 
     header.add_header_button(0, "Filter names", filter_dialog)
     header.add_header_button(2, "Filter cities")
-    header.add_header_button(3, "Filter scores")
+    header.add_header_help_button(3, "Filter scores","no_help_found.md")
 
 
     # Connect signal to show which column was clicked
