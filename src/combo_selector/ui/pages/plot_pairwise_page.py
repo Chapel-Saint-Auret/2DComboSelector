@@ -819,13 +819,18 @@ class TableViewDialog(QDialog):
         self.table_model = model
         self.table_view = OrthogonalityTableView(self, model)
 
-        self.table_view.horizontalHeader().setSectionResizeMode(
-            0, QHeaderView.ResizeToContents
-        )
-        self.table_view.horizontalHeader().setSectionResizeMode(1, QHeaderView.Stretch)
-        self.table_view.horizontalHeader().setSectionResizeMode(
-            2, QHeaderView.ResizeToContents
-        )
+        header = self.table_view.horizontalHeader()
+        # Limit content scan to first 50 rows for performance
+        header.setResizeContentsPrecision(50)
+        # Temporarily use ResizeToContents to compute widths for columns 0 and 2,
+        # then freeze to Interactive to prevent repeated re-scanning on show/hide
+        header.setSectionResizeMode(0, QHeaderView.ResizeToContents)
+        header.setSectionResizeMode(1, QHeaderView.Stretch)
+        header.setSectionResizeMode(2, QHeaderView.ResizeToContents)
+        for col in (0, 2):
+            width = self.table_view.columnWidth(col)
+            header.setSectionResizeMode(col, QHeaderView.Interactive)
+            self.table_view.setColumnWidth(col, max(width, 60))
 
         main_layout.addWidget(self.table_view)
 

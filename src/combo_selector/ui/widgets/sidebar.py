@@ -185,33 +185,35 @@ class StyledTable(QWidget):
 
         Side Effects:
             - Sets model data
-            - Adjusts column widths
-            - Configures column resize modes
+            - Adjusts column widths based on content (up to 50 rows sampled)
+            - Freezes widths in Interactive mode to prevent re-scanning on page switch
             - Stretches column 1 (Combination column)
         """
         self.model.set_data(data)
 
-        # Add padding to columns
-        for col in range(self.model.columnCount(QModelIndex())):
-            current_width = self.table.columnWidth(col)
-            self.table.setColumnWidth(col, current_width + 10)
+        header = self.table.horizontalHeader()
+        # Limit content scan to first 50 rows for performance
+        header.setResizeContentsPrecision(50)
 
         # Configure header alignment
-        self.table.horizontalHeader().setDefaultAlignment(
-            Qt.AlignLeft | Qt.AlignVCenter
-        )
-        self.table.horizontalHeader().setStretchLastSection(True)
+        header.setDefaultAlignment(Qt.AlignLeft | Qt.AlignVCenter)
+        header.setStretchLastSection(True)
 
-        # Set column resize modes
-        for i in range(self.table.model().columnCount(QModelIndex())):
+        col_count = self.table.model().columnCount(QModelIndex())
+
+        # Temporarily use ResizeToContents to compute optimal widths
+        for i in range(col_count):
             if i == 1:  # 'Combination' column - stretch to fill space
-                self.table.horizontalHeader().setSectionResizeMode(
-                    i, QHeaderView.Stretch
-                )
+                header.setSectionResizeMode(i, QHeaderView.Stretch)
             else:
-                self.table.horizontalHeader().setSectionResizeMode(
-                    i, QHeaderView.ResizeToContents
-                )
+                header.setSectionResizeMode(i, QHeaderView.ResizeToContents)
+
+        # Freeze non-stretch columns to Interactive to prevent repeated re-scanning
+        for i in range(col_count):
+            if i != 1:
+                width = self.table.columnWidth(i)
+                header.setSectionResizeMode(i, QHeaderView.Interactive)
+                self.table.setColumnWidth(i, max(width + 10, 60))
 
     def get_header(self) -> HeaderButton:
         """Get the custom header widget.
