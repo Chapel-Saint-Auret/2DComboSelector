@@ -173,9 +173,9 @@ class StyledTable(QWidget):
         """Handle formatted data from async worker."""
         self.model.apply_formatted_data(data, rows, cols)
 
-        # ✅ Appliquer le resize APRÈS que les données sont chargées
+        # Resize columns after data is loaded using Qt's default precision
+        # (avoids scanning all rows which causes 5+ second UI block on large datasets)
         header = self.table.horizontalHeader()
-        header.setResizeContentsPrecision(-1)
 
         for i in range(cols):
             if i == cols - 1:
