@@ -611,13 +611,14 @@ class ImportDataPage(QFrame):
 
             data = self.model.get_retention_time_df()
             self.normalized_data_table.set_header_label(list(data.columns))
-            self.normalized_data_table.async_set_table_data(data)
 
-            # Show NaN policy dialog if needed
+            # Show NaN policy dialog before loading table data so it appears
+            # immediately without being delayed by the async table worker.
             if self.model.get_has_nan_value():
                 self.nan_policy_dialog.exec_()
                 data = self.model.get_retention_time_df()
-                self.normalized_data_table.async_set_table_data(data)
+
+            self.normalized_data_table.async_set_table_data(data)
 
             self.retention_time_loaded.emit()
 
