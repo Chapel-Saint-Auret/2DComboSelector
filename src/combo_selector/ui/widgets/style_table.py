@@ -173,16 +173,20 @@ class StyledTable(QWidget):
         """Handle formatted data from async worker."""
         self.model.apply_formatted_data(data, rows, cols)
 
-        # ✅ Appliquer le resize APRÈS que les données sont chargées
+        # Resize columns based on content using a limited sample to avoid blocking
+        # the main thread (which would delay dialog display for large datasets).
         header = self.table.horizontalHeader()
-        header.setResizeContentsPrecision(-1)
+        header.setResizeContentsPrecision(50)
+        self.table.resizeColumnsToContents()
 
+        # Switch all columns to Interactive mode after the one-time resize so Qt
+        # does not continuously re-measure content on every update.
         for i in range(cols):
             if i == cols - 1:
                 header.setSectionResizeMode(i, QHeaderView.Interactive)
                 self.table.setColumnWidth(i, 250)
             else:
-                header.setSectionResizeMode(i, QHeaderView.ResizeToContents)
+                header.setSectionResizeMode(i, QHeaderView.Interactive)
 
     def resize_column_width(self):
         self.table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeToContents)
