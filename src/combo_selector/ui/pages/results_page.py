@@ -574,6 +574,8 @@ class ResultsPage(QFrame):
         logging.debug("Running ResultsPage: update_results_table")
         self.update_results_table()
 
+
+
         number_of_selectors = int(self.compare_number.currentText())
         for i in range(number_of_selectors):
             self.handle_selector_change(str(i), emit_plot=True)
@@ -880,8 +882,8 @@ class ResultsPage(QFrame):
         Side Effects:
             - Applies filter to table proxy model
         """
-        self.build_filtered_point(filter_dict)
-        self.display_filtered_point()
+        # self.build_filtered_point(filter_dict)
+        # self.display_filtered_point()
 
         list_of_patterns = []
         for key in filter_dict:

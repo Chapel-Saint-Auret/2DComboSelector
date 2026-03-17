@@ -36,6 +36,8 @@ from PySide6.QtWidgets import (
 )
 from PySide6.QtGui import QStandardItem, QStandardItemModel
 
+import pandas as pd
+
 from combo_selector.ui.widgets.color_picker import ColorPicker
 
 CHROM_MODE = ['RPLC', 'HILIC', 'IEX', 'SEC', 'HIC', 'SFC','vs']
@@ -226,7 +228,9 @@ class CustomFilterDialog(QDialog):
             chromatographic_mode.append(' '.join(tokens_cleaned))
 
 
-        chromatographic_mode = list(set(tuple(x) for x in chromatographic_mode))
+        self.chromatographic_mode = list(set(x for x in chromatographic_mode))
+
+        self.filtered_listview.populate(self.chromatographic_mode)
 
 
     def selected_filter_changed(self) -> None:
@@ -652,6 +656,11 @@ class FilteredListView(QWidget):
         """
         self.model.clear()
         self.__data = data
+
+
+        if self.__data is None:
+            return
+
         for row, d in enumerate(self.__data):
             item = QStandardItem(d)
             item.setCheckable(True)

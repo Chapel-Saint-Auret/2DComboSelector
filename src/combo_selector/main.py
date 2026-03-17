@@ -238,7 +238,6 @@ class ComboSelectorMain(CustomMainWindow):
             - Worker completion triggers page initialization
         """
 
-        self.model.create_results_table()
         self.results_page.init_page(self._cached_metric_list)
         self.set_status_text("Result page ready!")
         self.export_page.init_page(self.metric_list_for_figure)

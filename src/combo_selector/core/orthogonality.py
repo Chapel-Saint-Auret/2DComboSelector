@@ -1745,6 +1745,8 @@ class Orthogonality(QObject):
 
             self.update_combination_df()
 
+            self.create_results_table()
+
             self.status = "loaded"
         except Exception as e:
             issue = str(e)
