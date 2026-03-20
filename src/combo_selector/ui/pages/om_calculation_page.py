@@ -205,10 +205,22 @@ class OMCalculationPage(QFrame):
         self.table_toggle_button.changed.connect(lambda i, t: self.table_frame_stack.setCurrentIndex(i))
 
     def go_next(self):
+        """Switch the table frame stack to the next page (wraps around).
+
+        Side Effects:
+            - Increments the current index of ``table_frame_stack`` modulo the
+              total page count.
+        """
         curr = self.table_frame_stack.currentIndex()
         self.table_frame_stack.setCurrentIndex((curr + 1) % self.table_frame_stack.count())
 
     def go_prev(self):
+        """Switch the table frame stack to the previous page (wraps around).
+
+        Side Effects:
+            - Decrements the current index of ``table_frame_stack`` modulo the
+              total page count.
+        """
         curr = self.table_frame_stack.currentIndex()
         self.table_frame_stack.setCurrentIndex((curr - 1) % self.table_frame_stack.count())
 

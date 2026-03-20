@@ -1,3 +1,11 @@
+"""Core orthogonality analysis model for 2D chromatography combination selection.
+
+This module provides the :class:`Orthogonality` class which manages all data
+structures and computations for evaluating the orthogonality of 2D
+chromatographic combinations. It implements multiple orthogonality metrics,
+redundancy analysis, ranking, and results aggregation.
+"""
+
 import re
 import string
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -720,6 +728,16 @@ class Orthogonality(QObject):
         return self.correlation_group_df
 
     def compute_rho_coverage(self):
+        """Compute Spearman correlation (ρ) between each metric and the coverage anchor.
+
+        Uses the bin box counting metric ranking as the coverage anchor.
+        Populates ``metric_rho_coverage`` (per-metric) and
+        ``group_rho_coverage`` (mean per correlation group).
+
+        Side Effects:
+            - Updates ``self.metric_rho_coverage`` with absolute Spearman ρ values.
+            - Updates ``self.group_rho_coverage`` with trimmed means per group.
+        """
 
         coverage_anchor = self.orthogonality_metric_ranking_df['Bin box counting']
 
@@ -748,6 +766,17 @@ class Orthogonality(QObject):
             self.group_rho_coverage[group] = tmean(rho_coverage_list)
 
     def compute_rho_distribution(self):
+        """Compute Spearman correlation (ρ) between each metric and the distribution anchor.
+
+        Uses the mean chromatographic coverage (cc_mean) rank as the
+        distribution anchor.  Populates ``metric_rho_distribution`` (per-metric)
+        and ``group_rho_distribution`` (mean per correlation group).
+
+        Side Effects:
+            - Calls :meth:`compute_cc_mean`.
+            - Updates ``self.metric_rho_distribution`` with absolute ρ values.
+            - Updates ``self.group_rho_distribution`` with trimmed means per group.
+        """
 
         self.compute_cc_mean()
 
@@ -780,6 +809,14 @@ class Orthogonality(QObject):
             self.group_rho_distribution[group] = tmean(rho_distribution_list)
 
     def build_coverage_distribution_matrix(self):
+        """Build a DataFrame summarising ρ coverage and ρ distribution per metric.
+
+        Combines :attr:`metric_rho_coverage` and :attr:`metric_rho_distribution`
+        into a transposed DataFrame stored in ``coverage_distribution_df``.
+
+        Side Effects:
+            - Creates and stores ``self.coverage_distribution_df``.
+        """
         self.coverage_distribution_df = pd.DataFrame({"rho coverage ": self.metric_rho_coverage,
                                                       "rho distribution": self.metric_rho_distribution
                                                       })
@@ -789,7 +826,16 @@ class Orthogonality(QObject):
         self.coverage_distribution_df = self.coverage_distribution_df.T
 
     def fill_correlation_group_category(self):
+        """Assign a coverage/distribution category label to each correlation group.
 
+        Computes ρ coverage and ρ distribution for each group and assigns
+        ``"Coverage-like"``, ``"Distribution-like"``, or ``"Mixed"`` categories
+        to ``correlation_group_df["Category"]``.
+
+        Side Effects:
+            - Calls :meth:`compute_rho_coverage` and :meth:`compute_rho_distribution`.
+            - Adds ``"Category"`` column to ``self.correlation_group_df``.
+        """
         self.compute_rho_coverage()
         self.compute_rho_distribution()
 
@@ -846,6 +892,14 @@ class Orthogonality(QObject):
             self.orthogonality_metric_df.rank(ascending=False, method='average')
 
         def force_scale(col):
+            """Rescale a rank column to the range [1, nb_combination].
+
+            Args:
+                col (pd.Series): Series of rank values to rescale.
+
+            Returns:
+                pd.Series: Rescaled values in [1, ``nb_combination``].
+            """
             return ((col - col.min()) / (col.max() - col.min())) * (self.nb_combination - 1) + 1
 
         self.orthogonality_metric_ranking_df = self.orthogonality_metric_ranking_df.apply(force_scale).round(2)
@@ -867,6 +921,13 @@ class Orthogonality(QObject):
             (["Set #", "2D Combination"] + metric_list)
 
     def update_metric_ranking_dataframe(self):
+        """Recompute the metric ranking DataFrame from the current metric scores.
+
+        Re-ranks all metrics across combinations using average rank.
+
+        Side Effects:
+            - Updates ``self.orthogonality_metric_ranking_df``.
+        """
         self.orthogonality_metric_ranking_df = self.orthogonality_metric_df.rank(ascending=False, method='average')
 
     def compute_custom_orthogonality_score(self, metric_list: list) -> None:
@@ -1019,7 +1080,18 @@ class Orthogonality(QObject):
         # )
 
     def update_table_results(self) -> None:
+        """Recompute all result columns and update the results table.
 
+        Sequentially computes:
+        - Consensus orthogonality score and ranking
+        - Coverage and distribution scores
+        - Agreement index
+        - Outlier metric flags
+        - Practical 2D peak capacity
+
+        Side Effects:
+            - Updates ``self.orthogonality_result_df`` with all result columns.
+        """
         self.compute_consensus_orthogonality_score()
         self.compute_consensus_orthogonality_ranking()
         self.compute_coverage_score()
@@ -1043,7 +1115,15 @@ class Orthogonality(QObject):
         )
 
     def compute_consensus_orthogonality_ranking(self):
+        """Compute the consensus orthogonality ranking across correlation groups.
 
+        For each group, takes the median rank of its correlated metrics, sums
+        across groups, then ranks combinations by the aggregated score.
+
+        Side Effects:
+            - Populates ``self.orthogonality_group_ranking_df`` with per-group ranks.
+            - Adds ``"Orthogonality ranking"`` column to ``self.orthogonality_result_df``.
+        """
         self.orthogonality_group_ranking_df = pd.DataFrame()
         metric_rank_df = self.orthogonality_metric_ranking_df.copy()
 
@@ -1060,7 +1140,15 @@ class Orthogonality(QObject):
         self.orthogonality_result_df['Orthogonality ranking'] = consensus_orthogonality_ranking_df
 
     def compute_consensus_orthogonality_score(self):
+        """Compute the consensus orthogonality score as the median of group medians.
 
+        For each correlation group, computes the column-wise median of its
+        correlated metrics, then takes the overall median across groups.
+
+        Side Effects:
+            - Populates ``self.consensus_orthogonality_score_df``.
+            - Adds ``"Orthogonality score"`` column to ``self.orthogonality_result_df``.
+        """
         self.consensus_orthogonality_score_df = pd.DataFrame()
         metric_df = self.orthogonality_metric_df.copy()
 
@@ -1077,11 +1165,17 @@ class Orthogonality(QObject):
         self.orthogonality_result_df['Orthogonality score'] = self.consensus_orthogonality_score_df
 
     def compute_coverage_score(self):
+        """Compute the coverage score as the median of coverage-like metrics.
 
+        Filters correlation groups whose category is ``"Coverage-like"`` and
+        computes the row-wise median of all coverage metrics.
+
+        Side Effects:
+            - Populates ``self.coverage_score_df``.
+            - Adds ``"Coverage score"`` column to ``self.orthogonality_result_df``.
+        """
         self.coverage_score_df = pd.DataFrame()
         metric_df = self.orthogonality_metric_df.copy()
-
-        coverage_metric = []
         for category, correlated_metric_list in zip(self.correlation_group_df['Category'],
                                                  self.correlation_group_df['Correlated OM']):
             if category == "Coverage-like":
@@ -1092,7 +1186,15 @@ class Orthogonality(QObject):
         self.orthogonality_result_df['Coverage score'] = self.coverage_score_df
 
     def compute_distribution_score(self):
+        """Compute the distribution score as the median of distribution-like metrics.
 
+        Filters correlation groups whose category is ``"Distribution-like"`` and
+        computes the row-wise median of all distribution metrics.
+
+        Side Effects:
+            - Populates ``self.distribution_score_df``.
+            - Adds ``"Distribution score"`` column to ``self.orthogonality_result_df``.
+        """
         self.distribution_score_df = pd.DataFrame()
         metric_df = self.orthogonality_metric_df.copy()
 
@@ -1107,6 +1209,15 @@ class Orthogonality(QObject):
         self.orthogonality_result_df['Distribution score'] = self.distribution_score_df
 
     def compute_agreement_index(self):
+        """Compute the agreement index across correlation groups.
+
+        Measures the inter-group rank consistency by computing the IQR of
+        group ranks for each combination, then normalising to [0, 1] where
+        1 = perfect agreement.
+
+        Side Effects:
+            - Adds ``"Agreement index"`` column to ``self.orthogonality_result_df``.
+        """
 
         agreement_index_df = self.orthogonality_group_ranking_df.apply(iqr, axis=1)
 
@@ -1115,14 +1226,51 @@ class Orthogonality(QObject):
         self.orthogonality_result_df['Agreement index'] = agreement_index_df
 
     def compute_outlier_metric_flag(self):
+        """Flag combinations whose group rank deviates more than τ from the group median.
+
+        Uses three nested helpers (:func:`compute_deviations`,
+        :func:`compute_outlier_flag`, :func:`write_outlier_result`) to
+        identify and summarise outlier groups per combination.
+
+        Side Effects:
+            - Adds ``"Outlier metric flag"`` column to ``self.orthogonality_result_df``.
+        """
 
         def compute_deviations(ranks, median):
+            """Compute absolute deviations of ranks from their median.
+
+            Args:
+                ranks (list[float]): Rank values for a group.
+                median (float): Median rank for the group.
+
+            Returns:
+                list[float]: Absolute deviations from the median.
+            """
             return [abs(rank - median) for rank in ranks]
 
-        def compute_outlier_flag(deviations,threshold):
-            return [dev>threshold for dev in deviations]
+        def compute_outlier_flag(deviations, threshold):
+            """Determine which deviations exceed the threshold.
+
+            Args:
+                deviations (list[float]): Absolute deviation values.
+                threshold (float): Maximum allowed deviation.
+
+            Returns:
+                list[bool]: ``True`` for each deviation that exceeds the threshold.
+            """
+            return [dev > threshold for dev in deviations]
 
         def write_outlier_result(group_and_count):
+            """Format a human-readable summary of outlier groups.
+
+            Args:
+                group_and_count (Iterable[tuple[str, int]]): Pairs of group
+                    letter and outlier count.
+
+            Returns:
+                str: Comma-separated ``"GroupLetter: count"`` pairs, or
+                    ``"No outliers"`` if all counts are zero.
+            """
             result = [
                 f"{group_letter}: {count}"
                 for group_letter, count in group_and_count
@@ -1605,6 +1753,15 @@ class Orthogonality(QObject):
             return
 
     def set_compatibility(self):
+        """Assign a hardware compatibility label to each combination.
+
+        Compares the two chromatographic modes in each combination and assigns
+        ``"High"``, ``"Moderate"``, or ``"Low"`` to the ``"Compatibility"`` column.
+
+        Side Effects:
+            - Adds ``"Compatibility"`` column to ``self.orthogonality_result_df``.
+        """
+
         compatibility_list = []
 
         for mode in self.orthogonality_result_df["Chromatographic mode"]:
@@ -1624,6 +1781,14 @@ class Orthogonality(QObject):
         self.orthogonality_result_df["Compatibility"] = compatibility_list
 
     def set_complexity(self):
+        """Assign a method development complexity label to each combination.
+
+        Compares the two chromatographic modes and assigns ``"Low"``,
+        ``"Medium"``, ``"High"``, or ``"NC"`` to the ``"Complexity"`` column.
+
+        Side Effects:
+            - Adds ``"Complexity"`` column to ``self.orthogonality_result_df``.
+        """
         complexity_list = []
 
         for mode in self.orthogonality_result_df["Chromatographic mode"]:
@@ -1645,8 +1810,19 @@ class Orthogonality(QObject):
 
         self.orthogonality_result_df["Complexity"] = complexity_list
 
-    def build_chromatographic_mode(self,combination_list):
+    def build_chromatographic_mode(self, combination_list):
+        """Extract chromatographic mode tokens from combination name strings.
 
+        Tokenises each combination name and keeps only tokens that appear in
+        ``CHROM_MODE``, joining them with spaces.
+
+        Args:
+            combination_list (list[str]): List of combination name strings.
+
+        Returns:
+            list[str]: List of space-joined chromatographic mode tokens,
+                one entry per input combination.
+        """
         chromatographic_mode = []
 
         for combination in combination_list:

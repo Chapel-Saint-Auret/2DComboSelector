@@ -215,7 +215,21 @@ class CustomFilterDialog(QDialog):
                 font-size: 14px;
             }
         """)
-    def build_filter_list(self,combination_list):
+    def build_filter_list(self, combination_list):
+        """Extract unique chromatographic modes from a list of combination names.
+
+        Tokenizes each combination string and retains only tokens that appear
+        in the ``CHROM_MODE`` vocabulary, then populates
+        ``self.chromatographic_mode`` with the unique mode strings found.
+
+        Args:
+            combination_list (list[str]): List of combination name strings to
+                parse for chromatographic mode tokens.
+
+        Side Effects:
+            - Updates ``self.chromatographic_mode`` with a deduplicated list
+              of mode strings.
+        """
 
         chromatographic_mode = []
 
@@ -396,6 +410,15 @@ class CustomDelegate(QStyledItemDelegate):
         self.previous_qty_value = 0
 
     def sizeHint(self, option, index):
+        """Return the preferred size for a delegate cell with extra height.
+
+        Args:
+            option (QStyleOptionViewItem): Style options for the item.
+            index (QModelIndex): Index of the item.
+
+        Returns:
+            QSize: Standard size hint plus 10 pixels of extra height.
+        """
         # Get the standard size
         size = super().sizeHint(option, index)
         # Add a buffer (e.g., 10 pixels) so the ComboBox has breathing room
@@ -495,6 +518,16 @@ class CustomDelegate(QStyledItemDelegate):
                 model.setData(index, editor.text())
 
     def updateEditorGeometry(self, editor, option, index):
+        """Ensure the editor widget fills the delegate's cell rectangle.
+
+        Args:
+            editor (QWidget): The editor widget to position.
+            option (QStyleOptionViewItem): Style options providing the cell rect.
+            index (QModelIndex): Index of the cell being edited.
+
+        Side Effects:
+            - Calls ``editor.setGeometry(option.rect)``.
+        """
         # This ensures the editor fills the newly expanded sizeHint area
         rect = option.rect
         # Optional: adjust the height specifically for the ComboBox if needed
@@ -587,6 +620,7 @@ class FilteredListView(QWidget):
             """Proxy model that filters rows based on text input."""
 
             def __init__(self, *args, **kwargs):
+                """Initialize the inner proxy model."""
                 super().__init__(*args, **kwargs)
                 self.__filterStr = ""
                 self.__regexMode = False
@@ -731,10 +765,12 @@ if __name__ == "__main__":
 
 
     def on_filter_changed(pattern):
+        """Print the updated filter regexp pattern.
+
+        Args:
+            pattern (str): The new regexp pattern emitted by the dialog.
+        """
         print(f"Filter pattern: {pattern}")
-
-
-    dialog.filter_regexp_changed.connect(on_filter_changed)
     dialog.show()
 
     sys.exit(app.exec())

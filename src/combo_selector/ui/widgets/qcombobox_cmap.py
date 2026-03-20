@@ -88,6 +88,11 @@ def main():
 
     # Connect signal to print selection
     def on_colormap_changed(cmap_name):
+        """Print the selected colormap name.
+
+        Args:
+            cmap_name (str): Name of the newly selected colormap.
+        """
         print(f"Selected colormap: {cmap_name}")
 
     cmap_selector.currentTextChanged.connect(on_colormap_changed)

@@ -124,6 +124,16 @@ class InfoPopupDialog(QDialog):
         width: int = 560,
         height: int = 500,
     ):
+        """Initialize the info pop-up dialog.
+
+        Args:
+            title (str): Window title. Defaults to ``"Information"``.
+            content (str): Plain-text content rendered as styled HTML.
+                Defaults to ``""``.
+            parent (QWidget | None): Optional parent widget used for centering.
+            width (int): Dialog width in pixels. Defaults to ``560``.
+            height (int): Dialog height in pixels. Defaults to ``500``.
+        """
         super().__init__(parent)
         self.setWindowTitle(title)
         self.setWindowModality(Qt.ApplicationModal)
@@ -135,6 +145,14 @@ class InfoPopupDialog(QDialog):
     # ── UI construction ───────────────────────────────────────────────────────
 
     def _build_ui(self, content: str):
+        """Build the dialog layout with a scrollable content area and close button.
+
+        Args:
+            content (str): Plain-text content to display as styled HTML.
+
+        Side Effects:
+            - Populates the dialog with scroll area, separator, and footer.
+        """
         root = QVBoxLayout(self)
         root.setContentsMargins(0, 0, 0, 0)
         root.setSpacing(0)
@@ -216,6 +234,15 @@ class InfoPopupDialog(QDialog):
         return html
 
     def _center_on_parent(self, parent):
+        """Center this dialog over the parent widget.
+
+        Args:
+            parent (QWidget | None): Parent widget whose geometry is used for
+                centering.  Does nothing if ``parent`` is ``None``.
+
+        Side Effects:
+            - Calls ``self.move()`` to reposition the dialog.
+        """
         if parent:
             pg = parent.geometry()
             x = pg.x() + (pg.width()  - self.width())  // 2
@@ -246,6 +273,13 @@ class AboutDialog(QDialog):
     }
 
     def __init__(self, parent=None, width: int = 580, height: int = 520):
+        """Initialize the About dialog.
+
+        Args:
+            parent (QWidget | None): Optional parent widget.
+            width (int): Dialog width in pixels. Defaults to ``580``.
+            height (int): Dialog height in pixels. Defaults to ``520``.
+        """
         super().__init__(parent)
         self.setWindowTitle("About 2DComboSelector")
         self.setWindowModality(Qt.ApplicationModal)
@@ -273,11 +307,27 @@ class AboutDialog(QDialog):
         self._build_ui()
 
     def _section(self, text: str) -> QLabel:
+        """Create a styled section-header label.
+
+        Args:
+            text (str): Header text to display.
+
+        Returns:
+            QLabel: Styled label with ``section_title`` object name.
+        """
         lbl = QLabel(text)
         lbl.setObjectName("section_title")
         return lbl
 
     def _body(self, text: str) -> QLabel:
+        """Create a styled body-text label with word-wrap.
+
+        Args:
+            text (str): Body text to display (may contain rich-text markup).
+
+        Returns:
+            QLabel: Styled label with ``body_text`` object name.
+        """
         lbl = QLabel(text)
         lbl.setObjectName("body_text")
         lbl.setWordWrap(True)
@@ -285,6 +335,16 @@ class AboutDialog(QDialog):
         return lbl
 
     def _link_row(self, label: str, url: str, link_text: str) -> QWidget:
+        """Create a horizontal row containing a label and a clickable hyperlink.
+
+        Args:
+            label (str): Descriptive prefix text (e.g. ``"Documentation:"``).
+            url (str): URL the link points to.
+            link_text (str): Visible anchor text for the hyperlink.
+
+        Returns:
+            QWidget: Container widget with the label and link side-by-side.
+        """
         row = QWidget()
         row.setStyleSheet("background: transparent;")
         layout = QHBoxLayout(row)
@@ -306,6 +366,11 @@ class AboutDialog(QDialog):
         return row
 
     def _build_ui(self):
+        """Build the About dialog layout with sections for info, links, and a close button.
+
+        Side Effects:
+            - Populates the dialog with scrollable about content and a footer.
+        """
         root = QVBoxLayout(self)
         root.setContentsMargins(0, 0, 0, 0)
         root.setSpacing(0)

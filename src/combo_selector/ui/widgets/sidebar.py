@@ -407,6 +407,11 @@ if __name__ == "__main__":
 
     # Connect selection signal
     def on_selection():
+        """Print the count of selected rows in the demo table.
+
+        Side Effects:
+            - Calls ``table.get_selected_rows()`` and prints the result.
+        """
         rows = table.get_selected_rows()
         print(f"Selected {len(rows)} row(s)")
 

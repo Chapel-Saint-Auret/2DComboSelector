@@ -1,3 +1,12 @@
+"""Utility helpers for resource resolution, file loading, and versioning.
+
+This module provides standalone helper functions used across the application:
+- Resource path resolution for dev, pip-installed, and PyInstaller builds
+- Excel table loading with automatic orientation detection
+- Application version reading from ``pyproject.toml``
+"""
+
+import logging
 import os
 import sys
 
@@ -40,6 +49,24 @@ def resource_path(relative_path):
 
 
 def load_simple_table(filepath, sheetname=0):
+    """Read a simple two-value table from an Excel sheet with no header row.
+
+    The table can be laid out either horizontally (first row is header, second
+    row contains values) or vertically (first column is header, second column
+    contains values).  Empty rows and columns are stripped before detection.
+
+    Args:
+        filepath (str | Path): Path to the Excel file.
+        sheetname (int | str): Sheet index or name to read. Defaults to 0.
+
+    Returns:
+        pd.DataFrame: Single-row DataFrame whose columns are the header labels
+            and whose values are the corresponding data values.
+
+    Raises:
+        ValueError: If the table shape is not recognized as either a horizontal
+            (2 rows × ≥2 cols) or vertical (≥2 rows × 2 cols) layout.
+    """
     df = pd.read_excel(filepath, sheet_name=sheetname, header=None)
     df = df.dropna(how="all").dropna(axis=1, how="all")
     # Check shape to decide
@@ -91,11 +118,11 @@ def load_table_with_header_anywhere(
     # Check for duplicates
     duplicates = [item for item, count in Counter(df.columns).items() if count > 1]
     if duplicates:
-        print("⚠️ Warning: Duplicate columns found:", duplicates)
+        logging.warning("Duplicate columns found: %s", duplicates)
         if auto_fix_duplicates:
             # Pandas will already have renamed with .1, .2, etc. Keep those for now
             # Optionally, you could further rename or alert here.
-            print("Duplicates were auto-renamed by pandas with .1, .2 etc.")
+            logging.debug("Duplicates were auto-renamed by pandas with .1, .2 etc.")
         else:
             raise ValueError(f"Duplicate column names found: {duplicates}")
 
@@ -131,6 +158,6 @@ def get_version():
                     version = line.split("=", 1)[1].strip().strip('"')
                     break
     except Exception as e:
-        print(f"Failed to read version: {e}")
+        logging.warning("Failed to read version: %s", e)
 
     return version

@@ -170,6 +170,11 @@ class ResultsPage(QFrame):
             )
 
     def get_model(self):
+        """Return the orthogonality data model.
+
+        Returns:
+            Orthogonality: The model instance shared with the main application.
+        """
         return self.model
 
     def _create_top_section(self) -> QFrame:
@@ -896,7 +901,21 @@ class ResultsPage(QFrame):
         self.styled_table.set_proxy_filter_regexp(combined_pattern)
 
     def build_filtered_point(self, combination: dict) -> None:
-        # for group in self.selected_filtered_scatter_point:
+        """Build filter subsets from a combination of regexp/color filters.
+
+        Filters the orthogonality score DataFrame for each named filter in
+        ``combination`` and stores the masked subsets in
+        ``filter_subset_dict``.
+
+        Args:
+            combination (dict): Mapping of filter name to filter settings.
+                Each value is a dict with keys ``"regexp"`` (str) and
+                ``"color"`` (str, hex color).
+
+        Side Effects:
+            - Updates ``self.orthogonality_score``.
+            - Populates ``self.filter_subset_dict`` with masked DataFrames.
+        """
         #     scatter = self.selected_filtered_scatter_point[group]
         #
         #     if scatter in self.selected_axe.collections:
@@ -922,6 +941,16 @@ class ResultsPage(QFrame):
                                                      'color':color}
 
     def display_filtered_point(self):
+        """Redraw scatter highlights on the results plot for active filters.
+
+        Clears existing scatter collections from ``selected_axe``, then
+        re-draws one scatter series per entry in ``filter_subset_dict``.
+
+        Side Effects:
+            - Removes all existing scatter collections from ``selected_axe``.
+            - Adds new scatter series for each filter subset.
+            - Calls ``canvas.draw()`` to refresh the plot.
+        """
 
         score = UI_TO_MODEL_MAPPING[self.selected_score]
 
