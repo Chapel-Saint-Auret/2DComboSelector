@@ -143,7 +143,12 @@ class StyledTable(QWidget):
             column=column, tooltip=tooltip, widget_to_show=widget_to_show
         )
 
-    def add_help_button(self,column):
+    def add_help_button(self, column):
+        """Add a help button to the specified column header (placeholder).
+
+        Args:
+            column (int): Column index to attach the help button to.
+        """
         pass
 
     def selection_changed(self) -> None:
@@ -189,7 +194,7 @@ class StyledTable(QWidget):
                 header.setSectionResizeMode(i, QHeaderView.Interactive)
 
     def resize_column_width(self):
-        self.table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeToContents)
+        """Resize columns to fit content with the last column stretching to fill."""
         self.table.horizontalHeader().setSectionResizeMode(1, QHeaderView.Stretch)
 
     def set_section_resize_mode(self) -> None:
@@ -235,8 +240,15 @@ class StyledTable(QWidget):
         """
         return self.header
 
-    def set_filter_key_column(self,column: int) -> None:
+    def set_filter_key_column(self, column: int) -> None:
+        """Set the column index used for text-based proxy filtering.
 
+        Args:
+            column (int): Column index to filter on; ``-1`` to filter all columns.
+
+        Side Effects:
+            - Calls :meth:`OrthogonalityTable.setFilterKeyColumn`.
+        """
         self.table.setFilterKeyColumn(column)
 
     def set_proxy_filter_regexp(self, regexp: str) -> None:
@@ -427,9 +439,13 @@ if __name__ == "__main__":
 
     # Connect selection signal
     def on_selection():
+        """Print the count of selected rows in the demo table.
+
+        Side Effects:
+            - Calls ``table.get_selected_rows()`` and prints the result.
+        """
         rows = table.get_selected_rows()
         print(f"Selected {len(rows)} row(s)")
-
 
     table.selectionChanged.connect(on_selection)
 

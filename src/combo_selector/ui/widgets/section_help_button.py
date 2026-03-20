@@ -274,10 +274,26 @@ class SectionHelpButton(QToolButton):
             title: str,
             markdown_path: str,
     ) -> "SectionHelpButton":
-        btn = cls(title, markdown_path, parent=group)
+        """Create a help button anchored inside a :class:`QGroupBox` title bar.
+
+        Instantiates the button, attaches a resize listener to keep it
+        positioned correctly, and returns it.
+
+        Args:
+            group (QGroupBox): The group box whose title bar hosts the button.
+            title (str): Title displayed in the help pop-up.
+            markdown_path (str): Path to the Markdown file for the help content.
+
+        Returns:
+            SectionHelpButton: The newly created and positioned button.
+        """
 
         def _place_button():
-            # Qt draws the title text centered in the margin-top band.
+            """Reposition the button within the group box title bar.
+
+            Computes the correct ``(x, y)`` coordinates based on the group box
+            font metrics and title margin, then calls ``btn.move(x, y)``.
+            """
             # font height gives us the text cap height; we center the button on it.
             font_height = group.fontMetrics().height()  # actual title text height
             margin_top = 25  # must match your stylesheet
@@ -361,7 +377,17 @@ if __name__ == "__main__":
     _original_resource_path = _mod.resource_path
 
     def _patched_resource_path(rel_path: str) -> str:
-        candidate = os.path.join(tmp_dir, os.path.basename(rel_path))
+        """Return a patched resource path for demo mode.
+
+        Looks for the resource basename in the temp directory first;
+        falls back to the original :func:`resource_path` if not found.
+
+        Args:
+            rel_path (str): Relative resource path (e.g. ``"icons/help.svg"``).
+
+        Returns:
+            str: Absolute path to the resource file.
+        """
         if os.path.exists(candidate):
             return candidate
         return _original_resource_path(rel_path)

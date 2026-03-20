@@ -1,19 +1,56 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
+"""Pandas-backed table model and filterable table view for PySide6.
+
+Provides :class:`PandasModel`, a :class:`QAbstractTableModel` that wraps a
+:class:`pandas.DataFrame`, and :class:`MyWindow`, a demo main window that
+combines the model with a :class:`QSortFilterProxyModel` for column-based
+filtering.
+"""
 
 import pandas as pd
 from PySide6 import QtCore, QtGui, QtWidgets
 
 
 class PandasModel(QtCore.QAbstractTableModel):
+    """Qt table model backed by a :class:`pandas.DataFrame`.
+
+    Supports display, editing, and sorting via the standard Qt model/view
+    architecture.
+
+    Attributes:
+        _df (pd.DataFrame): Internal copy of the data being displayed.
+    """
+
     def __init__(self, df=pd.DataFrame(), parent=None):
+        """Initialize the model with an optional DataFrame.
+
+        Args:
+            df (pd.DataFrame): Data to display. Defaults to an empty DataFrame.
+            parent (QObject | None): Optional parent object.
+        """
         super().__init__(parent)
         self._df = df.copy()
 
     def toDataFrame(self):
-        return self._df.copy()
+        """Return a copy of the underlying DataFrame.
 
-    def headerData(self, section, orientation, role=QtCore.Qt.DisplayRole):
+        Returns:
+            pd.DataFrame: Copy of the internal DataFrame.
+        """
+        return self._df.copy()
+        """Return header label for the given section and orientation.
+
+        Args:
+            section (int): Row or column index.
+            orientation (Qt.Orientation): Horizontal for column headers,
+                vertical for row headers.
+            role (Qt.ItemDataRole): Data role; only
+                :attr:`Qt.DisplayRole` is handled.
+
+        Returns:
+            str | None: Header label, or ``None`` if not applicable.
+        """
         if role != QtCore.Qt.DisplayRole:
             return None
         if orientation == QtCore.Qt.Horizontal:
@@ -28,6 +65,16 @@ class PandasModel(QtCore.QAbstractTableModel):
                 return None
 
     def data(self, index, role=QtCore.Qt.DisplayRole):
+        """Return cell data for display.
+
+        Args:
+            index (QModelIndex): Cell index.
+            role (Qt.ItemDataRole): Data role; only
+                :attr:`Qt.DisplayRole` is handled.
+
+        Returns:
+            str | None: String representation of the cell value, or ``None``.
+        """
         if not index.isValid():
             return None
         if role == QtCore.Qt.DisplayRole:
@@ -35,6 +82,16 @@ class PandasModel(QtCore.QAbstractTableModel):
         return None
 
     def setData(self, index, value, role=QtCore.Qt.EditRole):
+        """Set cell data and emit :attr:`dataChanged`.
+
+        Args:
+            index (QModelIndex): Cell index to update.
+            value: New value to assign; will be cast to the column dtype.
+            role (Qt.ItemDataRole): Must be :attr:`Qt.EditRole` to apply.
+
+        Returns:
+            bool: ``True`` if the value was set successfully, ``False`` otherwise.
+        """
         if not index.isValid():
             return False
         row = self._df.index[index.row()]
@@ -50,12 +107,39 @@ class PandasModel(QtCore.QAbstractTableModel):
         return True
 
     def rowCount(self, parent=QtCore.QModelIndex()):
+        """Return the number of rows in the DataFrame.
+
+        Args:
+            parent (QModelIndex): Unused; present for API compatibility.
+
+        Returns:
+            int: Number of rows.
+        """
         return len(self._df.index)
 
     def columnCount(self, parent=QtCore.QModelIndex()):
+        """Return the number of columns in the DataFrame.
+
+        Args:
+            parent (QModelIndex): Unused; present for API compatibility.
+
+        Returns:
+            int: Number of columns.
+        """
         return len(self._df.columns)
 
     def sort(self, column, order):
+        """Sort the DataFrame by the specified column.
+
+        Args:
+            column (int): Column index to sort by.
+            order (Qt.SortOrder): :attr:`Qt.AscendingOrder` or
+                :attr:`Qt.DescendingOrder`.
+
+        Side Effects:
+            - Emits ``layoutAboutToBeChanged`` and ``layoutChanged``.
+            - Resets the DataFrame index in-place.
+        """
         colname = self._df.columns.tolist()[column]
         self.layoutAboutToBeChanged.emit()
         self._df.sort_values(
@@ -66,7 +150,19 @@ class PandasModel(QtCore.QAbstractTableModel):
 
 
 class MyWindow(QtWidgets.QMainWindow):
+    """Demo main window showcasing :class:`PandasModel` with filtering.
+
+    Combines a :class:`QSortFilterProxyModel`, a :class:`QTableView`, a
+    :class:`QLineEdit` for regex filtering, and a :class:`QComboBox` for
+    column selection.
+    """
+
     def __init__(self, parent=None):
+        """Initialize the demo window and populate the table.
+
+        Args:
+            parent (QWidget | None): Optional parent widget.
+        """
         super().__init__(parent)
         self.centralwidget = QtWidgets.QWidget(self)
         self.lineEdit = QtWidgets.QLineEdit(self.centralwidget)
@@ -92,6 +188,13 @@ class MyWindow(QtWidgets.QMainWindow):
         )
 
     def load_sites(self):
+        """Load sample site data into the model and attach it to the view.
+
+        Side Effects:
+            - Creates a demo :class:`PandasModel` with four sample rows.
+            - Wraps it in a :class:`QSortFilterProxyModel`.
+            - Attaches the proxy model to the table view.
+        """
         df = pd.DataFrame(
             {
                 "site_codes": ["01", "02", "03", "04"],
@@ -108,6 +211,15 @@ class MyWindow(QtWidgets.QMainWindow):
 
     @QtCore.Slot(int)
     def on_view_horizontalHeader_sectionClicked(self, logicalIndex):
+        """Show a context menu with unique column values for header-click filtering.
+
+        Args:
+            logicalIndex (int): Index of the clicked header section.
+
+        Side Effects:
+            - Updates ``comboBox`` selection to match the clicked column.
+            - Displays a popup menu with "All" and unique value actions.
+        """
         self.logicalIndex = logicalIndex
         self.menuValues = QtWidgets.QMenu(self)
 
@@ -136,16 +248,37 @@ class MyWindow(QtWidgets.QMainWindow):
 
     @QtCore.Slot()
     def on_actionAll_triggered(self):
+        """Clear the proxy filter to show all rows.
+
+        Side Effects:
+            - Resets the proxy filter regular expression to an empty string.
+        """
         self.proxy.setFilterRegularExpression(QtCore.QRegularExpression(""))
         self.proxy.setFilterKeyColumn(self.logicalIndex)
 
     def filter_by_value(self, value):
+        """Filter the table to show only rows matching a specific value.
+
+        Args:
+            value: The exact value to match in the currently selected column.
+
+        Side Effects:
+            - Updates the proxy filter to ``str(value)``.
+        """
         regex = QtCore.QRegularExpression(str(value))
         self.proxy.setFilterRegularExpression(regex)
         self.proxy.setFilterKeyColumn(self.logicalIndex)
 
     @QtCore.Slot(str)
     def on_lineEdit_textChanged(self, text):
+        """Apply a case-insensitive regex filter as the user types.
+
+        Args:
+            text (str): Current text in the search line edit.
+
+        Side Effects:
+            - Updates the proxy filter regular expression.
+        """
         regex = QtCore.QRegularExpression(
             text, QtCore.QRegularExpression.CaseInsensitiveOption
         )
@@ -153,10 +286,15 @@ class MyWindow(QtWidgets.QMainWindow):
 
     @QtCore.Slot(int)
     def on_comboBox_currentIndexChanged(self, index):
+        """Change the column used for filtering when the combo box changes.
+
+        Args:
+            index (int): New column index selected in the combo box.
+
+        Side Effects:
+            - Updates the proxy filter key column.
+        """
         self.proxy.setFilterKeyColumn(index)
-
-
-if __name__ == "__main__":
     import sys
 
     app = QtWidgets.QApplication(sys.argv)

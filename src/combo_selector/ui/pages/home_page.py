@@ -1,3 +1,9 @@
+"""Home page widget for the 2D Combo Selector application.
+
+Displays the application overview, SVG workflow diagram, and quick-access
+buttons for the How It Works, Before You Begin, and User Guide sections.
+"""
+
 import sys
 from PySide6.QtCore import QSize, Qt, Signal
 from PySide6.QtSvgWidgets import QSvgWidget
@@ -19,11 +25,36 @@ PLOT_SIZE = QSize(600, 400)
 
 
 class HomePage(QFrame):
+    """Welcome page displaying the application overview and help buttons.
+
+    Shows an SVG diagram of the analysis workflow and provides buttons
+    that open informational pop-up dialogs.
+
+    Attributes:
+        model: Reference to the :class:`~combo_selector.core.orthogonality.Orthogonality`
+            data model (may be ``None``).
+        tool_presentation (QSvgWidget): SVG diagram of the analysis pipeline.
+        how_it_works (QPushButton): Opens the "How It Works" info dialog.
+        before_you_begin (QPushButton): Opens the "Before You Begin" info dialog.
+        user_guide (QPushButton): Opens the "User Guide" info dialog.
+
+    Signals:
+        data_loaded: Emitted when data is loaded (reserved for future use).
+        peak_data_loaded: Emitted when peak data is loaded (reserved for future use).
+    """
 
     data_loaded = Signal()
     peak_data_loaded = Signal()
 
     def __init__(self, model=None, title="Unnamed"):
+        """Initialize the home page layout and widgets.
+
+        Args:
+            model: Optional reference to the application data model.
+                Defaults to ``None``.
+            title (str): Unused title parameter kept for API compatibility.
+                Defaults to ``"Unnamed"``.
+        """
         super().__init__()
 
         self.model = model

@@ -148,7 +148,22 @@ class HeaderButton(QHeaderView):
             title: str,
             markdown_path: str
     ) -> None:
+        """Add a help button to a column header.
 
+        Attaches a :class:`~combo_selector.ui.widgets.section_help_button.SectionHelpButton`
+        to the given column that opens a help pop-up when clicked.
+
+        Args:
+            column (int): Column index to attach the help button to.
+            title (str): Title shown in the help pop-up dialog.
+            markdown_path (str): Path to the Markdown file displayed in the
+                help pop-up.
+
+        Side Effects:
+            - Creates and shows a :class:`SectionHelpButton`.
+            - Stores the button in ``_buttons[column]``.
+            - Repositions all header buttons.
+        """
         if column in self._buttons:
             return  # Already added
 
@@ -282,7 +297,14 @@ if __name__ == "__main__":
 
     # Create sample dialog for filtering
     class SimpleFilterDialog(QDialog):
+        """Sample filter dialog for demonstration purposes."""
+
         def __init__(self, parent=None):
+            """Initialize the demo filter dialog.
+
+            Args:
+                parent (QWidget | None): Optional parent widget.
+            """
             super().__init__(parent)
             self.setWindowTitle("Filter Options")
             layout = QVBoxLayout(self)
@@ -325,10 +347,12 @@ if __name__ == "__main__":
 
     # Connect signal to show which column was clicked
     def on_filter_requested(column):
+        """Print the column index when a filter button is clicked.
+
+        Args:
+            column (int): Index of the column whose filter button was clicked.
+        """
         print(f"Filter button clicked for column {column}")
-
-
-    header.widgetRequested.connect(on_filter_requested)
 
     table.show()
     sys.exit(app.exec())

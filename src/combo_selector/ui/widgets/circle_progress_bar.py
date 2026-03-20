@@ -496,6 +496,12 @@ if __name__ == "__main__":
 
 
     def update_progress():
+        """Increment the demo progress bar value by 10 (wraps at 110).
+
+        Side Effects:
+            - Updates the global ``value`` counter.
+            - Calls :meth:`RoundProgressBar.rpb_setValue` to refresh the bar.
+        """
         global value
         value = (value + 10) % 110
         progress.rpb_setValue(value)
