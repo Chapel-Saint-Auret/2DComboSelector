@@ -415,11 +415,14 @@ class ResultsPage(QFrame):
         table_frame_layout = QHBoxLayout(table_frame)
         table_frame_layout.setContentsMargins(20, 20, 20, 20)
 
-        self.styled_table = StyledTable("Final result and ranking table")
+        self.styled_table = StyledTable(title="Final result and ranking table",enable_decoration=True)
         self.styled_table.set_header_label(
             [
                 "Set #",
                 "2D Combination",
+                "Chromatographic mode",
+                "Compatibility",
+                "Complexity",
                 "Orthogonality score",
                 "Orthogonality ranking",
                 "Coverage score (𝛾)",
@@ -438,8 +441,10 @@ class ResultsPage(QFrame):
 
         self.custom_filter_widget = CustomFilterDialog(self)
         self.styled_table.add_header_button(
-            column=1, tooltip="Custom filter", widget_to_show=self.custom_filter_widget
+            column=2, tooltip="Custom filter", widget_to_show=self.custom_filter_widget
         )
+
+        self.styled_table.set_filter_key_column(2)
 
         table_frame_layout.addWidget(self.styled_table)
 
@@ -879,8 +884,8 @@ class ResultsPage(QFrame):
         Side Effects:
             - Applies filter to table proxy model
         """
-        self.build_filtered_point(filter_dict)
-        self.display_filtered_point()
+        # self.build_filtered_point(filter_dict)
+        # self.display_filtered_point()
 
         list_of_patterns = []
         for key in filter_dict:

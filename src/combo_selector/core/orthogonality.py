@@ -1,3 +1,4 @@
+import re
 import string
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from enum import Enum
@@ -14,6 +15,8 @@ from scipy import ndimage
 from scipy.stats import gmean, hmean, kendalltau, linregress, pearsonr, spearmanr,iqr,median_abs_deviation
 
 from combo_selector.core.orthogonality_utils import *
+
+CHROM_MODE = ['RPLC', 'HILIC', 'IEX', 'SEC', 'HIC', 'SFC','vs']
 
 METRIC_MAPPING = {
     "set_number": {
@@ -967,6 +970,7 @@ class Orthogonality(QObject):
                 om_score,
                 table_row_index=set_number - 1,
             )
+
     def create_results_table(self) -> None:
         """Create the final results DataFrame with scores and rankings.
 
@@ -1004,6 +1008,8 @@ class Orthogonality(QObject):
             "2D Combination",
         ]
 
+        self.orthogonality_result_df["Chromatographic mode"] = (
+            self.build_chromatographic_mode(self.orthogonality_result_df["2D Combination"]))
         # self.orthogonality_result_df.fillna(0)
         #
         # self.orthogonality_result_df["Ranking"] = (
@@ -1598,6 +1604,61 @@ class Orthogonality(QObject):
             # already filled
             return
 
+    def set_compatibility(self):
+        compatibility_list = []
+
+        for mode in self.orthogonality_result_df["Chromatographic mode"]:
+            parts = mode.split(' vs ')
+            if len(parts) == 2:
+                a, b = parts[0].strip(), parts[1].strip()
+
+                if a == b:
+                    compatibility_list.append('High')
+                elif a != b and {a, b} == {'HILIC', 'RPLC'}:
+                    compatibility_list.append('Moderate')
+                else:
+                    compatibility_list.append('Low')
+            else:
+                compatibility_list.append('Unknown')
+
+        self.orthogonality_result_df["Compatibility"] = compatibility_list
+
+    def set_complexity(self):
+        complexity_list = []
+
+        for mode in self.orthogonality_result_df["Chromatographic mode"]:
+            parts = mode.split(' vs ')
+
+            if len(parts) == 2:
+                a, b = parts[0].strip(), parts[1].strip()
+
+                if a == b:
+                    complexity_list.append('Low')
+                elif a != b and {a, b} == {'HILIC','RPLC'}:
+                    complexity_list.append('Medium')
+                elif a in ['SFC'] or b in ['SFC']:
+                    complexity_list.append('High')
+                else:
+                    complexity_list.append('NC')
+            else:
+                complexity_list.append('Unknown')
+
+        self.orthogonality_result_df["Complexity"] = complexity_list
+
+    def build_chromatographic_mode(self,combination_list):
+
+        chromatographic_mode = []
+
+        for combination in combination_list:
+            tokens = re.findall(r'\b[A-Za-z0-9-]+\b', combination)
+
+            tokens_cleaned = [token for token in tokens if token in CHROM_MODE]
+
+            chromatographic_mode.append(' '.join(tokens_cleaned))
+
+
+        return chromatographic_mode
+
     def load_retention_time(self, filepath: str, sheetname: str) -> None:
         """Load retention time data from an Excel file and initialize analysis structures.
 
@@ -1744,6 +1805,9 @@ class Orthogonality(QObject):
             self.nb_combination = set_number - 1
 
             self.update_combination_df()
+            self.create_results_table()
+            self.set_compatibility()
+            self.set_complexity()
 
             self.status = "loaded"
         except Exception as e:

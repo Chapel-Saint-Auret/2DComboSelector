@@ -29,7 +29,7 @@ from PySide6.QtCore import (
     QSortFilterProxyModel,
     Qt,
 )
-from PySide6.QtGui import QBrush, QColor
+from PySide6.QtGui import QBrush, QColor, QIcon
 from PySide6.QtWidgets import (
     QAbstractItemView,
     QApplication,
@@ -43,26 +43,15 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from combo_selector.utils import resource_path
+
+
 
 class COLUMN(Enum):
     """Column index enumeration for orthogonality table."""
 
-    SET = 0
-    TITLE = 1
-    TWODPEAK = 2
-    CNVX_HULL = 3
-    BIN_BOX = 4
-    LINEARR = 5
-    PEARSON = 6
-    SPEARMAN = 7
-    KENDALL = 8
-    ASTERIK = 9
-    NNDAMEAN = 10
-    NNDGMEAN = 11
-    NNDHMEAN = 12
-    ORTHOFACTOR = 13
-    ORTHOSCORE = 14
-    PRACTTWODPEAK = 15
+    COMPATIBILITY = 3
+    COMPLEXITY = 4
 
 class OrthogonalityTableSortProxy(QSortFilterProxyModel):
     """Sort proxy that handles NaN values intelligently.
@@ -162,13 +151,14 @@ class OrthogonalityTableModel(QAbstractTableModel):
         >>> model.set_data(df)
     """
 
-    def __init__(self,  data: pd.DataFrame = None):
+    def __init__(self,enable_decoration, data: pd.DataFrame = None):
         """Initialize the table model.
 
         Args:
             data (pd.DataFrame, optional): Initial data.
         """
         super().__init__()
+        self._enable_decoration = enable_decoration
         self._raw_data = None
         self._formatted_data = []
         self.default_row_count = 0
@@ -323,7 +313,25 @@ class OrthogonalityTableModel(QAbstractTableModel):
         if role == Qt.UserRole:
             return self._formatted_data[r][c]
 
-        elif role == Qt.BackgroundRole:
+        if role == Qt.ItemDataRole.DecorationRole and self._enable_decoration:
+
+            if c == COLUMN.COMPATIBILITY.value:
+                if self._formatted_data[r][c] == 'Low':
+                    return QIcon(resource_path("icons/red_indicator.png"))
+                if self._formatted_data[r][c] == 'Moderate':
+                    return QIcon(resource_path("icons/orange_indicator.png"))
+                if self._formatted_data[r][c] == 'High':
+                    return QIcon(resource_path("icons/green_indicator.png"))
+
+            if c == COLUMN.COMPLEXITY.value:
+                if self._formatted_data[r][c] == 'Low':
+                    return QIcon(resource_path("icons/green_indicator.png"))
+                if self._formatted_data[r][c] == 'Medium':
+                    return QIcon(resource_path("icons/orange_indicator.png"))
+                if self._formatted_data[r][c] == 'High':
+                    return QIcon(resource_path("icons/red_indicator.png"))
+
+        if role == Qt.BackgroundRole:
             val = str(self._formatted_data[r][c]).strip().lower()
             if val == 'na':
                 return QBrush(QColor("#ff9999"))  # Red background for NaN
@@ -519,6 +527,9 @@ class OrthogonalityTableView(QTableView):
             filterLineEdit (QLineEdit): Line edit widget for search input.
         """
         filterLineEdit.textChanged.connect(self.filterExpChanged)
+
+    def setFilterKeyColumn(self, column: int) -> None:
+        self._proxyModel.setFilterKeyColumn(column)
 
     def filterExpChanged(self, text: str) -> None:
         """Update filter based on search text.

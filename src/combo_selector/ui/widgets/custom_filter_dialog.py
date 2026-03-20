@@ -100,6 +100,7 @@ class CustomFilterDialog(QDialog):
             parent (QWidget, optional): Parent widget.
         """
         super().__init__(parent)
+        self.chromatographic_mode = None
         self.setWindowTitle("Custom Filter")
 
         main_layout = QVBoxLayout()
@@ -138,7 +139,7 @@ class CustomFilterDialog(QDialog):
         self.filter_condition_tree_view.header().setSectionResizeMode(3, QHeaderView.Stretch)
         self.filter_condition_tree_view.header().setStretchLastSection(False)
 
-        main_layout.addWidget(self.filter_condition_tree_view)
+        # main_layout.addWidget(self.filter_condition_tree_view)
 
         # --- Checkable list for selecting combinations ---
         filter_title = QLabel("<b>Select Combinations to filter</b>")
@@ -226,7 +227,9 @@ class CustomFilterDialog(QDialog):
             chromatographic_mode.append(' '.join(tokens_cleaned))
 
 
-        chromatographic_mode = list(set(tuple(x) for x in chromatographic_mode))
+        self.chromatographic_mode = list(set(x for x in chromatographic_mode))
+
+        self.filtered_listview.populate(self.chromatographic_mode)
 
 
     def selected_filter_changed(self) -> None:

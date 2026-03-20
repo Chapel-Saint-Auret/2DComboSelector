@@ -63,7 +63,7 @@ class StyledTable(QWidget):
 
     selectionChanged = Signal()
 
-    def __init__(self, title: str = "",value_format = ".3f"):
+    def __init__(self, title: str = "",value_format = ".3f",enable_decoration=False):
         """Initialize the styled table widget.
 
         Args:
@@ -92,7 +92,7 @@ class StyledTable(QWidget):
         title_label.setContentsMargins(10, 0, 0, 0)
 
         # Table with custom model and view
-        self.model = OrthogonalityTableModel()
+        self.model = OrthogonalityTableModel(enable_decoration=enable_decoration)
         self.table = OrthogonalityTableView(self, self.model)
 
         # Custom header with filter button support
@@ -234,6 +234,10 @@ class StyledTable(QWidget):
             HeaderButton: Header widget with filter button support.
         """
         return self.header
+
+    def set_filter_key_column(self,column: int) -> None:
+
+        self.table.setFilterKeyColumn(column)
 
     def set_proxy_filter_regexp(self, regexp: str) -> None:
         """Set filter regular expression on proxy model.
