@@ -207,7 +207,7 @@ if __name__ == "__main__":
         """Mock data model for demonstration purposes."""
 
         def __init__(self):
-            self.threshold = 50
+            """Initialize the mock model with default threshold."""
             self.policy = None
 
         def set_nan_policy_threshold(self, value: int) -> None:

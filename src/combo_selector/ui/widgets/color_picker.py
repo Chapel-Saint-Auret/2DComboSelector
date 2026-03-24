@@ -1,3 +1,9 @@
+"""Color picker widget backed by predefined palette grids.
+
+Provides :class:`ColorPicker`, a compact button that opens a pop-up grid of
+palette colors, and supporting palette widget classes used internally.
+"""
+
 import sys
 
 from PySide6.QtCore import QSize,Signal
@@ -16,7 +22,18 @@ PALETTES = {
 
 
 class _PaletteButton(QPushButton):
+    """Small square push-button representing a single palette color.
+
+    Attributes:
+        color (str): Hex color string (e.g. ``"#ff0000"``) assigned to this button.
+    """
+
     def __init__(self, color):
+        """Initialize the palette button with the given color.
+
+        Args:
+            color (str): Hex color string used for the button background.
+        """
         super().__init__()
         self.setFixedSize(QSize(20, 20))
         self.color = color
@@ -24,22 +41,58 @@ class _PaletteButton(QPushButton):
 
 
 class _PaletteBase(QWidget):
+    """Abstract base class for palette widgets.
+
+    Provides ``selected`` and ``selected_other`` signals for communicating
+    color choices to parent widgets.
+
+    Attributes:
+        selected (Signal[object]): Emitted with the chosen hex color string.
+        selected_other (Signal): Emitted when the user requests a custom color.
+    """
 
     selected = Signal(object)
     selected_other = Signal()
 
     def _emit_color(self, color):
-        print('color')
-        print(color)
+        """Emit the ``selected`` signal with the given color.
+
+        Args:
+            color (str): Hex color string chosen by the user.
+
+        Side Effects:
+            - Emits ``selected`` signal.
+        """
         self.selected.emit(color)
 
     def emit_other_color(self):
-        print('_emit_other_color')
+        """Emit the ``selected_other`` signal to request a custom color dialog.
+
+        Side Effects:
+            - Emits ``selected_other`` signal.
+        """
         self.selected_other.emit()
 
 
 class _PaletteLinearBase(_PaletteBase):
+    """Palette laid out linearly (horizontal or vertical).
+
+    Subclasses set ``layoutvh`` to either :class:`QHBoxLayout` or
+    :class:`QVBoxLayout` to control orientation.
+
+    Attributes:
+        layoutvh: Layout class used to arrange palette buttons.
+    """
+
     def __init__(self, colors, *args, **kwargs):
+        """Initialize a linear palette with the given colors.
+
+        Args:
+            colors (list[str] | str): List of hex color strings, or a palette
+                name defined in :data:`PALETTES`.
+            *args: Positional arguments forwarded to :class:`QWidget`.
+            **kwargs: Keyword arguments forwarded to :class:`QWidget`.
+        """
         super().__init__(*args, **kwargs)
 
         if isinstance(colors, str):
@@ -59,17 +112,43 @@ class _PaletteLinearBase(_PaletteBase):
 
 
 class PaletteHorizontal(_PaletteLinearBase):
+    """Palette laid out in a single horizontal row."""
+
     layoutvh = QHBoxLayout
 
 
 class PaletteVertical(_PaletteLinearBase):
+    """Palette laid out in a single vertical column."""
+
     layoutvh = QVBoxLayout
 
 
 class ColorPicker(QWidget):
+    """Compact color picker button with a pop-up palette grid.
+
+    Displays a small square button whose background reflects the currently
+    selected color.  Clicking opens a pop-up palette; selecting a color
+    updates the button and emits ``selected``.
+
+    Attributes:
+        color (str | QColor): Currently selected color.
+        colorPicketBtn (QPushButton): Main button showing the active color.
+        palette (PaletteGrid): Pop-up palette grid widget.
+        menu (QMenu): Menu used to host the pop-up palette.
+
+    Signals:
+        selected: Emitted when the user picks a color.
+    """
+
     selected = Signal()
 
-    def __init__(self,type='basic'):
+    def __init__(self, type='basic'):
+        """Initialize the color picker with a palette of the given type.
+
+        Args:
+            type (str): Palette name from :data:`PALETTES`.
+                Defaults to ``"basic"``.
+        """
         super().__init__()
         self.setFixedWidth(25)
         self.vLayout = QVBoxLayout()
@@ -97,11 +176,30 @@ class ColorPicker(QWidget):
         self.palette.selected_other.connect(self.color_picker_selected_other)
 
     def color_picker_btn_clicked(self):
+        """Show the palette pop-up when the main button is clicked.
+
+        Side Effects:
+            - Makes the palette visible.
+            - Shows the menu.
+            - Adjusts widget height to fit the palette.
+        """
         self.palette.setVisible(True)
         self.menu.setVisible(True)
         self.setFixedHeight(self.palette.sizeHint().height())
 
     def color_picker_selected(self, color):
+        """Handle palette color selection.
+
+        Args:
+            color (str): Hex color string selected by the user.
+
+        Side Effects:
+            - Hides the menu.
+            - Updates button background to the selected color.
+            - Updates ``color`` attribute.
+            - Resets widget height.
+            - Emits ``selected`` signal.
+        """
         self.menu.setVisible(False)
         self.colorPicketBtn.setStyleSheet("background-color:{};".format(color))
         self.setFixedHeight(self.colorPicketBtn.sizeHint().height())
@@ -109,20 +207,47 @@ class ColorPicker(QWidget):
         self.selected.emit()
 
     def color_picker_selected_other(self):
+        """Open a system color dialog for custom color selection.
+
+        Side Effects:
+            - Hides the menu.
+            - Opens :class:`QColorDialog`.
+            - Updates button background and ``color`` attribute.
+            - Resets widget height.
+            - Emits ``selected`` signal.
+        """
         self.menu.setVisible(False)
         self.setFixedHeight(self.colorPicketBtn.sizeHint().height())
-        color = QColorDialog.getColor()
         self.colorPicketBtn.setStyleSheet("background-color:{};".format(color.name()))
         self.color = color
         self.selected.emit()
 
     def get_color(self):
+        """Return the currently selected color.
+
+        Returns:
+            str | QColor: Currently selected color value.
+        """
         return self.color
 
 
 class PaletteGrid(_PaletteBase):
+    """Palette laid out as a fixed-column grid with an "Other…" button.
+
+    Attributes:
+        otherColorBtn (QPushButton): Button that triggers custom color selection.
+    """
 
     def __init__(self, color_type, n_columns=5, *args, **kwargs):
+        """Initialize the grid palette.
+
+        Args:
+            color_type (str): Palette name from :data:`PALETTES`, or any value
+                that falls back to the ``"basic"`` palette if not found.
+            n_columns (int): Number of color buttons per row. Defaults to ``5``.
+            *args: Positional arguments forwarded to :class:`QWidget`.
+            **kwargs: Keyword arguments forwarded to :class:`QWidget`.
+        """
         super().__init__(*args, **kwargs)
 
         if isinstance(color_type, str):

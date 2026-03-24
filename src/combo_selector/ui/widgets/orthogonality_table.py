@@ -473,6 +473,19 @@ class OrthogonalityTableView(QTableView):
         self.setHorizontalScrollMode(QAbstractItemView.ScrollPerPixel)
 
     def setModel(self, model: OrthogonalityTableModel) -> None:
+        """Set the data model and wrap it in a sort/filter proxy.
+
+        Replaces the previous model with a new :class:`OrthogonalityTableSortProxy`
+        backed by ``model``, and configures initial sort/filter settings.
+
+        Args:
+            model (OrthogonalityTableModel): The source data model to display.
+
+        Side Effects:
+            - Creates and stores a new ``_proxyModel``.
+            - Calls :meth:`QTableView.setModel` with the proxy.
+            - Applies initial sort (ascending, column 0).
+        """
         self._proxyModel = OrthogonalityTableSortProxy()
         self._proxyModel.setSortRole(Qt.UserRole)
         self._proxyModel.setDynamicSortFilter(True)
@@ -529,6 +542,14 @@ class OrthogonalityTableView(QTableView):
         filterLineEdit.textChanged.connect(self.filterExpChanged)
 
     def setFilterKeyColumn(self, column: int) -> None:
+        """Set the column used for text-based filtering.
+
+        Args:
+            column (int): Column index to filter on; ``-1`` to filter all columns.
+
+        Side Effects:
+            - Updates the proxy model's filter key column.
+        """
         self._proxyModel.setFilterKeyColumn(column)
 
     def filterExpChanged(self, text: str) -> None:

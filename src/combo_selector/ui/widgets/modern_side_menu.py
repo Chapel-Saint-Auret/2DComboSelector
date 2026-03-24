@@ -357,8 +357,12 @@ if __name__ == "__main__":
 
     # Connect selection signal
     def on_item_clicked(item):
-        content.setText(f"Selected: {item.text()}\n\nContent for {item.text()} goes here.")
+        """Update the content label when a menu item is clicked.
 
+        Args:
+            item (QListWidgetItem): The menu item that was clicked.
+        """
+        content.setText(f"Selected: {item.text()}\n\nContent for {item.text()} goes here.")
 
     menu.itemClicked.connect(on_item_clicked)
 

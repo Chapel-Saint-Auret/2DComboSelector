@@ -380,6 +380,11 @@ class RedundancyCheckPage(QFrame):
         return info_page_group
 
     def get_model(self):
+        """Return the orthogonality data model.
+
+        Returns:
+            Orthogonality: The model instance shared with the main application.
+        """
         return self.model
 
     def _create_plot_panel(self) -> QFrame:

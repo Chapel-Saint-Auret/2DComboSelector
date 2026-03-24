@@ -17,6 +17,10 @@ to communicate with the main thread.
 
 import logging
 import math
+import traceback
+
+import numpy as np
+import pandas as pd
 
 from PySide6.QtCore import QObject, QRunnable, Signal, Slot
 
@@ -192,12 +196,6 @@ class ResultsWorkerComputeCustomOMScore(QRunnable):
             self.signals.finished.emit()
         except Exception as e:
             logging.exception(f"[ResultsWorker] Error: {e}")
-
-
-# Add these imports at the top of workers.py
-import traceback
-import numpy as np
-import pandas as pd
 
 
 class OMWorkerSignals(QObject):
@@ -418,12 +416,14 @@ class TableDataWorker(QRunnable):
         signals (TableDataWorkerSignals): Signal object for returning results.
     """
 
-    def __init__(self, data, header_labels,value_format):
+    def __init__(self, data, header_labels, value_format):
         """Initialize the table data formatting worker.
 
         Args:
             data (pd.DataFrame): DataFrame containing the data to format.
             header_labels (list): List of column header names.
+            value_format (str): Format string applied to float values
+                (e.g., ``".3f"`` for three decimal places).
         """
         super().__init__()
         self.data = data
