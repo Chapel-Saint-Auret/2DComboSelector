@@ -287,6 +287,7 @@ class SectionHelpButton(QToolButton):
         Returns:
             SectionHelpButton: The newly created and positioned button.
         """
+        btn = cls(title, markdown_path, parent=group)
 
         def _place_button():
             """Reposition the button within the group box title bar.
