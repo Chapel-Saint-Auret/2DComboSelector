@@ -6,7 +6,7 @@ buttons for the How It Works, Before You Begin, and User Guide sections.
 
 import sys
 from PySide6.QtCore import QSize, Qt, Signal
-from PySide6.QtSvgWidgets import QSvgWidget
+from PySide6.QtGui import QPixmap
 from PySide6.QtWidgets import (
     QApplication,
     QFrame,
@@ -154,21 +154,24 @@ class HomePage(QFrame):
         home_content_frame.setFrameStyle(QFrame.StyledPanel | QFrame.Plain)
         # home_content_frame.setStyleSheet("border: 1px solid lightgray; border-radius: 1px;")
         home_content_frame_layout = QVBoxLayout(home_content_frame)
-        home_content_frame_layout.setContentsMargins(5, 5, 5, 5)
+        # home_content_frame_layout.setContentsMargins(5, 5, 5, 5)
 
-        self.tool_presentation = QSvgWidget()
-        # self.suggested_score.setFixedWidth(450)
-        self.tool_presentation.load(resource_path("icons/home_page_monochrome.svg"))
-        self.tool_presentation.renderer().setAspectRatioMode(Qt.KeepAspectRatio)
+        self.tool_presentation = QLabel()
+        pixmap = QPixmap(resource_path("icons/home_page.png"))
+        self.tool_presentation.setPixmap(
+            pixmap.scaled(900, 400, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+        )
+        self.tool_presentation.setAlignment(Qt.AlignCenter)
 
         home_content_frame_layout.addWidget(self.tool_presentation)
 
         help_content_frame = QFrame()
+        help_content_frame.setFixedHeight(280)
         help_content_frame.setFrameStyle(QFrame.StyledPanel | QFrame.Plain)
         help_button_layout = QHBoxLayout(help_content_frame)
 
-        self.how_it_works = QPushButton('HOW IT WORKS?')
-        self.how_it_works.setFixedSize(250,250)
+        self.how_it_works = QPushButton('HOW IT WORKS')
+        self.how_it_works.setFixedSize(200,200)
         self.how_it_works.setStyleSheet("""
                 QPushButton {
                     background-color: #232b43;
@@ -185,8 +188,8 @@ class HomePage(QFrame):
                 }
             """)
 
-        self.before_you_begin = QPushButton('BEFORE YOU BEGIN?')
-        self.before_you_begin.setFixedSize(250, 250)
+        self.before_you_begin = QPushButton('BEFORE YOU BEGIN')
+        self.before_you_begin.setFixedSize(200, 200)
         self.before_you_begin.setStyleSheet("""
                 QPushButton {
                     border-radius: 10px;
@@ -206,7 +209,7 @@ class HomePage(QFrame):
 
 
         self.user_guide = QPushButton('USER GUIDE')
-        self.user_guide.setFixedSize(250, 250)
+        self.user_guide.setFixedSize(200, 200)
         self.user_guide.setStyleSheet("background-color: #00b4af;")
         self.user_guide.setStyleSheet("""
                 QPushButton {
