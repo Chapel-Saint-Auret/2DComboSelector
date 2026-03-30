@@ -10,6 +10,7 @@ Two options are available:
 
 import sys
 
+from PySide6.QtWidgets import QSizePolicy
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QApplication,
@@ -24,6 +25,7 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
 )
 
+from combo_selector.ui.widgets.removal_summary_dialog import RemovalSummaryDialog
 
 class NanPolicyDialog(QDialog):
     """Dialog for configuring NaN retention time handling policy.
@@ -70,9 +72,9 @@ class NanPolicyDialog(QDialog):
         super().__init__()
 
         self.model = model
-        self.setWindowTitle("Retention Time Policy")
-
         main_layout = QVBoxLayout(self)
+
+        self.setFixedWidth(550)
 
         # Create button box
         self.buttonBox = QDialogButtonBox(
@@ -80,7 +82,7 @@ class NanPolicyDialog(QDialog):
         )
 
         # Create group box with styling
-        groupbox = QGroupBox("Missing retention times: NA (not applicable)")
+        groupbox = QGroupBox("Missing retention time values were detected in your dataset.")
         groupbox.setStyleSheet("""
             QGroupBox {
                 font-size: 14px;
@@ -113,63 +115,84 @@ class NanPolicyDialog(QDialog):
 
         # Summary text
         summary = QLabel(
-            "Missing retention time values have been detected across the dataset"
+            "How would you like to handle them?"
         )
         summary.setWordWrap(True)
 
         # Option 1: Remove peaks above threshold
-        self.option_remove = QRadioButton(
-            'Option 1: Remove compound if number of conditions with "NA" '
-            'retention time exceeds'
+        self.option_remove_compound = QRadioButton(
+            "Remove compounds with missing values in more than"
         )
-        self.option_remove.setChecked(True)
-        self.option_remove.setObjectName("option 1")
+        self.option_remove_compound.setChecked(True)
+        self.option_remove_compound.setObjectName("option 1")
 
         # Option 2: Keep all peaks
-        self.option_keep = QRadioButton(
-            "Option 2: Keep compound(s) and replace NA with empty field."
+        self.option_remove_condition = QRadioButton(
+            'Remove conditions with more than'
         )
-        self.option_keep.setObjectName("option 2")
+        self.option_remove_condition.setObjectName("option 2")
+
+        # Option 2: Keep all peaks
+        self.option_replace = QRadioButton(
+            'Keep all compounds and leave missing values empty'
+        )
+        self.option_replace.setObjectName("option 3")
 
         # Radio button group
         self.option_button_grp = QButtonGroup()
-        self.option_button_grp.addButton(self.option_remove)
-        self.option_button_grp.addButton(self.option_keep)
+        self.option_button_grp.addButton(self.option_remove_compound)
+        self.option_button_grp.addButton(self.option_remove_condition)
+        self.option_button_grp.addButton(self.option_replace)
         self.option_button_grp.setExclusive(True)
 
         # Threshold spin box
-        self.threshold_spin = QSpinBox()
-        self.threshold_spin.setSuffix("%")
-        self.threshold_spin.setFixedWidth(73)
-        self.threshold_spin.setRange(0, 100)
-        self.threshold_spin.setValue(50)  # Default: 50%
+        self.threshold1_spin = QSpinBox()
+        self.threshold1_spin.setSuffix("%")
+        self.threshold1_spin.setFixedWidth(73)
+        self.threshold1_spin.setRange(0, 100)
+        self.threshold1_spin.setValue(50)  # Default: 50%
+
+        # Threshold spin box
+        self.threshold2_spin = QSpinBox()
+        self.threshold2_spin.setSuffix("%")
+        self.threshold2_spin.setFixedWidth(73)
+        self.threshold2_spin.setRange(0, 100)
+        self.threshold2_spin.setValue(50)  # Default: 50%
 
         # Option 1 layout
         row1 = QHBoxLayout()
-        row1.addWidget(self.option_remove, 1)
-        row1.addWidget(self.threshold_spin, 0, Qt.AlignLeft)
-        row1.addWidget(QLabel(" of total conditions"))
+        row1.addWidget(self.option_remove_compound)
+        row1.addWidget(self.threshold1_spin)
+        row1.addWidget(QLabel(" of condition."))
 
+        row1.addStretch()
+
+        # Option 2 layout
+        row2 = QHBoxLayout()
+        row2.addWidget(self.option_remove_condition)
+        row2.addWidget(self.threshold2_spin)
+        row2.addWidget(QLabel(" missing values."))
         # Explanatory note
         note = QLabel(
-            'Note: Compound(s) with fewer "NA" retention times than the threshold '
-            'are kept, and the missing values remain blank.'
+            'Note: Compounds below this threshold will be kept, and their missing values will remain empty.'
         )
         note.setWordWrap(True)
 
         # Assemble layout
         groupbox_layout.addWidget(summary)
         groupbox_layout.addLayout(row1)
-        groupbox_layout.addWidget(note)
         groupbox_layout.addSpacing(4)
-        groupbox_layout.addWidget(self.option_keep)
+        groupbox_layout.addLayout(row2)
+        groupbox_layout.addWidget(note)
+        groupbox_layout.addWidget(self.option_replace)
 
         # Connect signals
         self.buttonBox.accepted.connect(self.accept)
         self.buttonBox.rejected.connect(self.reject)
-        self.threshold_spin.valueChanged.connect(self.set_threshold)
+        self.threshold1_spin.valueChanged.connect(self.set_threshold1)
+        self.threshold2_spin.valueChanged.connect(self.set_threshold2)
 
-    def set_threshold(self) -> None:
+    def set_threshold1(self) -> None:
         """Update the model with the new threshold value.
 
         Called automatically when the threshold spin box value changes.
@@ -178,7 +201,18 @@ class NanPolicyDialog(QDialog):
             - Calls model.set_nan_policy_threshold() if model exists
         """
         if self.model:
-            self.model.set_nan_policy_threshold(self.threshold_spin.value())
+            self.model.set_nan_policy_option1_threshold(self.threshold1_spin.value())
+
+    def set_threshold2(self) -> None:
+        """Update the model with the new threshold value.
+
+        Called automatically when the threshold spin box value changes.
+
+        Side Effects:
+            - Calls model.set_nan_policy_threshold() if model exists
+        """
+        if self.model:
+            self.model.set_nan_policy_option2_threshold(self.threshold2_spin.value())
 
     def accept(self) -> None:
         """Apply the selected NaN policy and close the dialog.
@@ -190,6 +224,16 @@ class NanPolicyDialog(QDialog):
         if self.model:
             checked_option = self.option_button_grp.checkedButton()
             self.model.clean_nan_value(option=checked_option.objectName())
+
+        compound_list = self.model.get_removed_compound_list()
+        condition_list = self.model.get_removed_condition_list()
+
+        dlg = RemovalSummaryDialog(
+            conditions=compound_list,
+            compounds=condition_list,
+        )
+
+        result = dlg.exec()
 
         super().accept()
 

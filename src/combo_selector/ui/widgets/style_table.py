@@ -86,7 +86,7 @@ class StyledTable(QWidget):
 
         # Title bar
         title_label = QLabel(title)
-        title_label.setFixedHeight(30)
+        title_label.setFixedHeight(40)
         title_label.setObjectName("TitleBar")
         title_label.setAlignment(Qt.AlignVCenter | Qt.AlignLeft)
         title_label.setContentsMargins(10, 0, 0, 0)
@@ -344,7 +344,7 @@ class StyledTable(QWidget):
                 background-color: #183881;
                 color: #ffffff;
                 font-weight: bold;
-                font-size: 16px;
+                font-size: 19px;
                 border-top-left-radius: 10px;
                 border-top-right-radius: 10px;
             }

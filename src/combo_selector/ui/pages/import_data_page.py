@@ -11,7 +11,7 @@ This module provides the ImportDataPage class which handles:
 
 import pandas as pd
 from PySide6.QtCore import Qt, Signal, QSize
-from PySide6.QtGui import QIcon
+from PySide6.QtGui import QIcon, QFont,QPixmap
 from PySide6.QtSvgWidgets import QSvgWidget
 from PySide6.QtWidgets import (
     QButtonGroup,
@@ -101,6 +101,9 @@ class ImportDataPage(QFrame):
         self.main_layout.setContentsMargins(0, 0, 0, 0)
         self.main_layout.setSpacing(0)
 
+        self.label_font = QFont()
+        self.label_font.setPointSize(20)
+
         # === TOP AREA (two cards) =============================================
         top_frame = QFrame()
         top_frame_layout = QHBoxLayout(top_frame)
@@ -129,7 +132,7 @@ class ImportDataPage(QFrame):
 
         self.normalized_data_table = StyledTable("Normalized Retention time table")
         self.normalized_data_table.set_header_label(
-            ["Peak #", "Condition 1", "Condition 2", "...", "Condition n"]
+            ["Compound #", "Condition 1", "Condition 2", "...", "Condition n"]
         )
         self.normalized_data_table.set_default_row_count(10)
         table_frame_layout.addWidget(self.normalized_data_table)
@@ -179,7 +182,8 @@ class ImportDataPage(QFrame):
             }
             QLabel {
                 color: #3f4c5a;
-                font-size: 13px;
+                font-size: 14px;
+                font: bold;
             }
             QLineEdit {
                 background-color: #f5f6f7;
@@ -191,18 +195,20 @@ class ImportDataPage(QFrame):
             QPushButton {
                 background-color: #d5dcf9;
                 color: #2C3346;
+                font-size: 15px;
                 border: none;
                 border-radius: 6px;
                 padding: 8px 16px;
-                font-weight: 500;
             }
+
             QPushButton:hover { background-color: #bcc8f5; }
             QPushButton:pressed { background-color: #8fa3ef; }
             QPushButton:disabled { background-color: #E5E9F5; color: #FFFFFF; }
             """)
 
+
         data_import_title = QLabel("A: Data import")
-        data_import_title.setFixedHeight(30)
+        data_import_title.setFixedHeight(40)
         data_import_title.setObjectName("TitleBar")
         data_import_title.setAlignment(Qt.AlignVCenter | Qt.AlignLeft)
         data_import_title.setContentsMargins(10, 0, 0, 0)
@@ -210,7 +216,7 @@ class ImportDataPage(QFrame):
             background-color: #183881;
             color: #ffffff;
             font-weight: bold;
-            font-size: 15px;
+            font-size: 19px;
             margin-bottom: 0px;
             """)
 
@@ -221,12 +227,12 @@ class ImportDataPage(QFrame):
         self.add_ret_time_btn = QPushButton(
             QIcon(resource_path("icons/folder_icon.png")), "Import"
         )
-        self.clean_retention_time_btn = QPushButton("Clean NaN")
+        self.clean_retention_time_btn = QPushButton("Missing values")
         self.add_ret_time_btn.setIconSize(ICON_SIZE)
-        self.add_ret_time_btn.setFixedHeight(30)
-        self.clean_retention_time_btn.setFixedHeight(30)
+        self.add_ret_time_btn.setFixedHeight(35)
+        self.clean_retention_time_btn.setFixedHeight(35)
         self.add_ret_time_filename = QLineEdit()
-        self.add_ret_time_filename.setFixedHeight(30)
+        self.add_ret_time_filename.setFixedHeight(35)
         self.ret_time_import_status = Status()
 
         rt_layout = QHBoxLayout()
@@ -240,9 +246,9 @@ class ImportDataPage(QFrame):
             QIcon(resource_path("icons/folder_icon.png")), "Import"
         )
         self.add_2D_peak_data_btn.setIconSize(ICON_SIZE)
-        self.add_2D_peak_data_btn.setFixedHeight(30)
+        self.add_2D_peak_data_btn.setFixedHeight(35)
         self.add_2D_peak_data_linedit = QLineEdit()
-        self.add_2D_peak_data_linedit.setFixedHeight(30)
+        self.add_2D_peak_data_linedit.setFixedHeight(35)
         self.twoD_peak_status = Status()
 
         peak_layout = QHBoxLayout()
@@ -294,7 +300,10 @@ class ImportDataPage(QFrame):
 
         # Assemble left card content
         data_import_inner_layout.addStretch()
-        data_import_inner_layout.addWidget(QLabel("Retention times:"))
+        retention_time_label = QLabel("Retention times:")
+        retention_time_label.setFont(self.label_font)
+
+        data_import_inner_layout.addWidget(retention_time_label)
         data_import_inner_layout.addLayout(rt_layout)
         data_import_inner_layout.addWidget(QLabel("Experimental 1D peak capacities:"))
         data_import_inner_layout.addLayout(peak_layout)
@@ -316,7 +325,7 @@ class ImportDataPage(QFrame):
             QFrame: Configured frame with radio buttons and SVG formula displays.
         """
         separation_space_scaling_title = QLabel("B: Data normalization")
-        separation_space_scaling_title.setFixedHeight(30)
+        separation_space_scaling_title.setFixedHeight(40)
         separation_space_scaling_title.setObjectName("TitleBar")
         separation_space_scaling_title.setAlignment(Qt.AlignVCenter | Qt.AlignLeft)
         separation_space_scaling_title.setContentsMargins(10, 0, 0, 0)
@@ -324,7 +333,7 @@ class ImportDataPage(QFrame):
             background-color: #183881;
             color: #ffffff;
             font-weight: bold;
-            font-size: 15px;
+            font-size: 19px;
             margin-bottom: 0px;
             """)
 
@@ -337,7 +346,7 @@ class ImportDataPage(QFrame):
         scaling_method_group.setLayout(scaling_method_layout)
         scaling_method_group.setStyleSheet("""
             QGroupBox {
-                font-size: 14px;
+                font-size: 16px;
                 font-weight: bold;
                 background-color: #e7e7e7;
                 color: #154E9D;
@@ -351,24 +360,25 @@ class ImportDataPage(QFrame):
                 padding: 0px;
                 margin-top: -8px;
             }
-            QLabel {
-                background-color: transparent;
-                color: #2C3E50;
-                font-family: "Segoe UI";
-                font-size: 13px;
-            }
+  
             QRadioButton, QCheckBox {
                 background-color: transparent;
+                font-size: 14px;
+                font-weight: bold;
                 color: #2C3E50;
             }
+            
             QPushButton {
                 background-color: #d5dcf9;
+                font-size: 15px;
+                font-weight: bold;
                 color: #2C3346;
                 border: none;
                 border-radius: 6px;
                 padding: 8px 16px;
                 font-weight: 500;
             }
+ 
             QPushButton:hover { background-color: #bcc8f5; }
             QPushButton:pressed { background-color: #8fa3ef; }
             QPushButton:disabled { background-color: #E5E9F5; color: #FFFFFF; }
@@ -390,7 +400,7 @@ class ImportDataPage(QFrame):
         self.void_max_scaling_btn = QRadioButton("Void – Max scaling")
         self.void_max_scaling_btn.setObjectName("void_max")
 
-        self.wosel_btn = QRadioButton("WOSEL")
+        self.wosel_btn = QRadioButton("WOSEL Scaling")
         self.wosel_btn.setObjectName("wosel")
 
         self.radio_button_group = QButtonGroup()

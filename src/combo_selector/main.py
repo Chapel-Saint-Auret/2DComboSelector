@@ -22,7 +22,7 @@ import sys
 
 from PySide6.QtCore import QThreadPool
 from PySide6.QtGui import QIcon
-from PySide6.QtWidgets import QApplication
+from PySide6.QtWidgets import QApplication,QFrame
 
 from combo_selector.core.orthogonality import Orthogonality
 from combo_selector.core.workers import RedundancyWorker, ResultsWorker
@@ -99,28 +99,30 @@ class ComboSelectorMain(CustomMainWindow):
             "Home", self.home_page, resource_path("icons/home_icon.png")
         )
         self.add_side_bar_item(
-            "Data import &\nnormalization",
+            "Data Import &\nNormalization",
             self.import_data_page,
             resource_path("icons/norm_icon.png"),
         )
         self.add_side_bar_item(
-            "Data plotting\npairwise",
+            "Pairwise \n2D Combinations",
             self.plot_page,
             resource_path("icons/pairwise_icon.png"),
         )
         self.add_side_bar_item(
-            "Orthogonality\nevaluation",
+            "Orthogonality\nMetric",
             self.om_calculation_page,
             resource_path("icons/om_icon.png"),
         )
         self.add_side_bar_item(
-            "Metric\nanalysis",
+            "Metric Correlation\nAnalysis",
             self.redundancy_page,
             resource_path("icons/redund_icon.png"),
         )
+
         self.add_side_bar_item(
-            "Final evaluation &\nranking", self.results_page, resource_path("icons/rank_icon.png")
+            "Final Evaluation &\nRanking", QFrame(), resource_path("icons/rank_icon.png")
         )
+
         self.add_side_bar_item(
             "Export", self.export_page, resource_path("icons/export_icon.png")
         )

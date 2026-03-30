@@ -282,7 +282,8 @@ class Orthogonality(QObject):
         self.orthogonality_score = None
         self.orthogonality_dict = None
         self.has_nan_value = False
-        self.nan_policy_threshold = 50
+        self.nan_policy_option1_threshold = 50
+        self.nan_policy_option2_threshold = 50
         self.table_data = None
         self.om_function_map = None
         self.nb_peaks = None
@@ -303,6 +304,22 @@ class Orthogonality(QObject):
             bool: True if NaN values are present in the data, False otherwise.
         """
         return self.has_nan_value
+
+    def get_removed_compound_list(self) -> list:
+        """returns removed_compound_list.
+
+        Returns:
+            list: The list of compounds removed
+        """
+        return self.removed_compound_list
+
+    def get_removed_condition_list(self) -> list:
+        """returns removed_condition_list.
+
+        Returns:
+            list: The list of conditions removed
+        """
+        return self.removed_condition_list
 
     def get_retention_time_df(self) -> pd.DataFrame:
         """Get the retention time DataFrame.
@@ -446,14 +463,23 @@ class Orthogonality(QObject):
         """
         return self.correlation_group_df
 
-    def set_nan_policy_threshold(self, threshold: float) -> None:
-        """Set the threshold for handling NaN values in the data.
+    def set_nan_policy_option1_threshold(self, threshold: float) -> None:
+        """Set the threshold for handling NaN values in the data for option 1.
 
         Args:
             threshold (float): Percentage threshold (0-100) for NaN tolerance.
                               Peaks with NaN percentage above this will be removed.
         """
-        self.nan_policy_threshold = threshold
+        self.nan_policy_option1_threshold = threshold
+
+    def set_nan_policy_option2_threshold(self, threshold: float) -> None:
+        """Set the thresoption2hold for handling NaN values in the data for option 2.
+
+        Args:
+            threshold (float): Percentage threshold (0-100) for NaN tolerance.
+                              Peaks with NaN percentage above this will be removed.
+        """
+        self.nan_policy_option2_threshold = threshold
 
     def init_data(self) -> None:
         """Initialize or reset all data structures to their default empty states.
@@ -1176,6 +1202,7 @@ class Orthogonality(QObject):
         """
         self.coverage_score_df = pd.DataFrame()
         metric_df = self.orthogonality_metric_df.copy()
+        coverage_metric = []
         for category, correlated_metric_list in zip(self.correlation_group_df['Category'],
                                                  self.correlation_group_df['Correlated OM']):
             if category == "Coverage-like":
@@ -1654,25 +1681,43 @@ class Orthogonality(QObject):
             - Updates orthogonality_dict with cleaned x,y series
             - Calls update_combination_df() to refresh combination DataFrame
         """
-        peak_list = []
+        self.removed_compound_list = []
         if option == "option 1":
             for row_data in self.retention_time_df.iterrows():
                 peak_retention_time = row_data[1]
                 nan_count = peak_retention_time.isna().sum()
 
                 # nan_policy_threshold is % of total condition
-                if (nan_count * 100) / self.nb_condition > self.nan_policy_threshold:
-                    peak_list.append(row_data[0])
+                if (nan_count * 100) / self.nb_condition > self.nan_policy_option1_threshold:
+                    self.removed_compound_list.append(row_data[0])
 
-            self.retention_time_df = self.retention_time_df.drop(peak_list)
+            self.retention_time_df = self.retention_time_df.drop(self.removed_compound_list)
             self.retention_time_df = self.retention_time_df.fillna("")
 
+        self.removed_condition_list = []
         if option == "option 2":
+            for column_data in self.retention_time_df.T.iterrows():
+                condition_retention_time = column_data[1]
+                nan_count = condition_retention_time.isna().sum()
+
+                # nan_policy_threshold is % of total condition
+                if (nan_count * 100) / self.nb_peaks > self.nan_policy_option2_threshold:
+                    self.removed_condition_list.append(column_data[0])
+
+            self.retention_time_df = self.retention_time_df.drop(columns=self.removed_condition_list)
             self.retention_time_df = self.retention_time_df.fillna("")
 
-        num_columns = len(self.column_names)
+            #update column_names list after droping some of them
+            self.column_names = self.retention_time_df.columns.tolist()
 
-        current_column = 0
+        if option == "option 3":
+            self.retention_time_df = self.retention_time_df.fillna("")
+
+        #minus 1 to remove the peak column
+        num_columns = len(self.column_names)-1
+
+        #always start at 1 because index 0 is for the peak# column
+        current_column = 1
         set_number = 1
 
         while current_column < num_columns:
