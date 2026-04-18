@@ -1,20 +1,30 @@
+"""Dialog widget that summarizes removed compounds and conditions."""
+
 from PySide6.QtWidgets import (
-    QDialog, QVBoxLayout, QHBoxLayout, QLabel,
-    QListWidget, QListWidgetItem, QPushButton, QFrame
+    QDialog, QVBoxLayout, QLabel, QListWidget, QListWidgetItem, QFrame
 )
 from PySide6.QtCore import Qt
-from PySide6.QtGui import QColor
 
 
 class RemovalSummaryDialog(QDialog):
-    def __init__(self, compounds: list[str],  conditions: list[str], parent=None):
+    """Modal dialog displaying removed compounds and conditions in two lists."""
+
+    def __init__(self, compounds: list[str], conditions: list[str], parent=None):
+        """Initialize the removal summary dialog.
+
+        Args:
+            compounds (list[str]): Removed compounds to display.
+            conditions (list[str]): Removed conditions to display.
+            parent (QWidget | None): Optional parent widget.
+        """
         super().__init__(parent)
         self.setWindowTitle("Removal summary")
         self.setMinimumWidth(400)
         self.setModal(True)
-        self._build_ui( compounds , conditions)
+        self._build_ui(compounds, conditions)
 
-    def _build_ui(self, compounds : list[str], conditions: list[str]):
+    def _build_ui(self, compounds: list[str], conditions: list[str]):
+        """Build and attach the dialog content sections."""
         layout = QVBoxLayout(self)
         layout.setSpacing(16)
         layout.setContentsMargins(20, 20, 20, 20)
@@ -28,6 +38,7 @@ class RemovalSummaryDialog(QDialog):
 
 
     def _make_section(self, title: str, items: list[str]) -> QFrame:
+        """Create one titled list section for removed items."""
         frame = QFrame()
 
         v = QVBoxLayout(frame)
@@ -52,14 +63,13 @@ class RemovalSummaryDialog(QDialog):
             for item_text in items:
                 QListWidgetItem(str(item_text), list_widget)
 
-            # Auto-size height to content
+            # Show a compact preview window even when many items are removed.
             list_widget.setFixedHeight(
                 list_widget.sizeHintForRow(0) * 5 + 8
             )
         else:
             QListWidgetItem('Nothing to remove', list_widget)
 
-            # Auto-size height to content
             list_widget.setFixedHeight(
                 list_widget.sizeHintForRow(0) * 1 + 8
             )
@@ -76,7 +86,6 @@ if __name__ == "__main__":
         compounds=["Caffeine", "Uracil", "Thiourea", "Naphthalene"],
         conditions=["pH > 7.5", "Temperature ≤ 25°C", "Gradient > 60% ACN"],
     )
-    result = dlg.exec()
-    print("Accepted" if result == QDialog.Accepted else "Rejected")
+    dlg.exec()
 
     sys.exit(0)
