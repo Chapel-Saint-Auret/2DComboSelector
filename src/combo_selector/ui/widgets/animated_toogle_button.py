@@ -13,11 +13,11 @@ from PySide6.QtWidgets import QApplication, QWidget, QVBoxLayout
 
 
 class AnimatedSegmentedToggle(QWidget):
-    """Two-segment animated toggle button with a sliding thumb.
+    """Two-segment animated toggle button with a sliding thumb and an optional title.
 
-    Displays two labeled segments side-by-side inside a rounded pill shape.
-    Clicking a segment or using arrow keys moves the thumb to that segment
-    with a smooth animation.
+    Displays a centred title label above two labeled segments inside a rounded
+    pill shape.  Clicking a segment or using arrow keys moves the thumb to that
+    segment with a smooth animation.
 
     Attributes:
         changed (Signal[int, str]): Emitted when the selected segment changes,
@@ -26,16 +26,23 @@ class AnimatedSegmentedToggle(QWidget):
 
     Example::
 
-        toggle = AnimatedSegmentedToggle(("Metrics", "Ranking"))
+        toggle = AnimatedSegmentedToggle("View", ("Metrics", "Ranking"))
         toggle.changed.connect(lambda i, t: print(i, t))
     """
 
     changed = Signal(int, str)
 
-    def __init__(self, labels=("Show metrics", "Show ranking"), parent=None):
+    def __init__(
+        self,
+        title: str = "toggle title",
+        labels: tuple = ("Show metrics", "Show ranking"),
+        parent: QWidget | None = None,
+    ):
         """Initialize the animated segmented toggle.
 
         Args:
+            title (str): Text displayed centred above the toggle pill.
+                Defaults to ``"toggle title"``.
             labels (tuple[str, str]): Display text for the left and right
                 segments. Defaults to ``("Show metrics", "Show ranking")``.
             parent (QWidget | None): Optional parent widget.
@@ -48,11 +55,12 @@ class AnimatedSegmentedToggle(QWidget):
         if len(labels) != 2:
             raise ValueError("This version supports exactly 2 segments.")
 
+        self._title = title
         self.labels = list(labels)
         self._index = 0
         self._thumb_x = 0.0
 
-        # ---- Compact height (standard control)
+        # ---- Compact pill height (standard control)
         self._height = 36
         self._inner_margin = 3
         self._outer_radius = self._height // 2
@@ -63,11 +71,20 @@ class AnimatedSegmentedToggle(QWidget):
         self._thumb_color = QColor("#EAF0FF")     # soft blue-white selection
         self._text_selected = QColor("#1E459A")   # header blue
         self._text_unselected = QColor("#FFFFFF") # white text
+        self._title_color = QColor("#2A4FA3")     # same blue as pill
 
-        # ---- Font
+        # ---- Font for segment labels
         self._font = QFont()
-        self._font.setPointSize(9)
+        self._font.setPointSize(12)
         self._font.setWeight(QFont.DemiBold)
+
+        # ---- Font for title (slightly smaller, normal weight)
+        self._title_font = QFont()
+        self._title_font.setBold(True)
+        self._title_font.setPointSize(11)
+
+        # ---- Gap between title text and the pill
+        self._title_gap = 4
 
         self.setCursor(Qt.PointingHandCursor)
         self.setFocusPolicy(Qt.StrongFocus)
@@ -76,34 +93,39 @@ class AnimatedSegmentedToggle(QWidget):
         self._anim.setDuration(180)
         self._anim.setEasingCurve(QEasingCurve.OutCubic)
 
-        # ---- Autosize width from text content
+        # ---- Autosize width/height from text content + title
         self._recompute_size()
 
         self._thumb_x = self._target_x_for_index(self._index)
 
     # ---------- autosizing ----------
     def _recompute_size(self):
-        """Recompute and set the fixed widget size based on label text widths.
+        """Recompute and set the fixed widget size based on label text widths and title.
 
         Measures each label using the current font and adds padding so both
-        segments share the same width.  Updates ``_segment_width`` and calls
-        ``setFixedSize``.
+        segments share the same width.  Adds room for the title above the pill.
+        Updates ``_segment_width``, ``_title_height``, and calls ``setFixedSize``.
         """
         fm = QFontMetrics(self._font)
+        title_fm = QFontMetrics(self._title_font)
+
+        # Height reserved for the title line + gap beneath it
+        self._title_height = title_fm.height() + self._title_gap
 
         # Width of each label text
         text_widths = [fm.horizontalAdvance(t) for t in self.labels]
 
         # Horizontal padding inside each segment around the text
-        seg_text_padding = 14  # px left + right padding per segment around text
+        seg_text_padding = 14  # px left + right padding per segment
 
         seg_widths = [w + 2 * seg_text_padding for w in text_widths]
 
-        # Make both segments same width for visual balance (segmented control style)
+        # Make both segments the same width for visual balance
         self._segment_width = max(seg_widths)
 
         total_width = int(2 * self._segment_width + 2 * self._inner_margin)
-        self.setFixedSize(total_width, self._height)
+        total_height = self._title_height + self._height
+        self.setFixedSize(total_width, total_height)
 
     # ---------- animated property ----------
     def getThumbX(self):
@@ -175,13 +197,21 @@ class AnimatedSegmentedToggle(QWidget):
         self.changed.emit(index, self.labels[index])
 
     # ---------- geometry ----------
+    def _pill_rect(self):
+        """Return the rectangle occupied by the pill (below the title area).
+
+        Returns:
+            QRect: Bounding rect of the full pill.
+        """
+        return QRect(0, self._title_height, self.width(), self._height)
+
     def _content_rect(self):
-        """Return the inner rectangle after applying the inner margin.
+        """Return the inner rectangle of the pill after applying the inner margin.
 
         Returns:
             QRect: Content rectangle inset by ``_inner_margin`` on all sides.
         """
-        return self.rect().adjusted(
+        return self._pill_rect().adjusted(
             self._inner_margin, self._inner_margin,
             -self._inner_margin, -self._inner_margin
         )
@@ -194,7 +224,6 @@ class AnimatedSegmentedToggle(QWidget):
             segments inside the content area.
         """
         c = self._content_rect()
-        # use explicit equal widths based on autosized segment width
         left = QRect(int(c.x()), int(c.y()), int(self._segment_width), int(c.height()))
         right = QRect(int(c.x() + self._segment_width), int(c.y()),
                       int(self._segment_width), int(c.height()))
@@ -241,6 +270,8 @@ class AnimatedSegmentedToggle(QWidget):
     def mousePressEvent(self, event):
         """Handle mouse press to switch the active segment.
 
+        Only responds to clicks inside the pill area.
+
         Args:
             event (QMouseEvent): The mouse press event.
         """
@@ -276,7 +307,7 @@ class AnimatedSegmentedToggle(QWidget):
             return
         super().keyPressEvent(event)
 
-    # ---------- optional: change labels dynamically ----------
+    # ---------- optional: change labels / title dynamically ----------
     def setLabels(self, left: str, right: str):
         """Update segment labels and resize the widget accordingly.
 
@@ -294,27 +325,47 @@ class AnimatedSegmentedToggle(QWidget):
         self._thumb_x = self._target_x_for_index(self._index)
         self.update()
 
+    def setTitle(self, title: str):
+        """Update the title text displayed above the toggle pill.
+
+        Args:
+            title (str): New title string.
+
+        Side Effects:
+            - Updates ``_title``.
+            - Repaints the widget.
+        """
+        self._title = title
+        self.update()
+
     # ---------- painting ----------
     def paintEvent(self, event):
-        """Paint the toggle button: background pill, thumb, and labels.
+        """Paint the title, background pill, thumb, and segment labels.
 
         Args:
             event (QPaintEvent): The paint event.
         """
         p = QPainter(self)
         p.setRenderHint(QPainter.Antialiasing)
-        p.setFont(self._font)
+
+        # ---- Title (centred horizontally above the pill)
+        title_rect = QRect(0, 0, self.width(), self._title_height - self._title_gap)
+        p.setFont(self._title_font)
+        p.setPen(self._title_color)
+        p.drawText(title_rect, Qt.AlignHCenter | Qt.AlignVCenter, self._title)
+
         p.setPen(Qt.NoPen)
 
-        # Background pill
+        # ---- Background pill
         p.setBrush(self._bg_color)
-        p.drawRoundedRect(self.rect(), self._outer_radius, self._outer_radius)
+        p.drawRoundedRect(self._pill_rect(), self._outer_radius, self._outer_radius)
 
-        # Sliding thumb
+        # ---- Sliding thumb
         p.setBrush(self._thumb_color)
         p.drawRoundedRect(self._thumb_rect(), self._thumb_radius, self._thumb_radius)
 
-        # Labels
+        # ---- Segment labels
+        p.setFont(self._font)
         left_rect, right_rect = self._segment_rects()
 
         p.setPen(self._text_selected if self._index == 0 else self._text_unselected)
@@ -332,11 +383,14 @@ if __name__ == "__main__":
     layout = QVBoxLayout(w)
     layout.setContentsMargins(20, 20, 20, 20)
 
-    toggle = AnimatedSegmentedToggle(("Show metrics", "Show ranking"))
+    toggle = AnimatedSegmentedToggle(
+        title="toggle title",
+        labels=("Show metrics", "Show ranking"),
+    )
     toggle.changed.connect(lambda i, t: print("Selected:", i, t))
 
     layout.addWidget(toggle, alignment=Qt.AlignLeft)
 
-    w.resize(420, 100)
+    w.resize(420, 120)
     w.show()
     sys.exit(app.exec())
