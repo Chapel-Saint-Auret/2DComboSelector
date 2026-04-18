@@ -11,12 +11,14 @@ This module provides the PlotPairWisePage class which handles:
 import numpy as np
 from matplotlib.backends.backend_qtagg import FigureCanvas
 from matplotlib.figure import Figure
-from PySide6.QtCore import QItemSelectionModel, QModelIndex, Qt, QTimer
+from PySide6.QtGui import QIcon
+from PySide6.QtCore import QItemSelectionModel, QModelIndex, Qt, QTimer, QSize
 from PySide6.QtWidgets import (
     QComboBox,
     QDialog,
     QFrame,
     QGroupBox,
+    QPushButton,
     QHBoxLayout,
     QHeaderView,
     QLabel,
@@ -32,10 +34,17 @@ from combo_selector.ui.widgets.line_widget import LineWidget
 from combo_selector.ui.widgets.neumorphism import BoxShadow
 from combo_selector.ui.widgets.orthogonality_table import OrthogonalityTableView
 from combo_selector.ui.widgets.style_table import StyledTable
+from combo_selector.ui.widgets.info_dialog import InfoPopupDialog
+from combo_selector.ui.widgets.searchable_combobox import SearchableComboBox
 from combo_selector.utils import resource_path
 
 # Dropdown arrow icon path
 drop_down_icon_path = resource_path("icons/drop_down_arrow.png").replace("\\", "/")
+
+TIPS = """<p><strong><span style="text-decoration: underline;">Tip 1</span>:</strong><br>
+      Click on a plot area to select it, then choose a dataset from the table to display it there.</p>
+<p><strong><span style="text-decoration: underline;">Tip 2</span>:</strong><br>
+Collapse the table section by moving the horizontal splitter down—this will open the table in a separate window.</p>"""
 
 
 class PlotPairWisePage(QFrame):
@@ -108,7 +117,7 @@ class PlotPairWisePage(QFrame):
         self.main_splitter = QSplitter(Qt.Vertical, self)
         self.main_splitter.addWidget(top_frame)
         self.main_splitter.addWidget(table_frame)
-        self.main_splitter.setSizes([486, 204])
+        self.main_splitter.setSizes([486, 350])
         self.main_layout.addWidget(self.main_splitter)
 
         # --- Signal connections -------------------------------------------
@@ -124,11 +133,48 @@ class PlotPairWisePage(QFrame):
                 self.data_set_selection_changed_from_combobox
             )
 
+
+        self.tips_button.clicked.connect(
+            lambda checked, l="TIPS", c=TIPS:
+                InfoPopupDialog(title=l, content=c, parent=self).exec()
+        )
         self.canvas.figure.canvas.mpl_connect("button_press_event", self.on_click)
         self.main_splitter.splitterMoved.connect(self.table_collapsed)
         self.styled_table.selectionChanged.connect(
             self.data_set_selection_changed_from_table
         )
+
+        self.cid = self.fig.canvas.mpl_connect('pick_event', self.on_pick)
+
+    def on_pick(self,event):
+        self.selected_axe = event.artist.axes
+
+        # Find selector index for current axes
+        matching_indices = [
+            index
+            for index, val in self.dataset_selector_map.items()
+            if val["axe"] == self.selected_axe
+        ]
+
+        if matching_indices:
+            index = matching_indices[0]
+            self.selected_annotation = self.dataset_selector_map[index]["annotation"]
+
+        ind = event.ind[0]
+        compound_name = self.model.get_compound_name_list()[ind]
+
+        selected_set = self.selected_axe.get_title()
+
+        data = self.model.get_retention_time_df()
+        orthogonality_dict = self.model.get_orthogonality_dict()
+        x = orthogonality_dict[selected_set]['x_values']
+        y = orthogonality_dict[selected_set]['y_values']
+
+        self.selected_annotation.xy = (x[ind], y[ind])
+        self.selected_annotation.set_text(f"Peak # {data['Peak #'][ind]}\n{compound_name}")
+        self.selected_annotation.set_visible(True)
+        self.fig.canvas.draw_idle()
+        self.fig.canvas.flush_events()
 
     def _create_top_section(self) -> QFrame:
         """Create the top section with input panel and plot area.
@@ -162,7 +208,7 @@ class PlotPairWisePage(QFrame):
             QFrame: Input section containing selectors, info, and tips.
         """
         input_title = QLabel("Input")
-        input_title.setFixedHeight(30)
+        input_title.setFixedHeight(40)
         input_title.setObjectName("TitleBar")
         input_title.setAlignment(Qt.AlignVCenter | Qt.AlignLeft)
         input_title.setContentsMargins(10, 0, 0, 0)
@@ -170,7 +216,7 @@ class PlotPairWisePage(QFrame):
             background-color: #183881;
             color: white;
             font-weight:bold;
-            font-size: 16px;
+            font-size: 19px;
             border-top-left-radius: 10px;
             border-top-right-radius: 10px;
         """)
@@ -204,11 +250,29 @@ class PlotPairWisePage(QFrame):
         # Tips group
         page_tips_group = self._create_tips_group()
 
+        self.tips_button =         QPushButton(
+            QIcon(resource_path("icons/light_bulb.png")), "Tips"
+        )
+        self.tips_button.setIconSize(QSize(19, 19))
+        self.tips_button.setFixedHeight(35)
+
+        # self.tips_button.setFixedWidth(50)
+        self.tips_button.setStyleSheet("""
+                background-color: #d5dcf9;
+                color: #2C3346;
+                border: none;
+                border-radius: 6px;
+                padding: 8px 16px;
+                font-weight: 500;""")
+
+
+
         user_input_frame_layout.addWidget(data_selection_group)
         user_input_frame_layout.addWidget(LineWidget("Horizontal"))
         user_input_frame_layout.addWidget(info_group)
         user_input_frame_layout.addWidget(LineWidget("Horizontal"))
-        user_input_frame_layout.addWidget(page_tips_group)
+        user_input_frame_layout.addWidget(self.tips_button)
+        user_input_frame_layout.addStretch()
 
         return input_section
 
@@ -218,10 +282,10 @@ class PlotPairWisePage(QFrame):
         Returns:
             QGroupBox: Group box containing dataset selectors.
         """
-        data_selection_group = QGroupBox("Dataset selection")
+        data_selection_group = QGroupBox("Dataset Selection")
         data_selection_group.setStyleSheet(f"""
             QGroupBox {{
-                font-size: 14px;
+                font-size: 16px;
                 font-weight: bold;
                 background-color: #e7e7e7;
                 color: #154E9D;
@@ -250,14 +314,14 @@ class PlotPairWisePage(QFrame):
         self.data_selection_layout = QVBoxLayout()
         self.data_selection_layout.setSpacing(6)
 
-        self.data_selection_layout.addWidget(QLabel("Number of data set to compare:"))
+        self.data_selection_layout.addWidget(QLabel("Number of Data Set to Compare:"))
         self.compare_number = QComboBox()
         self.compare_number.addItems(["1", "2"])
         self.data_selection_layout.addWidget(self.compare_number)
         self.data_selection_layout.addSpacing(20)
 
         # Create 4 dataset selectors
-        self.dataset_selector1 = QComboBox()
+        self.dataset_selector1 = SearchableComboBox()
         self.dataset_selector2 = QComboBox()
         self.dataset_selector3 = QComboBox()
         self.dataset_selector4 = QComboBox()
@@ -266,16 +330,14 @@ class PlotPairWisePage(QFrame):
         self.dataset_selector3.setDisabled(True)
         self.dataset_selector4.setDisabled(True)
 
-        self.add_dataset_selector("Select data set 1:", self.dataset_selector1)
-        self.add_dataset_selector("Select data set 2:", self.dataset_selector2)
+        self.add_dataset_selector("Select Data Set 1:", self.dataset_selector1)
+        self.add_dataset_selector("Select Data Set 2:", self.dataset_selector2)
         # self.add_dataset_selector("Select data set 3:", self.dataset_selector3)
         # self.add_dataset_selector("Select data set 4:", self.dataset_selector4)
 
         self.dataset_selector_list = [
             self.dataset_selector1,
-            self.dataset_selector2,
-            self.dataset_selector3,
-            self.dataset_selector4,
+            self.dataset_selector2
         ]
 
         # Map to track selectors, axes, and scatter collections
@@ -284,6 +346,7 @@ class PlotPairWisePage(QFrame):
                 "selector": selector,
                 "axe": None,
                 "scatter_collection": None,
+                "annotation": None,
             }
             for i, selector in enumerate(self.dataset_selector_list)
         }
@@ -300,7 +363,7 @@ class PlotPairWisePage(QFrame):
         info_group = QGroupBox("Info")
         info_group.setStyleSheet("""
             QGroupBox {
-                font-size: 14px;
+                font-size: 16px;
                 font-weight: bold;
                 background-color: #e7e7e7;
                 color: #154E9D;
@@ -321,12 +384,19 @@ class PlotPairWisePage(QFrame):
         """)
 
         info_layout = QVBoxLayout()
-        info_layout.addWidget(QLabel("Number of conditions:"))
+
+        condition_layout = QHBoxLayout()
+        condition_layout.addWidget(QLabel("Number of Conditions:"))
         self.condition_label = QLabel("---")
-        info_layout.addWidget(self.condition_label)
-        info_layout.addWidget(QLabel("Number of combinations:"))
+        condition_layout.addWidget(self.condition_label)
+
+        combination_layout = QHBoxLayout()
+        combination_layout.addWidget(QLabel("Number of Combinations:"))
         self.combination_label = QLabel("---")
-        info_layout.addWidget(self.combination_label)
+        combination_layout.addWidget(self.combination_label)
+
+        info_layout.addLayout(condition_layout)
+        info_layout.addLayout(combination_layout)
         info_group.setLayout(info_layout)
 
         return info_group
@@ -393,8 +463,8 @@ class PlotPairWisePage(QFrame):
         plot_frame_layout = QVBoxLayout(plot_frame)
         plot_frame_layout.setContentsMargins(0, 0, 0, 0)
 
-        plot_title = QLabel("2D Dataset visualization")
-        plot_title.setFixedHeight(30)
+        plot_title = QLabel("2D Combination Visualization")
+        plot_title.setFixedHeight(40)
         plot_title.setObjectName("TitleBar")
         plot_title.setAlignment(Qt.AlignVCenter | Qt.AlignLeft)
         plot_title.setContentsMargins(10, 0, 0, 0)
@@ -402,7 +472,7 @@ class PlotPairWisePage(QFrame):
             background-color: #183881;
             color: white;
             font-weight:bold;
-            font-size: 16px;
+            font-size: 19px;
             padding: 6px 12px;
             border-top-left-radius: 10px;
             border-top-right-radius: 10px;
@@ -434,15 +504,17 @@ class PlotPairWisePage(QFrame):
         table_frame_layout = QHBoxLayout(table_frame)
         table_frame_layout.setContentsMargins(20, 20, 20, 20)
 
-        self.styled_table = StyledTable("2D combination table")
+        self.styled_table = StyledTable("2D Combination Table")
         self.styled_table.set_header_label(
             [
-                "Set #",
+                "Combination #",
                 "2D Combination",
                 "Number of peaks",
-                "Hypothetical 2D peak capacity",
+                "Hypothetical 2D Peak Capacity",
             ]
         )
+        self.styled_table.add_help_button(2, "Number of peaks","markdown/number_of_peaks.md")
+        self.styled_table.add_help_button(3, "Hypothetical 2D peak capacity","markdown/hypothetical_peak_capacity.md")
         self.styled_table.set_default_row_count(10)
 
         self.table_view_dialog = TableViewDialog(
@@ -583,19 +655,28 @@ class PlotPairWisePage(QFrame):
 
         for i, layout in enumerate(layout_list):
             index = str(i)
-            axe = self.canvas.figure.add_subplot(layout)
-            # self.canvas.figure.subplots_adjust(wspace=0.5, hspace=0.5)
-            axe.set_box_aspect(1)
-            axe.set_xlim(0, 1)
-            axe.set_ylim(0, 1)
+            if layout is not None:
+                axe = self.canvas.figure.add_subplot(layout)
+                axe.set_box_aspect(1)
+                axe.set_xlim(0, 1)
+                axe.set_ylim(0, 1)
 
-            self.fig.canvas.draw()
-            self.fig.canvas.flush_events()
+                self.fig.canvas.draw()
+                self.fig.canvas.flush_events()
 
-            self.dataset_selector_map[index]["axe"] = axe
-            self.dataset_selector_map[index]["scatter_collection"] = axe.scatter(
-                [], [], s=20, c="k", marker="o", alpha=0.5
-            )
+                self.dataset_selector_map[index]["axe"] = axe
+                self.dataset_selector_map[index]["scatter_collection"] = axe.scatter(
+                    [], [], s=20, c="k", marker="o", alpha=0.5,picker=5)
+                self.dataset_selector_map[index]["annotation"] = axe.annotate("", xy=(0, 0), xytext=(10, 10),
+                                                        textcoords="offset points",
+                                                        bbox=dict(boxstyle="round", fc="white", ec="gray"),
+                                                        arrowprops=dict(arrowstyle="->"))
+
+                self.dataset_selector_map[index]["annotation"].set_visible(False)
+            else:
+                self.dataset_selector_map[index]["axe"] = None
+                self.dataset_selector_map[index]["scatter_collection"] = None
+                self.dataset_selector_map[index]["annotation"] = None
 
     def on_selector_changed(self, index: str) -> None:
         """Handle dataset selector change.
@@ -613,6 +694,8 @@ class PlotPairWisePage(QFrame):
         self.selected_scatter_collection = self.dataset_selector_map[index][
             "scatter_collection"
         ]
+        self.selected_annotation = self.dataset_selector_map[index]["annotation"]
+
         self.update_figure()
 
     def update_figure(self) -> None:
@@ -641,22 +724,30 @@ class PlotPairWisePage(QFrame):
 
         set_number = set_nb if set_nb is not None else self.selected_set
 
-        x = self.orthogonality_dict[set_number]["x_values"]
-        y = self.orthogonality_dict[set_number]["y_values"]
-        x_title = self.orthogonality_dict[set_number]["x_title"]
-        y_title = self.orthogonality_dict[set_number]["y_title"]
+        if set_number in self.orthogonality_dict:
+            x = self.orthogonality_dict[set_number]["x_values"]
+            y = self.orthogonality_dict[set_number]["y_values"]
+            x_title = self.orthogonality_dict[set_number]["x_title"]
+            y_title = self.orthogonality_dict[set_number]["y_title"]
 
-        self.selected_axe.set_title(set_number, fontdict={"fontsize": 10}, pad=13)
-        self.selected_axe.set_xlabel(x_title, fontsize=11)
-        self.selected_axe.set_ylabel(y_title, fontsize=11)
-        self.selected_scatter_collection.set_offsets(list(zip(x, y)))
+            self.selected_axe.set_title(set_number, fontdict={"fontsize": 10}, pad=13)
+            self.selected_axe.set_xlabel(x_title, fontsize=11)
+            self.selected_axe.set_ylabel(y_title, fontsize=11)
+            self.selected_scatter_collection.set_offsets(list(zip(x, y)))
 
-        self.fig.canvas.draw()
-        self.fig.canvas.flush_events()
+            self.fig.canvas.draw()
+            self.fig.canvas.flush_events()
 
     # ==========================================================================
     # Interactive Subplot Selection
     # ==========================================================================
+    def set_selected_axe_annotation(self):
+        self.annot = self.selected_axe.annotate("", xy=(0, 0), xytext=(10, 10),
+                            textcoords="offset points",
+                            bbox=dict(boxstyle="round", fc="white", ec="gray"),
+                            arrowprops=dict(arrowstyle="->"))
+
+        self.annot.set_visible(False)
 
     def on_click(self, event) -> None:
         """Detect which subplot was clicked and highlight it.
@@ -671,6 +762,8 @@ class PlotPairWisePage(QFrame):
         """
         if event.inaxes:
             self.selected_axe = event.inaxes
+
+            # self.set_selected_axe_annotation()
 
             if self.highlighted_ax:
                 self.highlighted_ax.patch.set_edgecolor("black")
@@ -755,6 +848,9 @@ class PlotPairWisePage(QFrame):
             - Updates that selector's combo box
             - Updates selected set and refreshes figure
         """
+        #Clean annotation if there is any
+        self.selected_annotation.set_visible(False)
+
         model_index_list = self.styled_table.get_selected_rows()
 
         if not model_index_list:
@@ -778,6 +874,7 @@ class PlotPairWisePage(QFrame):
             self.selected_scatter_collection = self.dataset_selector_map[index][
                 "scatter_collection"
             ]
+            self.selected_annotation = self.dataset_selector_map[index]["annotation"]
 
             selector.blockSignals(True)
             selector.setCurrentText(self.selected_set)

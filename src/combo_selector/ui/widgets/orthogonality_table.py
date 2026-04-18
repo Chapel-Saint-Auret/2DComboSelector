@@ -29,7 +29,7 @@ from PySide6.QtCore import (
     QSortFilterProxyModel,
     Qt,
 )
-from PySide6.QtGui import QBrush, QColor, QIcon
+from PySide6.QtGui import QBrush, QColor, QIcon, QFont
 from PySide6.QtWidgets import (
     QAbstractItemView,
     QApplication,
@@ -45,13 +45,11 @@ from PySide6.QtWidgets import (
 
 from combo_selector.utils import resource_path
 
-
-
 class COLUMN(Enum):
     """Column index enumeration for orthogonality table."""
 
-    COMPATIBILITY = 3
-    COMPLEXITY = 4
+    COMPLEXITY = 3
+    COMPATIBILITY = 4
 
 class OrthogonalityTableSortProxy(QSortFilterProxyModel):
     """Sort proxy that handles NaN values intelligently.
@@ -151,7 +149,7 @@ class OrthogonalityTableModel(QAbstractTableModel):
         >>> model.set_data(df)
     """
 
-    def __init__(self,enable_decoration, data: pd.DataFrame = None):
+    def __init__(self,color_config=None, bold_columns=None, enable_decoration = False, data: pd.DataFrame = None):
         """Initialize the table model.
 
         Args:
@@ -159,6 +157,8 @@ class OrthogonalityTableModel(QAbstractTableModel):
         """
         super().__init__()
         self._enable_decoration = enable_decoration
+        self._color_config = color_config or {}       # { col: { val: hex } }
+        self._bold_columns = bold_columns or []       # [col_index, ...]
         self._raw_data = None
         self._formatted_data = []
         self.default_row_count = 0
@@ -313,31 +313,24 @@ class OrthogonalityTableModel(QAbstractTableModel):
         if role == Qt.UserRole:
             return self._formatted_data[r][c]
 
-        if role == Qt.ItemDataRole.DecorationRole and self._enable_decoration:
+        if role == Qt.ForegroundRole and self._enable_decoration:
+            val = self._formatted_data[r][c]
+            if c in self._color_config:
+                hex_color = self._color_config[c].get(val, "#333333")
+                return QColor(hex_color)
+            return QColor("#222222")
 
-            if c == COLUMN.COMPATIBILITY.value:
-                if self._formatted_data[r][c] == 'Low':
-                    return QIcon(resource_path("icons/red_indicator.png"))
-                if self._formatted_data[r][c] == 'Moderate':
-                    return QIcon(resource_path("icons/orange_indicator.png"))
-                if self._formatted_data[r][c] == 'High':
-                    return QIcon(resource_path("icons/green_indicator.png"))
-
-            if c == COLUMN.COMPLEXITY.value:
-                if self._formatted_data[r][c] == 'Low':
-                    return QIcon(resource_path("icons/green_indicator.png"))
-                if self._formatted_data[r][c] == 'Medium':
-                    return QIcon(resource_path("icons/orange_indicator.png"))
-                if self._formatted_data[r][c] == 'High':
-                    return QIcon(resource_path("icons/red_indicator.png"))
+        if role == Qt.FontRole and self._enable_decoration:
+            font = QFont("Segoe UI", 9)
+            if c in self._bold_columns:
+                font.setBold(True)
+            return font
 
         if role == Qt.BackgroundRole:
             val = str(self._formatted_data[r][c]).strip().lower()
             if val == 'na':
-                return QBrush(QColor("#ff9999"))  # Red background for NaN
+                return QBrush(QColor("#ff9999"))
             return None
-
-        return None
 
     def rowCount(self, parent: QModelIndex = QModelIndex()) -> int:
         """Get number of rows.

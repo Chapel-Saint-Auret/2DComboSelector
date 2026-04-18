@@ -16,7 +16,7 @@ import seaborn as sns
 from matplotlib.backends.backend_qtagg import FigureCanvas
 from matplotlib.figure import Figure
 from matplotlib.patches import Rectangle
-from PySide6.QtCore import Qt, Signal
+from PySide6.QtCore import Qt, Signal, QSize
 from PySide6.QtWidgets import (
     QButtonGroup,
     QCheckBox,
@@ -38,6 +38,7 @@ from combo_selector.ui.widgets.line_widget import LineWidget
 from combo_selector.ui.widgets.neumorphism import BoxShadow
 from combo_selector.ui.widgets.qcombobox_cmap import QComboBoxCmap
 from combo_selector.ui.widgets.style_table import StyledTable
+from combo_selector.ui.widgets.section_help_button import SectionHelpButton
 from combo_selector.utils import resource_path
 
 # Maps full metric names to abbreviated display names for heatmap labels
@@ -187,7 +188,7 @@ class RedundancyCheckPage(QFrame):
             QFrame: Input section containing parameter controls and info.
         """
         input_title = QLabel("Input")
-        input_title.setFixedHeight(30)
+        input_title.setFixedHeight(40)
         input_title.setObjectName("TitleBar")
         input_title.setAlignment(Qt.AlignVCenter | Qt.AlignLeft)
         input_title.setContentsMargins(10, 0, 0, 0)
@@ -195,7 +196,7 @@ class RedundancyCheckPage(QFrame):
             background-color: #183881;
             color: white;
             font-weight:bold;
-            font-size: 16px;
+            font-size: 19px;
             border-top-left-radius: 10px;
             border-top-right-radius: 10px;
         """)
@@ -239,7 +240,7 @@ class RedundancyCheckPage(QFrame):
         Returns:
             QGroupBox: Group box with color, threshold, and display options.
         """
-        correlation_parameter_group = QGroupBox("Correlation matrix parameter")
+        correlation_parameter_group = QGroupBox("Correllation Matrix Settings")
         correlation_parameter_group.setStyleSheet(f"""
             QGroupBox {{
                 font-size: 14px;
@@ -274,9 +275,14 @@ class RedundancyCheckPage(QFrame):
         form_layout = QFormLayout()
 
         self.select_correlation_matrix = QComboBox()
-        self.select_correlation_matrix.addItems(["value based",
-                                                 "ranking based",
-                                                 "coverage vs distribution"])
+        self.select_correlation_matrix.addItems(["Values",
+                                                 "Ranking"])
+
+        matrix_type_info_btn = SectionHelpButton(
+            title="Matrix Type",
+            markdown_path="markdown/matrix_type.md",
+            parent=correlation_parameter_group,
+        )
 
         self.corr_mat_cmap = QComboBoxCmap()
         self.corr_mat_cmap.setCurrentText("BrBG")
@@ -315,10 +321,14 @@ class RedundancyCheckPage(QFrame):
         self.show_triangle_grp.addButton(self.upper_triangle_matrix)
         self.show_triangle_grp.setExclusive(False)
 
-        form_layout.addRow("Matrix type:", self.select_correlation_matrix)
+        matrix_type_layout = QHBoxLayout()
+        matrix_type_layout.addWidget(self.select_correlation_matrix)
+        matrix_type_layout.addWidget(matrix_type_info_btn)
+        matrix_type_layout.addStretch()
+        form_layout.addRow("Matrix Type:", matrix_type_layout)
         form_layout.addRow("Color:", self.corr_mat_cmap)
-        form_layout.addRow("Correlation threshold:", self.correlation_threshold)
-        form_layout.addRow("Threshold tolerance:", self.correlation_threshold_tolerance)
+        form_layout.addRow("Correlation Threshold:", self.correlation_threshold)
+        form_layout.addRow("Threshold Tolerance:", self.correlation_threshold_tolerance)
 
         correlation_parameter_layout.addLayout(form_layout)
         correlation_parameter_layout.addWidget(LineWidget())
@@ -402,20 +412,53 @@ class RedundancyCheckPage(QFrame):
         plot_frame_layout = QVBoxLayout(plot_frame)
         plot_frame_layout.setContentsMargins(0, 0, 0, 0)
 
-        plot_title = QLabel("Correlation matrix visualization")
+        # --- Title bar: label + help button ----------------------------------
+        plot_title_bar = QFrame()
+        plot_title_bar.setFixedHeight(40)
+        plot_title_bar.setStyleSheet("""
+            QFrame {
+                background-color: #183881;
+            }
+        """)
+
+        plot_title_layout = QHBoxLayout(plot_title_bar)
+        plot_title_layout.setContentsMargins(10, 0, 6, 0)
+        plot_title_layout.setSpacing(4)
+
+        plot_title = QLabel("Correlation Matrix Visualization")
         plot_title.setFixedHeight(30)
         plot_title.setObjectName("TitleBar")
         plot_title.setAlignment(Qt.AlignVCenter | Qt.AlignLeft)
         plot_title.setContentsMargins(10, 0, 0, 0)
         plot_title.setStyleSheet("""
-            background-color: #183881;
-            color: white;
-            font-weight:bold;
-            font-size: 16px;
-            padding: 6px 12px;
-            border-top-left-radius: 10px;
-            border-top-right-radius: 10px;
+            background-color: transparent;
+            color: #ffffff;
+            font-weight: bold;
+            font-size: 19px;
         """)
+
+        plot_help_btn = SectionHelpButton(
+            title="Data import",
+            markdown_path="markdown/heatmap.md",
+            parent=plot_title_bar,
+        )
+        plot_help_btn.setFixedSize(22, 22)           # ← explicit size, same as the close btn in HelpDialog
+        plot_help_btn.setIconSize(QSize(16, 16))     # ← keep icon smaller than the button box
+        plot_help_btn.setStyleSheet("""
+            QToolButton {
+                border: none;
+                background: transparent;
+                color: #ffffff;
+                font-size: 15px;
+            }
+            QToolButton:hover {
+                color: #c5d0e6;
+            }
+        """)
+
+        plot_title_layout.addWidget(plot_title, 0, Qt.AlignVCenter)
+        plot_title_layout.addWidget(plot_help_btn, 0, Qt.AlignVCenter)  # ← per-item alignment flag
+        plot_title_layout.addStretch(1)
 
         self.fig = Figure(figsize=(15, 15),constrained_layout = True)
         self.fig.suptitle('Inter-metric correlation heatmap', fontsize=13)
@@ -428,7 +471,7 @@ class RedundancyCheckPage(QFrame):
         self._ax.set_xlim(0, 1)
         self._ax.set_ylim(0, 1)
 
-        plot_frame_layout.addWidget(plot_title)
+        plot_frame_layout.addWidget(plot_title_bar)
         plot_frame_layout.addWidget(self.toolbar)
         plot_frame_layout.addWidget(self.canvas)
 
@@ -444,9 +487,12 @@ class RedundancyCheckPage(QFrame):
         table_frame_layout = QHBoxLayout(table_frame)
         table_frame_layout.setContentsMargins(20, 20, 20, 20)
 
-        self.styled_table = StyledTable("Grouped metric table")
-        self.styled_table.set_header_label(["Group", "Correlated OM",'Category'])
+        self.styled_table = StyledTable("Grouped Metric Table")
+        self.styled_table.add_title_bar_info_button(markdown_path="markdown/group_metric_table.md")
+        self.styled_table.set_header_label(["Group", "Correlated Metrics",'Classification'])
         self.styled_table.set_default_row_count(10)
+        self.styled_table.add_help_button(2, "Classification","markdown/classification.md")
+
         table_frame_layout.addWidget(self.styled_table)
 
         self.table_frame_shadow = BoxShadow()
@@ -467,7 +513,7 @@ class RedundancyCheckPage(QFrame):
             - Updates correlation groups table
         """
         self.styled_table.clean_table()
-        self.styled_table.set_header_label(["Group", "Correlated OM",'Category'])
+        self.styled_table.set_header_label(["Group", "Correlated Metrics",'Category'])
 
         if self.model.get_orthogonality_metric_corr_matrix_df().empty:
             return
@@ -498,15 +544,19 @@ class RedundancyCheckPage(QFrame):
         # self._ax2 = self.fig.add_subplot(122)
 
         self.corr_matrix = self.model.get_orthogonality_metric_corr_matrix_df().corr()
+
+        self.ranking_corr_matrix = self.model.get_orthogonality_metric_ranking_corr_matrix_df()
+
+        # if self.model.get_orthogonality_metric_ranking_corr_matrix_df():
         self.ranking_corr_matrix = self.model.get_orthogonality_metric_ranking_corr_matrix_df().corr()
 
-        if self.select_correlation_matrix.currentText() == 'value based':
+        if self.select_correlation_matrix.currentText() == 'Values':
             self.selected_correlation_matrix = self.model.get_orthogonality_metric_corr_matrix_df().corr()
-            self._ax.set_title('Value based',color='0.7')
+            self._ax.set_title('Value-Based',color='0.7')
 
-        if self.select_correlation_matrix.currentText() == 'ranking based':
+        if self.select_correlation_matrix.currentText() == 'Ranking':
             self.selected_correlation_matrix = self.model.get_orthogonality_metric_ranking_corr_matrix_df().corr()
-            self._ax.set_title('Ranking based',color='0.7')
+            self._ax.set_title('Ranking-Based',color='0.7')
 
         if self.select_correlation_matrix.currentText() == 'coverage vs distribution':
             self.selected_correlation_matrix = self.model.get_coverage_distribution_matrix_df()

@@ -17,6 +17,7 @@ Usage:
 """
 
 import sys
+import markdown
 
 from PySide6.QtCore import QPoint, Qt
 from PySide6.QtGui import QIcon
@@ -30,6 +31,7 @@ from PySide6.QtWidgets import (
     QSizePolicy,
     QTextBrowser,
     QToolButton,
+    QSizeGrip,
     QVBoxLayout,
     QWidget,
 )
@@ -63,11 +65,12 @@ class HelpDialog(QDialog):
             parent (QWidget, optional): Parent window. Used for modality
                 scoping and screen geometry calculations.
         """
-        super().__init__(parent, Qt.Tool | Qt.FramelessWindowHint)
+        super().__init__(parent, Qt.Tool)
         self.setWindowModality(Qt.NonModal)
         self.setAttribute(Qt.WA_DeleteOnClose, False)  # reuse instance
-        self.setFixedWidth(360)
-        self.setMaximumHeight(480)
+        self.setMinimumSize(500,150)
+
+        # self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
 
         self.setStyleSheet("""
             QDialog {
@@ -99,28 +102,6 @@ class HelpDialog(QDialog):
         outer.setContentsMargins(12, 10, 12, 10)
         outer.setSpacing(8)
 
-        # Title row: label on the left, close button on the right
-        title_row = QHBoxLayout()
-        self._title_label = QLabel()
-        self._title_label.setStyleSheet(
-            "font-weight: bold; font-size: 14px; color: #183881;"
-        )
-        title_row.addWidget(self._title_label)
-        title_row.addStretch()
-
-        close_btn = QPushButton("✕")
-        close_btn.setObjectName("close_btn")
-        close_btn.setFixedSize(22, 22)
-        close_btn.clicked.connect(self.close)
-        title_row.addWidget(close_btn)
-        outer.addLayout(title_row)
-
-        # Thin separator line
-        sep = QLabel()
-        sep.setFixedHeight(1)
-        sep.setStyleSheet("background-color: #e0e6f0;")
-        outer.addWidget(sep)
-
         # Scrollable Markdown browser
         self._browser = QTextBrowser()
         self._browser.setOpenExternalLinks(True)
@@ -141,7 +122,6 @@ class HelpDialog(QDialog):
             anchor (QWidget): The button that triggered the dialog. Used to
                 compute the dialog's screen position.
         """
-        self._title_label.setText(title)
         self._load_markdown(markdown_path)
         self._reposition(anchor)
         self.show()
@@ -152,10 +132,7 @@ class HelpDialog(QDialog):
     # ------------------------------------------------------------------
 
     def _load_markdown(self, markdown_path: str) -> None:
-        """Read a Markdown file and render it inside the browser.
-
-        Uses ``QTextBrowser.setMarkdown()`` which is available natively
-        in Qt 6. Falls back to a plain error message if the file is missing.
+        """Read a Markdown file, convert to HTML with CSS, and render it.
 
         Args:
             markdown_path (str): Resource-relative path to the ``.md`` file.
@@ -164,7 +141,79 @@ class HelpDialog(QDialog):
         try:
             with open(full_path, encoding="utf-8") as f:
                 md_text = f.read()
-            self._browser.setMarkdown(md_text)
+
+            # Convert Markdown → HTML (with table extension for bordered tables)
+            body_html = markdown.markdown(
+                md_text,
+                extensions=["tables", "fenced_code"]
+            )
+
+            # Wrap in a full HTML document with embedded CSS
+            # Wrap in a full HTML document with embedded CSS
+            html = f"""
+            <html>
+            <head>
+            <style>
+                body {{
+                    font-family: 'Segoe UI', Arial, sans-serif;
+                    font-size: 13px;
+                    color: #2c3e50;
+                    margin: 0;
+                    padding: 0;
+                    line-height: 1.4;
+                }}
+                h1 {{ font-size: 20px; color: #183881; margin-top: 8px; margin-bottom: 2px; }}
+                h2 {{ font-size: 16px; color: #183881; margin-top: 6px; margin-bottom: 2px; border-bottom: 1px solid #e0e6f0; padding-bottom: 2px; }}
+                h3 {{ font-size: 14px; color: #183881; margin-top: 4px; margin-bottom: 2px; }}
+                p  {{ margin: 2px 0; }}
+                ul, ol {{ margin: 2px 0 2px 18px; padding: 0; }}
+                li {{ margin: 1px 0; line-height: 1.4; }}
+                table {{
+                    border-collapse: collapse;
+                    width: 100%;
+                    margin: 6px 0;
+                    font-size: 12px;
+                }}
+                th, td {{
+                    border: 1px solid #c5d0e6;
+                    padding: 4px 7px;
+                    text-align: left;
+                }}
+                th {{
+                    background-color: #eef2fb;
+                    color: #183881;
+                    font-weight: bold;
+                }}
+                tr:nth-child(even) td {{
+                    background-color: #f7f9ff;
+                }}
+                code {{
+                    background-color: #f0f3fa;
+                    border-radius: 3px;
+                    padding: 1px 4px;
+                    font-family: Consolas, monospace;
+                    font-size: 12px;
+                }}
+                hr {{
+                    border: none;
+                    border-top: 1px solid #e0e6f0;
+                    margin: 6px 0;
+                }}
+                blockquote {{
+                    border-left: 3px solid #c5d0e6;
+                    margin: 4px 0 4px 8px;
+                    padding-left: 8px;
+                    color: #555;
+                }}
+            </style>
+            </head>
+            <body>
+            {body_html}
+            </body>
+            </html>
+            """
+            self._browser.setHtml(html)
+
         except FileNotFoundError:
             self._browser.setHtml(
                 f"<p style='color:#c0392b;'>"
@@ -315,22 +364,44 @@ class SectionHelpButton(QToolButton):
         btn.show()
         return btn
 
+    def offset(self,x_offset = 0,y_offset = 0):
+
+        global_pos: QPoint = self.mapToGlobal(self.rect().topRight())
+        x = global_pos.x() + x_offset
+        y = global_pos.y() + y_offset
+
+        self.move(x, y)
     # ------------------------------------------------------------------
     # Private
     # ------------------------------------------------------------------
 
     def _on_clicked(self) -> None:
-        """Open the shared help dialog positioned next to this button."""
+        """Toggle the shared help dialog open/closed for this button.
+
+        - First click (or click when dialog belongs to a different button):
+          opens/re-populates the dialog next to this button.
+        - Second click (dialog already visible for *this* button): closes it.
+        """
         window = self.window()
+
+        # Lazily create or re-parent the shared dialog
         if (
             SectionHelpButton._dialog is None
             or SectionHelpButton._dialog.parent() is not window
         ):
             SectionHelpButton._dialog = HelpDialog(parent=window)
 
-        SectionHelpButton._dialog.show_for(
-            self._title, self._markdown_path, anchor=self
-        )
+        dialog = SectionHelpButton._dialog
+
+        # Toggle: close if already open for this button, otherwise open
+        if (
+            dialog.isVisible()
+            and getattr(dialog, "_current_anchor", None) is self
+        ):
+            dialog.close()
+        else:
+            dialog._current_anchor = self
+            dialog.show_for(self._title, self._markdown_path, anchor=self)
 
 
 # =============================================================================

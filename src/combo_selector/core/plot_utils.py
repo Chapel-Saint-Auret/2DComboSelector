@@ -14,6 +14,7 @@ from math import sqrt
 from typing import Optional
 
 import numpy as np
+import pandas as pd
 from matplotlib import collections, patches
 from matplotlib.collections import QuadMesh
 from matplotlib.colors import ListedColormap
@@ -50,6 +51,9 @@ class PlotUtils:
         self.set_number = "Set 1"
         self.scatter_collection = None
 
+    def set_orthogonality_result_data(self, orthogonality_result_df: pd.DataFrame) -> None:
+        self.orthogonality_result_data = orthogonality_result_df
+
     def set_orthogonality_data(self, orthogonality_dict: dict) -> None:
         """Set the orthogonality data dictionary for plotting.
 
@@ -84,11 +88,19 @@ class PlotUtils:
         """
         self.scatter_collection = scatter_collection
 
+    def set_annotation(self, annotation) -> None:
+        """Set the matplotlib Annotation for plotting.
+        Args:
+        """
+
+        self.annotation = annotation
+
     def __draw_figure(self) -> None:
         """Redraw the figure canvas and flush events.
 
         Private method to update the display after plotting operations.
         """
+
         self.fig.canvas.draw()
         self.fig.canvas.flush_events()
 
@@ -98,6 +110,13 @@ class PlotUtils:
         Removes all axes, plots, and text from the figure.
         """
         self.fig.clf()
+
+    def clean_axe(self) -> None:
+        """Clear the entire axe.
+
+        Removes everything (data, labels, titles) and resets the axis to default settings.
+        """
+        self.axe.clear()
 
     def clean_figure(self) -> None:
         """Clean the selected matplotlib axis while preserving background settings.
@@ -114,7 +133,7 @@ class PlotUtils:
         """
         # Remove texts and lines
         if self.axe:
-            [text.remove() for text in self.axe.texts]
+            [text.remove() for text in self.axe.texts if text not in [self.annotation]]
             [line.remove() for line in self.axe.get_lines()]
 
         # Remove figure-level texts
@@ -189,9 +208,9 @@ class PlotUtils:
         title = title or str(set_nb)
 
         # 1) Update title and labels
-        self.axe.set_title(title, fontdict={"fontsize": 14}, pad=16)
-        self.axe.set_xlabel(x_title, fontsize=12)
-        self.axe.set_ylabel(y_title, fontsize=12)
+        self.axe.set_title(title, fontdict={"fontsize": 10}, pad=13)
+        self.axe.set_xlabel(x_title, fontsize=11)
+        self.axe.set_ylabel(y_title, fontsize=11)
 
         # 2) Create or update scatter
         if self.scatter_collection is None:
@@ -882,3 +901,76 @@ class PlotUtils:
             leg.set_visible(False)
 
         self.__draw_figure()
+
+    def plot_coverage_vs_distribution(self):
+
+        x = self.orthogonality_result_data['Coverage Score']
+        y = self.orthogonality_result_data['Distribution Score']
+
+        self.axe.set_xlabel('Coverage Score', fontsize=12)
+        self.axe.set_ylabel('Distribution Score', fontsize=12)
+
+
+        # 2) Create or update scatter
+        self.scatter_collection = self.axe.scatter(
+                x, y, s=20, c="k", marker="o", alpha=0.5
+            )
+
+        # 3) Hide legend if present
+        leg = self.axe.get_legend()
+        if leg:
+            leg.set_visible(False)
+
+        self.fig.canvas.draw()
+        self.fig.canvas.flush_events()
+
+    def plot_peak_capacity_vs_consensus_score(self):
+
+        x = self.orthogonality_result_data['Practical 2D Peak Capacity']
+        y = self.orthogonality_result_data['Consensus Score']
+
+        self.axe.set_xlabel('Practical 2D Peak Capacity', fontsize=12)
+        self.axe.set_ylabel('Consensus Score', fontsize=12)
+
+        # 2) Create or update scatter
+
+        self.scatter_collection = self.axe.scatter(
+                x, y, s=20, c="k", marker="o", alpha=0.5
+            )
+
+        # 3) Hide legend if present
+        leg = self.axe.get_legend()
+        if leg:
+            leg.set_visible(False)
+
+        self.fig.canvas.draw()
+        self.fig.canvas.flush_events()
+
+    def plot_top_ranked_combination(self,number_of_rank_to_show):
+
+        if number_of_rank_to_show == 'all':
+            index = None
+        else:
+            index = int(number_of_rank_to_show)
+
+        x = self.orthogonality_result_data['Consensus Ranking']
+        y = self.orthogonality_result_data['2D Combination']
+
+        sorted_x = x.sort_values()
+
+        sorted_x_index = list(sorted_x.index)
+
+        sorted_y = y[sorted_x_index]
+
+        sorted_x = sorted_x[0:index-1]
+        sorted_y = sorted_y[0:index-1]
+
+        self.axe.barh(sorted_y, sorted_x)
+
+        # 3) Hide legend if present
+        leg = self.axe.get_legend()
+        if leg:
+            leg.set_visible(False)
+
+        self.fig.canvas.draw()
+        self.fig.canvas.flush_events()

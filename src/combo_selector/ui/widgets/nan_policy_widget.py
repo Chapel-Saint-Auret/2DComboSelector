@@ -10,10 +10,11 @@ Two options are available:
 
 import sys
 
-from PySide6.QtWidgets import QSizePolicy
 from PySide6.QtCore import Qt
+from PySide6.QtGui import QFont
 from PySide6.QtWidgets import (
     QApplication,
+    QSizePolicy,
     QButtonGroup,
     QDialog,
     QDialogButtonBox,
@@ -26,6 +27,7 @@ from PySide6.QtWidgets import (
 )
 
 from combo_selector.ui.widgets.removal_summary_dialog import RemovalSummaryDialog
+from combo_selector.ui.widgets.line_widget import LineWidget
 
 class NanPolicyDialog(QDialog):
     """Dialog for configuring NaN retention time handling policy.
@@ -114,9 +116,12 @@ class NanPolicyDialog(QDialog):
         main_layout.addWidget(self.buttonBox)
 
         # Summary text
+        font = QFont()
+        font.setBold(True)
         summary = QLabel(
             "How would you like to handle them?"
         )
+        summary.setFont(font)
         summary.setWordWrap(True)
 
         # Option 1: Remove peaks above threshold
@@ -132,7 +137,6 @@ class NanPolicyDialog(QDialog):
         )
         self.option_remove_condition.setObjectName("option 2")
 
-        # Option 2: Keep all peaks
         self.option_replace = QRadioButton(
             'Keep all compounds and leave missing values empty'
         )
@@ -143,7 +147,7 @@ class NanPolicyDialog(QDialog):
         self.option_button_grp.addButton(self.option_remove_compound)
         self.option_button_grp.addButton(self.option_remove_condition)
         self.option_button_grp.addButton(self.option_replace)
-        self.option_button_grp.setExclusive(True)
+        self.option_button_grp.setExclusive(False)
 
         # Threshold spin box
         self.threshold1_spin = QSpinBox()
@@ -180,17 +184,30 @@ class NanPolicyDialog(QDialog):
 
         # Assemble layout
         groupbox_layout.addWidget(summary)
+        groupbox_layout.addWidget(self.option_replace)
+        groupbox_layout.addWidget(LineWidget())
         groupbox_layout.addLayout(row1)
         groupbox_layout.addSpacing(4)
         groupbox_layout.addLayout(row2)
         groupbox_layout.addWidget(note)
-        groupbox_layout.addWidget(self.option_replace)
 
         # Connect signals
         self.buttonBox.accepted.connect(self.accept)
         self.buttonBox.rejected.connect(self.reject)
         self.threshold1_spin.valueChanged.connect(self.set_threshold1)
         self.threshold2_spin.valueChanged.connect(self.set_threshold2)
+        self.option_button_grp.buttonClicked.connect(self.update_button_state)
+
+    def update_button_state(self):
+
+        if self.option_replace.isChecked():
+            self.option_button_grp.setExclusive(True)
+            self.option_remove_compound.setChecked(False)
+            self.option_remove_condition.setChecked(False)
+
+        if (self.option_remove_compound.isChecked() or
+                self.option_remove_condition.isChecked()):
+            self.option_button_grp.setExclusive(False)
 
     def set_threshold1(self) -> None:
         """Update the model with the new threshold value.
@@ -222,15 +239,16 @@ class NanPolicyDialog(QDialog):
             - Closes dialog with accept status
         """
         if self.model:
-            checked_option = self.option_button_grp.checkedButton()
-            self.model.clean_nan_value(option=checked_option.objectName())
+
+            checked_button =[button.objectName() for button in self.option_button_grp.buttons() if button.isChecked()]
+            self.model.clean_nan_value(option_list=checked_button)
 
         compound_list = self.model.get_removed_compound_list()
         condition_list = self.model.get_removed_condition_list()
 
         dlg = RemovalSummaryDialog(
-            conditions=compound_list,
-            compounds=condition_list,
+            compounds=compound_list,
+            conditions=condition_list,
         )
 
         result = dlg.exec()

@@ -7,24 +7,25 @@ from PySide6.QtGui import QColor
 
 
 class RemovalSummaryDialog(QDialog):
-    def __init__(self, conditions: list[str], compounds: list[str], parent=None):
+    def __init__(self, compounds: list[str],  conditions: list[str], parent=None):
         super().__init__(parent)
         self.setWindowTitle("Removal summary")
         self.setMinimumWidth(400)
         self.setModal(True)
-        self._build_ui(conditions, compounds)
+        self._build_ui( compounds , conditions)
 
-    def _build_ui(self, conditions: list[str], compounds: list[str]):
+    def _build_ui(self, compounds : list[str], conditions: list[str]):
         layout = QVBoxLayout(self)
         layout.setSpacing(16)
         layout.setContentsMargins(20, 20, 20, 20)
 
         layout.addWidget(self._make_section(
-            f"Conditions removed ({len(conditions)})", conditions
-        ))
-        layout.addWidget(self._make_section(
             f"Compounds removed ({len(compounds)})", compounds
         ))
+        layout.addWidget(self._make_section(
+            f"Conditions removed ({len(conditions)})", conditions
+        ))
+
 
     def _make_section(self, title: str, items: list[str]) -> QFrame:
         frame = QFrame()
@@ -72,8 +73,8 @@ if __name__ == "__main__":
     app = QApplication(sys.argv)
 
     dlg = RemovalSummaryDialog(
-        conditions=["pH > 7.5", "Temperature ≤ 25°C", "Gradient > 60% ACN"],
         compounds=["Caffeine", "Uracil", "Thiourea", "Naphthalene"],
+        conditions=["pH > 7.5", "Temperature ≤ 25°C", "Gradient > 60% ACN"],
     )
     result = dlg.exec()
     print("Accepted" if result == QDialog.Accepted else "Rejected")

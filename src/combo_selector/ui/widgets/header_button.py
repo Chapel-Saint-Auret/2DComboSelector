@@ -19,6 +19,8 @@ from PySide6.QtWidgets import (
     QApplication,
     QDialog,
     QHeaderView,
+    QStyle,
+    QStyleOptionHeader,
     QTableWidget,
     QTableWidgetItem,
     QToolButton,
@@ -93,6 +95,124 @@ class HeaderButton(QHeaderView):
 
         self._reposition_buttons()
 
+    # ------------------------------------------------------------------
+    # Internal helpers
+    # ------------------------------------------------------------------
+
+    def _get_label_text(self, logical_index: int) -> str:
+        """Return the display text for a header section.
+
+        Args:
+            logical_index (int): Logical column index.
+
+        Returns:
+            str: Header label text, or empty string on failure.
+        """
+        try:
+            label = self.model().headerData(
+                logical_index, self.orientation(), Qt.DisplayRole
+            )
+            return str(label) if label is not None else ""
+        except Exception:
+            return ""
+
+    def _make_style_option(self, logical_index: int, rect: QRect) -> QStyleOptionHeader:
+        """Build a QStyleOptionHeader for the given section.
+
+        Mirrors what QHeaderView uses internally so that subElementRect
+        returns an accurate label rect.
+
+        Args:
+            logical_index (int): Logical column index.
+            rect (QRect): Bounding rect of the section in viewport coordinates.
+
+        Returns:
+            QStyleOptionHeader: Populated style option.
+        """
+        opt = QStyleOptionHeader()
+        self.initStyleOption(opt)
+        opt.section = logical_index
+        opt.rect = rect
+        opt.text = self._get_label_text(logical_index)
+        opt.position = QStyleOptionHeader.Middle
+        opt.selectedPosition = QStyleOptionHeader.NotAdjacent
+        return opt
+
+    def _text_end_x(self, logical_index: int) -> int:
+        """Return the viewport x-coordinate of the right edge of the header
+        text for *logical_index*.
+
+        Uses QStyle.SE_HeaderLabel to find the rect Qt paints into, then
+        measures the actual text width with fontMetrics so the button always
+        sits flush against the last character — even when the column is wider
+        than the text.
+
+        Args:
+            logical_index (int): Logical column index.
+
+        Returns:
+            int: x pixel position of text right edge in viewport coordinates.
+        """
+        sec_x = self.sectionViewportPosition(logical_index)
+        sec_w = self.sectionSize(logical_index)
+        sec_rect = QRect(sec_x, 0, sec_w, self.height())
+
+        opt = self._make_style_option(logical_index, sec_rect)
+
+        # The rect Qt uses for the label (accounts for margins, sort arrow, etc.)
+        label_rect = self.style().subElementRect(QStyle.SE_HeaderLabel, opt, self)
+
+        # Actual pixel width of the text string
+        fm = self.fontMetrics()
+        text_w = min(fm.horizontalAdvance(opt.text), label_rect.width())
+
+        return label_rect.left() + text_w
+
+    # ------------------------------------------------------------------
+    # Painting
+    # ------------------------------------------------------------------
+
+    def paintSection(self, painter, rect: QRect, logical_index: int) -> None:
+        """Paint a header section.
+
+        For sections that have a button the label text is clipped to a
+        narrowed rect so it can never overlap the button, regardless of
+        column width.  Sections without a button are painted normally.
+
+        Args:
+            painter (QPainter): Active painter for the viewport.
+            rect (QRect): Bounding rect of the section in viewport coordinates.
+            logical_index (int): Logical index of the section being painted.
+        """
+        if logical_index not in self._buttons:
+            super().paintSection(painter, rect, logical_index)
+            return
+
+        btn = self._buttons[logical_index]
+        btn_w = btn.sizeHint().width()
+        gap = 4  # px between text right edge and button left edge
+
+        painter.save()
+
+        opt = self._make_style_option(logical_index, rect)
+
+        # 1. Draw background (frame, highlight, etc.) without any text
+        opt_bg = QStyleOptionHeader(opt)
+        opt_bg.text = ""
+        self.style().drawControl(QStyle.CE_Header, opt_bg, painter, self)
+
+        # 2. Draw the label text clipped to the area left of the button
+        text_rect = rect.adjusted(0, 0, -(btn_w + gap), 0)
+        opt_text = QStyleOptionHeader(opt)
+        opt_text.rect = text_rect
+        self.style().drawControl(QStyle.CE_Header, opt_text, painter, self)
+
+        painter.restore()
+
+    # ------------------------------------------------------------------
+    # Public API
+    # ------------------------------------------------------------------
+
     def add_header_button(
             self,
             column: int,
@@ -101,9 +221,10 @@ class HeaderButton(QHeaderView):
     ) -> None:
         """Add a filter button to a column header.
 
-        Creates a small tool button positioned in the right side of the
-        column header. Optionally associates a widget/dialog to show when
-        the button is clicked.
+        Creates a small tool button placed immediately after the header text.
+        The text area is automatically constrained via paintSection so it
+        never overlaps the button. Optionally associates a widget/dialog to
+        show when the button is clicked.
 
         Args:
             column (int): Column index to add button to.
@@ -132,6 +253,7 @@ class HeaderButton(QHeaderView):
         btn.setToolTip(tooltip or f"Filter column {column}")
         btn.setAutoRaise(True)
         btn.setCursor(Qt.PointingHandCursor)
+        btn.adjustSize()  # Ensure sizeHint is valid before first reposition
 
         # Connect click handler (lambda captures column, ignores checked parameter)
         btn.clicked.connect(
@@ -151,7 +273,8 @@ class HeaderButton(QHeaderView):
         """Add a help button to a column header.
 
         Attaches a :class:`~combo_selector.ui.widgets.section_help_button.SectionHelpButton`
-        to the given column that opens a help pop-up when clicked.
+        to the given column that opens a help pop-up when clicked. The button
+        is placed immediately after the header text.
 
         Args:
             column (int): Column index to attach the help button to.
@@ -170,7 +293,7 @@ class HeaderButton(QHeaderView):
         btn = SectionHelpButton(title=title,
                                 markdown_path=markdown_path,
                                 parent=self)
-
+        btn.adjustSize()  # Ensure sizeHint is valid before first reposition
 
         btn.show()
         self._buttons[column] = btn
@@ -190,6 +313,7 @@ class HeaderButton(QHeaderView):
         if btn:
             btn.deleteLater()
         self._button_widget.pop(column, None)
+        self.viewport().update()
 
     def _on_button_clicked(self, column: int) -> None:
         """Handle button click event.
@@ -228,12 +352,17 @@ class HeaderButton(QHeaderView):
             widget.show()
 
     def _reposition_buttons(self, *args) -> None:
-        """Reposition all buttons inside their column headers.
+        """Reposition all buttons immediately after their column header text.
 
-        Buttons are right-aligned within their column section.
+        The button x position is derived from _text_end_x() which uses
+        QStyle.SE_HeaderLabel + fontMetrics to find exactly where the text
+        ends, so the button tracks the text even as the column is resized.
+
+        The section is widened automatically if it is too narrow to show
+        both the text and the button.
+
         Buttons are hidden if:
         - Column is hidden
-        - Column is too narrow
         - Column index is out of range
 
         Args:
@@ -241,8 +370,12 @@ class HeaderButton(QHeaderView):
 
         Side Effects:
             - Moves and shows/hides buttons as needed
+            - May resize sections to ensure text + button fit
         """
         if not self._buttons:
+            return
+
+        if self.model() is None:
             return
 
         # Robustly get section count
@@ -252,6 +385,8 @@ class HeaderButton(QHeaderView):
             section_count = (
                 self.model().columnCount() if self.model() is not None else 0
             )
+
+        gap = 4  # px between text right edge and button left edge
 
         for col, btn in list(self._buttons.items()):
             # Hide if column out of range
@@ -268,20 +403,34 @@ class HeaderButton(QHeaderView):
                 btn.hide()
                 continue
 
-            # Get section geometry
-            x = self.sectionViewportPosition(col)
-            w = self.sectionSize(col)
+            btn_size = btn.sizeHint()
+            btn_w = btn_size.width()
+            btn_h = btn_size.height()
 
-            # Hide if column too narrow for button
-            if w <= 0 or w < btn.width() + 4:
-                btn.hide()
-                continue
+            sec_x = self.sectionViewportPosition(col)
+            sec_w = self.sectionSize(col)
 
-            # Position button (right-aligned with 4px margin)
-            rect = QRect(x, 0, w, self.height())
-            x_pos = rect.right() - btn.width() - 4
-            y = rect.top() + (rect.height() - btn.height()) // 2
-            btn.move(x_pos, y)
+            # Ensure section is wide enough: text label rect + gap + button + gap
+            sec_rect = QRect(sec_x, 0, sec_w, self.height())
+            opt = self._make_style_option(col, sec_rect)
+            label_rect = self.style().subElementRect(QStyle.SE_HeaderLabel, opt, self)
+            fm = self.fontMetrics()
+            text_w = fm.horizontalAdvance(opt.text)
+
+            # Minimum width: left margin + text + gap + button + right margin
+            left_margin = label_rect.left() - sec_x
+            right_margin = gap
+            min_w = left_margin + text_w + gap + btn_w + right_margin
+            if sec_w < min_w:
+                self.blockSignals(True)
+                self.resizeSection(col, min_w)
+                self.blockSignals(False)
+                sec_w = min_w
+
+            # Place button right after the text, vertically centred
+            x_pos = self._text_end_x(col) + gap
+            y_pos = (self.height() - btn_h) // 2
+            btn.move(x_pos, y_pos)
             btn.show()
 
 
@@ -342,7 +491,7 @@ if __name__ == "__main__":
 
     header.add_header_button(0, "Filter names", filter_dialog)
     header.add_header_button(2, "Filter cities")
-    header.add_header_help_button(3, "Filter scores","no_help_found.md")
+    header.add_header_help_button(3, "Filter scores", "no_help_found.md")
 
 
     # Connect signal to show which column was clicked

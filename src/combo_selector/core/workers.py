@@ -136,7 +136,7 @@ class ResultsWorker(QRunnable):
         try:
 
             # self.page.get_model().compute_suggested_score()
-            self.page.get_model().create_results_table()
+            # self.page.get_model().create_results_table()
             # self.page.get_model().compute_practical_2d_peak_capacity()
 
             self.signals.finished.emit()

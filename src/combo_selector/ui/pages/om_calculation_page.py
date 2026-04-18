@@ -121,6 +121,7 @@ class OMCalculationPage(QFrame):
         self.selected_metric_list = []
         self.threadpool = QThreadPool()
         self.selected_metric = None
+        self.selected_annotation = None
         self.selected_set = "Set 1"
         self.orthogonality_dict = {}
 
@@ -134,12 +135,14 @@ class OMCalculationPage(QFrame):
         # --- Plotting setup -----------------------------------------------
         self.fig = Figure(figsize=(15, 15),constrained_layout = True)
         self.canvas = FigureCanvas(self.fig)
+        self.canvas.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        self.canvas.updateGeometry()
         self.toolbar = CustomToolbar(self.canvas)
 
         self.selected_axe = self.canvas.figure.add_subplot(1, 1, 1)
         self.selected_axe.set_box_aspect(1)
-        self.selected_axe.set_xlim(0, 1)
-        self.selected_axe.set_ylim(0, 1)
+        # self.selected_axe.set_xlim(0, 1)
+        # self.selected_axe.set_ylim(0, 1)
 
         self.plot_utils = PlotUtils(fig=self.fig)
         self.plot_functions_map = {
@@ -196,13 +199,15 @@ class OMCalculationPage(QFrame):
                 lambda _, k=index: self.on_selector_changed(k)
             )
         self.om_calculate_btn.clicked.connect(self.compute_orthogonality_metric)
-        self.nb_bin.editingFinished.connect(self.update_bin_box_number)
+        # self.nb_bin.editingFinished.connect(self.update_bin_box_number)
         self.dataset_selector.currentTextChanged.connect(
             self.data_set_selection_changed_from_combobox
         )
 
         # 4. Connect Buttons
         self.table_toggle_button.changed.connect(lambda i, t: self.table_frame_stack.setCurrentIndex(i))
+        # self.canvas.figure.canvas.mpl_connect("button_press_event", self.on_click)
+        self.cid = self.fig.canvas.mpl_connect('pick_event', self.on_pick)
 
     def go_next(self):
         """Switch the table frame stack to the next page (wraps around).
@@ -258,7 +263,7 @@ class OMCalculationPage(QFrame):
             QFrame: Input section containing metric checklist and selectors.
         """
         input_title = QLabel("Input")
-        input_title.setFixedHeight(30)
+        input_title.setFixedHeight(40)
         input_title.setObjectName("TitleBar")
         input_title.setAlignment(Qt.AlignVCenter | Qt.AlignLeft)
         input_title.setContentsMargins(10, 0, 0, 0)
@@ -266,7 +271,7 @@ class OMCalculationPage(QFrame):
             background-color: #183881;
             color: white;
             font-weight:bold;
-            font-size: 16px;
+            font-size: 19px;
             border-top-left-radius: 10px;
             border-top-right-radius: 10px;
         """)
@@ -293,9 +298,6 @@ class OMCalculationPage(QFrame):
 
         # OM calculation group
         om_computing_group = self._create_om_calculation_group()
-        SectionHelpButton.for_group(group=om_computing_group,
-                                    title="Input section",
-                                    markdown_path="no_help_found.md")
 
         # OM selection group
         data_selection_group = self._create_om_selection_group()
@@ -312,12 +314,12 @@ class OMCalculationPage(QFrame):
         Returns:
             QGroupBox: Group box containing metric checklist and compute button.
         """
-        om_computing_group = QGroupBox("OM calculation")
+        om_computing_group = QGroupBox("Metric Calculation")
         om_calculation_layout = QVBoxLayout()
         om_computing_group.setLayout(om_calculation_layout)
         om_computing_group.setStyleSheet("""
-             QGroupBox {
-                font-size: 14px;
+            QGroupBox {
+                font-size: 16px;
                 font-weight: bold;
                 background-color: #e7e7e7;
                 color: #154E9D;
@@ -379,34 +381,45 @@ class OMCalculationPage(QFrame):
         ]
         self.om_tree_list = CheckableTreeList(metric_list)
         self.om_tree_list.setFixedHeight(175)
-        self.om_calculate_btn = QPushButton("Compute metrics")
+        self.om_calculate_btn = QPushButton("Compute Metrics")
 
         self.footnote = QLabel()
         self.footnote.setTextFormat(Qt.TextFormat.RichText)
         self.footnote.setWordWrap(True)
-        self.footnote.setText("<strong>OM</strong>: Orthogonoality metric<br><strong>NND</strong>: Nearest Neighbor Distance")
+        self.footnote.setText("<strong>NND</strong>: Nearest Neighbor Distance")
         self.footnote.setStyleSheet("font-size: 8pt;")
 
-        number_of_bin_layout = QHBoxLayout()
-        self.nb_bin = QSpinBox()
-        self.nb_bin.setFixedWidth(100)
-        self.nb_bin.setValue(14)
-        self.nb_bin_label = QLabel("Number of bin box:")
-        self.nb_bin_label.setObjectName("sub-title")
+        # number_of_bin_layout = QHBoxLayout()
+        # self.nb_bin = QSpinBox()
+        # self.nb_bin.setFixedWidth(100)
+        # self.nb_bin.setValue(14)
+        # self.nb_bin_label = QLabel("Number of bin box:")
+        # self.nb_bin_label.setObjectName("sub-title")
 
         #TODO disable
         # number_of_bin_layout.addWidget(self.nb_bin_label)
         # number_of_bin_layout.addWidget(self.nb_bin)
 
-        select_metric_title = QLabel("Select metrics to compute:")
+        select_metric_title = QLabel("Select Metric to Compute:")
         select_metric_title.setObjectName("sub-title")
 
-        om_calculation_layout.addWidget(select_metric_title)
+        select_metric_help_btn = SectionHelpButton(
+            title="Select Metric",
+            markdown_path="markdown/select_metric.md",
+            parent=om_computing_group,
+        )
+
+        select_metric_layout = QHBoxLayout()
+        select_metric_layout.addWidget(select_metric_title)
+        select_metric_layout.addWidget( select_metric_help_btn)
+        select_metric_layout.addStretch()
+
+        om_calculation_layout.addLayout(select_metric_layout)
         om_calculation_layout.addWidget(self.om_tree_list)
         om_calculation_layout.addWidget(self.footnote)
-        om_calculation_layout.addSpacing(15)
-        om_calculation_layout.addLayout(number_of_bin_layout)
-        om_calculation_layout.addSpacing(15)
+        # om_calculation_layout.addSpacing(15)
+        # om_calculation_layout.addLayout(number_of_bin_layout)
+        # om_calculation_layout.addSpacing(15)
         om_calculation_layout.addWidget(self.om_calculate_btn)
 
         return om_computing_group
@@ -417,10 +430,10 @@ class OMCalculationPage(QFrame):
         Returns:
             QGroupBox: Group box with dataset and metric selectors.
         """
-        data_selection_group = QGroupBox("OM selection")
+        data_selection_group = QGroupBox("Result Selection")
         data_selection_group.setStyleSheet(f"""
             QGroupBox {{
-                font-size: 14px;
+                font-size: 16px;
                 font-weight: bold;
                 background-color: #e7e7e7;
                 color: #154E9D;
@@ -449,35 +462,26 @@ class OMCalculationPage(QFrame):
         self.om_selection_layout = QVBoxLayout()
         self.om_selection_layout.setSpacing(6)
 
-        self.om_selection_layout.addWidget(QLabel("Number of metric to compare:"))
+        self.om_selection_layout.addWidget(QLabel("Number of Metric to Compare:"))
         self.compare_number = QComboBox()
         self.compare_number.addItems(["1", "2"])
         self.om_selection_layout.addWidget(self.compare_number)
         self.om_selection_layout.addSpacing(20)
 
-        self.om_selection_layout.addWidget(QLabel("Select data set:"))
+        self.om_selection_layout.addWidget(QLabel("Select 2D Combination:"))
         self.dataset_selector = QComboBox()
         self.om_selection_layout.addWidget(self.dataset_selector)
 
         # Create 4 metric selectors
         self.om_selector1 = QComboBox()
         self.om_selector2 = QComboBox()
-        self.om_selector3 = QComboBox()
-        self.om_selector4 = QComboBox()
-        self.om_selector2.setDisabled(True)
-        self.om_selector3.setDisabled(True)
-        self.om_selector4.setDisabled(True)
 
-        self.add_dataset_selector("Select OM 1:", self.om_selector1)
-        self.add_dataset_selector("Select OM 2:", self.om_selector2)
-        self.add_dataset_selector("Select OM 3:", self.om_selector3)
-        self.add_dataset_selector("Select OM 4:", self.om_selector4)
+        self.add_dataset_selector("Select Metric 1:", self.om_selector1)
+        self.add_dataset_selector("Select Metric 2:", self.om_selector2)
 
         self.om_selector_list = [
             self.om_selector1,
-            self.om_selector2,
-            self.om_selector3,
-            self.om_selector4,
+            self.om_selector2
         ]
 
         # Map to track selector, axes, and scatter collections
@@ -486,6 +490,7 @@ class OMCalculationPage(QFrame):
                 "selector": selector,
                 "axe": None,
                 "scatter_collection": None,
+                "annotation": None,
             }
             for i, selector in enumerate(self.om_selector_list)
         }
@@ -508,8 +513,8 @@ class OMCalculationPage(QFrame):
         plot_frame_layout = QVBoxLayout(plot_frame)
         plot_frame_layout.setContentsMargins(0, 0, 0, 0)
 
-        plot_title = QLabel("OM visualization")
-        plot_title.setFixedHeight(30)
+        plot_title = QLabel("Metric Visualization ")
+        plot_title.setFixedHeight(40)
         plot_title.setObjectName("TitleBar")
         plot_title.setAlignment(Qt.AlignVCenter | Qt.AlignLeft)
         plot_title.setContentsMargins(10, 0, 0, 0)
@@ -517,7 +522,7 @@ class OMCalculationPage(QFrame):
             background-color: #183881;
             color: white;
             font-weight:bold;
-            font-size: 16px;
+            font-size: 19px;
             padding: 6px 12px;
             border-top-left-radius: 10px;
             border-top-right-radius: 10px;
@@ -535,6 +540,10 @@ class OMCalculationPage(QFrame):
         Returns:
             QWidget: Table frame containing styled results table.
         """
+        table_frame = QWidget()
+        table_frame_layout = QVBoxLayout(table_frame)
+        table_frame_layout.setContentsMargins(20, 20, 20, 20)
+
         self.table_frame_stack = QStackedWidget()
 
         # 2. Navigation Buttons (as seen in your image)
@@ -542,8 +551,15 @@ class OMCalculationPage(QFrame):
         self.btn_prev = QPushButton("<")
         self.btn_next = QPushButton(">")
 
-        self.table_toggle_button = AnimatedSegmentedToggle(("value based", "ranking based"))
+        self.table_toggle_button = AnimatedSegmentedToggle(title='Display Mode',labels = ("Value", "Rank"))
 
+        self.table_toggle_info_btn = SectionHelpButton(
+            title="Display Mode",
+            markdown_path="markdown/display_mode.md",
+            parent=table_frame,
+        )
+
+        self.table_toggle_info_btn.offset(y_offset=300)
         # Style the buttons to look like your image
         nav_style = """
             QPushButton {
@@ -561,21 +577,22 @@ class OMCalculationPage(QFrame):
 
         nav_layout.addStretch()  # Push buttons to the right
         nav_layout.addWidget(self.table_toggle_button)
+        nav_layout.addWidget(self.table_toggle_info_btn)
 
 
-        table_frame = QWidget()
-        table_frame_layout = QVBoxLayout(table_frame)
-        table_frame_layout.setContentsMargins(20, 20, 20, 20)
-
-        self.styled_table = StyledTable("OM result table")
+        self.styled_table = StyledTable("Metric Result Table")
         self.styled_table.set_header_label(
-            ["Set #", "2D Combination", "OM 1", "OM 2", "...", "OM n"]
+            ["Set #", "2D Combination", "Metric 1", "Metric 2", "...", "Metric n"]
         )
+
+        self.styled_table.add_help_button(1, "2D Combination", "markdown/2d_combination.md")
+
         self.styled_table.set_default_row_count(10)
 
-        self.metric_ranking_table = StyledTable("OM ranking table",value_format=".2f")
+        self.metric_ranking_table = StyledTable("Metric Ranking table",value_format=".1f")
+        self.metric_ranking_table.add_title_bar_info_button(markdown_path="markdown/metric_rank_table.md")
         self.metric_ranking_table.set_header_label(
-            ["Set #", "2D Combination", "Rank OM 1", "Rank OM 2", "...", "Rank OM n"]
+            ["Set #", "2D Combination", "Metric 1 Rank", "Metric 2 Rank", "...", "Metric n Rank"]
         )
         self.metric_ranking_table.set_default_row_count(10)
 
@@ -603,7 +620,7 @@ class OMCalculationPage(QFrame):
         self.progress_bar.rpb_setBarStyle("Pizza")
 
         # Add status label
-        self.progress_status_label = QLabel("Computing metrics...")
+        self.progress_status_label = QLabel("Computing Metrics...")
         self.progress_status_label.setStyleSheet("""
             QLabel {
                 color: #183881;
@@ -628,6 +645,36 @@ class OMCalculationPage(QFrame):
         overlay_layout.addStretch()
 
         return progress_overlay
+
+    def on_pick(self,event):
+        self.selected_axe = event.artist.axes
+
+        # Find selector index for current axes
+        matching_indices = [
+            index
+            for index, val in self.om_selector_map.items()
+            if val["axe"] == self.selected_axe
+        ]
+
+        if matching_indices:
+            index = matching_indices[0]
+            self.selected_annotation = self.om_selector_map[index]["annotation"]
+
+        ind = event.ind[0]
+        compound_name = self.model.get_compound_name_list()[ind]
+
+        selected_set = self.selected_axe.get_title()
+
+        data = self.model.get_retention_time_df()
+        orthogonality_dict = self.model.get_orthogonality_dict()
+        x = orthogonality_dict[selected_set]['x_values']
+        y = orthogonality_dict[selected_set]['y_values']
+
+        self.selected_annotation.xy = (x[ind], y[ind])
+        self.selected_annotation.set_text(f"Peak # {data['Peak #'][ind]}\n{compound_name}")
+        self.selected_annotation.set_visible(True)
+        self.fig.canvas.draw_idle()
+        self.fig.canvas.flush_events()
 
     def add_dataset_selector(self, label_text: str, combobox: QComboBox) -> None:
         """Add a labeled combo box to the OM selection layout.
@@ -857,7 +904,7 @@ class OMCalculationPage(QFrame):
         self.om_tree_list.unchecked_all()
         self.styled_table.clean_table()
         self.styled_table.set_header_label(
-            ["Set #", "2D Combination", "OM 1", "OM 2", "...", "OM n"]
+            ["Set #", "2D Combination", "Metric 1", "Metric 2", "...", "Metric n"]
         )
         self.plot_utils.set_orthogonality_data(self.model.get_orthogonality_dict())
         self.model.reset_om_status_computation_state()
@@ -961,7 +1008,7 @@ class OMCalculationPage(QFrame):
 
         om_metric_ranking =  self.model.get_orthogonality_metric_ranking_df()
         self.metric_ranking_table.set_header_label(list(om_metric_ranking.columns))
-        self.metric_ranking_table.async_set_table_data(om_metric_ranking, value_format =".2f" )
+        self.metric_ranking_table.async_set_table_data(om_metric_ranking)
         self.metric_ranking_table.set_table_proxy()
 
     # ==========================================================================
@@ -1003,8 +1050,8 @@ class OMCalculationPage(QFrame):
         plot_key = number_of_selectors + "PLOT"
 
         plot_layout_map = {
-            "1PLOT": [111, None, None, None],
-            "2PLOT": [121, 122, None, None]
+            "1PLOT": [111],
+            "2PLOT": [121, 122]
             # "3PLOT": [221, 222, 223, None],
             # "4PLOT": [221, 222, 223, 224],
         }
@@ -1016,20 +1063,25 @@ class OMCalculationPage(QFrame):
             index = str(i)
             if layout is not None:
                 axe = self.fig.add_subplot(layout)
-                self.fig.subplots_adjust(wspace=0.5, hspace=0.5)
                 axe.set_box_aspect(1)
                 axe.set_xlim(0, 1)
                 axe.set_ylim(0, 1)
 
                 self.draw_figure()
+                self.fig.canvas.flush_events()
 
                 self.om_selector_map[index]["axe"] = axe
                 self.om_selector_map[index]["scatter_collection"] = axe.scatter(
-                    [], [], s=20, c="k", marker="o", alpha=0.5
-                )
+                    [], [], s=20, c="k", marker="o", alpha=0.5,picker=5)
+                self.om_selector_map[index]["annotation"] = axe.annotate("", xy=(0, 0), xytext=(10, 10),
+                                                        textcoords="offset points",
+                                                        bbox=dict(boxstyle="round", fc="white", ec="gray"),
+                                                        arrowprops=dict(arrowstyle="->"))
+                self.om_selector_map[index]["annotation"].set_visible(False)
             else:
                 self.om_selector_map[index]["axe"] = None
                 self.om_selector_map[index]["scatter_collection"] = None
+                self.om_selector_map[index]["annotation"] = None
 
     def on_selector_changed(self, index: str) -> None:
         """Handle metric selector change.
@@ -1048,6 +1100,8 @@ class OMCalculationPage(QFrame):
         self.plot_utils.set_scatter_collection(
             self.om_selector_map[index]["scatter_collection"]
         )
+        self.plot_utils.set_annotation(self.om_selector_map[index]["annotation"])
+        self.selected_annotation = self.om_selector_map[index]["annotation"]
         self.update_figure()
 
     def refresh_displayed_plot(self) -> None:

@@ -34,6 +34,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from combo_selector.ui.config.table_color_config import COLOR_CONFIG_TABLE_FEASIBILITY, COLOR_CONFIG_TABLE_RECOMMENDATION
 from combo_selector.core.workers import ResultsWorkerComputeCustomOMScore
 from combo_selector.ui.widgets.checkable_tree_list import CheckableTreeList
 from combo_selector.ui.widgets.circle_progress_bar import RoundProgressBar
@@ -42,6 +43,7 @@ from combo_selector.ui.widgets.custom_toolbar import CustomToolbar
 from combo_selector.ui.widgets.line_widget import LineWidget
 from combo_selector.ui.widgets.neumorphism import BoxShadow
 from combo_selector.ui.widgets.style_table import StyledTable
+from combo_selector.core.plot_utils import PlotUtils
 from combo_selector.utils import resource_path
 
 # Dropdown arrow icon path
@@ -156,18 +158,21 @@ class ResultsPage(QFrame):
         self.progress_overlay.raise_()
 
         # --- Signal connections --------------------------------------------
-        self.custom_filter_widget.filter_regexp_changed.connect(self.filter_table)
-        self.select_ranking_type.currentTextChanged.connect(self.set_ranking_argument)
+        # self.custom_filter_widget.filter_regexp_changed.connect(self.filter_table)
+        # self.select_ranking_type.currentTextChanged.connect(self.set_ranking_argument)
         self.radio_button_group.buttonClicked.connect(
             self.set_use_suggested_om_score_flag
         )
         self.compute_score_btn.clicked.connect(self.start_om_computation)
-        self.compare_number.currentTextChanged.connect(self.update_om_selector_state)
 
-        for index, data in self.om_selector_map.items():
-            data["selector"].currentTextChanged.connect(
-                lambda _, k=index: self.on_selector_changed(k)
-            )
+        self.vizualation_settings_button_group.buttonClicked.connect(self.plot_graph)
+        self.top_number_button_group.buttonClicked.connect(self.plot_graph)
+        # self.compare_number.currentTextChanged.connect(self.update_om_selector_state)
+
+        # for index, data in self.om_selector_map.items():
+        #     data["selector"].currentTextChanged.connect(
+        #         lambda _, k=index: self.on_selector_changed(k)
+        #     )
 
     def get_model(self):
         """Return the orthogonality data model.
@@ -209,7 +214,7 @@ class ResultsPage(QFrame):
             QFrame: Input section containing all control groups.
         """
         input_title = QLabel("Input")
-        input_title.setFixedHeight(30)
+        input_title.setFixedHeight(40)
         input_title.setObjectName("TitleBar")
         input_title.setAlignment(Qt.AlignVCenter | Qt.AlignLeft)
         input_title.setContentsMargins(10, 0, 0, 0)
@@ -217,7 +222,7 @@ class ResultsPage(QFrame):
             background-color: #183881;
             color: white;
             font-weight:bold;
-            font-size: 16px;
+            font-size: 19px;
             border-top-left-radius: 10px;
             border-top-right-radius: 10px;
         """)
@@ -244,13 +249,16 @@ class ResultsPage(QFrame):
 
         # Create control groups
         orthogonality_score_group = self._create_score_calculation_group()
-        ranking_selection_group = self._create_ranking_group()
+        # ranking_selection_group = self._create_ranking_group()
+        vizualation_settings_group = self._create_vizualation_settings_group()
         orthogonality_compare_score_group = self._create_score_comparison_group()
 
         user_input_frame_layout.addWidget(orthogonality_score_group)
         user_input_frame_layout.addWidget(LineWidget("Horizontal"))
-        user_input_frame_layout.addWidget(ranking_selection_group)
-        user_input_frame_layout.addWidget(LineWidget("Horizontal"))
+        # user_input_frame_layout.addWidget(ranking_selection_group)
+        # user_input_frame_layout.addWidget(LineWidget("Horizontal"))
+        # user_input_frame_layout.addWidget(orthogonality_compare_score_group)
+        user_input_frame_layout.addWidget(vizualation_settings_group)
         user_input_frame_layout.addWidget(orthogonality_compare_score_group)
 
         return input_section
@@ -284,7 +292,7 @@ class ResultsPage(QFrame):
         Returns:
             QGroupBox: Group box with metric selection and compute button.
         """
-        orthogonality_score_group = QGroupBox("Orthogonality score calculation")
+        orthogonality_score_group = QGroupBox("Final Orthogonality assessment")
         orthogonality_score_group.setStyleSheet(self._get_group_stylesheet())
 
         orthogonality_score_layout = QVBoxLayout()
@@ -292,27 +300,41 @@ class ResultsPage(QFrame):
 
         self.om_list = CheckableTreeList()
         self.om_list.setFixedHeight(175)
-        self.compute_score_btn = QPushButton("Compute score")
+        self.compute_score_btn = QPushButton("Compute Score")
 
-        self.use_suggested_btn = QRadioButton("Use suggested score")
+        self.use_suggested_btn = QRadioButton("Use  Default Method")
         self.use_suggested_btn.setChecked(True)
-        self.use_computed_btn = QRadioButton("Use computed score")
+        self.use_computed_btn = QRadioButton("Use  Custom Method")
 
         self.radio_button_group = QButtonGroup()
         self.radio_button_group.addButton(self.use_suggested_btn)
         self.radio_button_group.addButton(self.use_computed_btn)
         self.radio_button_group.setExclusive(True)
 
-        use_suggested_layout = QHBoxLayout()
-        use_suggested_layout.addWidget(self.use_suggested_btn)
-        # use_suggested_layout.addWidget(SectionHelpButton(title="Suggested score",
-        #                                                    markdown_path="no_help_found.md",
-        #                                                    parent=orthogonality_score_group))
-        orthogonality_score_layout.addLayout(use_suggested_layout)
+        self.use_mean = QRadioButton("Metric Mean")
+        self.use_mean.setChecked(True)
+        self.use_mediane = QRadioButton("Metric  Mediane")
+
+        self.mean_median_button_group = QButtonGroup()
+        self.mean_median_button_group.addButton(self.use_mean)
+        self.mean_median_button_group.addButton(self.use_mediane)
+        self.mean_median_button_group.setExclusive(True)
+
+        self.compute_customized_frame = QFrame()
+        self.compute_customized_frame.setVisible(False)
+        compute_customized_layout = QVBoxLayout(self.compute_customized_frame)
+        compute_customized_layout.setContentsMargins(0, 0, 0, 0)
+        compute_customized_layout.addWidget(QLabel("Computed OM list:"))
+        compute_customized_layout.addWidget(self.om_list)
+        compute_customized_layout.addWidget(QLabel("Aggregation Method:"))
+        compute_customized_layout.addWidget(self.use_mean)
+        compute_customized_layout.addWidget(self.use_mediane)
+        compute_customized_layout.addWidget(self.compute_score_btn)
+
+        orthogonality_score_layout.addWidget(self.use_suggested_btn)
         orthogonality_score_layout.addWidget(self.use_computed_btn)
-        orthogonality_score_layout.addWidget(QLabel("Computed OM list:"))
-        orthogonality_score_layout.addWidget(self.om_list)
-        orthogonality_score_layout.addWidget(self.compute_score_btn)
+        orthogonality_score_layout.addWidget(self.compute_customized_frame)
+
         orthogonality_score_group.setLayout(orthogonality_score_layout)
 
         return orthogonality_score_group
@@ -367,6 +389,69 @@ class ResultsPage(QFrame):
 
         return orthogonality_compare_score_group
 
+    def _create_vizualation_settings_group(self) -> QGroupBox:
+        """Create score comparison group for side-by-side plots.
+
+        Returns:
+            QGroupBox: Group box with score selectors.
+        """
+        vizualation_settings_group = QGroupBox("Visualization Settings")
+        # vizualation_settings_group.setStyleSheet(self._get_group_stylesheet())
+        vizualation_settings_layout = QVBoxLayout()
+
+        self.coverage_vs_distribution_button = QRadioButton("Coverage vs Distribution")
+        # self.coverage_vs_distribution_button.setChecked(True)
+        self.peak_vs_selectivity_button = QRadioButton("Peak Capacity vs Selectivity")
+        # self.peak_vs_selectivity_button.setChecked(True)
+        self.suggested_rank_vs_peak_detection_button = QRadioButton("Suggested Rank vs Peak Detection Rate")
+        self.top_ranked_combination_button = QRadioButton("Top Ranked combination")
+        self.top_ranked_combination_button.setChecked(True)
+
+        self.vizualation_settings_button_group = QButtonGroup()
+        self.vizualation_settings_button_group.addButton(self.coverage_vs_distribution_button)
+        self.vizualation_settings_button_group.addButton(self.peak_vs_selectivity_button)
+        self.vizualation_settings_button_group.addButton(self.suggested_rank_vs_peak_detection_button)
+        self.vizualation_settings_button_group.addButton(self.top_ranked_combination_button)
+        self.vizualation_settings_button_group.setExclusive(True)
+
+        number_of_rank_displayed_group = QGroupBox("Number of Top Results to Display")
+        number_of_rank_displayed_layout = QVBoxLayout()
+        number_of_rank_displayed_group.setLayout(number_of_rank_displayed_layout)
+
+        self.top_10_button = QRadioButton("10")
+        self.top_10_button.setObjectName('10')
+        self.top_20_button = QRadioButton("20")
+        self.top_20_button.setObjectName('20')
+        self.top_20_button.setChecked(True)
+        self.top_50_button = QRadioButton("50")
+        self.top_50_button.setObjectName('50')
+        self.all_button = QRadioButton("All")
+        self.all_button.setObjectName('all')
+
+        number_of_rank_displayed_layout.addWidget(self.top_10_button)
+        number_of_rank_displayed_layout.addWidget(self.top_20_button)
+        number_of_rank_displayed_layout.addWidget(self.top_50_button)
+        number_of_rank_displayed_layout.addWidget(self.all_button)
+
+        self.top_number_button_group = QButtonGroup()
+        self.top_number_button_group.addButton(self.top_10_button)
+        self.top_number_button_group.addButton(self.top_20_button)
+        self.top_number_button_group.addButton(self.top_50_button)
+        self.top_number_button_group.addButton(self.all_button)
+
+        self.top_number_button_group.setExclusive(True)
+
+
+        vizualation_settings_layout.addWidget(self.coverage_vs_distribution_button)
+        vizualation_settings_layout.addWidget(self.peak_vs_selectivity_button)
+        vizualation_settings_layout.addWidget(self.suggested_rank_vs_peak_detection_button)
+        vizualation_settings_layout.addWidget(self.top_ranked_combination_button)
+        vizualation_settings_layout.addWidget(number_of_rank_displayed_group)
+
+        vizualation_settings_group.setLayout(vizualation_settings_layout)
+
+        return vizualation_settings_group
+
     def _create_plot_panel(self) -> QFrame:
         """Create the right plot panel for result visualization.
 
@@ -383,7 +468,7 @@ class ResultsPage(QFrame):
         plot_frame_layout.setContentsMargins(0, 0, 0, 0)
 
         plot_title = QLabel("Result visualization")
-        plot_title.setFixedHeight(30)
+        plot_title.setFixedHeight(40)
         plot_title.setObjectName("TitleBar")
         plot_title.setAlignment(Qt.AlignVCenter | Qt.AlignLeft)
         plot_title.setContentsMargins(10, 0, 0, 0)
@@ -391,7 +476,7 @@ class ResultsPage(QFrame):
             background-color: #183881;
             color: white;
             font-weight:bold;
-            font-size: 16px;
+            font-size: 19px;
             padding: 6px 12px;
             border-top-left-radius: 10px;
             border-top-right-radius: 10px;
@@ -400,6 +485,7 @@ class ResultsPage(QFrame):
         self.fig = Figure(figsize=(10, 6))
         self.canvas = FigureCanvas(self.fig)
         self.toolbar = CustomToolbar(self.canvas)
+        self.plot_utils = PlotUtils(fig=self.fig)
 
         self._ax = self.canvas.figure.add_subplot(1, 1, 1)
         self._ax.set_box_aspect(1)
@@ -420,36 +506,80 @@ class ResultsPage(QFrame):
         table_frame_layout = QHBoxLayout(table_frame)
         table_frame_layout.setContentsMargins(20, 20, 20, 20)
 
-        self.styled_table = StyledTable(title="Final result and ranking table",enable_decoration=True)
-        self.styled_table.set_header_label(
+        self.styled_table = StyledTable(title="Final result and ranking table",has_tab=True,enable_decoration=True)
+        self.styled_table.add_sheet(sheet_name='Orthogonality')
+        self.styled_table.add_sheet(color_config=COLOR_CONFIG_TABLE_FEASIBILITY,
+                                    bold_columns=[3,4,6],
+                                    sheet_name='Practical Feasibility',
+                                    enable_decoration = True)
+        self.styled_table.add_sheet(sheet_name='Separation Potential')
+        self.styled_table.add_sheet(color_config=COLOR_CONFIG_TABLE_RECOMMENDATION,
+                                    bold_columns=[6, 7, 8],
+                                    sheet_name='Final Recommendation',
+                                    enable_decoration = True)
+
+        self.orthogonality_table = self.styled_table.get_table_from_sheet(sheet_name='Orthogonality')
+        self.orthogonality_table.set_header_label(
             [
-                "Set #",
+                "Combination #",
                 "2D Combination",
-                "Chromatographic mode",
+                "Chromatographic Mode",
+                "Coverage Score",
+                "Distribution Score",
+                "Consensus Score",
+                "Consensus Ranking",
+                "Agreement Indicator",
+                "Outlier Group Flag",
+            ])
+
+        self.practical_feasibility_table = self.styled_table.get_table_from_sheet(sheet_name='Practical Feasibility')
+        self.practical_feasibility_table.set_header_label(
+            [
+                "Combination #",
+                "2D Combination",
+                "Chromatographic Mode",
+                "Complexity",
+                "Compatibility",
+                "Peak Detection Rate (%)",
+                "Peak Detection Status",
+            ])
+
+        self.seperational_potential_table = self.styled_table.get_table_from_sheet(sheet_name='Separation Potential')
+        self.seperational_potential_table.set_header_label(
+            [
+                "Combination #",
+                "2D Combination",
+                "Chromatographic Mode",
+                "Pratical 2D Peak Capacity ",
+                "Selectivity Factor",
+            ])
+
+        self.final_recommendation_table = self.styled_table.get_table_from_sheet(sheet_name='Final Recommendation')
+        self.final_recommendation_table.set_header_label(
+            [
+                "Combination #",
+                "2D Combination",
+                "Chromatographic Mode",
+                "Consensus Rank",
+                "Peak Detection Rate (%)",
+                "Pratical 2D Peak Capacity ",
                 "Compatibility",
                 "Complexity",
-                "Orthogonality score",
-                "Orthogonality ranking",
-                "Coverage score (𝛾)",
-                "Distribution score (U)",
-                "Agreement index",
-                "Outlier metric flag",
-                "Practical peak capacity",
-            ]
-        )
+                "Final Recommendation ",
+                "Suggested Rank",
+            ])
+        # self.styled_table.get_header().setSectionResizeMode(0, QHeaderView.Fixed)
+        # self.styled_table.get_header().setSectionResizeMode(1, QHeaderView.Stretch)
+        # self.styled_table.get_header().setSectionResizeMode(5, QHeaderView.Fixed)
+
+        # self.orthogonality_table.set_filter_key_column(2)
+
+        # self.custom_filter_widget = CustomFilterDialog(self)
+        # self.styled_table.add_header_button(
+        #     column=2, tooltip="Custom filter", widget_to_show=self.custom_filter_widget
+        # )
 
 
-        self.styled_table.get_header().setSectionResizeMode(0, QHeaderView.Fixed)
-        self.styled_table.get_header().setSectionResizeMode(1, QHeaderView.Stretch)
-        self.styled_table.get_header().setSectionResizeMode(5, QHeaderView.Fixed)
-        self.styled_table.set_default_row_count(10)
-
-        self.custom_filter_widget = CustomFilterDialog(self)
-        self.styled_table.add_header_button(
-            column=2, tooltip="Custom filter", widget_to_show=self.custom_filter_widget
-        )
-
-        self.styled_table.set_filter_key_column(2)
 
         table_frame_layout.addWidget(self.styled_table)
 
@@ -575,18 +705,19 @@ class ResultsPage(QFrame):
         logging.debug("Running ResultsPage: update_orthogonality_metric_list")
         self.update_orthogonality_metric_list(om_list)
 
-        logging.debug("Running ResultsPage: populate_om_score_selector")
-        self.populate_om_score_selector()
+        # logging.debug("Running ResultsPage: populate_om_score_selector")
+        # self.populate_om_score_selector()
 
-        logging.debug("Running ResultsPage: update_om_selector_state")
+        # logging.debug("Running ResultsPage: update_om_selector_state")
         self.update_om_selector_state()
 
         logging.debug("Running ResultsPage: update_results_table")
         self.update_results_table()
 
-        number_of_selectors = int(self.compare_number.currentText())
-        for i in range(number_of_selectors):
-            self.handle_selector_change(str(i), emit_plot=True)
+        self.plot_graph()
+        # number_of_selectors = int(self.compare_number.currentText())
+        # for i in range(number_of_selectors):
+        #     self.handle_selector_change(str(i), emit_plot=True)
 
     def update_orthogonality_metric_list(self, om_list: list) -> None:
         """Update the metric checklist with available metrics.
@@ -708,6 +839,7 @@ class ResultsPage(QFrame):
             - Updates plot layout
             - Triggers plot updates for active selectors
         """
+
         number_of_selectors = int(self.compare_number.currentText())
 
         for i, selector in enumerate(self.om_selector_list):
@@ -771,15 +903,17 @@ class ResultsPage(QFrame):
         self.selected_score = selector.currentText()
         self.selected_axe = self.om_selector_map[index]["axe"]
         self.selected_filtered_scatter_point = self.om_selector_map[index][
-            "filtered_scatter_point"
+            "scatter_collection"
         ]
+
+        self.plot_utils.set_axe(self.selected_axe)
+        self.plot_utils.set_scatter_collection(self.selected_filtered_scatter_point)
 
         if self.selected_axe and self.selected_score and emit_plot:
             logging.debug(
                 f"Plot OM vs 2D for index {index} with score {self.selected_score}"
             )
-            return
-            self.plot_orthogonality_vs_2d_peaks()
+            self.plot_graph()
 
     def on_selector_changed(self, index: str) -> None:
         """Slot triggered by QComboBox.currentTextChanged.
@@ -793,6 +927,34 @@ class ResultsPage(QFrame):
         """Redraw the matplotlib figure canvas."""
         self.fig.canvas.draw()
         self.fig.canvas.flush_events()
+
+    def plot_graph(self):
+
+        data = self.model.get_orthogonality_result_df()
+
+        if not data.empty:
+            self.plot_utils.set_orthogonality_result_data(data)
+
+            if self.selected_axe:
+                self.plot_utils.clean_axe()
+
+                if self.coverage_vs_distribution_button.isChecked():
+                    self.plot_utils.plot_coverage_vs_distribution()
+
+                if self.peak_vs_selectivity_button.isChecked():
+                    self.plot_utils.plot_peak_capacity_vs_consensus_score()
+
+                if self.suggested_rank_vs_peak_detection_button.isChecked():
+                    pass
+
+                if self.top_ranked_combination_button.isChecked():
+                    id = self.top_number_button_group.checkedId()
+
+                    button = self.top_number_button_group.button(id)
+
+                    top_rank = button.objectName()
+
+                    self.plot_utils.plot_top_ranked_combination(number_of_rank_to_show=top_rank)
 
     def plot_orthogonality_vs_2d_peaks(self) -> None:
         """Plot selected score vs. 2D peak capacity scatter plot.
@@ -862,10 +1024,16 @@ class ResultsPage(QFrame):
             - Recreates results table
             - Updates table display
         """
+
+        if self.use_computed_btn.isChecked():
+            self.compute_customized_frame.setVisible(True)
+        else:
+            self.compute_customized_frame.setVisible(False)
+
         flag = self.use_suggested_btn.isChecked()
         self.model.suggested_om_score_flag(flag)
-        self.model.update_table_results()
-        self.update_results_table()
+        # self.model.update_table_results()
+        # self.update_results_table()
 
     def update_results_table(self) -> None:
         """Update the results table with latest data.
@@ -875,10 +1043,30 @@ class ResultsPage(QFrame):
             - Loads data asynchronously into table
             - Sets up sorting/filtering proxy
         """
-        data = self.model.get_orthogonality_result_df()
-        self.styled_table.async_set_table_data(data)
-        self.styled_table.set_table_proxy()
-        self.custom_filter_widget.build_filter_list(list(data["2D Combination"]))
+        # data = self.model.get_orthogonality_result_df()
+        data = self.model.get_orthogonality_table()
+        if not data.empty:
+            self.orthogonality_table.async_set_table_data(data)
+            self.orthogonality_table.set_table_proxy()
+
+        data = self.model.get_practical_feasibility_table()
+        if not data.empty:
+            self.practical_feasibility_table.async_set_table_data(data)
+            self.practical_feasibility_table.set_table_proxy()
+
+        data = self.model.get_separational_potential_table()
+        if not data.empty:
+            self.seperational_potential_table.async_set_table_data(data)
+            self.seperational_potential_table.set_table_proxy()
+
+        data = self.model.get_final_recommendation_table()
+        if not data.empty:
+            self.final_recommendation_table.async_set_table_data(data)
+            self.final_recommendation_table.set_table_proxy()
+
+        # self.styled_table.async_set_table_data(data)
+        # self.styled_table.set_table_proxy()
+        # self.custom_filter_widget.build_filter_list(list(data["2D Combination"]))
 
     def filter_table(self, filter_dict: dict) -> None:
         """Apply custom filter to results table.

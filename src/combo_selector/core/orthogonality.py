@@ -23,6 +23,7 @@ from scipy import ndimage
 from scipy.stats import gmean, hmean, kendalltau, linregress, pearsonr, spearmanr,iqr,median_abs_deviation
 
 from combo_selector.core.orthogonality_utils import *
+from combo_selector.ui.widgets.nan_policy_widget import NanPolicyDialog
 
 CHROM_MODE = ['RPLC', 'HILIC', 'IEX', 'SEC', 'HIC', 'SFC','vs']
 
@@ -258,26 +259,16 @@ class Orthogonality(QObject):
     def __init__(self):
         """Initialize the Orthogonality object with default values and data structures."""
         super().__init__()
+        self.nan_policy_dialog = NanPolicyDialog(model=self)
+        self.removed_condition_list = []
+        self.removed_compound_list = []
         self.column_names = []
-        self.orthogonality_metric_df = None
-        self.orthogonality_group_ranking_df = None
-        self.orthogonality_metric_ranking_df = None
-        self.orthogonality_metric_ranking_corr_matrix_df = None
-        self.correlation_group_df = None
-        self.coverage_distribution_df = None
-        self.coverage_score_df = pd.DataFrame()
+        self.compound_name_list = []
         self.metric_rho_coverage = None
         self.group_rho_coverage = None
         self.group_rho_distribution = None
         self.metric_rho_distribution = None
-        self.orthogonality_result_df = None
-        self.retention_time_df = None
         self.norm_ret_time_table = None
-        self.normalized_retention_time_df = None
-        self.gradient_end_time_df = None
-        self.void_time_df = None
-        self.combination_df = None
-        self.orthogonality_metric_corr_matrix_df = None
         self.orthogonality_corr_mat = None
         self.orthogonality_score = None
         self.orthogonality_dict = None
@@ -294,6 +285,7 @@ class Orthogonality(QObject):
         self.retention_time_df_2d_peaks = None
         self.use_suggested_score = True
         self.status = "no_data"
+        self.peak_capacity_status = "no_data"
         self.init_data()
         self.reset_om_status_computation_state()
 
@@ -304,6 +296,14 @@ class Orthogonality(QObject):
             bool: True if NaN values are present in the data, False otherwise.
         """
         return self.has_nan_value
+
+    def get_compound_name_list(self) -> list:
+        """returns compound_name_list.
+
+        Returns:
+            list: The list of compounds name
+        """
+        return self.compound_name_list
 
     def get_removed_compound_list(self) -> list:
         """returns removed_compound_list.
@@ -391,7 +391,7 @@ class Orthogonality(QObject):
         """Get the DataFrame containing column combinations and peak information.
 
         Returns:
-            pd.DataFrame: DataFrame with Set #, 2D Combination, Number of peaks, 
+            pd.DataFrame: DataFrame with Set #, 2D Combination, Number of peaks,
                          and Hypothetical 2D peak capacity columns.
         """
         return self.combination_df
@@ -400,7 +400,7 @@ class Orthogonality(QObject):
         """Get the orthogonality metrics DataFrame.
 
         Returns:
-            pd.DataFrame: DataFrame containing all computed orthogonality metrics 
+            pd.DataFrame: DataFrame containing all computed orthogonality metrics
                          for each column combination set.
         """
         return self.orthogonality_metric_df
@@ -488,6 +488,7 @@ class Orthogonality(QObject):
         retention times, metrics, scores, and results.
         """
         self.table_data = []
+        self.compound_name_list = []
         self.norm_ret_time_table = []
         self.orthogonality_dict = {}
         self.orthogonality_score = {}
@@ -498,10 +499,28 @@ class Orthogonality(QObject):
         self.orthogonality_result_df = pd.DataFrame()
         self.correlation_group_df = pd.DataFrame()
         self.orthogonality_metric_df = pd.DataFrame()
+        self.orthogonality_table_df = pd.DataFrame()
+        self.practical_feasibility_table_df = pd.DataFrame()
+        self.separational_potential_table_df = pd.DataFrame()
+        self.final_recommendation_table_df = pd.DataFrame()
+        self.orthogonality_metric_df = pd.DataFrame()
+        self.orthogonality_group_ranking_df = pd.DataFrame()
+        self.orthogonality_metric_ranking_df = pd.DataFrame()
+        self.orthogonality_metric_ranking_corr_matrix_df = pd.DataFrame()
+        self.correlation_group_df = pd.DataFrame()
+        self.coverage_distribution_df = pd.DataFrame()
+        self.coverage_score_df = pd.DataFrame()
+        self.orthogonality_result_df = pd.DataFrame()
+        self.retention_time_df = pd.DataFrame()
+        self.normalized_retention_time_df = pd.DataFrame()
+        self.gradient_end_time_df = pd.DataFrame()
+        self.void_time_df = pd.DataFrame()
+        self.combination_df = pd.DataFrame()
+        self.orthogonality_metric_corr_matrix_df = pd.DataFrame()
 
         self.combination_df = pd.DataFrame(
             columns=[
-                "Set #",
+                "Combination #",
                 "2D Combination",
                 "Number of peaks",
                 "Hypothetical 2D peak capacity",
@@ -672,7 +691,7 @@ class Orthogonality(QObject):
         """Set the orthogonality value for each set based on a selected metric.
 
         Args:
-            selected_orthogonality (str): The key of the selected orthogonality metric 
+            selected_orthogonality (str): The key of the selected orthogonality metric
                                          (e.g., 'convex_hull', 'pearson_r').
 
         Side Effects:
@@ -699,7 +718,7 @@ class Orthogonality(QObject):
             tol (float): Tolerance value to adjust the threshold.
 
         Returns:
-            pd.DataFrame: DataFrame with 'Group' and 'Correlated OM' columns, where each
+            pd.DataFrame: DataFrame with 'Group' and 'Correlated Metrics' columns, where each
                          row represents a group of correlated metrics.
 
         Note:
@@ -711,7 +730,7 @@ class Orthogonality(QObject):
 
         orig_corr = self.orthogonality_metric_corr_matrix_df.corr()
 
-        correlated_metric = set()
+        Correlated_Metrics = set()
 
         for row in orig_corr.itertuples():
 
@@ -730,16 +749,16 @@ class Orthogonality(QObject):
             row_metric_list = sorted(set(row_metric_list))
 
             # you cannot add list in set() object
-            correlated_metric.add(tuple(row_metric_list))
+            Correlated_Metrics.add(tuple(row_metric_list))
 
-        sorted_correlated_metric = sorted(correlated_metric, key=len, reverse=True)
+        sorted_Correlated_Metrics = sorted(Correlated_Metrics, key=len, reverse=True)
 
-        groups, sorted_correlated_metric = cluster_and_fuse(sorted_correlated_metric)
+        groups, sorted_Correlated_Metrics = cluster_and_fuse(sorted_Correlated_Metrics)
 
         # If you pass a list of tuples directly → Pandas splits the tuples into multiple columns.
         # If you pass a dictionary with a column name → Pandas keeps each tuple as a single cell in that column.
         self.correlation_group_df = pd.DataFrame(
-            {"Correlated OM": list(sorted_correlated_metric)}
+            {"Correlated Metrics": list(sorted_Correlated_Metrics)}
         )
 
         # Add a new column with letters A-Z
@@ -748,7 +767,7 @@ class Orthogonality(QObject):
         )
 
         self.correlation_group_df = self.correlation_group_df[
-            ["Group", "Correlated OM"]
+            ["Group", "Correlated Metrics"]
         ]
 
         return self.correlation_group_df
@@ -773,15 +792,15 @@ class Orthogonality(QObject):
         # dictionary of rho coverage value per metric
         self.metric_rho_coverage = {}
 
-        temp_df = self.correlation_group_df.rename(columns={'Correlated OM': 'Correlated_OM'})
+        temp_df = self.correlation_group_df.rename(columns={'Correlated Metrics': 'Correlated_Metrics'})
 
         for row in temp_df.itertuples():
             group = row.Group
             rho_coverage_list = []
 
-            correlated_metric_list =  row.Correlated_OM
+            Correlated_Metrics_list =  row.Correlated_Metrics
 
-            for metric in correlated_metric_list:
+            for metric in Correlated_Metrics_list:
                 values = self.orthogonality_metric_ranking_df[metric]
                 rho_coverage = spearmanr(coverage_anchor,values)[0]
 
@@ -816,15 +835,15 @@ class Orthogonality(QObject):
         # dictionary of rho coverage value per metric
         self.metric_rho_distribution = {}
 
-        temp_df = self.correlation_group_df.rename(columns={'Correlated OM': 'Correlated_OM'})
+        temp_df = self.correlation_group_df.rename(columns={'Correlated Metrics': 'Correlated_Metrics'})
 
         for row in temp_df.itertuples():
             group = row.Group
             rho_distribution_list = []
 
-            correlated_metric_list =  row.Correlated_OM
+            Correlated_Metrics_list =  row.Correlated_Metrics
 
-            for metric in correlated_metric_list:
+            for metric in Correlated_Metrics_list:
                 values = self.orthogonality_metric_ranking_df[metric]
                 rho_distribution = spearmanr(distribution_anchor,values)[0]
 
@@ -856,7 +875,7 @@ class Orthogonality(QObject):
 
         Computes ρ coverage and ρ distribution for each group and assigns
         ``"Coverage-like"``, ``"Distribution-like"``, or ``"Mixed"`` categories
-        to ``correlation_group_df["Category"]``.
+        to ``correlation_group_df["Classification"]``.
 
         Side Effects:
             - Calls :meth:`compute_rho_coverage` and :meth:`compute_rho_distribution`.
@@ -883,7 +902,7 @@ class Orthogonality(QObject):
 
             category_list.append(category)
 
-        self.correlation_group_df['Category'] = category_list
+        self.correlation_group_df['Classification'] = category_list
 
     def update_metric_dataframes(self,metric_list):
         """Update orthogonality metric DataFrames after all computations.
@@ -944,7 +963,7 @@ class Orthogonality(QObject):
 
         # Adding column names directly
         self.orthogonality_metric_df.columns = self.orthogonality_metric_ranking_df.columns = \
-            (["Set #", "2D Combination"] + metric_list)
+            (["Combination #", "2D Combination"] + metric_list)
 
     def update_metric_ranking_dataframe(self):
         """Recompute the metric ranking DataFrame from the current metric scores.
@@ -1013,7 +1032,7 @@ class Orthogonality(QObject):
         """
         self.use_suggested_score = flag
 
-    def compute_suggested_score(self) -> None:
+    def compute_suggested_score_not_used(self) -> None:
         """Compute suggested orthogonality scores based on correlation groups.
 
         The suggested score is calculated as the mean of group means, where each group
@@ -1091,11 +1110,11 @@ class Orthogonality(QObject):
 
         # add column name
         self.orthogonality_result_df.columns = [
-            "Set #",
+            "Combination #",
             "2D Combination",
         ]
 
-        self.orthogonality_result_df["Chromatographic mode"] = (
+        self.orthogonality_result_df["Chromatographic Mode"] = (
             self.build_chromatographic_mode(self.orthogonality_result_df["2D Combination"]))
         # self.orthogonality_result_df.fillna(0)
         #
@@ -1124,7 +1143,116 @@ class Orthogonality(QObject):
         self.compute_distribution_score()
         self.compute_agreement_index()
         self.compute_outlier_metric_flag()
-        self.compute_practical_2d_peak_capacity()
+        self.compute_peak_detection_rate()
+        self.compute_peak_selectivity_factor()
+        # self.compute_practical_2d_peak_capacity()
+        self.update_result_with_new_peak_capacity()
+        self.compute_suggested_rank()
+
+        self.compute_final_recommendation_factor()
+
+        self.create_orthogonality_table()
+        self.create_practical_feasibility_table()
+        self.create_separational_potential_table()
+        self.create_final_recommendation_table()
+
+    def update_result_with_new_peak_capacity(self):
+
+        if (not self.coverage_score_df.empty and not
+        'Not available' in self.combination_df['Hypothetical 2D peak capacity'].values):
+
+            self.orthogonality_result_df['Practical 2D Peak Capacity'] = (
+                        self.combination_df['Hypothetical 2D peak capacity']*self.coverage_score_df)
+        else:
+            self.orthogonality_result_df['Practical 2D Peak Capacity'] = 'Not available'
+
+
+        if 'Practical 2D Peak Capacity' in self.separational_potential_table_df.columns:
+            self.separational_potential_table_df['Practical 2D Peak Capacity'] = self.orthogonality_result_df['Practical 2D Peak Capacity'].copy()
+        else:
+            self.separational_potential_table_df['Practical 2D Peak Capacity'] = 'Not available'
+
+        if 'Practical 2D Peak Capacity' in self.final_recommendation_table_df.columns:
+             self.final_recommendation_table_df['Practical 2D Peak Capacity'] = self.orthogonality_result_df['Practical 2D Peak Capacity'].copy()
+        else:
+            self.final_recommendation_table_df['Practical 2D Peak Capacity'] = 'Not available'
+
+        # self.compute_practical_2d_peak_capacity()
+
+        self.compute_suggested_rank()
+
+
+
+    def create_orthogonality_table(self):
+
+        column_name = [
+            "Combination #",
+            "2D Combination",
+            "Chromatographic Mode",
+            "Coverage Score",
+            "Distribution Score",
+            "Consensus Score",
+            "Consensus Ranking",
+            "Agreement Indicator",
+            "Outlier Group Flag"]
+
+        self.orthogonality_table_df = self.orthogonality_result_df[column_name].copy()
+
+    def create_practical_feasibility_table(self):
+        column_name = [
+            "Combination #",
+            "2D Combination",
+            "Chromatographic Mode",
+            "Complexity",
+            "Compatibility",
+            "Peak Detection Rate (%)",
+            "Peak Detection Rate Status"]
+
+        self.practical_feasibility_table_df = self.orthogonality_result_df[column_name].copy()
+
+    def create_separational_potential_table(self):
+        column_name = [
+            "Combination #",
+            "2D Combination",
+            "Chromatographic Mode",
+            "Practical 2D Peak Capacity",
+            "Selectivity Factor"]
+
+        self.separational_potential_table_df = self.orthogonality_result_df[column_name].copy()
+
+    def create_final_recommendation_table(self):
+        column_name = [
+                "Combination #",
+                "2D Combination",
+                "Chromatographic Mode",
+                "Consensus Ranking",
+                "Peak Detection Rate (%)",
+                "Practical 2D Peak Capacity",
+                "Compatibility",
+                "Complexity",
+                "Final Recommendation",
+                "Suggested Rank",
+            ]
+
+        self.final_recommendation_table_df = self.orthogonality_result_df[column_name].copy()
+
+
+    def get_orthogonality_table(self):
+
+        return self.orthogonality_table_df
+
+    def get_practical_feasibility_table(self):
+
+        return self.practical_feasibility_table_df
+
+    def get_separational_potential_table(self):
+
+        return self.separational_potential_table_df
+
+    def get_final_recommendation_table(self):
+
+        return self.final_recommendation_table_df
+
     def set_orthogonality_ranking_argument(self, argument: str) -> None:
         """Set the ranking criterion for the results table.
 
@@ -1153,17 +1281,17 @@ class Orthogonality(QObject):
         self.orthogonality_group_ranking_df = pd.DataFrame()
         metric_rank_df = self.orthogonality_metric_ranking_df.copy()
 
-        for group, correlated_metric_list in zip(self.correlation_group_df['Group'],
-                                                 self.correlation_group_df['Correlated OM']):
+        for group, Correlated_Metrics_list in zip(self.correlation_group_df['Group'],
+                                                 self.correlation_group_df['Correlated Metrics']):
 
-            self.orthogonality_group_ranking_df[group] = metric_rank_df[correlated_metric_list].median(axis=1)
+            self.orthogonality_group_ranking_df[group] = metric_rank_df[Correlated_Metrics_list].median(axis=1)
 
 
         consensus_orthogonality_ranking_df = self.orthogonality_group_ranking_df.sum(axis=1)
 
         consensus_orthogonality_ranking_df = consensus_orthogonality_ranking_df.rank(ascending=True, method='average')
 
-        self.orthogonality_result_df['Orthogonality ranking'] = consensus_orthogonality_ranking_df
+        self.orthogonality_result_df['Consensus Ranking'] = consensus_orthogonality_ranking_df
 
     def compute_consensus_orthogonality_score(self):
         """Compute the consensus orthogonality score as the median of group medians.
@@ -1178,17 +1306,17 @@ class Orthogonality(QObject):
         self.consensus_orthogonality_score_df = pd.DataFrame()
         metric_df = self.orthogonality_metric_df.copy()
 
-        for group, correlated_metric_list in zip(self.correlation_group_df['Group'],
-                                                 self.correlation_group_df['Correlated OM']):
+        for group, Correlated_Metrics_list in zip(self.correlation_group_df['Group'],
+                                                 self.correlation_group_df['Correlated Metrics']):
 
-            self.consensus_orthogonality_score_df[group] = metric_df[correlated_metric_list].median(axis=1)
+            self.consensus_orthogonality_score_df[group] = metric_df[Correlated_Metrics_list].median(axis=1)
 
 
         self.consensus_orthogonality_score_df = self.consensus_orthogonality_score_df.median(axis=1)
 
         # self.consensus_orthogonality_score_df = self.consensus_orthogonality_score_df.rank(ascending=False, method='average')
 
-        self.orthogonality_result_df['Orthogonality score'] = self.consensus_orthogonality_score_df
+        self.orthogonality_result_df['Consensus Score'] = self.consensus_orthogonality_score_df
 
     def compute_coverage_score(self):
         """Compute the coverage score as the median of coverage-like metrics.
@@ -1203,14 +1331,17 @@ class Orthogonality(QObject):
         self.coverage_score_df = pd.DataFrame()
         metric_df = self.orthogonality_metric_df.copy()
         coverage_metric = []
-        for category, correlated_metric_list in zip(self.correlation_group_df['Category'],
-                                                 self.correlation_group_df['Correlated OM']):
+        for category, Correlated_Metrics_list in zip(self.correlation_group_df['Classification'],
+                                                 self.correlation_group_df['Correlated Metrics']):
             if category == "Coverage-like":
-                coverage_metric += correlated_metric_list
+                coverage_metric += Correlated_Metrics_list
 
-        self.coverage_score_df = metric_df[coverage_metric].median(axis=1)
+        if coverage_metric:
+            self.coverage_score_df = metric_df[coverage_metric].median(axis=1)
+        else:
+            self.coverage_score_df = pd.DataFrame()
 
-        self.orthogonality_result_df['Coverage score'] = self.coverage_score_df
+        self.orthogonality_result_df['Coverage Score'] = self.coverage_score_df
 
     def compute_distribution_score(self):
         """Compute the distribution score as the median of distribution-like metrics.
@@ -1226,14 +1357,14 @@ class Orthogonality(QObject):
         metric_df = self.orthogonality_metric_df.copy()
 
         distribution_metric = []
-        for category, correlated_metric_list in zip(self.correlation_group_df['Category'],
-                                                    self.correlation_group_df['Correlated OM']):
+        for category, Correlated_Metrics_list in zip(self.correlation_group_df['Classification'],
+                                                    self.correlation_group_df['Correlated Metrics']):
             if category == "Distribution-like":
-                distribution_metric += correlated_metric_list
+                distribution_metric += Correlated_Metrics_list
 
         self.distribution_score_df = metric_df[distribution_metric].median(axis=1)
 
-        self.orthogonality_result_df['Distribution score'] = self.distribution_score_df
+        self.orthogonality_result_df['Distribution Score'] = self.distribution_score_df
 
     def compute_agreement_index(self):
         """Compute the agreement index across correlation groups.
@@ -1250,7 +1381,7 @@ class Orthogonality(QObject):
 
         agreement_index_df = 1 - (agreement_index_df / (self.nb_combination - 1))
 
-        self.orthogonality_result_df['Agreement index'] = agreement_index_df
+        self.orthogonality_result_df['Agreement Indicator'] = agreement_index_df
 
     def compute_outlier_metric_flag(self):
         """Flag combinations whose group rank deviates more than τ from the group median.
@@ -1309,10 +1440,10 @@ class Orthogonality(QObject):
         metric_rank_df = self.orthogonality_metric_ranking_df.copy()
         tau = 3
 
-        for group, correlated_metric_list in zip(self.correlation_group_df['Group'],
-                                                 self.correlation_group_df['Correlated OM']):
+        for group, Correlated_Metrics_list in zip(self.correlation_group_df['Group'],
+                                                 self.correlation_group_df['Correlated Metrics']):
 
-            rank_per_metric_per_group[group] = metric_rank_df[correlated_metric_list].apply(list, axis=1)
+            rank_per_metric_per_group[group] = metric_rank_df[Correlated_Metrics_list].apply(list, axis=1)
 
         median_g = self.orthogonality_group_ranking_df
 
@@ -1328,7 +1459,135 @@ class Orthogonality(QObject):
 
         outlier_metric_flag = outlier_group.T.combine(outlier_count.T, lambda s1,s2: write_outlier_result(zip(s1,s2)))
 
-        self.orthogonality_result_df['Outlier metric flag'] = outlier_metric_flag
+        self.orthogonality_result_df['Outlier Group Flag'] = outlier_metric_flag
+
+    def compute_peak_detection_rate(self):
+
+        def set_peak_detection_rate_status(peak_detection_rate):
+            """         •    Red: < 40 %
+            •    Orange: 40–60 %
+            •    Yellow: 60–80 %
+            •    Green: > 80 %
+
+            •	Below Threshold
+            •	Caution
+            •	Acceptable
+            •	High
+            """
+            if peak_detection_rate < 40:
+                return 'Below Threshold'
+            elif 40 <= peak_detection_rate < 60:
+                return 'Caution'
+            elif 60 <= peak_detection_rate < 80:
+                return 'Acceptable'
+            else:
+                return 'High'
+
+        nb_of_max_peak = self.combination_df["Number of peaks"].max()
+        self.orthogonality_result_df["Peak Detection Rate (%)"] = (self.combination_df["Number of peaks"]
+                                                                  .apply(lambda x : (x/nb_of_max_peak)*100))
+        self.orthogonality_result_df["Peak Detection Rate Status"] = (self.orthogonality_result_df["Peak Detection Rate (%)"]
+                                                                      .apply(lambda x: set_peak_detection_rate_status(x)))
+
+    def compute_peak_selectivity_factor(self):
+        self.orthogonality_result_df["Selectivity Factor"] = 'Not available'
+
+    def compute_final_recommendation_factor(self):
+
+        def is_highly_recommended(row):
+
+            top_10_suggested_rank = int(0.1*self.orthogonality_result_df["Suggested Rank"].max())
+            peak_rate = row['Peak Detection Rate (%)']
+            suggested_rank = row['Suggested Rank']
+            compatibility = row['Compatibility']
+            complexity = row['Complexity']
+
+            if (peak_rate > 80
+                    and suggested_rank <= top_10_suggested_rank
+                    and compatibility in ['Good','Moderate']
+                    and complexity in ['Low','Moderate']):
+
+                return True
+            else:
+                return False
+
+        def is_recommended(row):
+
+            bottom_30_suggested_rank = int(0.7*self.orthogonality_result_df["Suggested Rank"].max())
+            peak_rate = row['Peak Detection Rate (%)']
+            suggested_rank = row['Suggested Rank']
+            compatibility = row['Compatibility']
+            complexity = row['Complexity']
+
+            if (peak_rate > 60
+                    and suggested_rank >= bottom_30_suggested_rank
+                    and compatibility  not in ['Good']
+                    and complexity not in ['Low']):
+
+                return True
+            else:
+                return False
+
+        def is_use_with_caution(row):
+
+            top_30_suggested_rank = int(0.3 * self.orthogonality_result_df["Suggested Rank"].max())
+            top_60_suggested_rank = int(0.6* self.orthogonality_result_df["Suggested Rank"].max())
+            peak_rate = row['Peak Detection Rate (%)']
+            suggested_rank = row['Suggested Rank']
+            compatibility = row['Compatibility']
+            complexity = row['Complexity']
+
+            if (40 <= peak_rate <70
+                    or top_30_suggested_rank <= suggested_rank <= top_60_suggested_rank
+                    or compatibility  in ['Good']
+                    or complexity in ['Low']):
+
+                return True
+            else:
+                return False
+
+        def is_not_recommended(row):
+            top_30_suggested_rank = int(0.3 * self.orthogonality_result_df["Suggested Rank"].max())
+            suggested_rank = row['Suggested Rank']
+            peak_rate = row['Peak Detection Rate (%)']
+
+            if peak_rate < 40 or suggested_rank < top_30_suggested_rank:
+                return True
+            else:
+                return False
+
+        def set_final_recommendation(row):
+
+            if is_highly_recommended(row):
+                return 'Highly recommended'
+
+            if is_not_recommended(row):
+                return 'Not recommended'
+
+            if is_recommended(row):
+                return 'Recommended'
+
+            if is_use_with_caution(row):
+                return 'Use with caution'
+
+            return '---'
+
+        self.orthogonality_result_df["Final Recommendation"] = self.orthogonality_result_df.apply(lambda row: set_final_recommendation(row),axis=1)
+
+    def compute_suggested_rank(self):
+
+        practical_peak_capacity_rank = (self.orthogonality_result_df['Practical 2D Peak Capacity']
+                                        .rank(ascending=False, method='average'))
+
+        if (self.peak_capacity_status in ["peak_capacity_loaded"] and
+                'Consensus Ranking' in self.orthogonality_result_df.columns):
+            self.orthogonality_result_df["Suggested Rank"] = pd.concat([practical_peak_capacity_rank,
+                                                                        self.orthogonality_result_df['Consensus Ranking']], axis=1).mean(axis=1)
+            self.orthogonality_result_df["Suggested Rank"] = self.orthogonality_result_df["Suggested Rank"].rank(ascending=True, method='average')
+        elif 'Consensus Ranking' in self.orthogonality_result_df.columns:
+            self.orthogonality_result_df["Suggested Rank"] = self.orthogonality_result_df['Consensus Ranking']
+        else:
+            self.orthogonality_result_df["Suggested Rank"] = 'Not available'
 
 
     def compute_practical_2d_peak_capacity(self) -> None:
@@ -1344,12 +1603,24 @@ class Orthogonality(QObject):
         Note:
             Only runs if status is 'peak_capacity_loaded'.
         """
-        if self.status not in ["peak_capacity_loaded"]:
-            return
+        if self.peak_capacity_status in ["peak_capacity_loaded"] and not self.coverage_score_df.empty:
 
-        if not self.coverage_score_df.empty:
-            self.orthogonality_result_df['Practical peak capacity'] = (
-                    self.combination_df['Hypothetical 2D peak capacity']*self.coverage_score_df)
+            self.orthogonality_result_df['Practical 2D Peak Capacity'] = (
+                        self.combination_df['Hypothetical 2D peak capacity']*self.coverage_score_df)
+        else:
+            self.orthogonality_result_df['Practical 2D Peak Capacity'] = 'Not available'
+
+        if 'Practical 2D Peak Capacity' in self.separational_potential_table_df.columns:
+            self.separational_potential_table_df['Practical 2D Peak Capacity'] =\
+                self.orthogonality_result_df['Practical 2D Peak Capacity']
+        else:
+            self.separational_potential_table_df['Practical 2D Peak Capacity'] = 'Not available'
+
+        if 'Practical 2D Peak Capacity' in self.final_recommendation_table_df.columns:
+            self.orthogonality_result_df['Practical 2D Peak Capacity']
+        else:
+            self.final_recommendation_table_df['Practical 2D Peak Capacity'] = 'Not available'
+
 
     def compute_orthogonality_factor(self, method_list: list) -> None:
         """Compute the orthogonality factor as the product of selected method values.
@@ -1416,7 +1687,8 @@ class Orthogonality(QObject):
         """
         data_frame_copy = self.retention_time_df.copy()
 
-        for column_name in data_frame_copy.columns[1:]:
+        #[2:] is because first two columns are compound# and compound name
+        for column_name in data_frame_copy.columns[2:]:
             column_value = data_frame_copy[column_name]
 
             # maximum and Rt0 retention time
@@ -1456,7 +1728,8 @@ class Orthogonality(QObject):
         """
         data_frame_copy = self.retention_time_df.copy()
 
-        for column_name in data_frame_copy.columns[1:]:
+        #[2:] is because first two columns are compound# and compound name
+        for column_name in data_frame_copy.columns[2:]:
             column_value = data_frame_copy[column_name]
 
             # maximum and Rt0 retention time
@@ -1497,7 +1770,8 @@ class Orthogonality(QObject):
         """
         data_frame_copy = self.retention_time_df.copy()
 
-        for column_name in data_frame_copy.columns[1:]:
+        #[2:] is because first two columns are compound# and compound name
+        for column_name in data_frame_copy.columns[2:]:
             column_value = data_frame_copy[column_name]
 
             # maximum and Rt0 retention time
@@ -1588,9 +1862,9 @@ class Orthogonality(QObject):
             - Calls update_combination_df() to refresh combination DataFrame
             - Removes sets with no valid data points
         """
-        num_columns = len(self.column_names)
+        num_columns = len(self.column_names)-1
 
-        current_column = 0
+        current_column = 1
         set_number = 1
 
         while current_column < num_columns:
@@ -1598,7 +1872,7 @@ class Orthogonality(QObject):
             x_values = self.normalized_retention_time_df[current_column_name]
 
             if num_columns > 2:
-                next_column_list = list(range(current_column + 1, num_columns))
+                next_column_list = list(range(current_column + 1, num_columns+1))
             else:
                 # the dataframe only has 2 column
                 next_column_list = [1]
@@ -1606,6 +1880,7 @@ class Orthogonality(QObject):
             for next_column in next_column_list:
                 next_column_name = self.column_names[next_column]
                 set_key = f"Set {set_number}"
+                print(set_key+'in normalized retention time')
                 y_values = self.normalized_retention_time_df[next_column_name]
 
                 # check if x,y pair element contains at least one empty item.
@@ -1668,7 +1943,41 @@ class Orthogonality(QObject):
 
         self.status = "normalized"
 
-    def clean_nan_value(self, option: str) -> None:
+    def remove_compound(self):
+        self.removed_compound_list = []
+
+        for row_data in self.retention_time_df.iterrows():
+            peak_retention_time = row_data[1]
+            nan_count = (peak_retention_time.isna() | (peak_retention_time == "")).sum()
+
+            # nan_policy_threshold is % of total condition
+            if (nan_count * 100) / self.nb_condition > self.nan_policy_option1_threshold:
+                self.removed_compound_list.append(row_data[1][1])
+
+        self.retention_time_df = self.retention_time_df.drop(self.removed_compound_list)
+        self.retention_time_df = self.retention_time_df.fillna("")
+
+    def remove_condition(self):
+        self.removed_condition_list = []
+
+        for column_data in self.retention_time_df.T.iterrows():
+            condition_retention_time = column_data[1]
+            nan_count = (condition_retention_time.isna() | (condition_retention_time == "")).sum()
+
+            # nan_policy_threshold is % of total condition
+            if (nan_count * 100) / self.nb_peaks > self.nan_policy_option2_threshold:
+                self.removed_condition_list.append(column_data[0])
+
+        self.retention_time_df = self.retention_time_df.drop(columns=self.removed_condition_list)
+        self.retention_time_df = self.retention_time_df.fillna("")
+
+    def clear_all_nan(self):
+        self.removed_compound_list = []
+        self.removed_condition_list = []
+
+        self.retention_time_df.fillna("", inplace=True)
+
+    def clean_nan_value(self, option_list: str) -> None:
         """Handle NaN values in retention time data according to the specified option.
 
         Args:
@@ -1681,50 +1990,36 @@ class Orthogonality(QObject):
             - Updates orthogonality_dict with cleaned x,y series
             - Calls update_combination_df() to refresh combination DataFrame
         """
-        self.removed_compound_list = []
-        if option == "option 1":
-            for row_data in self.retention_time_df.iterrows():
-                peak_retention_time = row_data[1]
-                nan_count = peak_retention_time.isna().sum()
 
-                # nan_policy_threshold is % of total condition
-                if (nan_count * 100) / self.nb_condition > self.nan_policy_option1_threshold:
-                    self.removed_compound_list.append(row_data[0])
+        function_map = {"option 1": self.remove_compound,
+                        "option 2": self.remove_condition,
+                        "option 3": self.clear_all_nan,
+                        }
 
-            self.retention_time_df = self.retention_time_df.drop(self.removed_compound_list)
-            self.retention_time_df = self.retention_time_df.fillna("")
+        for option in option_list:
+            function_map[option]()
 
-        self.removed_condition_list = []
-        if option == "option 2":
-            for column_data in self.retention_time_df.T.iterrows():
-                condition_retention_time = column_data[1]
-                nan_count = condition_retention_time.isna().sum()
-
-                # nan_policy_threshold is % of total condition
-                if (nan_count * 100) / self.nb_peaks > self.nan_policy_option2_threshold:
-                    self.removed_condition_list.append(column_data[0])
-
-            self.retention_time_df = self.retention_time_df.drop(columns=self.removed_condition_list)
-            self.retention_time_df = self.retention_time_df.fillna("")
-
-            #update column_names list after droping some of them
-            self.column_names = self.retention_time_df.columns.tolist()
-
-        if option == "option 3":
-            self.retention_time_df = self.retention_time_df.fillna("")
+        # update column_names list after droping some of them
+        self.column_names = self.retention_time_df.columns.tolist()[2:]
 
         #minus 1 to remove the peak column
-        num_columns = len(self.column_names)-1
+        num_columns = len(self.column_names)
 
         #always start at 1 because index 0 is for the peak# column
-        current_column = 1
+        current_column = 0
         set_number = 1
+
+        #initial orthogonality dict and table_data
+        self.orthogonality_dict = {}
+        self.table_data = []
 
         while current_column < num_columns:
             current_column_name = self.column_names[current_column]
             x_values = self.retention_time_df[current_column_name]
 
             if num_columns > 2:
+                # current_column + 1 means we start the column next to the current column
+                # num_columns + 1 is used because range function always stop at n-1
                 next_column_list = list(range(current_column + 1, num_columns))
             else:
                 # the dataframe only has 2 column
@@ -1733,7 +2028,26 @@ class Orthogonality(QObject):
             for next_column in next_column_list:
                 next_column_name = self.column_names[next_column]
                 set_key = f"Set {set_number}"
+                print(set_key + ' in clean_nan_value')
+                set_title = f"{current_column_name} vs {next_column_name}"
                 y_values = self.retention_time_df[next_column_name]
+
+                # Initialize table data by adding a new row with None values
+                self.table_data.append([None] * len(METRIC_MAPPING))
+
+                # Update metadata columns
+                self.update_metrics(set_key, "set_number", set_number)
+                self.update_metrics(set_key, "title", set_title)
+                self.update_metrics(set_key, "orthogonality_score", 0)
+                self.update_metrics(set_key, "orthogonality_ranking", 0)
+                self.update_metrics(set_key, "coverage_score", 0)
+                self.update_metrics(set_key, "distribution_score", 0)
+                self.update_metrics(set_key, "agreement_index", 0)
+                self.update_metrics(set_key, "outlier_metric_flag", 0)
+                self.update_metrics(set_key, "orthogonality_value", 0)
+                self.update_metrics(set_key, "2d_peak_capacity", 'Not available')
+                self.update_metrics(set_key, "heinisch", 0)
+
 
                 # check if x,y pair element contains at least one empty item.
                 # if an empty item exist on an x,y pair, that pair will be deleted from the list
@@ -1752,215 +2066,16 @@ class Orthogonality(QObject):
                     y_series = pd.Series(y_series)
 
                     nb_peaks = len(x_y_pair_list)
-
-                    # Update orthogonality dictionary
-                    self.orthogonality_dict[set_key]["x_values"] = x_series
-                    self.orthogonality_dict[set_key]["y_values"] = y_series
-                    self.orthogonality_dict[set_key]["nb_peaks"] = nb_peaks
-
-                    set_number = extract_set_number(set_key)
-                    self.update_metrics(
-                        set_key, "nb_peaks", nb_peaks, table_row_index=set_number - 1
-                    )
-
-                else:
-                    self.orthogonality_dict.pop(set_key)
-
-                set_number += 1
-
-            current_column += 1
-
-        self.update_combination_df()
-
-    def update_combination_df(self) -> None:
-        """Update the combination DataFrame with set information and peak counts.
-
-        Only updates if the 'Hypothetical 2D peak capacity' column is empty.
-
-        Side Effects:
-            Updates combination_df with data from table_data (columns 0-3).
-        """
-        # Check if combination_df exists and has the third column filled (not empty)
-        if self.combination_df["Hypothetical 2D peak capacity"].isnull().all():
-            # Otherwise, fill with two columns
-            combination_table = [row[0:4] for row in self.table_data]
-            self.combination_df = pd.DataFrame(
-                combination_table,
-                columns=[
-                    "Set #",
-                    "2D Combination",
-                    "Number of peaks",
-                    "Hypothetical 2D peak capacity",
-                ],
-            )
-        else:
-            # already filled
-            return
-
-    def set_compatibility(self):
-        """Assign a hardware compatibility label to each combination.
-
-        Compares the two chromatographic modes in each combination and assigns
-        ``"High"``, ``"Moderate"``, or ``"Low"`` to the ``"Compatibility"`` column.
-
-        Side Effects:
-            - Adds ``"Compatibility"`` column to ``self.orthogonality_result_df``.
-        """
-
-        compatibility_list = []
-
-        for mode in self.orthogonality_result_df["Chromatographic mode"]:
-            parts = mode.split(' vs ')
-            if len(parts) == 2:
-                a, b = parts[0].strip(), parts[1].strip()
-
-                if a == b:
-                    compatibility_list.append('High')
-                elif a != b and {a, b} == {'HILIC', 'RPLC'}:
-                    compatibility_list.append('Moderate')
-                else:
-                    compatibility_list.append('Low')
-            else:
-                compatibility_list.append('Unknown')
-
-        self.orthogonality_result_df["Compatibility"] = compatibility_list
-
-    def set_complexity(self):
-        """Assign a method development complexity label to each combination.
-
-        Compares the two chromatographic modes and assigns ``"Low"``,
-        ``"Medium"``, ``"High"``, or ``"NC"`` to the ``"Complexity"`` column.
-
-        Side Effects:
-            - Adds ``"Complexity"`` column to ``self.orthogonality_result_df``.
-        """
-        complexity_list = []
-
-        for mode in self.orthogonality_result_df["Chromatographic mode"]:
-            parts = mode.split(' vs ')
-
-            if len(parts) == 2:
-                a, b = parts[0].strip(), parts[1].strip()
-
-                if a == b:
-                    complexity_list.append('Low')
-                elif a != b and {a, b} == {'HILIC','RPLC'}:
-                    complexity_list.append('Medium')
-                elif a in ['SFC'] or b in ['SFC']:
-                    complexity_list.append('High')
-                else:
-                    complexity_list.append('NC')
-            else:
-                complexity_list.append('Unknown')
-
-        self.orthogonality_result_df["Complexity"] = complexity_list
-
-    def build_chromatographic_mode(self, combination_list):
-        """Extract chromatographic mode tokens from combination name strings.
-
-        Tokenises each combination name and keeps only tokens that appear in
-        ``CHROM_MODE``, joining them with spaces.
-
-        Args:
-            combination_list (list[str]): List of combination name strings.
-
-        Returns:
-            list[str]: List of space-joined chromatographic mode tokens,
-                one entry per input combination.
-        """
-        chromatographic_mode = []
-
-        for combination in combination_list:
-            tokens = re.findall(r'\b[A-Za-z0-9-]+\b', combination)
-
-            tokens_cleaned = [token for token in tokens if token in CHROM_MODE]
-
-            chromatographic_mode.append(' '.join(tokens_cleaned))
-
-
-        return chromatographic_mode
-
-    def load_retention_time(self, filepath: str, sheetname: str) -> None:
-        """Load retention time data from an Excel file and initialize analysis structures.
-
-        Args:
-            filepath (str): Path to the Excel file with the raw data.
-            sheetname (str): Name of the sheet to load.
-
-        Side Effects:
-            - Initializes/resets all data structures via init_data()
-            - Loads data into retention_time_df
-            - Detects NaN values and sets has_nan_value flag
-            - Creates all pairwise column combinations
-            - Initializes orthogonality_dict and table_data for each combination
-            - Sets status to 'loaded' on success or 'error' on failure
-
-        Raises:
-            Exception: Re-raises any exception after setting status to 'error'.
-        """
-        try:
-            # table_data should be reset when loading new normalized time
-            self.init_data()
-
-            self.retention_time_df = load_table_with_header_anywhere(
-                filepath, sheetname
-            )
-
-            # check there is nan value in data frame
-            self.has_nan_value = self.retention_time_df.isnull().any().any()
-            self.column_names = self.retention_time_df.columns.tolist()
-            self.nb_condition = num_columns = len(self.column_names)
-            self.nb_peaks = len(self.retention_time_df.iloc[:, 0])
-            self.bin_number = round(sqrt(self.nb_peaks))
-
-            # Initialize loop parameters
-            self.retention_time_df.insert(
-                0, "Peak #", range(1, len(self.retention_time_df) + 1)
-            )
-
-            current_column = 0
-            set_number = 1
-
-            while current_column < num_columns:
-                current_column_name = self.column_names[current_column]
-                x_values = self.retention_time_df[current_column_name]
-
-                for next_column in range(current_column + 1, num_columns):
-                    next_column_name = self.column_names[next_column]
-                    set_key = f"Set {set_number}"
-                    set_title = f"{current_column_name} vs {next_column_name}"
-                    y_values = self.retention_time_df[next_column_name]
-
-                    # Initialize table data by adding a new row with None values
-                    self.table_data.append([None] * len(METRIC_MAPPING))
-
-                    # Update metadata columns
-                    self.update_metrics(set_key, "set_number", set_number)
-                    self.update_metrics(set_key, "title", set_title)
-                    self.update_metrics(set_key, "nb_peaks", self.nb_peaks)
-                    self.update_metrics(set_key, "orthogonality_score", 0)
-                    self.update_metrics(set_key, "orthogonality_ranking", 0)
-                    self.update_metrics(set_key, "coverage_score", 0)
-                    self.update_metrics(set_key, "distribution_score", 0)
-                    self.update_metrics(set_key, "agreement_index", 0)
-                    self.update_metrics(set_key, "outlier_metric_flag", 0)
-                    self.update_metrics(set_key, "orthogonality_value", 0)
-                    self.update_metrics(set_key, "practical_2d_peak_capacity", 0)
-                    self.update_metrics(set_key, "heinisch", 0)
-
-                    # Determine column types
-                    column1_type = "HILIC" if current_column < 8 else "RPLC"
-                    column2_type = "HILIC" if next_column < 8 else "RPLC"
+                    self.update_metrics(set_key, "nb_peaks", nb_peaks)
 
                     # Update orthogonality dictionary
                     self.orthogonality_dict[set_key] = {
                         "title": set_title,
-                        "type": f"{column1_type}|{column2_type}",
-                        "x_values": x_values,
+                        "x_values": x_series,
                         "x_title": self.column_names[current_column],
                         "y_title": self.column_names[next_column],
-                        "y_values": y_values,
-                        "nb_peaks": self.nb_peaks,
+                        "y_values": y_series,
+                        "nb_peaks": nb_peaks,
                         "hull_subset": 0,
                         "convex_hull": 0,
                         "bin_box": {"color_mask": 0, "edges": [0, 0]},
@@ -2019,11 +2134,275 @@ class Orthogonality(QObject):
                         "heinisch": 0,
                         "2d_peak_capacity": "no data loaded",
                     }
-                    set_number += 1
 
-                current_column += 1
+                else:
+                    print (set_key + ' deleted')
+                    self.orthogonality_dict.pop(set_key)
 
-            self.nb_combination = set_number - 1
+                set_number += 1
+
+            current_column += 1
+
+        self.update_combination_df()
+
+    def update_combination_df(self) -> None:
+        """Update the combination DataFrame with set information and peak counts.
+
+        Only updates if the 'Hypothetical 2D peak capacity' column is empty.
+
+        Side Effects:
+            Updates combination_df with data from table_data (columns 0-3).
+        """
+        # Check if combination_df exists and has the third column filled (not empty)
+        if self.combination_df["Hypothetical 2D peak capacity"].isnull().all():
+            # Otherwise, fill with two columns
+            combination_table = [row[0:4] for row in self.table_data]
+            self.combination_df = pd.DataFrame(
+                combination_table,
+                columns=[
+                    "Combination #",
+                    "2D Combination",
+                    "Number of peaks",
+                    "Hypothetical 2D peak capacity",
+                ],
+            )
+
+            self.nb_peaks = self.combination_df["Number of peaks"].max()
+            self.nb_combination = len(self.combination_df["2D Combination"])
+            self.bin_number = round(sqrt(self.nb_peaks))
+        else:
+            # already filled
+            return
+
+    def set_compatibility(self):
+        """Assign a hardware compatibility label to each combination.
+
+        Compares the two Chromatographic Modes in each combination and assigns
+        ``"High"``, ``"Moderate"``, or ``"Low"`` to the ``"Compatibility"`` column.
+
+        Side Effects:
+            - Adds ``"Compatibility"`` column to ``self.orthogonality_result_df``.
+        """
+
+        compatibility_list = []
+
+        for mode in self.orthogonality_result_df["Chromatographic Mode"]:
+            parts = mode.split(' vs ')
+            if len(parts) == 2:
+                a, b = parts[0].strip(), parts[1].strip()
+
+                if a == b:
+                    compatibility_list.append('Good')
+                elif a != b and {a, b} == {'HILIC', 'RPLC'}:
+                    compatibility_list.append('Moderate')
+                else:
+                    compatibility_list.append('Low')
+            else:
+                compatibility_list.append('Unknown')
+
+        self.orthogonality_result_df["Compatibility"] = compatibility_list
+
+    def set_complexity(self):
+        """Assign a method development complexity label to each combination.
+
+        Compares the two Chromatographic Modes and assigns ``"Low"``,
+        ``"Medium"``, ``"High"``, or ``"NC"`` to the ``"Complexity"`` column.
+
+        Side Effects:
+            - Adds ``"Complexity"`` column to ``self.orthogonality_result_df``.
+        """
+        complexity_list = []
+
+        for mode in self.orthogonality_result_df["Chromatographic Mode"]:
+            parts = mode.split(' vs ')
+
+            if len(parts) == 2:
+                a, b = parts[0].strip(), parts[1].strip()
+
+                if a == b:
+                    complexity_list.append('Low')
+                elif a != b and {a, b} == {'HILIC','RPLC'}:
+                    complexity_list.append('Moderate')
+                elif a in ['SFC'] or b in ['SFC']:
+                    complexity_list.append('High')
+                else:
+                    complexity_list.append('NC')
+            else:
+                complexity_list.append('Unknown')
+
+        self.orthogonality_result_df['Complexity'] = complexity_list
+
+    def build_chromatographic_mode(self, combination_list):
+        """Extract Chromatographic Mode tokens from combination name strings.
+
+        Tokenises each combination name and keeps only tokens that appear in
+        ``CHROM_MODE``, joining them with spaces.
+
+        Args:
+            combination_list (list[str]): List of combination name strings.
+
+        Returns:
+            list[str]: List of space-joined Chromatographic Mode tokens,
+                one entry per input combination.
+        """
+        chromatographic_mode = []
+
+        for combination in combination_list:
+            tokens = re.findall(r'\b[A-Za-z0-9-]+\b', combination)
+
+            tokens_cleaned = [token for token in tokens if token in CHROM_MODE]
+
+            chromatographic_mode.append(' '.join(tokens_cleaned))
+
+
+        return chromatographic_mode
+
+    def load_retention_time(self, filepath: str, sheetname: str) -> None:
+        """Load retention time data from an Excel file and initialize analysis structures.
+
+        Args:
+            filepath (str): Path to the Excel file with the raw data.
+            sheetname (str): Name of the sheet to load.
+
+        Side Effects:
+            - Initializes/resets all data structures via init_data()
+            - Loads data into retention_time_df
+            - Detects NaN values and sets has_nan_value flag
+            - Creates all pairwise column combinations
+            - Initializes orthogonality_dict and table_data for each combination
+            - Sets status to 'loaded' on success or 'error' on failure
+
+        Raises:
+            Exception: Re-raises any exception after setting status to 'error'.
+        """
+        try:
+            # table_data should be reset when loading new normalized time
+            self.init_data()
+
+            self.retention_time_df = load_table_with_header_anywhere(
+                filepath, sheetname
+            )
+
+            #rename automatically the first column (which should be the "Compound Name')
+            self.retention_time_df = self.retention_time_df.rename(columns={self.retention_time_df.columns[0]: 'Compound Name'})
+
+            # check there is nan value in data frame
+            self.has_nan_value = self.retention_time_df.isnull().any().any()
+            #[1:] is used because first column is compound name
+            self.column_names = self.retention_time_df.columns.tolist()[1:]
+            self.nb_condition = num_columns = len(self.column_names)
+            self.nb_peaks = len(self.retention_time_df.iloc[:, 0])
+
+            self.compound_name_list = self.retention_time_df['Compound Name'].tolist()
+
+            # Initialize loop parameters
+            self.retention_time_df.insert(
+                0, "Peak #", range(1, len(self.retention_time_df) + 1)
+            )
+
+            current_column = 0
+            set_number = 1
+
+            if self.has_nan_value:
+                self.nan_policy_dialog.exec_()
+            else:
+
+                while current_column < num_columns:
+                    current_column_name = self.column_names[current_column]
+                    x_values = self.retention_time_df[current_column_name]
+
+                    for next_column in range(current_column + 1, num_columns):
+                        next_column_name = self.column_names[next_column]
+                        set_key = f"Set {set_number}"
+                        set_title = f"{current_column_name} vs {next_column_name}"
+                        y_values = self.retention_time_df[next_column_name]
+
+                        # Initialize table data by adding a new row with None values
+                        self.table_data.append([None] * len(METRIC_MAPPING))
+
+                        # Update metadata columns
+                        self.update_metrics(set_key, "set_number", set_number)
+                        self.update_metrics(set_key, "title", set_title)
+                        self.update_metrics(set_key, "nb_peaks", self.nb_peaks)
+                        self.update_metrics(set_key, "orthogonality_score", 0)
+                        self.update_metrics(set_key, "orthogonality_ranking", 0)
+                        self.update_metrics(set_key, "coverage_score", 0)
+                        self.update_metrics(set_key, "distribution_score", 0)
+                        self.update_metrics(set_key, "agreement_index", 0)
+                        self.update_metrics(set_key, "outlier_metric_flag", 0)
+                        self.update_metrics(set_key, "orthogonality_value", 0)
+                        self.update_metrics(set_key, "2d_peak_capacity", 'Not available')
+                        self.update_metrics(set_key, "heinisch", 0)
+
+                        # Update orthogonality dictionary
+                        self.orthogonality_dict[set_key] = {
+                            "title": set_title,
+                            "x_values": x_values,
+                            "x_title": self.column_names[current_column],
+                            "y_title": self.column_names[next_column],
+                            "y_values": y_values,
+                            "nb_peaks": self.nb_peaks,
+                            "hull_subset": 0,
+                            "convex_hull": 0,
+                            "bin_box": {"color_mask": 0, "edges": [0, 0]},
+                            "gilar-watson": {"color_mask": 0, "edges": [0, 0]},
+                            "modeling_approach": {"color_mask": 0, "edges": [0, 0]},
+                            "geometric_approach": 0,
+                            "conditional_entropy": {
+                                "histogram": 0,
+                                "edges": [0, 0],
+                                "value": 0,
+                            },
+                            "bin_box_ratio": 0,
+                            "linregress": 0,
+                            "linregress_rvalue": 0,
+                            "quadratic_reg_xy": 0,
+                            "quadratic_reg_yx": 0,
+                            "pearson_r": 0,
+                            "spearman_rho": 0,
+                            "kendall_tau": 0,
+                            "asterisk_metrics": {
+                                "a0": 0,
+                                "z_minus": 0,
+                                "z_plus": 0,
+                                "z1": 0,
+                                "z2": 0,
+                                "sigma_sz_minus": 0,
+                                "sigma_sz_plus": 0,
+                                "sigma_sz1": 0,
+                                "sigma_sz2": 0,
+                            },
+                            "a_mean": 0,
+                            "g_mean": 0,
+                            "h_mean": 0,
+                            "percent_fit": {
+                                "delta_xy_avg": 0,
+                                "delta_xy_sd": 0,
+                                "delta_yx_avg": 0,
+                                "delta_yx_sd": 0,
+                                "value": 0,
+                            },
+                            "percent_bin": {
+                                "value": 0,
+                                "mask": 0,
+                                "sad_dev": 0,
+                                "sad_dev_ns": 0,
+                                "sad_dev_fs": 0,
+                            },
+                            "orthogonality_score": 0,
+                            "orthogonality_ranking": 0,
+                            "coverage_score": 0,
+                            "distribution_score": 0,
+                            "agreement_index": 0,
+                            "outlier_metric_flag": 0,
+                            "orthogonality_value": 0,
+                            "practical_2d_peak": 0,
+                            "heinisch": 0,
+                            "2d_peak_capacity": "no data loaded",
+                        }
+                        set_number += 1
+
+                    current_column += 1
 
             self.update_combination_df()
             self.create_results_table()
@@ -2053,6 +2432,7 @@ class Orthogonality(QObject):
         for set_key in self.orthogonality_dict.keys():
             set_data = self.orthogonality_dict[set_key]
             x, y = set_data["x_values"], set_data["y_values"]
+            print(set_key)
 
             # Stack the x and y coordinates into a 2D array of shape (n_points, 2)
             subset = np.vstack((x, y)).T
@@ -2639,7 +3019,7 @@ class Orthogonality(QObject):
         """Compute geometric orthogonality metric based on 2D peak capacity geometry.
 
         Uses the angle between dimensions (beta) and peak capacities to compute
-        the practical peak capacity based on geometric considerations.
+        the Practical 2D Peak Capacity based on geometric considerations.
 
         Requires retention_time_df_2d_peaks to be loaded first.
 
@@ -2775,14 +3155,14 @@ class Orthogonality(QObject):
             self.combination_df = pd.DataFrame(
                 combination_table,
                 columns=[
-                    "Set #",
+                    "Combination #",
                     "2D Combination",
                     "Number of peaks",
                     "Hypothetical 2D peak capacity",
                 ],
             )
 
-            self.status = "peak_capacity_loaded"
+            self.peak_capacity_status = "peak_capacity_loaded"
 
         except Exception as e:
             print(f"Error loading 2D peaks: {str(e)}")

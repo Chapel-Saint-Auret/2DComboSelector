@@ -137,7 +137,7 @@ class InfoPopupDialog(QDialog):
         super().__init__(parent)
         self.setWindowTitle(title)
         self.setWindowModality(Qt.ApplicationModal)
-        self.setFixedSize(width, height)
+        # self.setFixedSize(width, height)
         self.setStyleSheet(STYLESHEET)
         self._build_ui(content)
         self._center_on_parent(parent)

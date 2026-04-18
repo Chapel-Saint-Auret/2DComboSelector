@@ -130,7 +130,7 @@ class ImportDataPage(QFrame):
         table_frame_layout = QHBoxLayout(table_frame)
         table_frame_layout.setContentsMargins(20, 20, 20, 20)
 
-        self.normalized_data_table = StyledTable("Normalized Retention time table")
+        self.normalized_data_table = StyledTable("Normalized Retention Time Table")
         self.normalized_data_table.set_header_label(
             ["Compound #", "Condition 1", "Condition 2", "...", "Condition n"]
         )
@@ -206,19 +206,49 @@ class ImportDataPage(QFrame):
             QPushButton:disabled { background-color: #E5E9F5; color: #FFFFFF; }
             """)
 
+        # --- Title bar: label + help button ----------------------------------
+        data_import_title_bar = QFrame()
+        data_import_title_bar.setFixedHeight(40)
+        data_import_title_bar.setStyleSheet("""
+            QFrame {
+                background-color: #183881;
+            }
+        """)
+        title_bar_layout = QHBoxLayout(data_import_title_bar)
+        title_bar_layout.setContentsMargins(10, 0, 6, 0)
+        title_bar_layout.setSpacing(4)
 
-        data_import_title = QLabel("A: Data import")
-        data_import_title.setFixedHeight(40)
-        data_import_title.setObjectName("TitleBar")
+        data_import_title = QLabel("A: Data Import")
         data_import_title.setAlignment(Qt.AlignVCenter | Qt.AlignLeft)
-        data_import_title.setContentsMargins(10, 0, 0, 0)
         data_import_title.setStyleSheet("""
-            background-color: #183881;
+            background-color: transparent;
             color: #ffffff;
             font-weight: bold;
             font-size: 19px;
-            margin-bottom: 0px;
-            """)
+        """)
+
+        data_import_help_btn = SectionHelpButton(
+            title="Data import",
+            markdown_path="markdown/data_import.md",
+            parent=data_import_title_bar,
+        )
+        data_import_help_btn.setFixedSize(22, 22)           # ← explicit size, same as the close btn in HelpDialog
+        data_import_help_btn.setIconSize(QSize(16, 16))     # ← keep icon smaller than the button box
+        data_import_help_btn.setStyleSheet("""
+            QToolButton {
+                border: none;
+                background: transparent;
+                color: #ffffff;
+                font-size: 15px;
+            }
+            QToolButton:hover {
+                color: #c5d0e6;
+            }
+        """)
+
+        title_bar_layout.addWidget(data_import_title, 0, Qt.AlignVCenter)
+        title_bar_layout.addWidget(data_import_help_btn, 0, Qt.AlignVCenter)  # ← per-item alignment flag
+        title_bar_layout.addStretch(1)             # pushes everything else away
 
         data_import_input_frame = QFrame(data_import_frame)
         data_import_inner_layout = QVBoxLayout(data_import_input_frame)
@@ -227,7 +257,11 @@ class ImportDataPage(QFrame):
         self.add_ret_time_btn = QPushButton(
             QIcon(resource_path("icons/folder_icon.png")), "Import"
         )
-        self.clean_retention_time_btn = QPushButton("Missing values")
+        self.clean_retention_time_btn = QPushButton(QIcon(resource_path("icons/setting_icon.png")),"Missing Values ")
+        self.clean_retention_time_btn.setLayoutDirection(Qt.RightToLeft)
+        self.clean_retention_time_btn.setIconSize(QSize(19, 19))
+        self.clean_retention_time_btn.setFixedHeight(35)
+
         self.add_ret_time_btn.setIconSize(ICON_SIZE)
         self.add_ret_time_btn.setFixedHeight(35)
         self.clean_retention_time_btn.setFixedHeight(35)
@@ -274,7 +308,7 @@ class ImportDataPage(QFrame):
         void_time_layout.addWidget(self.add_void_time_btn)
         void_time_layout.addWidget(self.void_time_import_status)
 
-        self.void_time_label = QLabel("Void time:")
+        self.void_time_label = QLabel("Void Time:")
         self.void_time_label.setVisible(False)
 
         # Gradient end time (hidden until WOSEL is selected)
@@ -295,17 +329,17 @@ class ImportDataPage(QFrame):
         gradient_end_time_layout.addWidget(self.add_gradient_end_time_btn)
         gradient_end_time_layout.addWidget(self.gradient_end_time_import_status)
 
-        self.gradient_end_time_label = QLabel("Gradient end time:")
+        self.gradient_end_time_label = QLabel("Gradient End Time:")
         self.gradient_end_time_label.setVisible(False)
 
         # Assemble left card content
         data_import_inner_layout.addStretch()
-        retention_time_label = QLabel("Retention times:")
+        retention_time_label = QLabel("Retention Times:")
         retention_time_label.setFont(self.label_font)
 
         data_import_inner_layout.addWidget(retention_time_label)
         data_import_inner_layout.addLayout(rt_layout)
-        data_import_inner_layout.addWidget(QLabel("Experimental 1D peak capacities:"))
+        data_import_inner_layout.addWidget(QLabel("Experimental 1D Peak Capacities:"))
         data_import_inner_layout.addLayout(peak_layout)
         data_import_inner_layout.addWidget(self.void_time_label)
         data_import_inner_layout.addWidget(self.void_time_widget)
@@ -313,7 +347,7 @@ class ImportDataPage(QFrame):
         data_import_inner_layout.addWidget(self.gradient_end_time_widget)
         data_import_inner_layout.addStretch()
 
-        data_import_layout.addWidget(data_import_title)
+        data_import_layout.addWidget(data_import_title_bar)
         data_import_layout.addWidget(data_import_input_frame)
 
         return data_import_frame
@@ -324,24 +358,58 @@ class ImportDataPage(QFrame):
         Returns:
             QFrame: Configured frame with radio buttons and SVG formula displays.
         """
-        separation_space_scaling_title = QLabel("B: Data normalization")
-        separation_space_scaling_title.setFixedHeight(40)
+        # --- Title bar: label + help button ----------------------------------
+        separation_space_scaling_bar = QFrame()
+        separation_space_scaling_bar.setFixedHeight(40)
+        separation_space_scaling_bar.setStyleSheet("""
+            QFrame {
+                background-color: #183881;
+            }
+        """)
+
+        title_bar_layout = QHBoxLayout(separation_space_scaling_bar)
+        title_bar_layout.setContentsMargins(10, 0, 6, 0)
+        title_bar_layout.setSpacing(4)
+
+
+        separation_space_scaling_title = QLabel("B: Data Normalization")
         separation_space_scaling_title.setObjectName("TitleBar")
         separation_space_scaling_title.setAlignment(Qt.AlignVCenter | Qt.AlignLeft)
-        separation_space_scaling_title.setContentsMargins(10, 0, 0, 0)
         separation_space_scaling_title.setStyleSheet("""
-            background-color: #183881;
+            background-color: transparent;
             color: #ffffff;
             font-weight: bold;
             font-size: 19px;
-            margin-bottom: 0px;
-            """)
+        """)
+
+        separation_space_scaling_help_btn = SectionHelpButton(
+            title="Data Normalization",
+            markdown_path="markdown/data_import.md",
+            parent=separation_space_scaling_bar,
+        )
+        separation_space_scaling_help_btn.setFixedSize(22, 22)           # ← explicit size, same as the close btn in HelpDialog
+        separation_space_scaling_help_btn.setIconSize(QSize(16, 16))     # ← keep icon smaller than the button box
+        separation_space_scaling_help_btn.setStyleSheet("""
+            QToolButton {
+                border: none;
+                background: transparent;
+                color: #ffffff;
+                font-size: 15px;
+            }
+            QToolButton:hover {
+                color: #c5d0e6;
+            }
+        """)
+
+        title_bar_layout.addWidget(separation_space_scaling_title, 0, Qt.AlignVCenter)
+        title_bar_layout.addWidget(separation_space_scaling_help_btn, 0, Qt.AlignVCenter)  # ← per-item alignment flag
+        title_bar_layout.addStretch(1)
 
         select_scaling_input_frame = QFrame()
         select_scaling_input_frame_layout = QHBoxLayout(select_scaling_input_frame)
         select_scaling_input_frame_layout.setContentsMargins(40, 40, 40, 40)
 
-        scaling_method_group = QGroupBox("Select scaling method")
+        scaling_method_group = QGroupBox("Select Scaling Method")
         scaling_method_layout = QVBoxLayout()
         scaling_method_group.setLayout(scaling_method_layout)
         scaling_method_group.setStyleSheet("""
@@ -384,20 +452,16 @@ class ImportDataPage(QFrame):
             QPushButton:disabled { background-color: #E5E9F5; color: #FFFFFF; }
             """)
 
-        SectionHelpButton.for_group(group=scaling_method_group,
-                                    title="Scaling method",
-                                    markdown_path="no_help_found.md")
-
-        self.normalize_btn = QPushButton("Normalize data")
+        self.normalize_btn = QPushButton("Normalize Data")
 
         self.normalization_status = Status()
 
         # Radio buttons (exclusive)
-        self.min_max_scaling_btn = QRadioButton("Min-Max scaling")
+        self.min_max_scaling_btn = QRadioButton("Min-Max Scaling")
         self.min_max_scaling_btn.setObjectName("min_max")
         self.min_max_scaling_btn.setChecked(True)
 
-        self.void_max_scaling_btn = QRadioButton("Void – Max scaling")
+        self.void_max_scaling_btn = QRadioButton("Void – Max Scaling")
         self.void_max_scaling_btn.setObjectName("void_max")
 
         self.wosel_btn = QRadioButton("WOSEL Scaling")
@@ -480,7 +544,7 @@ class ImportDataPage(QFrame):
         normalization_layout = QVBoxLayout(normalization_section)
         normalization_layout.setSpacing(0)
         normalization_layout.setContentsMargins(0, 0, 0, 0)
-        normalization_layout.addWidget(separation_space_scaling_title)
+        normalization_layout.addWidget(separation_space_scaling_bar)
         normalization_layout.addWidget(select_scaling_input_frame)
 
         return normalization_section
@@ -623,11 +687,11 @@ class ImportDataPage(QFrame):
             self.normalized_data_table.set_header_label(list(data.columns))
             self.normalized_data_table.async_set_table_data(data)
 
-            # Show NaN policy dialog if needed
-            if self.model.get_has_nan_value():
-                self.nan_policy_dialog.exec_()
-                data = self.model.get_retention_time_df()
-                self.normalized_data_table.async_set_table_data(data)
+            # # Show NaN policy dialog if needed
+            # if self.model.get_has_nan_value():
+            #     self.nan_policy_dialog.exec_()
+            #     data = self.model.get_retention_time_df()
+            #     self.normalized_data_table.async_set_table_data(data)
 
             self.retention_time_loaded.emit()
 
