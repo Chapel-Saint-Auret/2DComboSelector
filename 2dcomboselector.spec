@@ -9,8 +9,9 @@ def collect_data_files(src_folder, dest_folder):
 
 icon_files = collect_data_files('src/combo_selector/resources/icons', 'resources/icons')
 colormap_files = collect_data_files('src/combo_selector/resources/colormaps', 'resources/colormaps')
+markdown_files = collect_data_files('src/combo_selector/resources/markdown', 'resources/markdown')
 
-datas = icon_files + colormap_files
+datas = icon_files + colormap_files + markdown_files
 for src, dst in datas:
     print(f"Will copy {src} -> {dst}")
 
