@@ -109,7 +109,7 @@ class ComboSelectorMain(CustomMainWindow):
             resource_path("icons/pairwise_icon.png"),
         )
         self.add_side_bar_item(
-            "Orthogonality\nMetric",
+            "Orthogonality\nMetrics",
             self.om_calculation_page,
             resource_path("icons/om_icon.png"),
         )
@@ -120,7 +120,7 @@ class ComboSelectorMain(CustomMainWindow):
         )
 
         self.add_side_bar_item(
-            "Final Evaluation &\nRanking", QFrame(), resource_path("icons/rank_icon.png")
+            "Multi-Criteria\nEvaluation", self.results_page, resource_path("icons/rank_icon.png")
         )
 
         self.add_side_bar_item(
@@ -171,6 +171,7 @@ class ComboSelectorMain(CustomMainWindow):
             - Refreshes pairwise plot datasets
             - Refreshes OM calculation visualizations
         """
+        self.plot_page.init_page()
         self.plot_page.update_dataset_selector_state()
         self.om_calculation_page.update_om_selector_state()
 
@@ -225,8 +226,10 @@ class ComboSelectorMain(CustomMainWindow):
             - Triggers results worker to recompute with new data
         """
         self.plot_page.update_table_peak_data()
-        self.plot_page.update_dataset_selector_state()
-        self._start_results_worker_after_redundancy()
+        self.model.update_result_with_new_peak_capacity()
+        self.results_page.update_results_table()
+        self.results_page.plot_graph()
+        # self.plot_page.update_dataset_selector_state()
 
     def _start_results_worker_after_redundancy(self) -> None:
         """Start the results worker after redundancy analysis completes.
@@ -240,7 +243,7 @@ class ComboSelectorMain(CustomMainWindow):
             - Worker completion triggers page initialization
         """
 
-        self.model.create_results_table()
+        # self.model.create_results_table()
         self.results_page.init_page(self._cached_metric_list)
         self.set_status_text("Result page ready!")
         self.export_page.init_page(self.metric_list_for_figure)
