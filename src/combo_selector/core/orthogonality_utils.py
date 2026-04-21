@@ -1,7 +1,9 @@
-"""Utility functions for orthogonality calculations in 2D chromatography analysis.
+"""Utility functions and shared constants for orthogonality calculations.
 
-This module provides helper functions for:
-- Loading data from Excel files
+This module provides:
+- Shared constants (METRIC_MAPPING, UI_TO_MODEL_MAPPING, CHROM_MODE, etc.)
+- FuncStatus enum
+- Helper functions for loading data from Excel files
 - Normalizing retention time series
 - Computing geometric relationships between points and curves
 - Calculating bin box histograms
@@ -12,12 +14,222 @@ This module provides helper functions for:
 import os
 import re
 import sys
+from enum import Enum
 
 import numpy as np
 import pandas as pd
 from scipy.optimize import minimize_scalar
 from scipy.stats import tmean, tstd
 from collections import Counter
+
+# ---------------------------------------------------------------------------
+# Shared constants
+# ---------------------------------------------------------------------------
+
+CHROM_MODE = ['RPLC', 'HILIC', 'IEX', 'SEC', 'HIC', 'SFC', 'vs']
+
+METRIC_MAPPING = {
+    "set_number": {
+        "table_index": 0,
+        "include_in_score": True,
+        "include_in_corr_mat": False,
+    },
+    "title": {"table_index": 1, "include_in_score": True, "include_in_corr_mat": False},
+    "nb_peaks": {
+        "table_index": 2,
+        "include_in_score": False,
+        "include_in_corr_mat": False,
+    },
+    "2d_peak_capacity": {
+        "table_index": 3,
+        "include_in_score": True,
+        "include_in_corr_mat": False,
+    },
+    "convex_hull": {
+        "table_index": 4,
+        "include_in_score": True,
+        "include_in_corr_mat": True,
+    },
+    "bin_box_ratio": {
+        "table_index": 5,
+        "include_in_score": True,
+        "include_in_corr_mat": True,
+    },
+    "pearson_r": {
+        "table_index": 6,
+        "include_in_score": True,
+        "include_in_corr_mat": True,
+    },
+    "spearman_rho": {
+        "table_index": 7,
+        "include_in_score": True,
+        "include_in_corr_mat": True,
+    },
+    "kendall_tau": {
+        "table_index": 8,
+        "include_in_score": True,
+        "include_in_corr_mat": True,
+    },
+    "cc_mean": {
+        "table_index": 9,
+        "include_in_score": True,
+        "include_in_corr_mat": False,
+    },
+    "asterisk_metrics": {
+        "table_index": 10,
+        "include_in_score": True,
+        "include_in_corr_mat": True,
+    },
+    "nnd_arithmetic_mean": {
+        "table_index": 11,
+        "include_in_score": True,
+        "include_in_corr_mat": False,
+    },
+    "nnd_geom_mean": {
+        "table_index": 12,
+        "include_in_score": True,
+        "include_in_corr_mat": False,
+    },
+    "nnd_harm_mean": {
+        "table_index": 13,
+        "include_in_score": True,
+        "include_in_corr_mat": False,
+    },
+    "nnd_mean": {
+        "table_index": 14,
+        "include_in_score": True,
+        "include_in_corr_mat": True,
+    },
+    "percent_fit": {
+        "table_index": 15,
+        "include_in_score": True,
+        "include_in_corr_mat": True,
+    },
+    "percent_bin": {
+        "table_index": 16,
+        "include_in_score": True,
+        "include_in_corr_mat": True,
+    },
+    "mean_bin_box_percent_bin": {
+        "table_index": 17,
+        "include_in_score": True,
+        "include_in_corr_mat": False,
+    },
+    "asterisk_convex_hull_mean": {
+        "table_index": 18,
+        "include_in_score": True,
+        "include_in_corr_mat": False,
+    },
+    "mean_bin_box_percent_bin_nnd_mean": {
+        "table_index": 19,
+        "include_in_score": True,
+        "include_in_corr_mat": False,
+    },
+    "orthogonality_score": {
+        "table_index": 20,
+        "include_in_score": True,
+        "include_in_corr_mat": False,
+    },
+    "orthogonality_ranking": {
+        "table_index": 21,
+        "include_in_score": True,
+        "include_in_corr_mat": False,
+    },
+    "coverage_score": {
+        "table_index": 22,
+        "include_in_score": True,
+        "include_in_corr_mat": False,
+    },
+    "practical_2d_peak_capacity": {
+        "table_index": 23,
+        "include_in_score": True,
+        "include_in_corr_mat": False,
+    },
+    "heinisch": {
+        "table_index": 24,
+        "include_in_score": True,
+        "include_in_corr_mat": False,
+    },
+    "orthogonality_value": {
+        "table_index": 25,
+        "include_in_score": True,
+        "include_in_corr_mat": False,
+    },
+    "gilar-watson": {
+        "table_index": 26,
+        "include_in_score": True,
+        "include_in_corr_mat": True,
+    },
+    "modeling_approach": {
+        "table_index": 27,
+        "include_in_score": True,
+        "include_in_corr_mat": True,
+    },
+    "conditional_entropy": {
+        "table_index": 28,
+        "include_in_score": True,
+        "include_in_corr_mat": True,
+    },
+    "geometric_approach": {
+        "table_index": 29,
+        "include_in_score": True,
+        "include_in_corr_mat": True,
+    },
+    "distribution_score": {
+        "table_index": 30,
+        "include_in_score": True,
+        "include_in_corr_mat": True,
+    },
+    "agreement_index": {
+        "table_index": 31,
+        "include_in_score": True,
+        "include_in_corr_mat": True,
+    },
+    "outlier_metric_flag": {
+        "table_index": 32,
+        "include_in_score": True,
+        "include_in_corr_mat": True,
+    },
+}
+
+UI_TO_MODEL_MAPPING = {
+    "Convex hull relative area": "convex_hull",
+    "Bin box counting": "bin_box_ratio",
+    "Pearson Correlation": "pearson_r",
+    "Spearman Correlation": "spearman_rho",
+    "Kendall Correlation": "kendall_tau",
+    "CC mean": "cc_mean",
+    "Asterisk equations": "asterisk_metrics",
+    "Asterisk + Cnvx Hull mean": "asterisk_convex_hull_mean",
+    "NND Arithm mean": "nnd_arithmetic_mean",
+    "NND Geom mean": "nnd_geom_mean",
+    "NND Harm mean": "nnd_harm_mean",
+    "NND mean": "nnd_mean",
+    "%FIT": "percent_fit",
+    "Bin box + %BIN": "percent_bin",
+    "%BIN": "percent_bin",
+    "mean (Bin box + %BIN)": "mean_bin_box_percent_bin",
+    "mean(Bin box + %BIN + NND mean)": "mean_bin_box_percent_bin_nnd_mean",
+    "Gilar-Watson method": "gilar-watson",
+    "Modeling approach": "modeling_approach",
+    "Geometric approach": "geometric_approach",
+    "Conditional entropy": "conditional_entropy",
+}
+
+METRIC_WEIGHTS = {"%FIT": 10}
+DEFAULT_WEIGHT = 1
+
+
+class FuncStatus(Enum):
+    """Enumeration for tracking the computation status of orthogonality metric functions.
+
+    Attributes:
+        NOT_COMPUTED: The function has not been computed yet.
+        COMPUTED: The function has been successfully computed.
+    """
+
+    NOT_COMPUTED = 0
+    COMPUTED = 1
 
 
 def resource_path(relative_path: str) -> str:
