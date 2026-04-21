@@ -1945,6 +1945,7 @@ class Orthogonality(QObject):
 
     def remove_compound(self):
         self.removed_compound_list = []
+        remove_compound_index = []
 
         for row_data in self.retention_time_df.iterrows():
             peak_retention_time = row_data[1]
@@ -1952,9 +1953,11 @@ class Orthogonality(QObject):
 
             # nan_policy_threshold is % of total condition
             if (nan_count * 100) / self.nb_condition > self.nan_policy_option1_threshold:
+                remove_compound_index.append(row_data[0])
                 self.removed_compound_list.append(row_data[1][1])
 
-        self.retention_time_df = self.retention_time_df.drop(self.removed_compound_list)
+        self.retention_time_df = self.retention_time_df.drop(remove_compound_index)
+        self.compound_name_list = self.retention_time_df['Compound Name'].tolist()
         self.retention_time_df = self.retention_time_df.fillna("")
 
     def remove_condition(self):

@@ -166,12 +166,13 @@ class PlotPairWisePage(QFrame):
         selected_set = self.selected_axe.get_title()
 
         data = self.model.get_retention_time_df()
+        peak_number =data['Peak #'].tolist()[ind]
         orthogonality_dict = self.model.get_orthogonality_dict()
         x = orthogonality_dict[selected_set]['x_values']
         y = orthogonality_dict[selected_set]['y_values']
 
         self.selected_annotation.xy = (x[ind], y[ind])
-        self.selected_annotation.set_text(f"Peak # {data['Peak #'][ind]}\n{compound_name}")
+        self.selected_annotation.set_text(f"Peak # {peak_number}\n{compound_name}")
         self.selected_annotation.set_visible(True)
         self.fig.canvas.draw_idle()
         self.fig.canvas.flush_events()
