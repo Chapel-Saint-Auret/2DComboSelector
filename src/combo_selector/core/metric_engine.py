@@ -11,7 +11,7 @@ from math import acos, atan, log2, pi, sqrt, tan
 
 import numpy as np
 import pandas as pd
-from numpy import sum as npsum
+
 from scipy.cluster.hierarchy import linkage
 from scipy.spatial import ConvexHull
 from scipy.spatial.distance import pdist
@@ -877,12 +877,12 @@ class MetricEngine:
 
             # 3) Entropies
             px_nz = px[px > 0]
-            H_x = npsum(px_nz * np.log2(px_nz))
+            H_x = np.sum(px_nz * np.log2(px_nz))
             py_nz = py[py > 0]
-            H_y = npsum(py_nz * np.log2(py_nz))
+            H_y = np.sum(py_nz * np.log2(py_nz))
 
             pxy_nz = pxy.flatten()[pxy.flatten() > 0]
-            H_xy = npsum(pxy_nz * np.log2(pxy_nz))
+            H_xy = np.sum(pxy_nz * np.log2(pxy_nz))
 
             # 4) Conditional entropy
             H_y_given_x = H_xy - H_x
