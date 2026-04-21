@@ -263,7 +263,6 @@ class DataManager:
             for next_column in next_column_list:
                 next_column_name = self.column_names[next_column]
                 set_key = f"Set {set_number}"
-                print(set_key + ' in clean_nan_value')
                 set_title = f"{current_column_name} vs {next_column_name}"
                 y_values = self.retention_time_df[next_column_name]
 
@@ -370,7 +369,6 @@ class DataManager:
                     }
 
                 else:
-                    print(set_key + ' deleted')
                     self.orthogonality_dict.pop(set_key)
 
                 set_number += 1

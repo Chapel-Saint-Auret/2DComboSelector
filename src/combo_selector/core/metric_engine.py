@@ -320,7 +320,6 @@ class MetricEngine:
         for set_key in self.orthogonality_dict.keys():
             set_data = self.orthogonality_dict[set_key]
             x, y = set_data["x_values"], set_data["y_values"]
-            print(set_key)
 
             # Stack the x and y coordinates into a 2D array of shape (n_points, 2)
             subset = np.vstack((x, y)).T
