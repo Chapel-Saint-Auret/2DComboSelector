@@ -11,6 +11,7 @@ from scipy.stats import iqr, median_abs_deviation
 
 from combo_selector.core.orthogonality_utils import (
     METRIC_MAPPING,
+    METRIC_CATEGORY,
     UI_TO_MODEL_MAPPING,
     extract_set_number,
 )
@@ -288,18 +289,19 @@ class Scoring:
         """
         self.coverage_score_df = pd.DataFrame()
         metric_df = self.orthogonality_metric_df.copy()
-        coverage_metric = []
-        for category, Correlated_Metrics_list in zip(self.correlation_group_df['Classification'],
-                                                      self.correlation_group_df['Correlated Metrics']):
-            if category == "Coverage-like":
-                coverage_metric += Correlated_Metrics_list
+        computed_metric_list = metric_df.columns.tolist()[2:]
+        coverage_metric_list = []
 
-        if coverage_metric:
-            self.coverage_score_df = metric_df[coverage_metric].median(axis=1)
+        computed_metric_list
+        for metric in computed_metric_list:
+            if METRIC_CATEGORY[metric] == "Coverage":
+                coverage_metric_list.append(metric)
+
+        if coverage_metric_list:
+            self.coverage_score_df = metric_df[coverage_metric_list].median(axis=1)
+            self.orthogonality_result_df['Coverage Score'] = self.coverage_score_df.copy()
         else:
-            self.coverage_score_df = pd.DataFrame()
-
-        self.orthogonality_result_df['Coverage Score'] = self.coverage_score_df
+            self.orthogonality_result_df['Coverage Score'] = 0
 
     def compute_distribution_score(self):
         """Compute the distribution score as the median of distribution-like metrics.
@@ -313,16 +315,18 @@ class Scoring:
         """
         self.distribution_score_df = pd.DataFrame()
         metric_df = self.orthogonality_metric_df.copy()
+        computed_metric_list = metric_df.columns.tolist()[2:]
+        distribution_metric_list = []
 
-        distribution_metric = []
-        for category, Correlated_Metrics_list in zip(self.correlation_group_df['Classification'],
-                                                      self.correlation_group_df['Correlated Metrics']):
-            if category == "Distribution-like":
-                distribution_metric += Correlated_Metrics_list
+        for metric in computed_metric_list:
+            if METRIC_CATEGORY[metric] == "Distribution":
+                distribution_metric_list.append(metric)
 
-        self.distribution_score_df = metric_df[distribution_metric].median(axis=1)
-
-        self.orthogonality_result_df['Distribution Score'] = self.distribution_score_df
+        if distribution_metric_list:
+            self.distribution_score_df = metric_df[distribution_metric_list].median(axis=1)
+            self.orthogonality_result_df['Distribution Score'] = self.distribution_score_df.copy()
+        else:
+            self.orthogonality_result_df['Distribution Score'] = 0
 
     def compute_agreement_index(self):
         """Compute the agreement index across correlation groups.

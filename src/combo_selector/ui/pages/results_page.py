@@ -10,11 +10,13 @@ This module provides the ResultsPage class which handles:
 """
 
 import logging
+from functools import partial
 
 import pandas as pd
 from matplotlib.backends.backend_qtagg import FigureCanvas
 from matplotlib.figure import Figure
 from PySide6.QtCore import QThreadPool, QTimer, Qt
+from PySide6.QtGui import QFont,QColor
 from PySide6.QtWidgets import (
     QApplication,
     QButtonGroup,
@@ -29,6 +31,8 @@ from PySide6.QtWidgets import (
     QScrollArea,
     QSizePolicy,
     QSplitter,
+    QListWidget,
+    QListWidgetItem,
     QStackedLayout,
     QVBoxLayout,
     QWidget,
@@ -167,6 +171,7 @@ class ResultsPage(QFrame):
 
         self.vizualation_settings_button_group.buttonClicked.connect(self.plot_graph)
         self.top_number_button_group.buttonClicked.connect(self.plot_graph)
+        self.plot_list.itemClicked.connect(self.update_figure)
         # self.compare_number.currentTextChanged.connect(self.update_om_selector_state)
 
         # for index, data in self.om_selector_map.items():
@@ -396,16 +401,16 @@ class ResultsPage(QFrame):
             QGroupBox: Group box with score selectors.
         """
         vizualation_settings_group = QGroupBox("Visualization Settings")
-        # vizualation_settings_group.setStyleSheet(self._get_group_stylesheet())
+        vizualation_settings_group.setStyleSheet(self._get_group_stylesheet())
         vizualation_settings_layout = QVBoxLayout()
 
         self.coverage_vs_distribution_button = QRadioButton("Coverage vs Distribution")
-        # self.coverage_vs_distribution_button.setChecked(True)
+        self.coverage_vs_distribution_button.setChecked(True)
         self.peak_vs_selectivity_button = QRadioButton("Peak Capacity vs Selectivity")
         # self.peak_vs_selectivity_button.setChecked(True)
-        self.suggested_rank_vs_peak_detection_button = QRadioButton("Suggested Rank vs Peak Detection Rate")
+        self.suggested_rank_vs_peak_detection_button = QRadioButton("Final Rank vs Peak Detection Rate")
         self.top_ranked_combination_button = QRadioButton("Top Ranked combination")
-        self.top_ranked_combination_button.setChecked(True)
+        self.top_ranked_combination_button.setChecked(False)
 
         self.vizualation_settings_button_group = QButtonGroup()
         self.vizualation_settings_button_group.addButton(self.coverage_vs_distribution_button)
@@ -442,15 +447,62 @@ class ResultsPage(QFrame):
         self.top_number_button_group.setExclusive(True)
 
 
-        vizualation_settings_layout.addWidget(self.coverage_vs_distribution_button)
-        vizualation_settings_layout.addWidget(self.peak_vs_selectivity_button)
-        vizualation_settings_layout.addWidget(self.suggested_rank_vs_peak_detection_button)
-        vizualation_settings_layout.addWidget(self.top_ranked_combination_button)
-        vizualation_settings_layout.addWidget(number_of_rank_displayed_group)
+        self.plot_list = self.build_plot_list()
+        self.plot_list.setFixedHeight(300)
+
+        vizualation_settings_layout.addWidget(self.plot_list)
+        # vizualation_settings_layout.addWidget(self.peak_vs_selectivity_button)
+        # vizualation_settings_layout.addWidget(self.suggested_rank_vs_peak_detection_button)
+        # vizualation_settings_layout.addWidget(self.top_ranked_combination_button)
+        # vizualation_settings_layout.addWidget(number_of_rank_displayed_group)
 
         vizualation_settings_group.setLayout(vizualation_settings_layout)
 
         return vizualation_settings_group
+
+    def build_plot_list(parent=None) -> QListWidget:
+        list_widget = QListWidget(parent)
+        list_widget.setAlternatingRowColors(False)
+
+        groups = {
+            "Scatter": [
+                "Multi Criteria Space",
+                "Reduced Criteria Space",
+            ],
+            "Heatmap": [
+                "Chromatographic Mode Performance",
+            ],
+            "Distribution": [
+                "Chromatographic Mode Performance",
+                "Recommendation distribution by mode",
+            ],
+            "Map": [
+                "Overall feasibility map",
+                "Feasibility maps by mode",
+                "Density decision map",
+            ],
+            "Bar": [
+                "Final rank by recommendation class",
+            ],
+        }
+
+        plot_list = ["Multi Criteria Space",
+                     "Reduced Criteria Space",
+                     "Chromatographic Mode Performance HM",
+                     "Chromatographic Mode Performance BP",
+                     "Recommendation Distribution",
+                     "Feasibility Profile"]
+
+        header_font = QFont()
+        header_font.setPointSize(9)
+        header_font.setBold(True)
+
+        for plot_name in plot_list:
+            item = QListWidgetItem(plot_name)
+            item.setData(Qt.ItemDataRole.UserRole, plot_name)
+            list_widget.addItem(item)
+
+        return list_widget
 
     def _create_plot_panel(self) -> QFrame:
         """Create the right plot panel for result visualization.
@@ -485,10 +537,15 @@ class ResultsPage(QFrame):
         self.fig = Figure(figsize=(10, 6))
         self.canvas = FigureCanvas(self.fig)
         self.toolbar = CustomToolbar(self.canvas)
-        self.plot_utils = PlotUtils(fig=self.fig)
-
-        self._ax = self.canvas.figure.add_subplot(1, 1, 1)
-        self._ax.set_box_aspect(1)
+        self.plot_utils = PlotUtils(fig=self.fig,model=self.model)
+        self.plot_functions_map = {
+            "Multi Criteria Space": self.plot_utils.plot_peak_capacity_vs_elution,
+            "Reduced Criteria Space": self.plot_utils.plot_elution_area_vs_peak_rate,
+            "Chromatographic Mode Performance HM": self.plot_utils.plot_median_rank_score_heatmap,
+            "Chromatographic Mode Performance BP": self.plot_utils.plot_rank_score_distribution_by_mode,
+            "Recommendation Distribution": self.plot_utils.plot_recommendation_distribution,
+            "Feasibility Profile": self.plot_utils.plot_recommendation_distribution
+        }
 
         plot_frame_layout.addWidget(plot_title)
         plot_frame_layout.addWidget(self.toolbar)
@@ -506,7 +563,7 @@ class ResultsPage(QFrame):
         table_frame_layout = QHBoxLayout(table_frame)
         table_frame_layout.setContentsMargins(20, 20, 20, 20)
 
-        self.styled_table = StyledTable(title="Final result and ranking table",has_tab=True,enable_decoration=True)
+        self.styled_table = StyledTable(title="Evaluation Results",has_tab=True,enable_decoration=True)
         self.styled_table.add_sheet(sheet_name='Orthogonality')
         self.styled_table.add_sheet(color_config=COLOR_CONFIG_TABLE_FEASIBILITY,
                                     bold_columns=[3,4,6],
@@ -550,8 +607,8 @@ class ResultsPage(QFrame):
                 "Combination #",
                 "2D Combination",
                 "Chromatographic Mode",
-                "Pratical 2D Peak Capacity ",
-                "Selectivity Factor",
+                "Hypothetical 2D Peak Capacity",
+                "Elution Composition Space Area",
             ])
 
         self.final_recommendation_table = self.styled_table.get_table_from_sheet(sheet_name='Final Recommendation')
@@ -562,11 +619,10 @@ class ResultsPage(QFrame):
                 "Chromatographic Mode",
                 "Consensus Rank",
                 "Peak Detection Rate (%)",
-                "Pratical 2D Peak Capacity ",
-                "Compatibility",
-                "Complexity",
+                "Hypothetical 2D Peak Capacity",
                 "Final Recommendation ",
-                "Suggested Rank",
+                "Final Rank",
+                "Criterion Higlight"
             ])
         # self.styled_table.get_header().setSectionResizeMode(0, QHeaderView.Fixed)
         # self.styled_table.get_header().setSectionResizeMode(1, QHeaderView.Stretch)
@@ -928,6 +984,13 @@ class ResultsPage(QFrame):
         self.fig.canvas.draw()
         self.fig.canvas.flush_events()
 
+    def update_figure(self,item):
+
+        plot_text = item.text()
+
+        self.plot_functions_map[plot_text]()
+        # self.plot_utils.open_in_window()
+
     def plot_graph(self):
 
         data = self.model.get_orthogonality_result_df()
@@ -936,10 +999,6 @@ class ResultsPage(QFrame):
             self.plot_utils.set_orthogonality_result_data(data)
 
             if self.selected_axe:
-                self.plot_utils.clean_axe()
-
-                if self.coverage_vs_distribution_button.isChecked():
-                    self.plot_utils.plot_coverage_vs_distribution()
 
                 if self.peak_vs_selectivity_button.isChecked():
                     self.plot_utils.plot_peak_capacity_vs_consensus_score()
@@ -954,7 +1013,7 @@ class ResultsPage(QFrame):
 
                     top_rank = button.objectName()
 
-                    self.plot_utils.plot_top_ranked_combination(number_of_rank_to_show=top_rank)
+                    # self.plot_utils.plot_top_ranked_combination(number_of_rank_to_show=top_rank)
 
     def plot_orthogonality_vs_2d_peaks(self) -> None:
         """Plot selected score vs. 2D peak capacity scatter plot.
@@ -982,7 +1041,7 @@ class ResultsPage(QFrame):
         y = orthogonality_score_df["2d_peak_capacity"]
 
         self.selected_axe.set_xlabel(self.selected_score, fontsize=12)
-        self.selected_axe.set_ylabel("Hypothetical 2D peak capacity", fontsize=12)
+        self.selected_axe.set_ylabel("Hypothetical 2D Peak Capacity", fontsize=12)
 
         if self.selected_scatter_collection in self.selected_axe.collections:
             self.selected_scatter_collection.remove()

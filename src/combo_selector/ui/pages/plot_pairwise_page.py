@@ -512,10 +512,11 @@ class PlotPairWisePage(QFrame):
                 "2D Combination",
                 "Number of peaks",
                 "Hypothetical 2D Peak Capacity",
+                "Elution Composition Space Area",
             ]
         )
         self.styled_table.add_help_button(2, "Number of peaks","markdown/number_of_peaks.md")
-        self.styled_table.add_help_button(3, "Hypothetical 2D peak capacity","markdown/hypothetical_peak_capacity.md")
+        self.styled_table.add_help_button(3, "Hypothetical 2D Peak Capacity","markdown/hypothetical_peak_capacity.md")
         self.styled_table.set_default_row_count(10)
 
         self.table_view_dialog = TableViewDialog(

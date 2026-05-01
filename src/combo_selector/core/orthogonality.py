@@ -70,8 +70,10 @@ class Orthogonality(DataManager, MetricEngine, Redundancy, Scoring, ResultsBuild
         self.nb_combination = 0
         self.retention_time_df = None
         self.retention_time_df_2d_peaks = None
+        self.load_elution_composition_df = None
         self.use_suggested_score = True
         self.status = "no_data"
         self.peak_capacity_status = "no_data"
+        self.elution_data_status = "no_data"
         self.init_data()
         self.reset_om_status_computation_state()

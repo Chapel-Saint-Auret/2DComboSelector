@@ -226,7 +226,7 @@ class ComboSelectorMain(CustomMainWindow):
             - Triggers results worker to recompute with new data
         """
         self.plot_page.update_table_peak_data()
-        self.model.update_result_with_new_peak_capacity()
+        self.model.compute_final_rank()
         self.results_page.update_results_table()
         self.results_page.plot_graph()
         # self.plot_page.update_dataset_selector_state()

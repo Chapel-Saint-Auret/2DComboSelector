@@ -158,6 +158,9 @@ class ImportDataPage(QFrame):
         self.add_2D_peak_data_btn.clicked.connect(
             self.load_experimental_peak_capacities
         )
+        self.add_delta_ce_btn.clicked.connect(
+            self.load_elution_composition_space
+        )
         self.clean_retention_time_btn.clicked.connect(self.show_nan_policy_dialog)
         self.add_void_time_btn.clicked.connect(self.load_void_time_data)
         self.add_gradient_end_time_btn.clicked.connect(self.load_gradient_end_time_data)
@@ -290,6 +293,20 @@ class ImportDataPage(QFrame):
         peak_layout.addWidget(self.add_2D_peak_data_btn)
         peak_layout.addWidget(self.twoD_peak_status)
 
+        self.add_delta_ce_btn = QPushButton(
+            QIcon(resource_path("icons/folder_icon.png")), "Import"
+        )
+        self.add_delta_ce_btn.setIconSize(ICON_SIZE)
+        self.add_delta_ce_btn.setFixedHeight(35)
+        self.add_delta_ce_linedit = QLineEdit()
+        self.add_delta_ce_linedit.setFixedHeight(35)
+        self.delta_ce_status = Status()
+
+        delta_ce_layout = QHBoxLayout()
+        delta_ce_layout.addWidget(self.add_delta_ce_linedit)
+        delta_ce_layout.addWidget(self.add_delta_ce_btn)
+        delta_ce_layout.addWidget(self.delta_ce_status)
+
         # Void time (hidden until Void-Max or WOSEL is selected)
         self.add_void_time_btn = QPushButton(
             QIcon(resource_path("icons/folder_icon.png")), "Import"
@@ -341,6 +358,8 @@ class ImportDataPage(QFrame):
         data_import_inner_layout.addLayout(rt_layout)
         data_import_inner_layout.addWidget(QLabel("Experimental 1D Peak Capacities:"))
         data_import_inner_layout.addLayout(peak_layout)
+        data_import_inner_layout.addWidget(QLabel("Elution Composition Space Area"))
+        data_import_inner_layout.addLayout(delta_ce_layout)
         data_import_inner_layout.addWidget(self.void_time_label)
         data_import_inner_layout.addWidget(self.void_time_widget)
         data_import_inner_layout.addWidget(self.gradient_end_time_label)
@@ -739,6 +758,45 @@ class ImportDataPage(QFrame):
                 else:
                     self.twoD_peak_status.set_valid()
                     self.add_2D_peak_data_linedit.setText(fileName[0])
+                    self.exp_peak_capacities_loaded.emit()
+            else:
+                self.twoD_peak_status.set_error()
+
+    def load_elution_composition_space(self) -> None:
+        """Load experimental 1D peak capacity data from an Excel file.
+
+        Side Effects:
+            - Opens file and sheet selection dialogs
+            - Loads data into model
+            - Updates UI status indicators
+            - Emits exp_peak_capacities_loaded signal on success
+        """
+        fileName = QFileDialog.getOpenFileName(
+            self, "Open Excel File", "", "Excel Files (*.xlsx *.xls)"
+        )
+        if fileName[0]:
+            try:
+                sheet_names_list = pd.ExcelFile(
+                    fileName[0], engine="openpyxl"
+                ).sheet_names
+                sheet, ok = QInputDialog.getItem(
+                    self, "Select excel sheet", "select sheet", sheet_names_list
+                )
+            except Exception:
+                ok = False
+
+            if ok:
+                self.model.load_elution_composition_space_area_data(
+                    filepath=fileName[0], sheetname=sheet
+                )
+
+                status = self.model.get_status()
+
+                if status == "error":
+                    self.twoD_peak_status.set_error()
+                else:
+                    self.delta_ce_status.set_valid()
+                    self.add_delta_ce_linedit.setText(fileName[0])
                     self.exp_peak_capacities_loaded.emit()
             else:
                 self.twoD_peak_status.set_error()

@@ -15,11 +15,20 @@ from typing import Optional
 
 import numpy as np
 import pandas as pd
-from matplotlib import collections, patches
+from matplotlib.backends.backend_qtagg import FigureCanvas
+from matplotlib.figure import Figure
+from PySide6.QtWidgets import QDialog,QVBoxLayout
+from matplotlib import collections, patches, ticker
+from matplotlib.gridspec import GridSpec
 from matplotlib.collections import QuadMesh
+import matplotlib.colors as mcolors
+from matplotlib.colors import LinearSegmentedColormap
+import matplotlib.ticker as ticker
 from matplotlib.colors import ListedColormap
 from matplotlib.figure import Figure
 from matplotlib.lines import Line2D
+
+from combo_selector.ui.widgets.custom_toolbar import CustomToolbar
 
 
 class PlotUtils:
@@ -37,7 +46,7 @@ class PlotUtils:
         scatter_collection (PathCollection): Scatter plot collection for updating points.
     """
 
-    def __init__(self, fig: Figure):
+    def __init__(self, fig: Figure,model=None):
         """Initialize the PlotUtils with a matplotlib Figure.
 
         Args:
@@ -45,6 +54,7 @@ class PlotUtils:
         """
         super().__init__()
 
+        self.model = model
         self.orthogonality_data = None
         self.fig = fig
         self.axe = None
@@ -974,3 +984,487 @@ class PlotUtils:
 
         self.fig.canvas.draw()
         self.fig.canvas.flush_events()
+
+    def plot_peak_capacity_vs_elution(self):
+        self.fig.clear()
+
+        x = self.orthogonality_result_data['Hypothetical 2D Peak Capacity']
+        y = self.orthogonality_result_data['Elution Composition Space Area']
+        final_rank = self.orthogonality_result_data['Final Rank']
+        consensus_rank = self.orthogonality_result_data['Consensus Ranking']
+        n = len(final_rank)
+
+        final_rank_pct = (final_rank / n) * 100  # controls which points are shown
+        consensus_rank_pct = (consensus_rank / n) * 100  # controls point color
+
+        def get_color(pct):
+            if pct >= 99:
+                return '#1A3A9E'
+            elif pct >= 95:
+                return '#A0379A'
+            elif pct >= 90:
+                return '#E64981'
+            elif pct >= 75:
+                return '#FF7C64'
+            else:
+                return '#F9F871'
+
+        colors = np.array([get_color(p) for p in consensus_rank_pct])  # color from consensus
+
+        panels = {
+            'All': np.ones(n, dtype=bool),
+            'Top 50%': final_rank_pct >= 50,  # filter from final_rank
+            'Top 20%': final_rank_pct >= 80,
+            'Top 10%': final_rank_pct >= 90,
+        }
+
+        x_min, x_max = x.min() * 0.8, x.max() * 1.2
+        y_min, y_max = y.min() * 0.8, y.max() * 1.2
+
+        gs = GridSpec(2, 2, figure=self.fig, hspace=0.45, wspace=0.35,
+                      left=0.1, right=0.82, top=0.92, bottom=0.1)
+
+        for i, (title, mask) in enumerate(panels.items()):
+            self.axe = self.fig.add_subplot(gs[i // 2, i % 2])
+
+            x_data = x[mask]
+            y_data = y[mask]
+
+            self.axe.scatter(x_data, y_data,
+                       c=colors[mask], s=15, edgecolors='k', alpha=0.85, linewidths=0.3, picker=5)
+
+            self.axe.set_xscale('log')
+            self.axe.set_yscale('log')
+            self.axe.set_xlim(x_data.min() * 0.8, x_data.max() * 1.2)
+            self.axe.set_ylim(y_data.min() * 0.8, y_data.max() * 1.2)
+            self.axe.set_title(title, fontsize=9)
+            self.axe.tick_params(labelsize=7)
+            self.axe.xaxis.set_major_locator(ticker.LogLocator(base=10, numticks=4))
+            # ax.xaxis.set_major_formatter(ticker.FuncFormatter(lambda val, _: f'{val:.0f}'))
+            # ax.yaxis.set_major_locator(ticker.LogLocator(base=10, numticks=4))
+            # ax.yaxis.set_major_formatter(ticker.LogFormatterMathtext())
+            self.axe.grid(True, which='both', linestyle='--', linewidth=0.3, alpha=0.5)
+
+            if i in (0, 2):
+                self.axe.set_ylabel('Elution-composition space area', fontsize=7)
+            if i in (2, 3):
+               self.axe.set_xlabel('Hypothetical 2D peak capacity', fontsize=7)
+
+        legend_elements = [
+            patches.Patch(color='#1A3A9E', label='Top 1%'),
+            patches.Patch(color='#A0379A', label='Top 5%'),
+            patches.Patch(color='#E64981', label='Top 10%'),
+            patches.Patch(color='#FF7C64', label='Top 25%'),
+            patches.Patch(color='#F9F871', label='> 25%'),
+        ]
+        leg = self.fig.legend(handles=legend_elements,
+                              title="Percentile\nd'orthogonalité",
+                              loc='center right',
+                              bbox_to_anchor=(1.0, 0.5),
+                              fontsize=8,
+                              title_fontsize=8,
+                              frameon=True,
+                              edgecolor='gray')
+        leg.get_frame().set_linewidth(0.5)
+
+        self.fig.canvas.draw()
+        self.fig.canvas.flush_events()
+
+    def plot_elution_area_vs_peak_rate(self):
+        self.fig.clear()
+
+        x = self.orthogonality_result_data['Elution Composition Space Area']
+        y = self.orthogonality_result_data['Peak Detection Rate (%)']
+        final_rank = self.orthogonality_result_data['Final Rank']
+        consensus_rank = self.orthogonality_result_data['Consensus Ranking']
+        n = len(final_rank)
+
+        final_rank_pct = (final_rank / n) * 100  # controls which points are shown
+        consensus_rank_pct = (consensus_rank / n) * 100  # controls point color
+
+        def get_color(pct):
+            if pct >= 99:
+                return '#1A3A9E'
+            elif pct >= 95:
+                return '#A0379A'
+            elif pct >= 90:
+                return '#E64981'
+            elif pct >= 75:
+                return '#FF7C64'
+            else:
+                return '#F9F871'
+
+        colors = np.array([get_color(p) for p in consensus_rank_pct])  # color from consensus
+
+        panels = {
+            'All': np.ones(n, dtype=bool),
+            'Top 50%': final_rank_pct >= 50,  # filter from final_rank
+            'Top 20%': final_rank_pct >= 80,
+            'Top 10%': final_rank_pct >= 90,
+        }
+
+        x_min, x_max = x.min() * 0.8, x.max() * 1.2
+        y_min, y_max = y.min() * 0.8, y.max() * 1.2
+
+        gs = GridSpec(2, 2, figure=self.fig, hspace=0.45, wspace=0.35,
+                      left=0.1, right=0.82, top=0.92, bottom=0.1)
+
+        for i, (title, mask) in enumerate(panels.items()):
+            self.axe = self.fig.add_subplot(gs[i // 2, i % 2])
+
+            x_data = x[mask]
+            y_data = y[mask]
+
+            self.axe.scatter(x_data, y_data,
+                       c=colors[mask], s=15, edgecolors='k', alpha=0.85, linewidths=0.3, picker=5)
+
+            self.axe.set_xscale('log')
+            self.axe.set_yscale('log')
+            self.axe.set_xlim(x_data.min() * 0.8, x_data.max() * 1.2)
+            self.axe.set_ylim(y_data.min() * 0.8, y_data.max() * 1.2)
+            self.axe.set_title(title, fontsize=9)
+            self.axe.tick_params(labelsize=7)
+            self.axe.xaxis.set_major_locator(ticker.LogLocator(base=10, numticks=4))
+            # ax.xaxis.set_major_formatter(ticker.FuncFormatter(lambda val, _: f'{val:.0f}'))
+            # ax.yaxis.set_major_locator(ticker.LogLocator(base=10, numticks=4))
+            # ax.yaxis.set_major_formatter(ticker.LogFormatterMathtext())
+            self.axe.grid(True, which='both', linestyle='--', linewidth=0.3, alpha=0.5)
+
+            if i in (0, 2):
+                self.axe.set_ylabel('Peak Detection Rate (%)', fontsize=7)
+            if i in (2, 3):
+                self.axe.set_xlabel('Elution Composition Space Area', fontsize=7)
+
+        legend_elements = [
+            patches.Patch(color='#1A3A9E', label='Top 1%'),
+            patches.Patch(color='#A0379A', label='Top 5%'),
+            patches.Patch(color='#E64981', label='Top 10%'),
+            patches.Patch(color='#FF7C64', label='Top 25%'),
+            patches.Patch(color='#F9F871', label='> 25%'),
+        ]
+        leg = self.fig.legend(handles=legend_elements,
+                              title="Percentile\nd'orthogonalité",
+                              loc='center right',
+                              bbox_to_anchor=(1.0, 0.5),
+                              fontsize=8,
+                              title_fontsize=8,
+                              frameon=True,
+                              edgecolor='gray')
+        leg.get_frame().set_linewidth(0.5)
+
+        self.fig.canvas.draw()
+        self.fig.canvas.flush_events()
+
+    def plot_median_rank_score_heatmap(self):
+
+        self.fig.clear()
+
+        median_df = self.model.get_median_rank_score_table()
+
+        peak_col = "Peak Detection Rate (%)"
+        rank_df = median_df.drop(columns=[peak_col])
+        peak_df = median_df[[peak_col]]
+
+        n_rows, n_rank_cols = rank_df.shape
+
+        rank_cmap = LinearSegmentedColormap.from_list(
+            "rank_cmap", ["#2166ac", "#f7f7f7", "#fddbc7"], N=256
+        )
+        peak_cmap = LinearSegmentedColormap.from_list(
+            "peak_cmap", ["#fff7bc", "#fdae61", "#d7191c"], N=256
+        )
+
+        gs = GridSpec(
+            1, 3,
+            figure=self.fig,
+            width_ratios=[n_rank_cols + 1, 0.07, 0.07],
+            left=0.16,
+            right=0.84,  # pull grid left to create gap
+            top=0.62,
+            bottom=0.28,
+            wspace=0.35  # more space between heatmap and colorbars
+        )
+
+        ax_main = self.fig.add_subplot(gs[0, 0])
+        cax_rank = self.fig.add_subplot(gs[0, 1])
+        cax_peak = self.fig.add_subplot(gs[0, 2])
+
+        im_rank = ax_main.imshow(
+            rank_df.values.astype(float),
+            cmap=rank_cmap,
+            aspect="auto",
+            extent=[-0.5, n_rank_cols - 0.5, n_rows - 0.5, -0.5],
+            vmin=rank_df.values.min(),
+            vmax=rank_df.values.max()
+        )
+
+        im_peak = ax_main.imshow(
+            peak_df.values.astype(float),
+            cmap=peak_cmap,
+            aspect="auto",
+            extent=[n_rank_cols - 0.5, n_rank_cols + 0.5, n_rows - 0.5, -0.5],
+            vmin=0,
+            vmax=1
+        )
+
+        ax_main.set_xlim(-0.5, n_rank_cols + 0.5)
+        ax_main.set_ylim(n_rows - 0.5, -0.5)
+
+        all_labels = [c.replace(" ", "\n") for c in rank_df.columns] + ["Peak rate\n(value)"]
+        ax_main.set_xticks(range(n_rank_cols + 1))
+        ax_main.set_xticklabels(all_labels, fontsize=5, fontweight="bold")
+
+        ax_main.set_yticks(range(n_rows))
+        ax_main.set_yticklabels(rank_df.index, fontsize=5, fontweight="bold")
+
+        ax_main.tick_params(top=True, bottom=False, labeltop=True, labelbottom=False, length=0)
+
+        ax_main.set_xticks(np.arange(-0.5, n_rank_cols + 1, 1), minor=True)
+        ax_main.set_yticks(np.arange(-0.5, n_rows, 1), minor=True)
+        ax_main.grid(which="minor", color="white", linewidth=1.5)
+        ax_main.tick_params(which="minor", length=0)
+
+        for r in range(n_rows):
+            for c in range(n_rank_cols):
+                ax_main.text(
+                    c, r, f"{rank_df.iloc[r, c]:.0f}",
+                    ha="center", va="center", fontsize=7, color="black"
+                )
+
+        for r in range(n_rows):
+            ax_main.text(
+                n_rank_cols, r, f"{peak_df.iloc[r, 0]:.2f}",
+                ha="center", va="center", fontsize=7, color="black"
+            )
+
+        cbar_rank = self.fig.colorbar(im_rank, cax=cax_rank)
+        cbar_rank.ax.tick_params(labelsize=6)
+        cbar_rank.set_label("Median rank\n(Lower = better)", fontsize=6, labelpad=2)
+        # move label to right side so it doesn't overlap ticks
+        cbar_rank.ax.yaxis.set_label_position('right')
+        cbar_rank.ax.yaxis.tick_left()  # keep ticks on left
+
+        cbar_peak = self.fig.colorbar(im_peak, cax=cax_peak)
+        cbar_peak.ax.tick_params(labelsize=6)
+        cbar_peak.set_label("Peak rate\n(raw value)", fontsize=6, labelpad=2)
+
+        self.fig.suptitle(
+            "A. Median rank heatmap by chromatographic mode",
+            fontsize=9, fontweight="bold", x=0.16, ha="left"
+        )
+
+        self.fig.canvas.draw()
+        self.fig.canvas.flush_events()
+
+    def plot_rank_score_distribution_by_mode(self):
+        self.fig.clear()
+
+        df = self.model.get_rank_score_grouped_by_chrom_mode_table()
+
+        metrics = [
+            ("Consensus Ranking", "Orthogonality"),
+            ("Elution Composition Space Area Rank", "Elution-composition space area"),
+            ("Hypothetical 2D Peak Capacity Rank", "Hypothetical 2D peak capacity"),
+            ("Final Rank", "Final consensus rank"),
+            ("Peak Detection Rate (%)", "Peak rate"),
+        ]
+
+        gs = GridSpec(
+            2, 3,
+            figure=self.fig,
+            hspace=0.55,
+            wspace=0.35,
+            left=0.08,
+            right=0.96,
+            top=0.86,
+            bottom=0.16
+        )
+
+        positions = [
+            (0, 0),
+            (0, 1),
+            (0, 2),
+            (1, 0),
+            (1, 1),
+        ]
+
+        colors = [
+            "#E41A1C",
+            "#377EB8",
+            "#4DAF4A",
+            "#984EA3",
+            "#FF7F00",
+            "#00A6A6",
+        ]
+
+        for i, ((column_name, title), position) in enumerate(zip(metrics, positions)):
+
+            self.axe = self.fig.add_subplot(gs[position[0], position[1]])
+
+            labels = []
+            values = []
+
+            for mode, group in df:
+                labels.append(mode)
+                values.append(group[column_name].dropna().values)
+
+            box = self.axe.boxplot(
+                values,
+                patch_artist=True,
+                widths=0.55,
+                showfliers=False
+            )
+
+            for patch, color in zip(box["boxes"], colors):
+                patch.set_facecolor(color)
+                patch.set_alpha(0.25)
+                patch.set_edgecolor(color)
+                patch.set_linewidth(1.0)
+
+            for median in box["medians"]:
+                median.set_color("black")
+                median.set_linewidth(1.2)
+
+            for whisker in box["whiskers"]:
+                whisker.set_linewidth(0.8)
+
+            for cap in box["caps"]:
+                cap.set_linewidth(0.8)
+
+            for j, y_data in enumerate(values, start=1):
+                x_data = np.random.normal(j, 0.04, size=len(y_data))
+
+                self.axe.scatter(
+                    x_data,
+                    y_data,
+                    s=10,
+                    color=colors[j - 1],
+                    edgecolors="k",
+                    linewidths=0.2,
+                    alpha=0.75,
+                    picker=5
+                )
+
+            self.axe.set_title(title, fontsize=9, fontweight="bold")
+            self.axe.set_ylabel("Rank score", fontsize=8)
+            # self.axe.set_ylim(0, 100)
+
+            self.axe.set_xticks(range(1, len(labels) + 1))
+            self.axe.set_xticklabels(labels, rotation=45, ha="right", fontsize=7)
+
+            self.axe.tick_params(axis="y", labelsize=7)
+            self.axe.grid(
+                True,
+                axis="y",
+                linestyle="--",
+                linewidth=0.4,
+                alpha=0.5
+            )
+
+        self.fig.suptitle(
+            "Example 1 — Rank score distribution by chromatographic mode",
+            fontsize=13,
+            fontweight="bold",
+            y=0.96
+        )
+
+        self.fig.canvas.draw()
+        self.fig.canvas.flush_events()
+
+    def plot_recommendation_distribution(self):
+        self.fig.clear()
+        self.axe = self.fig.add_subplot(111)
+
+        df = self.model.get_recommendation_distribution_group_table()
+
+        CATEGORY_ORDER = [
+            "Highly recommended",
+            "Recommended",
+            "Use with caution",
+            "Not recommended",
+        ]
+        COLORS = {
+            "Highly recommended": "#1a7a2e",
+            "Recommended": "#6abf4b",
+            "Use with caution": "#f5a623",
+            "Not recommended": "#d94f3d",
+        }
+
+        mode_labels = []
+        data = {cat: [] for cat in CATEGORY_ORDER}
+
+        for mode, group in df:
+            mode_labels.append(mode)
+            recommendations = group.values
+            for cat in CATEGORY_ORDER:
+                data[cat].append((recommendations == cat).sum())
+
+        x = range(len(mode_labels))
+        bar_width = 0.5
+        bottoms = [0] * len(mode_labels)
+
+        for cat in CATEGORY_ORDER:
+            values = data[cat]
+            bars = self.axe.bar(x, values, bar_width, bottom=bottoms,
+                          color=COLORS[cat], label=cat)
+
+            for bar, val, bot in zip(bars, values, bottoms):
+                if val > 0:
+                    self.axe.text(
+                        bar.get_x() + bar.get_width() / 2,
+                        bot + val / 2,
+                        f"{val:,}",
+                        ha="center", va="center",
+                        fontsize=7, fontweight="bold", color="white",
+                    )
+
+            bottoms = [b + v for b, v in zip(bottoms, values)]
+
+        # Total on top
+        for i, total in enumerate(bottoms):
+            self.axe.text(
+                i, total + max(bottoms) * 0.01,
+                f"{total:,}",
+                ha="center", va="bottom",
+                fontsize=7, fontweight="bold", color="#2c2c2a",
+            )
+
+        self.axe.set_xticks(list(x))
+        self.axe.set_xticklabels(mode_labels, fontsize=7, rotation=15, ha="right")
+        self.axe.set_xlabel("Chromatographic mode", fontsize=8)
+        self.axe.set_ylabel("Number of combinations", fontsize=8)
+        self.axe.set_title("Recommendation distribution", fontsize=9, fontweight="bold")
+        self.axe.yaxis.set_major_formatter(ticker.FuncFormatter(lambda v, _: f"{int(v):,}"))
+        self.axe.tick_params(axis="both", labelsize=7)
+        self.axe.grid(axis="y", linestyle="--", linewidth=0.5, alpha=0.6)
+        self.axe.set_axisbelow(True)
+        self.axe.spines[["top", "right"]].set_visible(False)
+
+        self.axe.legend(
+            loc="lower center",
+            bbox_to_anchor=(0.5, -0.35),
+            ncol=2,
+            fontsize=7,
+            frameon=True,
+            edgecolor="#cccccc",
+        )
+
+        # Reserve space for the legend below the axes
+        self.fig.subplots_adjust(left=0.12, right=0.97, top=0.92, bottom=0.28)
+        self.fig.canvas.draw()
+        self.fig.canvas.flush_events()
+
+    def open_in_window(self):
+        self._plot_dialog = QDialog()
+        self._plot_dialog.setWindowTitle("Multi-Criteria Space")
+        self._plot_dialog.resize(1000, 700)
+
+        layout = QVBoxLayout(self._plot_dialog)
+
+        canvas = FigureCanvas(self.fig)
+        toolbar = CustomToolbar(canvas, self._plot_dialog)
+
+        layout.addWidget(toolbar)
+        layout.addWidget(canvas)
+
+        self._plot_dialog.show()

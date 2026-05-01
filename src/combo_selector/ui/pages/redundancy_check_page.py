@@ -712,7 +712,7 @@ class RedundancyCheckPage(QFrame):
 
         correlation_group_table = self.model.get_correlation_group_df()
 
-        self.model.fill_correlation_group_category()
+        self.model.fill_correlation_group_classification()
 
         self.model.build_coverage_distribution_matrix()
 

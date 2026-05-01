@@ -211,7 +211,7 @@ class Redundancy:
 
         self.coverage_distribution_df = self.coverage_distribution_df.T
 
-    def fill_correlation_group_category(self):
+    def fill_correlation_group_classification(self):
         """Assign a coverage/distribution category label to each correlation group.
 
         Computes ρ coverage and ρ distribution for each group and assigns
