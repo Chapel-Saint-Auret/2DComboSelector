@@ -34,7 +34,11 @@ METRIC_MAPPING = {
         "include_in_score": True,
         "include_in_corr_mat": False,
     },
-    "title": {"table_index": 1, "include_in_score": True, "include_in_corr_mat": False},
+    "title": {
+    "table_index": 1,
+    "include_in_score": True,
+    "include_in_corr_mat": False},
+
     "nb_peaks": {
         "table_index": 2,
         "include_in_score": False,
@@ -45,148 +49,153 @@ METRIC_MAPPING = {
         "include_in_score": True,
         "include_in_corr_mat": False,
     },
-    "convex_hull": {
+    "elution_composition_space": {
         "table_index": 4,
         "include_in_score": True,
-        "include_in_corr_mat": True,
+        "include_in_corr_mat": False,
     },
-    "bin_box_ratio": {
+    "convex_hull": {
         "table_index": 5,
         "include_in_score": True,
         "include_in_corr_mat": True,
     },
-    "pearson_r": {
+    "bin_box_ratio": {
         "table_index": 6,
         "include_in_score": True,
         "include_in_corr_mat": True,
     },
-    "spearman_rho": {
+    "pearson_r": {
         "table_index": 7,
         "include_in_score": True,
         "include_in_corr_mat": True,
     },
-    "kendall_tau": {
+    "spearman_rho": {
         "table_index": 8,
         "include_in_score": True,
         "include_in_corr_mat": True,
     },
-    "cc_mean": {
+    "kendall_tau": {
         "table_index": 9,
+        "include_in_score": True,
+        "include_in_corr_mat": True,
+    },
+    "cc_mean": {
+        "table_index": 10,
         "include_in_score": True,
         "include_in_corr_mat": False,
     },
     "asterisk_metrics": {
-        "table_index": 10,
+        "table_index": 11,
         "include_in_score": True,
         "include_in_corr_mat": True,
     },
     "nnd_arithmetic_mean": {
-        "table_index": 11,
-        "include_in_score": True,
-        "include_in_corr_mat": False,
-    },
-    "nnd_geom_mean": {
         "table_index": 12,
         "include_in_score": True,
         "include_in_corr_mat": False,
     },
-    "nnd_harm_mean": {
+    "nnd_geom_mean": {
         "table_index": 13,
         "include_in_score": True,
         "include_in_corr_mat": False,
     },
-    "nnd_mean": {
+    "nnd_harm_mean": {
         "table_index": 14,
         "include_in_score": True,
-        "include_in_corr_mat": True,
+        "include_in_corr_mat": False,
     },
-    "percent_fit": {
+    "nnd_mean": {
         "table_index": 15,
         "include_in_score": True,
         "include_in_corr_mat": True,
     },
-    "percent_bin": {
+    "percent_fit": {
         "table_index": 16,
         "include_in_score": True,
         "include_in_corr_mat": True,
     },
-    "mean_bin_box_percent_bin": {
+    "percent_bin": {
         "table_index": 17,
         "include_in_score": True,
-        "include_in_corr_mat": False,
+        "include_in_corr_mat": True,
     },
-    "asterisk_convex_hull_mean": {
+    "mean_bin_box_percent_bin": {
         "table_index": 18,
         "include_in_score": True,
         "include_in_corr_mat": False,
     },
-    "mean_bin_box_percent_bin_nnd_mean": {
+    "asterisk_convex_hull_mean": {
         "table_index": 19,
         "include_in_score": True,
         "include_in_corr_mat": False,
     },
-    "orthogonality_score": {
+    "mean_bin_box_percent_bin_nnd_mean": {
         "table_index": 20,
         "include_in_score": True,
         "include_in_corr_mat": False,
     },
-    "orthogonality_ranking": {
+    "orthogonality_score": {
         "table_index": 21,
         "include_in_score": True,
         "include_in_corr_mat": False,
     },
-    "coverage_score": {
+    "orthogonality_ranking": {
         "table_index": 22,
         "include_in_score": True,
         "include_in_corr_mat": False,
     },
-    "practical_2d_peak_capacity": {
+    "coverage_score": {
         "table_index": 23,
         "include_in_score": True,
         "include_in_corr_mat": False,
     },
-    "heinisch": {
+    "practical_2d_peak_capacity": {
         "table_index": 24,
         "include_in_score": True,
         "include_in_corr_mat": False,
     },
-    "orthogonality_value": {
+    "heinisch": {
         "table_index": 25,
         "include_in_score": True,
         "include_in_corr_mat": False,
     },
-    "gilar-watson": {
+    "orthogonality_value": {
         "table_index": 26,
         "include_in_score": True,
-        "include_in_corr_mat": True,
+        "include_in_corr_mat": False,
     },
-    "modeling_approach": {
+    "gilar-watson": {
         "table_index": 27,
         "include_in_score": True,
         "include_in_corr_mat": True,
     },
-    "conditional_entropy": {
+    "modeling_approach": {
         "table_index": 28,
         "include_in_score": True,
         "include_in_corr_mat": True,
     },
-    "geometric_approach": {
+    "conditional_entropy": {
         "table_index": 29,
         "include_in_score": True,
         "include_in_corr_mat": True,
     },
-    "distribution_score": {
+    "geometric_approach": {
         "table_index": 30,
         "include_in_score": True,
         "include_in_corr_mat": True,
     },
-    "agreement_index": {
+    "distribution_score": {
         "table_index": 31,
         "include_in_score": True,
         "include_in_corr_mat": True,
     },
-    "outlier_metric_flag": {
+    "agreement_index": {
         "table_index": 32,
+        "include_in_score": True,
+        "include_in_corr_mat": True,
+    },
+    "outlier_metric_flag": {
+        "table_index": 33,
         "include_in_score": True,
         "include_in_corr_mat": True,
     },
@@ -216,6 +225,22 @@ UI_TO_MODEL_MAPPING = {
     "Conditional entropy": "conditional_entropy",
 }
 
+METRIC_CATEGORY = {
+    "Convex hull relative area": "Coverage",
+    "Bin box counting": "Coverage",
+    "Gilar-Watson method": "Coverage",
+    "Modeling approach": "NC",
+    "Conditional entropy": "Distribution",
+    "Pearson Correlation": "Distribution",
+    "Spearman Correlation": "Distribution",
+    "Kendall Correlation": "Distribution",
+    "Asterisk equations": "Distribution",
+    "NND Arithm mean": "Distribution",
+    "NND Geom mean": "Distribution",
+    "NND Harm mean": "Distribution",
+    "%FIT": "Distribution",
+    "%BIN": "Coverage",
+}
 METRIC_WEIGHTS = {"%FIT": 10}
 DEFAULT_WEIGHT = 1
 
