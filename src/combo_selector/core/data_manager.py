@@ -68,15 +68,6 @@ class DataManager:
         self.retention_time_df = pd.DataFrame()
         self.normalized_retention_time_df = pd.DataFrame()
 
-        self.combination_df = pd.DataFrame(
-            columns=[
-                "Combination #",
-                "2D Combination",
-                "Number of peaks",
-                "Hypothetical 2D peak capacity",
-            ]
-        )
-
     # ------------------------------------------------------------------
     # Accessors
     # ------------------------------------------------------------------
@@ -142,7 +133,7 @@ class DataManager:
 
         Returns:
             pd.DataFrame: DataFrame with Set #, 2D Combination, Number of peaks,
-                         and Hypothetical 2D peak capacity columns.
+                         and Hypothetical 2D Peak Capacity columns.
         """
         return self.combination_df
 
@@ -280,6 +271,7 @@ class DataManager:
                 self.update_metrics(set_key, "outlier_metric_flag", 0)
                 self.update_metrics(set_key, "orthogonality_value", 0)
                 self.update_metrics(set_key, "2d_peak_capacity", 'Not available')
+                self.update_metrics(set_key, "elution_composition_space", 'Not available')
                 self.update_metrics(set_key, "heinisch", 0)
 
                 # check if x,y pair element contains at least one empty item.
@@ -653,6 +645,7 @@ class DataManager:
                         self.update_metrics(set_key, "outlier_metric_flag", 0)
                         self.update_metrics(set_key, "orthogonality_value", 0)
                         self.update_metrics(set_key, "2d_peak_capacity", 'Not available')
+                        self.update_metrics(set_key, "elution_composition_space",'Not available')
                         self.update_metrics(set_key, "heinisch", 0)
 
                         # Update orthogonality dictionary
@@ -789,7 +782,7 @@ class DataManager:
                         set_key,
                         "set_number",
                         set_number,
-                        table_row_index=set_number - 1,
+                        table_row_index=set_number - 1
                     )
                     self.update_metrics(
                         set_key, "title", expected_title, table_row_index=set_number - 1
@@ -798,26 +791,71 @@ class DataManager:
                         set_key,
                         "2d_peak_capacity",
                         peak_capacity,
-                        table_row_index=set_number - 1,
+                        table_row_index=set_number - 1
                     )
 
                 set_number += 1
 
-            combination_table = [row[0:4] for row in self.table_data]
-            self.combination_df = pd.DataFrame(
-                combination_table,
-                columns=[
-                    "Combination #",
-                    "2D Combination",
-                    "Number of peaks",
-                    "Hypothetical 2D peak capacity",
-                ],
-            )
+            combination_table = [row[3] for row in self.table_data]
 
+            self.combination_df["Hypothetical 2D Peak Capacity"] = self.orthogonality_result_df['Hypothetical 2D Peak Capacity'] \
+                = combination_table
             self.peak_capacity_status = "peak_capacity_loaded"
+            self.orthogonality_result_df['Hypothetical 2D Peak Capacity Rank'] = self.combination_df["Hypothetical 2D Peak Capacity"].rank(
+                ascending=False, method='average')
 
         except Exception as e:
             print(f"Error loading 2D peaks: {str(e)}")
+            self.status = "error"
+            raise
+
+    def load_elution_composition_space_area_data(self, filepath: str, sheetname: str) -> None:
+        """Elution composition space area data from an Excel file.
+
+        Args:
+            filepath (str): Path to the Excel file.
+            sheetname (str): Name of the sheet to load.
+
+        Side Effects:
+            - Loads data into retention_time_df_2d_peaks
+            - Updates 'elution_composition_space' in orthogonality_dict and table_data for each set
+            - Updates combination_df with elution data information
+            - Sets status to 'elution_data_status' on success or 'error' on failure
+
+        Raises:
+            Exception: Re-raises any exception after setting status to 'error'.
+        """
+        try:
+            # Load data and clean columns once (no redundant file reading)
+            self.load_elution_composition_df = load_simple_table(filepath, sheetname)
+
+            columns = self.load_elution_composition_df.columns.tolist()
+            num_columns = len(columns)
+            set_number = 1
+
+            for col1_idx, col2_idx in combinations(range(num_columns), 2):
+                set_key = f"Set {set_number}"
+                expected_title = f"{columns[col1_idx]} vs {columns[col2_idx]}"
+
+                # Calculate 2D peak capacity
+                x_peak = self.load_elution_composition_df.iloc[0, col1_idx]
+                y_peak = self.load_elution_composition_df.iloc[0, col2_idx]
+                elution_composition_space = x_peak * y_peak
+
+                # Use helper function for updates
+                self.update_metrics(set_key,"elution_composition_space",elution_composition_space,table_row_index=set_number - 1)
+
+                set_number += 1
+
+            combination_table = [row[4] for row in self.table_data]
+
+            self.combination_df['Elution Composition Space Area'] = self.orthogonality_result_df['Elution Composition Space Area'] \
+                = combination_table
+            self.orthogonality_result_df['Elution Composition Space Area Rank'] = self.combination_df['Elution Composition Space Area'].rank(ascending=False, method='average')
+            self.elution_data_status = "elution_data_loaded"
+
+        except Exception as e:
+            print(f"Error loading Elution composition space area data: {str(e)}")
             self.status = "error"
             raise
 
@@ -841,7 +879,7 @@ class DataManager:
         """
         num_columns = len(self.column_names) - 1
 
-        current_column = 1
+        current_column = 0
         set_number = 1
 
         while current_column < num_columns:
@@ -857,7 +895,6 @@ class DataManager:
             for next_column in next_column_list:
                 next_column_name = self.column_names[next_column]
                 set_key = f"Set {set_number}"
-                print(set_key + 'in normalized retention time')
                 y_values = self.normalized_retention_time_df[next_column_name]
 
                 # check if x,y pair element contains at least one empty item.
@@ -903,28 +940,25 @@ class DataManager:
     def update_combination_df(self) -> None:
         """Update the combination DataFrame with set information and peak counts.
 
-        Only updates if the 'Hypothetical 2D peak capacity' column is empty.
+        Only updates if the 'Hypothetical 2D Peak Capacity' column is empty.
 
         Side Effects:
             Updates combination_df with data from table_data (columns 0-3).
         """
-        # Check if combination_df exists and has the third column filled (not empty)
-        if self.combination_df["Hypothetical 2D peak capacity"].isnull().all():
-            # Otherwise, fill with two columns
-            combination_table = [row[0:4] for row in self.table_data]
-            self.combination_df = pd.DataFrame(
-                combination_table,
-                columns=[
-                    "Combination #",
-                    "2D Combination",
-                    "Number of peaks",
-                    "Hypothetical 2D peak capacity",
-                ],
-            )
 
-            self.nb_peaks = self.combination_df["Number of peaks"].max()
-            self.nb_combination = len(self.combination_df["2D Combination"])
-            self.bin_number = round(sqrt(self.nb_peaks))
-        else:
-            # already filled
-            return
+        combination_table = [row[0:5] for row in self.table_data]
+        self.combination_df = pd.DataFrame(
+            combination_table,
+            columns=[
+                "Combination #",
+                "2D Combination",
+                "Number of peaks",
+                "Hypothetical 2D Peak Capacity",
+                "Elution Composition Space Area",
+            ],
+        )
+
+        self.nb_peaks = self.combination_df["Number of peaks"].max()
+        self.nb_combination = len(self.combination_df["2D Combination"])
+        self.bin_number = round(sqrt(self.nb_peaks))
+
