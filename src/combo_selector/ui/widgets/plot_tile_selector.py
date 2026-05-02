@@ -6,6 +6,8 @@ highlighted with the application's standard blue header colour, making the
 active choice immediately obvious to the user.
 """
 
+from typing import Optional
+
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import (
     QButtonGroup,
@@ -80,7 +82,7 @@ class PlotTileSelector(QWidget):
 
     plot_selected = Signal(str)
 
-    def __init__(self, parent: QWidget | None = None) -> None:
+    def __init__(self, parent: Optional[QWidget] = None) -> None:
         """Initialise the selector and build the tile grid.
 
         Args:
@@ -123,7 +125,7 @@ class PlotTileSelector(QWidget):
     # Public API
     # ------------------------------------------------------------------
 
-    def selected_plot(self) -> str | None:
+    def selected_plot(self) -> Optional[str]:
         """Return the dispatch key of the currently selected tile.
 
         Returns:
