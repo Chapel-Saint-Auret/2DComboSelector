@@ -10,13 +10,12 @@ This module provides the ResultsPage class which handles:
 """
 
 import logging
-from functools import partial
 
 import pandas as pd
 from matplotlib.backends.backend_qtagg import FigureCanvas
 from matplotlib.figure import Figure
 from PySide6.QtCore import QThreadPool, QTimer, Qt
-from PySide6.QtGui import QFont,QColor
+from PySide6.QtGui import QColor
 from PySide6.QtWidgets import (
     QApplication,
     QButtonGroup,
@@ -31,8 +30,6 @@ from PySide6.QtWidgets import (
     QScrollArea,
     QSizePolicy,
     QSplitter,
-    QListWidget,
-    QListWidgetItem,
     QStackedLayout,
     QVBoxLayout,
     QWidget,
@@ -46,6 +43,7 @@ from combo_selector.ui.widgets.custom_filter_dialog import CustomFilterDialog
 from combo_selector.ui.widgets.custom_toolbar import CustomToolbar
 from combo_selector.ui.widgets.line_widget import LineWidget
 from combo_selector.ui.widgets.neumorphism import BoxShadow
+from combo_selector.ui.widgets.plot_tile_selector import PlotTileSelector
 from combo_selector.ui.widgets.style_table import StyledTable
 from combo_selector.core.plot_utils import PlotUtils
 from combo_selector.utils import resource_path
@@ -171,7 +169,7 @@ class ResultsPage(QFrame):
 
         self.vizualation_settings_button_group.buttonClicked.connect(self.plot_graph)
         self.top_number_button_group.buttonClicked.connect(self.plot_graph)
-        self.plot_list.itemClicked.connect(self.update_figure)
+        self.plot_tile_selector.plot_selected.connect(self.update_figure)
         # self.compare_number.currentTextChanged.connect(self.update_om_selector_state)
 
         # for index, data in self.om_selector_map.items():
@@ -395,10 +393,10 @@ class ResultsPage(QFrame):
         return orthogonality_compare_score_group
 
     def _create_vizualation_settings_group(self) -> QGroupBox:
-        """Create score comparison group for side-by-side plots.
+        """Create visualization settings group with tile-style plot selector.
 
         Returns:
-            QGroupBox: Group box with score selectors.
+            QGroupBox: Group box with plot tile selector.
         """
         vizualation_settings_group = QGroupBox("Visualization Settings")
         vizualation_settings_group.setStyleSheet(self._get_group_stylesheet())
@@ -446,63 +444,13 @@ class ResultsPage(QFrame):
 
         self.top_number_button_group.setExclusive(True)
 
+        self.plot_tile_selector = PlotTileSelector()
 
-        self.plot_list = self.build_plot_list()
-        self.plot_list.setFixedHeight(300)
-
-        vizualation_settings_layout.addWidget(self.plot_list)
-        # vizualation_settings_layout.addWidget(self.peak_vs_selectivity_button)
-        # vizualation_settings_layout.addWidget(self.suggested_rank_vs_peak_detection_button)
-        # vizualation_settings_layout.addWidget(self.top_ranked_combination_button)
-        # vizualation_settings_layout.addWidget(number_of_rank_displayed_group)
+        vizualation_settings_layout.addWidget(self.plot_tile_selector)
 
         vizualation_settings_group.setLayout(vizualation_settings_layout)
 
         return vizualation_settings_group
-
-    def build_plot_list(parent=None) -> QListWidget:
-        list_widget = QListWidget(parent)
-        list_widget.setAlternatingRowColors(False)
-
-        groups = {
-            "Scatter": [
-                "Multi Criteria Space",
-                "Reduced Criteria Space",
-            ],
-            "Heatmap": [
-                "Chromatographic Mode Performance",
-            ],
-            "Distribution": [
-                "Chromatographic Mode Performance",
-                "Recommendation distribution by mode",
-            ],
-            "Map": [
-                "Overall feasibility map",
-                "Feasibility maps by mode",
-                "Density decision map",
-            ],
-            "Bar": [
-                "Final rank by recommendation class",
-            ],
-        }
-
-        plot_list = ["Multi Criteria Space",
-                     "Reduced Criteria Space",
-                     "Chromatographic Mode Performance HM",
-                     "Chromatographic Mode Performance BP",
-                     "Recommendation Distribution",
-                     "Feasibility Profile"]
-
-        header_font = QFont()
-        header_font.setPointSize(9)
-        header_font.setBold(True)
-
-        for plot_name in plot_list:
-            item = QListWidgetItem(plot_name)
-            item.setData(Qt.ItemDataRole.UserRole, plot_name)
-            list_widget.addItem(item)
-
-        return list_widget
 
     def _create_plot_panel(self) -> QFrame:
         """Create the right plot panel for result visualization.
@@ -984,12 +932,15 @@ class ResultsPage(QFrame):
         self.fig.canvas.draw()
         self.fig.canvas.flush_events()
 
-    def update_figure(self,item):
+    def update_figure(self, plot_key: str) -> None:
+        """Dispatch to the plotting function for *plot_key*.
 
-        plot_text = item.text()
-
-        self.plot_functions_map[plot_text]()
-        # self.plot_utils.open_in_window()
+        Args:
+            plot_key (str): One of the keys in :attr:`plot_functions_map`.
+        """
+        plot_fn = self.plot_functions_map.get(plot_key)
+        if plot_fn is not None:
+            plot_fn()
 
     def plot_graph(self):
 
