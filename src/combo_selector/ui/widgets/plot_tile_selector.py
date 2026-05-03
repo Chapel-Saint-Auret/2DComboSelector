@@ -22,11 +22,12 @@ from PySide6.QtWidgets import (
 # ---------------------------------------------------------------------------
 # Each entry is (dispatch_key, tile_display_text).
 # The dispatch_key must match the keys used in ResultsPage.plot_functions_map.
+# Keep each display-text line short enough to fit inside a ~100 px-wide tile.
 _PLOT_REGISTRY = [
     ("Multi Criteria Space",                "Multi Criteria\nSpace"),
-    ("Reduced Criteria Space",              "Reduced Criteria\nSpace"),
-    ("Chromatographic Mode Performance HM", "Mode Performance\nHeatmap"),
-    ("Chromatographic Mode Performance BP", "Mode Performance\nBar Plot"),
+    ("Reduced Criteria Space",              "Reduced\nCriteria Space"),
+    ("Chromatographic Mode Performance HM", "Performance\nHeatmap"),
+    ("Chromatographic Mode Performance BP", "Performance\nBar Plot"),
     ("Recommendation Distribution",         "Recommendation\nDistribution"),
     ("Feasibility Profile",                 "Feasibility\nProfile"),
 ]
@@ -38,26 +39,26 @@ _TILE_STYLE = """
     QPushButton {{
         background-color: #eef2fc;
         color: #2C3E50;
-        border: 1px solid #c8d2e8;
+        border: 2px solid #c8d2e8;
         border-radius: 8px;
-        padding: 6px 4px;
+        padding: 8px 8px;
         font-size: 10px;
         font-weight: 500;
         text-align: center;
     }}
     QPushButton:hover {{
         background-color: #dde6fc;
-        border: 1px solid #4a7de8;
+        border: 2px solid #4a7de8;
     }}
     QPushButton:checked {{
         background-color: #183881;
         color: #ffffff;
-        border: 2px solid #183881;
+        border: 2px solid #6fa3f7;
         font-weight: bold;
     }}
     QPushButton:checked:hover {{
         background-color: #1e4a9c;
-        border: 2px solid #1e4a9c;
+        border: 2px solid #8ab8ff;
     }}
 """
 
