@@ -228,7 +228,7 @@ class ComboSelectorMain(CustomMainWindow):
         self.plot_page.update_table_peak_data()
         self.model.compute_final_rank()
         self.results_page.update_results_table()
-        self.results_page.plot_graph()
+        # self.results_page.update_figure()
         # self.plot_page.update_dataset_selector_state()
 
     def _start_results_worker_after_redundancy(self) -> None:

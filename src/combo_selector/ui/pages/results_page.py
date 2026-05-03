@@ -706,7 +706,12 @@ class ResultsPage(QFrame):
         logging.debug("Running ResultsPage: update_results_table")
         self.update_results_table()
 
-        self.plot_graph()
+        data = self.model.get_orthogonality_result_df()
+
+        if not data.empty:
+            self.plot_utils.set_orthogonality_result_data(data)
+
+        self.update_figure()
         # number_of_selectors = int(self.compare_number.currentText())
         # for i in range(number_of_selectors):
         #     self.handle_selector_change(str(i), emit_plot=True)
@@ -905,7 +910,7 @@ class ResultsPage(QFrame):
             logging.debug(
                 f"Plot OM vs 2D for index {index} with score {self.selected_score}"
             )
-            self.plot_graph()
+            self.update_figure()
 
     def on_selector_changed(self, index: str) -> None:
         """Slot triggered by QComboBox.currentTextChanged.
@@ -920,7 +925,7 @@ class ResultsPage(QFrame):
         self.fig.canvas.draw()
         self.fig.canvas.flush_events()
 
-    def update_figure(self, plot_key: str) -> None:
+    def update_figure(self, plot_key: str = 'Multi Criteria Space') -> None:
         """Dispatch to the plotting function for *plot_key*.
 
         Args:
@@ -929,30 +934,6 @@ class ResultsPage(QFrame):
         plot_fn = self.plot_functions_map.get(plot_key)
         if plot_fn is not None:
             plot_fn()
-
-    def plot_graph(self):
-
-        data = self.model.get_orthogonality_result_df()
-
-        if not data.empty:
-            self.plot_utils.set_orthogonality_result_data(data)
-
-            if self.selected_axe:
-
-                if self.peak_vs_selectivity_button.isChecked():
-                    self.plot_utils.plot_peak_capacity_vs_consensus_score()
-
-                if self.suggested_rank_vs_peak_detection_button.isChecked():
-                    pass
-
-                if self.top_ranked_combination_button.isChecked():
-                    id = self.top_number_button_group.checkedId()
-
-                    button = self.top_number_button_group.button(id)
-
-                    top_rank = button.objectName()
-
-                    # self.plot_utils.plot_top_ranked_combination(number_of_rank_to_show=top_rank)
 
     def plot_orthogonality_vs_2d_peaks(self) -> None:
         """Plot selected score vs. 2D peak capacity scatter plot.
