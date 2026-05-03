@@ -1454,6 +1454,185 @@ class PlotUtils:
         self.fig.canvas.draw()
         self.fig.canvas.flush_events()
 
+    def plot_feasibility_decision_map(self) -> None:
+        """Plot a feasibility decision map colored by final recommendation.
+
+        One point = one combination.
+
+        - X-axis: Final Rank (lower = better), normalized to percentile.
+        - Y-axis: Peak Detection Rate (%).
+        - Point color: Final Recommendation.
+        - Marker shape: Chromatographic Mode.
+
+        This version does NOT use background traffic-light zones, because
+        the final recommendation already incorporates rank, peak rate,
+        compatibility, and complexity.
+
+        Side Effects:
+            - Clears and redraws ``self.fig``.
+            - Updates ``self.axe``.
+            - Redraws the figure canvas.
+        """
+        self.fig.clear()
+        self.axe = self.fig.add_subplot(111)
+
+        df = self.orthogonality_result_data.copy()
+
+        if df is None or df.empty:
+            return
+
+        # Resolve the rank column to use
+        rank_col = (
+            "Final Rank"
+            if "Final Rank" in df.columns
+            and pd.to_numeric(df["Final Rank"], errors="coerce").notna().any()
+            else "Consensus Ranking"
+        )
+
+        rank_numeric = pd.to_numeric(df[rank_col], errors="coerce")
+        peak_rate = pd.to_numeric(df["Peak Detection Rate (%)"], errors="coerce")
+
+        valid_mask = rank_numeric.notna() & peak_rate.notna()
+        df = df.loc[valid_mask].copy()
+        rank_numeric = rank_numeric.loc[valid_mask]
+        peak_rate = peak_rate.loc[valid_mask]
+
+        if df.empty:
+            return
+
+        # Normalize rank to percentile (1–100)
+        rank_max = rank_numeric.max()
+        x_pct = (rank_numeric / rank_max) * 100 if rank_max else rank_numeric
+
+        # Recommendation colors
+        recommendation_colors = {
+            "Highly recommended": "#1a7a2e",
+            "Recommended": "#6abf4b",
+            "Use with caution": "#f5a623",
+            "Not recommended": "#d94f3d",
+        }
+
+        recommendation_order = [
+            "Highly recommended",
+            "Recommended",
+            "Use with caution",
+            "Not recommended",
+        ]
+
+        # Marker styles per chromatographic mode
+        mode_markers = {
+            "HILIC HILIC": "o",
+            "HILIC RPLC": "s",
+            "RPLC HILIC": "^",
+            "RPLC RPLC": "D",
+            "SFC RPLC": "v",
+            "SFC HILIC": "h",
+        }
+        fallback_markers = ["o", "s", "^", "D", "v", "h", "p", "*"]
+
+        unique_modes = list(df["Chromatographic Mode"].dropna().unique())
+        mode_to_marker = {
+            mode: mode_markers.get(mode, fallback_markers[i % len(fallback_markers)])
+            for i, mode in enumerate(unique_modes)
+        }
+
+        # Plot by recommendation, then by mode
+        for rec_label in recommendation_order:
+            rec_mask = df["Final Recommendation"] == rec_label
+            if not rec_mask.any():
+                continue
+
+            for mode in unique_modes:
+                mask = rec_mask & (df["Chromatographic Mode"] == mode)
+                if not mask.any():
+                    continue
+
+                self.axe.scatter(
+                    x_pct[mask],
+                    peak_rate[mask],
+                    s=22,
+                    marker=mode_to_marker[mode],
+                    color=recommendation_colors.get(rec_label, "#aaaaaa"),
+                    edgecolors="k",
+                    linewidths=0.3,
+                    alpha=0.88,
+                    zorder=5,
+                )
+
+        # Axes formatting
+        self.axe.set_xlim(1, 100)
+        self.axe.set_ylim(0, 100)
+        self.axe.set_xticks([1, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100])
+        self.axe.set_xlabel("Final consensus rank (lower = better)", fontsize=8)
+        self.axe.set_ylabel("Peak rate (%)", fontsize=8)
+        self.axe.set_title(
+            "Overall feasibility decision map\none point = one combination",
+            fontsize=9,
+            fontweight="bold",
+            loc="left",
+            pad=8,
+        )
+        self.axe.tick_params(axis="both", labelsize=7)
+        self.axe.grid(True, linestyle="--", linewidth=0.4, alpha=0.4)
+        self.axe.spines[["top", "right"]].set_visible(False)
+
+        # Recommendation legend
+        rec_handles = [
+            patches.Patch(
+                facecolor=recommendation_colors[label],
+                edgecolor="k",
+                linewidth=0.4,
+                label=label,
+            )
+            for label in recommendation_order
+            if label in df["Final Recommendation"].values
+        ]
+        rec_legend = self.axe.legend(
+            handles=rec_handles,
+            title="Final recommendation",
+            title_fontsize=7,
+            loc="lower left",
+            bbox_to_anchor=(0.01, 0.01),
+            fontsize=6,
+            frameon=True,
+            framealpha=0.92,
+            edgecolor="#aaaaaa",
+        )
+        self.axe.add_artist(rec_legend)
+
+        # Mode legend
+        from matplotlib.lines import Line2D
+
+        mode_handles = [
+            Line2D(
+                [0],
+                [0],
+                marker=mode_to_marker[mode],
+                color="w",
+                markerfacecolor="#555555",
+                markeredgecolor="k",
+                markeredgewidth=0.3,
+                markersize=5,
+                label=mode.replace(" ", "×"),
+            )
+            for mode in unique_modes
+        ]
+        self.axe.legend(
+            handles=mode_handles,
+            title="Chromatographic mode",
+            title_fontsize=7,
+            loc="upper right",
+            bbox_to_anchor=(0.99, 0.99),
+            fontsize=6,
+            frameon=True,
+            framealpha=0.92,
+            edgecolor="#aaaaaa",
+        )
+
+        self.fig.subplots_adjust(left=0.12, right=0.97, top=0.88, bottom=0.12)
+        self.fig.canvas.draw()
+        self.fig.canvas.flush_events()
+
     def open_in_window(self):
         self._plot_dialog = QDialog()
         self._plot_dialog.setWindowTitle("Multi-Criteria Space")
