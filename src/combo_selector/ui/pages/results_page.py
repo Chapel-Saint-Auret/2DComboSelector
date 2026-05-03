@@ -392,54 +392,16 @@ class ResultsPage(QFrame):
 
         return orthogonality_compare_score_group
 
-    def _create_visualization_settings_group(self) -> QFrame:
-        """Create visualization settings section with tile-style plot selector.
-
-        Uses a plain QFrame with an explicit section-title label so the title
-        is positioned consistently with the rest of the input panel, instead
-        of relying on the floating QGroupBox::title convention.
+    def _create_visualization_settings_group(self) -> QGroupBox:
+        """Create plot selection group with tile-style plot selector.
 
         Returns:
-            QFrame: Section frame containing the section title and tile grid.
+            QGroupBox: Group box with plot tile selector.
         """
-        # Outer frame — no border, just provides a layout root
-        section = QFrame()
-        section_layout = QVBoxLayout(section)
-        section_layout.setContentsMargins(0, 8, 0, 0)
-        section_layout.setSpacing(6)
+        vizualation_settings_group = QGroupBox("Select Result Plot")
+        vizualation_settings_group.setStyleSheet(self._get_group_stylesheet())
+        vizualation_settings_layout = QVBoxLayout()
 
-        # Section title — visually identical to the other QGroupBox titles
-        # (same font-size, same #154E9D blue, same bold weight)
-        vis_title = QLabel("Visualization Settings")
-        vis_title.setStyleSheet("""
-            QLabel {
-                color: #154E9D;
-                font-size: 14px;
-                font-weight: bold;
-                background-color: transparent;
-            }
-        """)
-
-        # Tile grid card — light rounded container for the tiles
-        tile_card = QFrame()
-        tile_card.setStyleSheet("""
-            QFrame {
-                background-color: #f0f3fb;
-                border: 1px solid #d0d4da;
-                border-radius: 10px;
-            }
-        """)
-        tile_card_layout = QVBoxLayout(tile_card)
-        tile_card_layout.setContentsMargins(6, 6, 6, 6)
-        tile_card_layout.setSpacing(0)
-
-        self.plot_tile_selector = PlotTileSelector()
-        tile_card_layout.addWidget(self.plot_tile_selector)
-
-        section_layout.addWidget(vis_title)
-        section_layout.addWidget(tile_card)
-
-        # ---- Hidden radio/button groups kept alive for signal compatibility ----
         self.coverage_vs_distribution_button = QRadioButton("Coverage vs Distribution")
         self.coverage_vs_distribution_button.setChecked(True)
         self.peak_vs_selectivity_button = QRadioButton("Peak Capacity vs Selectivity")
@@ -471,7 +433,12 @@ class ResultsPage(QFrame):
         self.top_number_button_group.addButton(self.all_button)
         self.top_number_button_group.setExclusive(True)
 
-        return section
+        self.plot_tile_selector = PlotTileSelector()
+        vizualation_settings_layout.addWidget(self.plot_tile_selector)
+
+        vizualation_settings_group.setLayout(vizualation_settings_layout)
+
+        return vizualation_settings_group
 
     def _create_plot_panel(self) -> QFrame:
         """Create the right plot panel for result visualization.
