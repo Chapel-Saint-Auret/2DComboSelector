@@ -36,7 +36,7 @@ _PLOT_REGISTRY = [
 # Tile stylesheet
 # ---------------------------------------------------------------------------
 _TILE_STYLE = """
-    QPushButton {{
+    QPushButton {
         background-color: #eef2fc;
         color: #2C3E50;
         border: 2px solid #c8d2e8;
@@ -45,21 +45,21 @@ _TILE_STYLE = """
         font-size: 10px;
         font-weight: 500;
         text-align: center;
-    }}
-    QPushButton:hover {{
+    }
+    QPushButton:hover {
         background-color: #dde6fc;
         border: 2px solid #4a7de8;
-    }}
-    QPushButton:checked {{
+    }
+    QPushButton:checked {
         background-color: #183881;
         color: #ffffff;
         border: 2px solid #6fa3f7;
         font-weight: bold;
-    }}
-    QPushButton:checked:hover {{
+    }
+    QPushButton:checked:hover {
         background-color: #1e4a9c;
         border: 2px solid #8ab8ff;
-    }}
+    }
 """
 
 
