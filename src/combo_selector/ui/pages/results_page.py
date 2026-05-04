@@ -16,7 +16,7 @@ import pandas as pd
 from matplotlib.backends.backend_qtagg import FigureCanvas
 from matplotlib.figure import Figure
 from PySide6.QtCore import QThreadPool, QTimer, Qt
-from PySide6.QtGui import QFont,QColor
+from PySide6.QtGui import QColor
 from PySide6.QtWidgets import (
     QApplication,
     QButtonGroup,
@@ -31,8 +31,6 @@ from PySide6.QtWidgets import (
     QScrollArea,
     QSizePolicy,
     QSplitter,
-    QListWidget,
-    QListWidgetItem,
     QStackedLayout,
     QVBoxLayout,
     QWidget,
@@ -46,6 +44,7 @@ from combo_selector.ui.widgets.custom_filter_dialog import CustomFilterDialog
 from combo_selector.ui.widgets.custom_toolbar import CustomToolbar
 from combo_selector.ui.widgets.line_widget import LineWidget
 from combo_selector.ui.widgets.neumorphism import BoxShadow
+from combo_selector.ui.widgets.plot_tile_selector import PlotTileSelector
 from combo_selector.ui.widgets.style_table import StyledTable
 from combo_selector.core.plot_utils import PlotUtils
 from combo_selector.utils import resource_path
@@ -171,7 +170,7 @@ class ResultsPage(QFrame):
 
         self.vizualation_settings_button_group.buttonClicked.connect(self.plot_graph)
         self.top_number_button_group.buttonClicked.connect(self.plot_graph)
-        self.plot_list.itemClicked.connect(self.update_figure)
+        self.plot_tile_selector.plot_selected.connect(self.update_figure_from_selection)
         # self.compare_number.currentTextChanged.connect(self.update_om_selector_state)
 
         # for index, data in self.om_selector_map.items():
@@ -447,10 +446,9 @@ class ResultsPage(QFrame):
         self.top_number_button_group.setExclusive(True)
 
 
-        self.plot_list = self.build_plot_list()
-        self.plot_list.setFixedHeight(300)
+        self.plot_tile_selector = PlotTileSelector()
 
-        vizualation_settings_layout.addWidget(self.plot_list)
+        vizualation_settings_layout.addWidget(self.plot_tile_selector)
         # vizualation_settings_layout.addWidget(self.peak_vs_selectivity_button)
         # vizualation_settings_layout.addWidget(self.suggested_rank_vs_peak_detection_button)
         # vizualation_settings_layout.addWidget(self.top_ranked_combination_button)
@@ -459,50 +457,6 @@ class ResultsPage(QFrame):
         vizualation_settings_group.setLayout(vizualation_settings_layout)
 
         return vizualation_settings_group
-
-    def build_plot_list(parent=None) -> QListWidget:
-        list_widget = QListWidget(parent)
-        list_widget.setAlternatingRowColors(False)
-
-        groups = {
-            "Scatter": [
-                "Multi Criteria Space",
-                "Reduced Criteria Space",
-            ],
-            "Heatmap": [
-                "Chromatographic Mode Performance",
-            ],
-            "Distribution": [
-                "Chromatographic Mode Performance",
-                "Recommendation distribution by mode",
-            ],
-            "Map": [
-                "Overall feasibility map",
-                "Feasibility maps by mode",
-                "Density decision map",
-            ],
-            "Bar": [
-                "Final rank by recommendation class",
-            ],
-        }
-
-        plot_list = ["Multi Criteria Space",
-                     "Reduced Criteria Space",
-                     "Chromatographic Mode Performance HM",
-                     "Chromatographic Mode Performance BP",
-                     "Recommendation Distribution",
-                     "Feasibility Profile"]
-
-        header_font = QFont()
-        header_font.setPointSize(9)
-        header_font.setBold(True)
-
-        for plot_name in plot_list:
-            item = QListWidgetItem(plot_name)
-            item.setData(Qt.ItemDataRole.UserRole, plot_name)
-            list_widget.addItem(item)
-
-        return list_widget
 
     def _create_plot_panel(self) -> QFrame:
         """Create the right plot panel for result visualization.
@@ -539,12 +493,21 @@ class ResultsPage(QFrame):
         self.toolbar = CustomToolbar(self.canvas)
         self.plot_utils = PlotUtils(fig=self.fig,model=self.model)
         self.plot_functions_map = {
-            "Multi Criteria Space": self.plot_utils.plot_peak_capacity_vs_elution,
-            "Reduced Criteria Space": self.plot_utils.plot_elution_area_vs_peak_rate,
-            "Chromatographic Mode Performance HM": self.plot_utils.plot_median_rank_score_heatmap,
-            "Chromatographic Mode Performance BP": self.plot_utils.plot_rank_score_distribution_by_mode,
-            "Recommendation Distribution": self.plot_utils.plot_recommendation_distribution,
-            "Feasibility Profile": self.plot_utils.plot_recommendation_distribution
+            "Criteria Space": {
+                "Multi Criteria Space": self.plot_utils.plot_peak_capacity_vs_elution,
+                "Reduced Criteria Space": self.plot_utils.plot_elution_area_vs_peak_rate,
+            },
+            "Performance": {
+                "Performance Heatmap": self.plot_utils.plot_median_rank_score_heatmap,
+                "Performance Bar Plot": self.plot_utils.plot_rank_score_distribution_by_mode,
+            },
+            "Recommendation Distribution": {
+                "Recommendation Distribution": self.plot_utils.plot_recommendation_distribution,
+            },
+            "Feasibility Profile": {
+                "Overall Feasibility Profile": self.plot_utils.plot_recommendation_distribution,
+                "Feasibility Profile by Mode": self.plot_utils.plot_rank_score_distribution_by_mode,
+            },
         }
 
         plot_frame_layout.addWidget(plot_title)
@@ -984,12 +947,16 @@ class ResultsPage(QFrame):
         self.fig.canvas.draw()
         self.fig.canvas.flush_events()
 
-    def update_figure(self,item):
+    def update_figure_from_selection(self, family: str, variant: str) -> None:
+        """Plot the function corresponding to the selected family and variant.
 
-        plot_text = item.text()
-
-        self.plot_functions_map[plot_text]()
-        # self.plot_utils.open_in_window()
+        Args:
+            family: The plot family name (e.g. "Criteria Space").
+            variant: The plot variant name (e.g. "Multi Criteria Space").
+        """
+        plot_fn = self.plot_functions_map.get(family, {}).get(variant)
+        if plot_fn:
+            plot_fn()
 
     def plot_graph(self):
 
