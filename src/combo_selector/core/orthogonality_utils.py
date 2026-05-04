@@ -375,7 +375,8 @@ def load_table_with_header_anywhere(
         raise ValueError("No header row found with sufficient columns.")
 
     # Now read again, skipping to that header row, using it as header
-    df = pd.read_excel(filepath, sheet_name=sheetname, header=header_row)
+    # Fix: Use index_col=None to prevent pandas from guessing an index column
+    df = pd.read_excel(filepath, sheet_name=sheetname, header=header_row, index_col=None)
     df = df.dropna(how="all")  # Drop fully empty rows
     df = df.loc[:, ~df.columns.str.contains("^Unnamed")]  # Drop unnamed columns
 

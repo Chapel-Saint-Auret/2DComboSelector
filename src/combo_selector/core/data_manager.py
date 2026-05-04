@@ -600,7 +600,7 @@ class DataManager:
             )
 
             # check there is nan value in data frame
-            self.has_nan_value = self.retention_time_df.isnull().any().any()
+            self.has_nan_value = self.retention_time_df.iloc[:,1:].isnull().any().any()
             #[1:] is used because first column is compound name
             self.column_names = self.retention_time_df.columns.tolist()[1:]
             self.nb_condition = num_columns = len(self.column_names)
@@ -801,9 +801,7 @@ class DataManager:
             self.combination_df["Hypothetical 2D Peak Capacity"] = self.orthogonality_result_df['Hypothetical 2D Peak Capacity'] \
                 = combination_table
             self.peak_capacity_status = "peak_capacity_loaded"
-            self.orthogonality_result_df['Hypothetical 2D Peak Capacity Rank'] = self.combination_df["Hypothetical 2D Peak Capacity"].rank(
-                ascending=False, method='average')
-
+            self.orthogonality_result_df['Hypothetical 2D Peak Capacity Rank'] = self.combination_df["Hypothetical 2D Peak Capacity"].rank(ascending=False, method='average')
         except Exception as e:
             print(f"Error loading 2D peaks: {str(e)}")
             self.status = "error"
