@@ -116,9 +116,6 @@ class ResultsPage(QFrame):
         # --- State & threading ---------------------------------------------
         self.threadpool = QThreadPool()
         self.selected_score = None
-        self.selected_axe = None
-        self.selected_scatter_collection = None
-        self.selected_filtered_scatter_point = {}
         self.model = model
 
         # --- Base frame & layout -------------------------------------------
@@ -167,8 +164,6 @@ class ResultsPage(QFrame):
         )
         self.compute_score_btn.clicked.connect(self.start_om_computation)
 
-        self.vizualation_settings_button_group.buttonClicked.connect(self.plot_graph)
-        self.top_number_button_group.buttonClicked.connect(self.plot_graph)
         self.plot_tile_selector.plot_selected.connect(self.update_figure)
         # self.compare_number.currentTextChanged.connect(self.update_om_selector_state)
 
@@ -254,7 +249,6 @@ class ResultsPage(QFrame):
         orthogonality_score_group = self._create_score_calculation_group()
         # ranking_selection_group = self._create_ranking_group()
         vizualation_settings_group = self._create_visualization_settings_group()
-        orthogonality_compare_score_group = self._create_score_comparison_group()
 
         user_input_frame_layout.addWidget(orthogonality_score_group)
         user_input_frame_layout.addWidget(LineWidget("Horizontal"))
@@ -262,7 +256,7 @@ class ResultsPage(QFrame):
         # user_input_frame_layout.addWidget(LineWidget("Horizontal"))
         # user_input_frame_layout.addWidget(orthogonality_compare_score_group)
         user_input_frame_layout.addWidget(vizualation_settings_group)
-        user_input_frame_layout.addWidget(orthogonality_compare_score_group)
+        user_input_frame_layout.addStretch()
 
         return input_section
 
@@ -342,55 +336,6 @@ class ResultsPage(QFrame):
 
         return orthogonality_score_group
 
-    def _create_score_comparison_group(self) -> QGroupBox:
-        """Create score comparison group for side-by-side plots.
-
-        Returns:
-            QGroupBox: Group box with score selectors.
-        """
-        orthogonality_compare_score_group = QGroupBox("Orthogonality score comparison")
-        orthogonality_compare_score_group.setStyleSheet(self._get_group_stylesheet())
-
-        self.om_selection_layout = QVBoxLayout()
-        self.om_selection_layout.addWidget(QLabel("Number of score to compare:"))
-        self.compare_number = QComboBox()
-        self.compare_number.addItems(["1", "2"])
-        self.om_selection_layout.addWidget(self.compare_number)
-        self.om_selection_layout.addSpacing(20)
-
-        self.om_selector1 = QComboBox()
-        self.om_selector2 = QComboBox()
-        self.om_selector3 = QComboBox()
-        self.om_selector4 = QComboBox()
-        self.om_selector2.setDisabled(True)
-        self.om_selector3.setDisabled(True)
-        self.om_selector4.setDisabled(True)
-
-        self.add_dataset_selector("Select Score 1:", self.om_selector1)
-        self.add_dataset_selector("Select Score 2:", self.om_selector2)
-        # self.add_dataset_selector("Select Score 3:", self.om_selector3)
-        # self.add_dataset_selector("Select Score 4:", self.om_selector4)
-
-        self.om_selector_list = [
-            self.om_selector1,
-            self.om_selector2,
-            self.om_selector3,
-            self.om_selector4,
-        ]
-
-        self.om_selector_map = {
-            str(i): {
-                "selector": selector,
-                "axe": None,
-                "scatter_collection": None,
-                "filtered_scatter_point": {},
-            }
-            for i, selector in enumerate(self.om_selector_list)
-        }
-
-        orthogonality_compare_score_group.setLayout(self.om_selection_layout)
-
-        return orthogonality_compare_score_group
 
     def _create_visualization_settings_group(self) -> QGroupBox:
         """Create plot selection group with tile-style plot selector.
@@ -480,7 +425,7 @@ class ResultsPage(QFrame):
             "Chromatographic Mode Performance HM": self.plot_utils.plot_median_rank_score_heatmap,
             "Chromatographic Mode Performance BP": self.plot_utils.plot_rank_score_distribution_by_mode,
             "Recommendation Distribution": self.plot_utils.plot_recommendation_distribution,
-            "Feasibility Profile": self.plot_utils.plot_recommendation_distribution
+            "Feasibility Profile": self.plot_utils.plot_feasibility_decision_map
         }
 
         plot_frame_layout.addWidget(plot_title)
@@ -553,13 +498,13 @@ class ResultsPage(QFrame):
                 "Combination #",
                 "2D Combination",
                 "Chromatographic Mode",
-                "Consensus Rank",
-                "Peak Detection Rate (%)",
-                "Hypothetical 2D Peak Capacity",
-                "Final Recommendation ",
+                "Hypothetical 2D Peak Capacity Rank",
+                "Elution Composition Space Area",
+                "Final Recommendation",
                 "Final Rank",
-                "Criterion Higlight"
+                "Criterion Higlight",
             ])
+
         # self.styled_table.get_header().setSectionResizeMode(0, QHeaderView.Fixed)
         # self.styled_table.get_header().setSectionResizeMode(1, QHeaderView.Stretch)
         # self.styled_table.get_header().setSectionResizeMode(5, QHeaderView.Fixed)
@@ -697,12 +642,6 @@ class ResultsPage(QFrame):
         logging.debug("Running ResultsPage: update_orthogonality_metric_list")
         self.update_orthogonality_metric_list(om_list)
 
-        # logging.debug("Running ResultsPage: populate_om_score_selector")
-        # self.populate_om_score_selector()
-
-        # logging.debug("Running ResultsPage: update_om_selector_state")
-        self.update_om_selector_state()
-
         logging.debug("Running ResultsPage: update_results_table")
         self.update_results_table()
 
@@ -712,9 +651,6 @@ class ResultsPage(QFrame):
             self.plot_utils.set_orthogonality_result_data(data)
 
         self.update_figure()
-        # number_of_selectors = int(self.compare_number.currentText())
-        # for i in range(number_of_selectors):
-        #     self.handle_selector_change(str(i), emit_plot=True)
 
     def update_orthogonality_metric_list(self, om_list: list) -> None:
         """Update the metric checklist with available metrics.
@@ -911,14 +847,6 @@ class ResultsPage(QFrame):
                 f"Plot OM vs 2D for index {index} with score {self.selected_score}"
             )
             self.update_figure()
-
-    def on_selector_changed(self, index: str) -> None:
-        """Slot triggered by QComboBox.currentTextChanged.
-
-        Args:
-            index (str): Index of the changed selector.
-        """
-        self.handle_selector_change(index)
 
     def draw_figure(self) -> None:
         """Redraw the matplotlib figure canvas."""

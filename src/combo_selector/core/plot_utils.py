@@ -990,170 +990,182 @@ class PlotUtils:
 
         x = self.orthogonality_result_data['Hypothetical 2D Peak Capacity']
         y = self.orthogonality_result_data['Elution Composition Space Area']
-        final_rank = self.orthogonality_result_data['Final Rank']
-        consensus_rank = self.orthogonality_result_data['Consensus Ranking']
-        n = len(final_rank)
 
-        final_rank_pct = (final_rank / n) * 100  # controls which points are shown
-        consensus_rank_pct = (consensus_rank / n) * 100  # controls point color
+        x_is_numeric = (x != 'Not available').any()
+        y_is_numeric = (y != 'Not available').any()
 
-        def get_color(pct):
-            if pct >= 99:
-                return '#1A3A9E'
-            elif pct >= 95:
-                return '#A0379A'
-            elif pct >= 90:
-                return '#E64981'
-            elif pct >= 75:
-                return '#FF7C64'
-            else:
-                return '#F9F871'
+        if x_is_numeric and y_is_numeric:
 
-        colors = np.array([get_color(p) for p in consensus_rank_pct])  # color from consensus
+            final_rank = self.orthogonality_result_data['Final Rank']
+            consensus_rank = self.orthogonality_result_data['Consensus Ranking']
+            n = len(final_rank)
 
-        panels = {
-            'All': np.ones(n, dtype=bool),
-            'Top 50%': final_rank_pct >= 50,  # filter from final_rank
-            'Top 20%': final_rank_pct >= 80,
-            'Top 10%': final_rank_pct >= 90,
-        }
+            final_rank_pct = (final_rank / n) * 100  # controls which points are shown
+            consensus_rank_pct = (consensus_rank / n) * 100  # controls point color
 
-        x_min, x_max = x.min() * 0.8, x.max() * 1.2
-        y_min, y_max = y.min() * 0.8, y.max() * 1.2
+            def get_color(pct):
+                if pct >= 99:
+                    return '#1A3A9E'
+                elif pct >= 95:
+                    return '#A0379A'
+                elif pct >= 90:
+                    return '#E64981'
+                elif pct >= 75:
+                    return '#FF7C64'
+                else:
+                    return '#F9F871'
 
-        gs = GridSpec(2, 2, figure=self.fig, hspace=0.45, wspace=0.35,
-                      left=0.1, right=0.82, top=0.92, bottom=0.1)
+            colors = np.array([get_color(p) for p in consensus_rank_pct])  # color from consensus
 
-        for i, (title, mask) in enumerate(panels.items()):
-            self.axe = self.fig.add_subplot(gs[i // 2, i % 2])
+            panels = {
+                'All': np.ones(n, dtype=bool),
+                'Top 50%': final_rank_pct >= 50,  # filter from final_rank
+                'Top 20%': final_rank_pct >= 80,
+                'Top 10%': final_rank_pct >= 90,
+            }
 
-            x_data = x[mask]
-            y_data = y[mask]
+            x_min, x_max = x.min() * 0.8, x.max() * 1.2
+            y_min, y_max = y.min() * 0.8, y.max() * 1.2
 
-            self.axe.scatter(x_data, y_data,
-                       c=colors[mask], s=15, edgecolors='k', alpha=0.85, linewidths=0.3, picker=5)
+            gs = GridSpec(2, 2, figure=self.fig, hspace=0.45, wspace=0.35,
+                          left=0.1, right=0.82, top=0.92, bottom=0.1)
 
-            self.axe.set_xscale('log')
-            self.axe.set_yscale('log')
-            self.axe.set_xlim(x_data.min() * 0.8, x_data.max() * 1.2)
-            self.axe.set_ylim(y_data.min() * 0.8, y_data.max() * 1.2)
-            self.axe.set_title(title, fontsize=9)
-            self.axe.tick_params(labelsize=7)
-            self.axe.xaxis.set_major_locator(ticker.LogLocator(base=10, numticks=4))
-            # ax.xaxis.set_major_formatter(ticker.FuncFormatter(lambda val, _: f'{val:.0f}'))
-            # ax.yaxis.set_major_locator(ticker.LogLocator(base=10, numticks=4))
-            # ax.yaxis.set_major_formatter(ticker.LogFormatterMathtext())
-            self.axe.grid(True, which='both', linestyle='--', linewidth=0.3, alpha=0.5)
+            for i, (title, mask) in enumerate(panels.items()):
+                self.axe = self.fig.add_subplot(gs[i // 2, i % 2])
 
-            if i in (0, 2):
-                self.axe.set_ylabel('Elution-composition space area', fontsize=7)
-            if i in (2, 3):
-               self.axe.set_xlabel('Hypothetical 2D peak capacity', fontsize=7)
+                x_data = x[mask]
+                y_data = y[mask]
 
-        legend_elements = [
-            patches.Patch(color='#1A3A9E', label='Top 1%'),
-            patches.Patch(color='#A0379A', label='Top 5%'),
-            patches.Patch(color='#E64981', label='Top 10%'),
-            patches.Patch(color='#FF7C64', label='Top 25%'),
-            patches.Patch(color='#F9F871', label='> 25%'),
-        ]
-        leg = self.fig.legend(handles=legend_elements,
-                              title="Percentile\nd'orthogonalité",
-                              loc='center right',
-                              bbox_to_anchor=(1.0, 0.5),
-                              fontsize=8,
-                              title_fontsize=8,
-                              frameon=True,
-                              edgecolor='gray')
-        leg.get_frame().set_linewidth(0.5)
+                self.axe.scatter(x_data, y_data,
+                           c=colors[mask], s=15, edgecolors='k', alpha=0.85, linewidths=0.3, picker=5)
 
-        self.fig.canvas.draw()
-        self.fig.canvas.flush_events()
+                self.axe.set_xscale('log')
+                self.axe.set_yscale('log')
+                self.axe.set_xlim(x_data.min() * 0.8, x_data.max() * 1.2)
+                self.axe.set_ylim(y_data.min() * 0.8, y_data.max() * 1.2)
+                self.axe.set_title(title, fontsize=9)
+                self.axe.tick_params(labelsize=7)
+                self.axe.xaxis.set_major_locator(ticker.LogLocator(base=10, numticks=4))
+                # ax.xaxis.set_major_formatter(ticker.FuncFormatter(lambda val, _: f'{val:.0f}'))
+                # ax.yaxis.set_major_locator(ticker.LogLocator(base=10, numticks=4))
+                # ax.yaxis.set_major_formatter(ticker.LogFormatterMathtext())
+                self.axe.grid(True, which='both', linestyle='--', linewidth=0.3, alpha=0.5)
+
+                if i in (0, 2):
+                    self.axe.set_ylabel('Elution-composition space area', fontsize=7)
+                if i in (2, 3):
+                   self.axe.set_xlabel('Hypothetical 2D peak capacity', fontsize=7)
+
+            legend_elements = [
+                patches.Patch(color='#1A3A9E', label='Top 1%'),
+                patches.Patch(color='#A0379A', label='Top 5%'),
+                patches.Patch(color='#E64981', label='Top 10%'),
+                patches.Patch(color='#FF7C64', label='Top 25%'),
+                patches.Patch(color='#F9F871', label='> 25%'),
+            ]
+            leg = self.fig.legend(handles=legend_elements,
+                                  title="Percentile\nd'orthogonalité",
+                                  loc='center right',
+                                  bbox_to_anchor=(1.0, 0.5),
+                                  fontsize=8,
+                                  title_fontsize=8,
+                                  frameon=True,
+                                  edgecolor='gray')
+            leg.get_frame().set_linewidth(0.5)
+
+            self.fig.canvas.draw()
+            self.fig.canvas.flush_events()
 
     def plot_elution_area_vs_peak_rate(self):
         self.fig.clear()
 
         x = self.orthogonality_result_data['Elution Composition Space Area']
         y = self.orthogonality_result_data['Peak Detection Rate (%)']
-        final_rank = self.orthogonality_result_data['Final Rank']
-        consensus_rank = self.orthogonality_result_data['Consensus Ranking']
-        n = len(final_rank)
 
-        final_rank_pct = (final_rank / n) * 100  # controls which points are shown
-        consensus_rank_pct = (consensus_rank / n) * 100  # controls point color
+        x_is_numeric = (x != 'Not available').any()
+        y_is_numeric = (y != 'Not available').any()
 
-        def get_color(pct):
-            if pct >= 99:
-                return '#1A3A9E'
-            elif pct >= 95:
-                return '#A0379A'
-            elif pct >= 90:
-                return '#E64981'
-            elif pct >= 75:
-                return '#FF7C64'
-            else:
-                return '#F9F871'
+        if x_is_numeric and y_is_numeric:
 
-        colors = np.array([get_color(p) for p in consensus_rank_pct])  # color from consensus
+            final_rank = self.orthogonality_result_data['Final Rank']
+            consensus_rank = self.orthogonality_result_data['Consensus Ranking']
+            n = len(final_rank)
 
-        panels = {
-            'All': np.ones(n, dtype=bool),
-            'Top 50%': final_rank_pct >= 50,  # filter from final_rank
-            'Top 20%': final_rank_pct >= 80,
-            'Top 10%': final_rank_pct >= 90,
-        }
+            final_rank_pct = (final_rank / n) * 100  # controls which points are shown
+            consensus_rank_pct = (consensus_rank / n) * 100  # controls point color
 
-        x_min, x_max = x.min() * 0.8, x.max() * 1.2
-        y_min, y_max = y.min() * 0.8, y.max() * 1.2
+            def get_color(pct):
+                if pct >= 99:
+                    return '#1A3A9E'
+                elif pct >= 95:
+                    return '#A0379A'
+                elif pct >= 90:
+                    return '#E64981'
+                elif pct >= 75:
+                    return '#FF7C64'
+                else:
+                    return '#F9F871'
 
-        gs = GridSpec(2, 2, figure=self.fig, hspace=0.45, wspace=0.35,
-                      left=0.1, right=0.82, top=0.92, bottom=0.1)
+            colors = np.array([get_color(p) for p in consensus_rank_pct])  # color from consensus
 
-        for i, (title, mask) in enumerate(panels.items()):
-            self.axe = self.fig.add_subplot(gs[i // 2, i % 2])
+            panels = {
+                'All': np.ones(n, dtype=bool),
+                'Top 50%': final_rank_pct >= 50,  # filter from final_rank
+                'Top 20%': final_rank_pct >= 80,
+                'Top 10%': final_rank_pct >= 90,
+            }
 
-            x_data = x[mask]
-            y_data = y[mask]
+            x_min, x_max = x.min() * 0.8, x.max() * 1.2
+            y_min, y_max = y.min() * 0.8, y.max() * 1.2
 
-            self.axe.scatter(x_data, y_data,
-                       c=colors[mask], s=15, edgecolors='k', alpha=0.85, linewidths=0.3, picker=5)
+            gs = GridSpec(2, 2, figure=self.fig, hspace=0.45, wspace=0.35,
+                          left=0.1, right=0.82, top=0.92, bottom=0.1)
 
-            self.axe.set_xscale('log')
-            self.axe.set_yscale('log')
-            self.axe.set_xlim(x_data.min() * 0.8, x_data.max() * 1.2)
-            self.axe.set_ylim(y_data.min() * 0.8, y_data.max() * 1.2)
-            self.axe.set_title(title, fontsize=9)
-            self.axe.tick_params(labelsize=7)
-            self.axe.xaxis.set_major_locator(ticker.LogLocator(base=10, numticks=4))
-            # ax.xaxis.set_major_formatter(ticker.FuncFormatter(lambda val, _: f'{val:.0f}'))
-            # ax.yaxis.set_major_locator(ticker.LogLocator(base=10, numticks=4))
-            # ax.yaxis.set_major_formatter(ticker.LogFormatterMathtext())
-            self.axe.grid(True, which='both', linestyle='--', linewidth=0.3, alpha=0.5)
+            for i, (title, mask) in enumerate(panels.items()):
+                self.axe = self.fig.add_subplot(gs[i // 2, i % 2])
 
-            if i in (0, 2):
-                self.axe.set_ylabel('Peak Detection Rate (%)', fontsize=7)
-            if i in (2, 3):
-                self.axe.set_xlabel('Elution Composition Space Area', fontsize=7)
+                x_data = x[mask]
+                y_data = y[mask]
 
-        legend_elements = [
-            patches.Patch(color='#1A3A9E', label='Top 1%'),
-            patches.Patch(color='#A0379A', label='Top 5%'),
-            patches.Patch(color='#E64981', label='Top 10%'),
-            patches.Patch(color='#FF7C64', label='Top 25%'),
-            patches.Patch(color='#F9F871', label='> 25%'),
-        ]
-        leg = self.fig.legend(handles=legend_elements,
-                              title="Percentile\nd'orthogonalité",
-                              loc='center right',
-                              bbox_to_anchor=(1.0, 0.5),
-                              fontsize=8,
-                              title_fontsize=8,
-                              frameon=True,
-                              edgecolor='gray')
-        leg.get_frame().set_linewidth(0.5)
+                self.axe.scatter(x_data, y_data,
+                           c=colors[mask], s=15, edgecolors='k', alpha=0.85, linewidths=0.3, picker=5)
 
-        self.fig.canvas.draw()
-        self.fig.canvas.flush_events()
+                self.axe.set_xscale('log')
+                self.axe.set_yscale('log')
+                self.axe.set_xlim(x_data.min() * 0.8, x_data.max() * 1.2)
+                self.axe.set_ylim(y_data.min() * 0.8, y_data.max() * 1.2)
+                self.axe.set_title(title, fontsize=9)
+                self.axe.tick_params(labelsize=7)
+                self.axe.xaxis.set_major_locator(ticker.LogLocator(base=10, numticks=4))
+                # ax.xaxis.set_major_formatter(ticker.FuncFormatter(lambda val, _: f'{val:.0f}'))
+                # ax.yaxis.set_major_locator(ticker.LogLocator(base=10, numticks=4))
+                # ax.yaxis.set_major_formatter(ticker.LogFormatterMathtext())
+                self.axe.grid(True, which='both', linestyle='--', linewidth=0.3, alpha=0.5)
+
+                if i in (0, 2):
+                    self.axe.set_ylabel('Peak Detection Rate (%)', fontsize=7)
+                if i in (2, 3):
+                    self.axe.set_xlabel('Elution Composition Space Area', fontsize=7)
+
+            legend_elements = [
+                patches.Patch(color='#1A3A9E', label='Top 1%'),
+                patches.Patch(color='#A0379A', label='Top 5%'),
+                patches.Patch(color='#E64981', label='Top 10%'),
+                patches.Patch(color='#FF7C64', label='Top 25%'),
+                patches.Patch(color='#F9F871', label='> 25%'),
+            ]
+            leg = self.fig.legend(handles=legend_elements,
+                                  title="Percentile\nd'orthogonalité",
+                                  loc='center right',
+                                  bbox_to_anchor=(1.0, 0.5),
+                                  fontsize=8,
+                                  title_fontsize=8,
+                                  frameon=True,
+                                  edgecolor='gray')
+            leg.get_frame().set_linewidth(0.5)
+
+            self.fig.canvas.draw()
+            self.fig.canvas.flush_events()
 
     def plot_median_rank_score_heatmap(self):
 

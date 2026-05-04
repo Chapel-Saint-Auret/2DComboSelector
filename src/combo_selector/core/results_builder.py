@@ -146,7 +146,9 @@ class ResultsBuilder:
         )
 
         self.orthogonality_result_df["Hypothetical 2D Peak Capacity"] = self.combination_df["Hypothetical 2D Peak Capacity"].copy()
+        self.orthogonality_result_df["Hypothetical 2D Peak Capacity Rank"] = self.combination_df["Hypothetical 2D Peak Capacity"].copy()
         self.orthogonality_result_df["Elution Composition Space Area"] = self.combination_df["Elution Composition Space Area"].copy()
+        self.orthogonality_result_df["Elution Composition Space Area Rank"] = self.combination_df["Elution Composition Space Area"].copy()
 
     def update_table_results(self) -> None:
         """Recompute all result columns and update the results table.
@@ -179,6 +181,8 @@ class ResultsBuilder:
         self.create_practical_feasibility_table()
         self.create_separational_potential_table()
         self.create_final_recommendation_table()
+
+
         self.create_median_rank_score_based_on_chromatographic_group()
         self.create_rank_score_based_on_chromatographic_group()
         self.create_recommendation_distribution_group()
@@ -278,7 +282,7 @@ class ResultsBuilder:
             "Combination #",
             "2D Combination",
             "Chromatographic Mode",
-            "Hypothetical 2D Peak Capacity",
+            "Hypothetical 2D Peak Capacity Rank",
             "Elution Composition Space Area",
             "Final Recommendation",
             "Final Rank",
@@ -296,6 +300,12 @@ class ResultsBuilder:
             "Final Rank",
             "Peak Detection Rate (%)",
         ]
+
+        for col in [
+            "Elution Composition Space Area Rank",
+            "Hypothetical 2D Peak Capacity Rank",
+        ]:
+            self.orthogonality_result_df[col] = pd.to_numeric(self.orthogonality_result_df[col], errors="coerce").fillna(0)
 
         self.median_rank_score_df = (self.orthogonality_result_df.groupby("Chromatographic Mode")[column_name].median())
 
@@ -320,6 +330,12 @@ class ResultsBuilder:
             "Peak Detection Rate (%)",
         ]
 
+        for col in [
+            "Elution Composition Space Area Rank",
+            "Hypothetical 2D Peak Capacity Rank",
+        ]:
+            self.orthogonality_result_df[col] = pd.to_numeric(self.orthogonality_result_df[col], errors="coerce").fillna(0)
+
         self.rank_score_grouped_by_chrom_mode_df = self.orthogonality_result_df.groupby("Chromatographic Mode")[column_name]
 
     def create_recommendation_distribution_group(self):
@@ -331,6 +347,12 @@ class ResultsBuilder:
             "Final Rank",
             "Peak Detection Rate (%)",
         ]
+
+        for col in [
+            "Elution Composition Space Area Rank",
+            "Hypothetical 2D Peak Capacity Rank",
+        ]:
+            self.orthogonality_result_df[col] = pd.to_numeric(self.orthogonality_result_df[col], errors="coerce").fillna(0)
 
         self.recommendation_distribution_df = self.orthogonality_result_df.groupby("Chromatographic Mode")['Final Recommendation']
     # ------------------------------------------------------------------
@@ -445,19 +467,22 @@ class ResultsBuilder:
             else:
                 return ''
 
+        elution_rank_is_numeric = (self.orthogonality_result_df['Elution Composition Space Area Rank'] != 'Not available').any()
+        peak_capacity_rank_is_numeric = (self.orthogonality_result_df['Hypothetical 2D Peak Capacity Rank'] != 'Not available').any()
+
         if 'Consensus Ranking' in self.orthogonality_result_df.columns:
             orthogonality_consensus_ranking = (self.orthogonality_result_df['Consensus Ranking'].
                                        apply(lambda rank: set_criterion(rank,criterion='O')))
         else:
             orthogonality_consensus_ranking = ''
 
-        if 'Elution Composition Space Area Rank' in self.orthogonality_result_df.columns:
+        if 'Elution Composition Space Area Rank' in self.orthogonality_result_df.columns and elution_rank_is_numeric:
             elution_composition_space_area_ranking = (self.orthogonality_result_df['Elution Composition Space Area Rank'].
                                                apply(lambda rank: set_criterion(rank, criterion='ES')))
         else:
             elution_composition_space_area_ranking = ''
 
-        if 'Hypothetical 2D Peak Capacity Rank' in self.orthogonality_result_df.columns:
+        if 'Hypothetical 2D Peak Capacity Rank' in self.orthogonality_result_df.columns and peak_capacity_rank_is_numeric:
             hypothetical_2d_peak_capacity_ranking = (self.orthogonality_result_df['Hypothetical 2D Peak Capacity Rank'].
                                                apply(lambda rank: set_criterion(rank, criterion='PS')))
         else:
