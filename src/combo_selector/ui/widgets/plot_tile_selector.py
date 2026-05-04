@@ -5,7 +5,7 @@ This module provides the PlotTileSelector widget which allows users to:
 - Emit a (family, variant) pair used by ResultsPage to route to the correct plot function
 """
 
-from PySide6.QtCore import Qt, Signal
+from PySide6.QtCore import Signal
 from PySide6.QtWidgets import (
     QButtonGroup,
     QGridLayout,
@@ -53,6 +53,7 @@ _TILE_NORMAL = """
         border-radius: 10px;
         font-size: 11px;
         font-weight: 600;
+        text-align: center;
     }
     QPushButton:hover {
         background-color: #c8d9f5;
@@ -67,6 +68,7 @@ _TILE_SELECTED = """
         border-radius: 10px;
         font-size: 11px;
         font-weight: 600;
+        text-align: center;
     }
     QPushButton:hover {
         background-color: #1e4aad;
@@ -143,7 +145,6 @@ class PlotTileSelector(QWidget):
             btn.setCheckable(True)
             btn.setFixedHeight(self._TILE_HEIGHT)
             btn.setStyleSheet(_TILE_NORMAL)
-            btn.setAlignment(Qt.AlignCenter)
             btn.clicked.connect(
                 lambda checked, f=family, v=variant: self._on_tile_clicked(f, v)
             )
