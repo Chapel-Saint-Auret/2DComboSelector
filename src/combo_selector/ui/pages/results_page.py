@@ -505,6 +505,8 @@ class ResultsPage(QFrame):
                 "Recommendation Distribution": self.plot_utils.plot_recommendation_distribution,
             },
             "Feasibility Profile": {
+                # NOTE: Dedicated feasibility plotting functions are not yet implemented
+                # in PlotUtils. These map to the closest existing functions as placeholders.
                 "Overall Feasibility Profile": self.plot_utils.plot_recommendation_distribution,
                 "Feasibility Profile by Mode": self.plot_utils.plot_rank_score_distribution_by_mode,
             },

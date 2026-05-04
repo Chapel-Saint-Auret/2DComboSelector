@@ -110,7 +110,7 @@ class PlotTileSelector(QWidget):
 
     plot_selected = Signal(str, str)
 
-    def __init__(self, parent: QWidget = None) -> None:
+    def __init__(self, parent: "QWidget | None" = None) -> None:
         """Initialise the widget.
 
         Args:
