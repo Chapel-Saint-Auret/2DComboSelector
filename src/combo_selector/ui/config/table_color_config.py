@@ -3,7 +3,7 @@
 
 COLOR_CONFIG_TABLE_FEASIBILITY = {
     4: {
-        "Good": "#1a7a4a", "Moderate": "#b36a00", "Low": "#c0392b"
+        "High": "#1a7a4a", "Moderate": "#b36a00", "Low": "#c0392b"
     },
     3: {
         "Low": "#1a7a4a", "Moderate": "#b36a00", "High": "#c0392b", "NC": "#888888"
