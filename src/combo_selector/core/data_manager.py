@@ -729,7 +729,7 @@ class DataManager:
             print(f"Error loading data: {issue}")
             self.status = "error"
 
-    def load_data_frame_2d_peak(self, filepath: str, sheetname: str) -> None:
+    def load_hypothetical_2d_peak_capacity(self, filepath: str, sheetname: str) -> None:
         """Load 2D peak capacity data from an Excel file.
 
         Args:
@@ -749,18 +749,26 @@ class DataManager:
             # Load data and clean columns once (no redundant file reading)
             self.retention_time_df_2d_peaks = load_simple_table(filepath, sheetname)
 
+            # remove condition that has already been removed with the clean data widget
+            if set(self.removed_condition_list).issubset(set(self.retention_time_df_2d_peaks.columns)):
+                self.retention_time_df_2d_peaks = self.retention_time_df_2d_peaks.drop(columns=self.removed_condition_list)
+
             columns = self.retention_time_df_2d_peaks.columns.tolist()
             num_columns = len(columns)
             set_number = 1
+
+            if len(self.column_names) != num_columns:
+                raise ValueError("Number of condition does not match the number of condition in retention time data.")
+
 
             for col1_idx, col2_idx in combinations(range(num_columns), 2):
                 set_key = f"Set {set_number}"
                 expected_title = f"{columns[col1_idx]} vs {columns[col2_idx]}"
 
                 # Calculate 2D peak capacity
-                x_peak = self.retention_time_df_2d_peaks.iloc[0, col1_idx]
-                y_peak = self.retention_time_df_2d_peaks.iloc[0, col2_idx]
-                peak_capacity = x_peak * y_peak
+                n1 = self.retention_time_df_2d_peaks.iloc[0, col1_idx]
+                n2 = self.retention_time_df_2d_peaks.iloc[0, col2_idx]
+                peak_capacity = n1 * n2
 
                 if set_key not in self.orthogonality_dict:
                     self.orthogonality_dict[set_key] = (
@@ -801,7 +809,7 @@ class DataManager:
             self.combination_df["Hypothetical 2D Peak Capacity"] = self.orthogonality_result_df['Hypothetical 2D Peak Capacity'] \
                 = combination_table
             self.peak_capacity_status = "peak_capacity_loaded"
-            self.orthogonality_result_df['Hypothetical 2D Peak Capacity Rank'] = self.combination_df["Hypothetical 2D Peak Capacity"].rank(ascending=False, method='average')
+            self.orthogonality_result_df['Peak Capacity Rank'] = self.combination_df["Hypothetical 2D Peak Capacity"].rank(ascending=False, method='average').astype(int)
         except Exception as e:
             print(f"Error loading 2D peaks: {str(e)}")
             self.status = "error"
@@ -827,9 +835,17 @@ class DataManager:
             # Load data and clean columns once (no redundant file reading)
             self.load_elution_composition_df = load_simple_table(filepath, sheetname)
 
+            # remove condition that has already been removed with the clean data widget
+            if set(self.removed_condition_list).issubset(set(self.load_elution_composition_df.columns)):
+                self.load_elution_composition_df = self.load_elution_composition_df.drop(
+                    columns=self.removed_condition_list)
+
             columns = self.load_elution_composition_df.columns.tolist()
             num_columns = len(columns)
             set_number = 1
+
+            if len(self.column_names) != num_columns:
+                raise ValueError("Number of condition does not match the number of condition in retention time data.")
 
             for col1_idx, col2_idx in combinations(range(num_columns), 2):
                 set_key = f"Set {set_number}"
@@ -847,9 +863,9 @@ class DataManager:
 
             combination_table = [row[4] for row in self.table_data]
 
-            self.combination_df['Elution Composition Space Area'] = self.orthogonality_result_df['Elution Composition Space Area'] \
+            self.combination_df['Elution Domain'] = self.orthogonality_result_df['Elution Domain'] \
                 = combination_table
-            self.orthogonality_result_df['Elution Composition Space Area Rank'] = self.combination_df['Elution Composition Space Area'].rank(ascending=False, method='average')
+            self.orthogonality_result_df['Elution Domain Rank'] = self.combination_df['Elution Domain'].rank(ascending=False, method='average').astype(int)
             self.elution_data_status = "elution_data_loaded"
 
         except Exception as e:
@@ -952,7 +968,7 @@ class DataManager:
                 "2D Combination",
                 "Number of peaks",
                 "Hypothetical 2D Peak Capacity",
-                "Elution Composition Space Area",
+                "Elution Domain",
             ],
         )
 
