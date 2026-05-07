@@ -254,7 +254,7 @@ class Scoring:
 
         consensus_orthogonality_ranking_df = consensus_orthogonality_ranking_df.rank(ascending=True, method='average')
 
-        self.orthogonality_result_df['Consensus Ranking'] = consensus_orthogonality_ranking_df
+        self.orthogonality_result_df['Consensus Rank'] = consensus_orthogonality_ranking_df.astype(int)
 
     def compute_consensus_orthogonality_score(self):
         """Compute the consensus orthogonality score as the median of group medians.
@@ -420,7 +420,7 @@ class Scoring:
 
         outlier_metric_flag = outlier_group.T.combine(outlier_count.T, lambda s1, s2: write_outlier_result(zip(s1, s2)))
 
-        self.orthogonality_result_df['Outlier Group Flag'] = outlier_metric_flag
+        self.orthogonality_result_df['Outlier Flag'] = outlier_metric_flag
 
     def compute_peak_detection_rate(self):
         """Compute the peak detection rate for each combination.
@@ -452,8 +452,9 @@ class Scoring:
 
         nb_of_max_peak = self.combination_df["Number of peaks"].max()
         self.orthogonality_result_df["Peak Detection Rate (%)"] = (
-            self.combination_df["Number of peaks"].apply(lambda x: (x / nb_of_max_peak) * 100)
+            self.combination_df["Number of peaks"].apply(lambda x: int((x / nb_of_max_peak) * 100))
         )
+
         self.orthogonality_result_df["Peak Detection Rate Status"] = (
             self.orthogonality_result_df["Peak Detection Rate (%)"].apply(
                 lambda x: set_peak_detection_rate_status(x)

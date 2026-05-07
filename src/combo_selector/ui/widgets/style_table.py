@@ -349,8 +349,9 @@ class StyledTable(QWidget):
         self.title_layout.addWidget(title_help_btn, 0, Qt.AlignVCenter)  # ← per-item alignment flag
         self.title_layout.addStretch(1)
 
-    def add_sheet(self,sheet_name='unnamed',color_config = None,bold_columns = None,enable_decoration= False) -> None:
+    def add_sheet(self,sheet_name='unnamed',value_format=".3f",color_config = None,bold_columns = None,enable_decoration= False) -> None:
         table_panel = TablePanel(
+        value_format=value_format,
         color_config=color_config,
         bold_columns=bold_columns,
         enable_decoration = enable_decoration,

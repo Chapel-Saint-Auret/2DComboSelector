@@ -513,7 +513,7 @@ class RedundancyCheckPage(QFrame):
             - Updates correlation groups table
         """
         self.styled_table.clean_table()
-        self.styled_table.set_header_label(["Group", "Correlated Metrics",'Category'])
+        self.styled_table.set_header_label(["Group", "Correlated Metrics",'Classification'])
 
         if self.model.get_orthogonality_metric_corr_matrix_df().empty:
             return

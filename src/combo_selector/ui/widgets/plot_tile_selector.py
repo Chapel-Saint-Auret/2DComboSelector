@@ -30,6 +30,8 @@ _PLOT_REGISTRY = [
     ("Chromatographic Mode Performance BP", "Performance\nBar Plot"),
     ("Recommendation Distribution",         "Recommendation\nDistribution"),
     ("Feasibility Profile",                 "Feasibility\nProfile"),
+    ("Feasibility Profile By Mode",         "Feasibility Profile\nby Mode"),
+    ("Final Rank by Recommendation Class",  "Final Rank by\n Recommendation"),
 ]
 
 # ---------------------------------------------------------------------------

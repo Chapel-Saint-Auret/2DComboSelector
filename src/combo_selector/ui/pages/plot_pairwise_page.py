@@ -315,7 +315,7 @@ class PlotPairWisePage(QFrame):
         self.data_selection_layout = QVBoxLayout()
         self.data_selection_layout.setSpacing(6)
 
-        self.data_selection_layout.addWidget(QLabel("Number of Data Set to Compare:"))
+        self.data_selection_layout.addWidget(QLabel("Number of Dataset to View :"))
         self.compare_number = QComboBox()
         self.compare_number.addItems(["1", "2"])
         self.data_selection_layout.addWidget(self.compare_number)
@@ -512,11 +512,12 @@ class PlotPairWisePage(QFrame):
                 "2D Combination",
                 "Number of peaks",
                 "Hypothetical 2D Peak Capacity",
-                "Elution Composition Space Area",
+                "Elution Domain",
             ]
         )
         self.styled_table.add_help_button(2, "Number of peaks","markdown/number_of_peaks.md")
         self.styled_table.add_help_button(3, "Hypothetical 2D Peak Capacity","markdown/hypothetical_peak_capacity.md")
+        self.styled_table.add_help_button(4, "Elution Domain","markdown/elution_domain.md")
         self.styled_table.set_default_row_count(10)
 
         self.table_view_dialog = TableViewDialog(

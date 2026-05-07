@@ -38,6 +38,7 @@ from PySide6.QtWidgets import (
 from combo_selector.ui.config.table_color_config import COLOR_CONFIG_TABLE_FEASIBILITY, COLOR_CONFIG_TABLE_RECOMMENDATION
 from combo_selector.core.workers import ResultsWorkerComputeCustomOMScore
 from combo_selector.ui.widgets.checkable_tree_list import CheckableTreeList
+from combo_selector.ui.widgets.section_help_button import SectionHelpButton
 from combo_selector.ui.widgets.circle_progress_bar import RoundProgressBar
 from combo_selector.ui.widgets.custom_filter_dialog import CustomFilterDialog
 from combo_selector.ui.widgets.custom_toolbar import CustomToolbar
@@ -188,8 +189,8 @@ class ResultsPage(QFrame):
         """
         top_frame = QFrame()
         top_frame_layout = QHBoxLayout(top_frame)
-        top_frame_layout.setContentsMargins(50, 50, 50, 50)
-        top_frame_layout.setSpacing(80)
+        top_frame_layout.setContentsMargins(30, 30, 30, 30)
+        top_frame_layout.setSpacing(40)
 
         # Left: Input section
         input_section = self._create_input_panel()
@@ -226,19 +227,19 @@ class ResultsPage(QFrame):
         """)
 
         user_input_scroll_area = QScrollArea()
-        user_input_scroll_area.setFixedWidth(290)
+        user_input_scroll_area.setFixedWidth(350)
         user_input_scroll_area.setWidgetResizable(True)
         user_input_scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
         user_input_scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
 
         user_input_frame = QFrame()
-        user_input_frame.setFixedWidth(290)
+        user_input_frame.setFixedWidth(350)
         user_input_frame_layout = QVBoxLayout(user_input_frame)
         user_input_frame_layout.setContentsMargins(20, 20, 20, 20)
         user_input_scroll_area.setWidget(user_input_frame)
 
         input_section = QFrame()
-        input_section.setFixedWidth(290)
+        input_section.setFixedWidth(350)
         input_layout = QVBoxLayout(input_section)
         input_layout.setSpacing(0)
         input_layout.setContentsMargins(0, 0, 0, 0)
@@ -291,6 +292,12 @@ class ResultsPage(QFrame):
         """
         orthogonality_score_group = QGroupBox("Final Orthogonality assessment")
         orthogonality_score_group.setStyleSheet(self._get_group_stylesheet())
+
+        SectionHelpButton.for_group(
+            orthogonality_score_group,
+            title="Final Orthogonality assessment",
+            markdown_path="",  # intentionally missing
+        )
 
         orthogonality_score_layout = QVBoxLayout()
         orthogonality_score_layout.setContentsMargins(5, 5, 5, 5)
@@ -425,7 +432,9 @@ class ResultsPage(QFrame):
             "Chromatographic Mode Performance HM": self.plot_utils.plot_median_rank_score_heatmap,
             "Chromatographic Mode Performance BP": self.plot_utils.plot_rank_score_distribution_by_mode,
             "Recommendation Distribution": self.plot_utils.plot_recommendation_distribution,
-            "Feasibility Profile": self.plot_utils.plot_feasibility_decision_map
+            "Feasibility Profile": self.plot_utils.plot_feasibility_decision_map,
+            "Feasibility Profile By Mode": self.plot_utils.plot_feasibility_decision_map_by_mode,
+            "Final Rank by Recommendation Class": self.plot_utils.plot_final_rank_by_recommendation_class,
         }
 
         plot_frame_layout.addWidget(plot_title)
@@ -445,18 +454,26 @@ class ResultsPage(QFrame):
         table_frame_layout.setContentsMargins(20, 20, 20, 20)
 
         self.styled_table = StyledTable(title="Evaluation Results",has_tab=True,enable_decoration=True)
-        self.styled_table.add_sheet(sheet_name='Orthogonality')
-        self.styled_table.add_sheet(color_config=COLOR_CONFIG_TABLE_FEASIBILITY,
+        self.styled_table.add_title_bar_info_button(markdown_path="markdown/group_metric_table.md")
+        self.styled_table.add_sheet(sheet_name='Orthogonality',value_format=".2f")
+        self.styled_table.add_sheet(value_format=".2f",
+                                    color_config=COLOR_CONFIG_TABLE_FEASIBILITY,
                                     bold_columns=[3,4,6],
                                     sheet_name='Practical Feasibility',
                                     enable_decoration = True)
-        self.styled_table.add_sheet(sheet_name='Separation Potential')
-        self.styled_table.add_sheet(color_config=COLOR_CONFIG_TABLE_RECOMMENDATION,
+        self.styled_table.add_sheet(sheet_name='Separation Potential',value_format=".2f")
+        self.styled_table.add_sheet(value_format=".1f",
+                                    color_config=COLOR_CONFIG_TABLE_RECOMMENDATION,
                                     bold_columns=[6, 7, 8],
                                     sheet_name='Final Recommendation',
                                     enable_decoration = True)
 
         self.orthogonality_table = self.styled_table.get_table_from_sheet(sheet_name='Orthogonality')
+        self.orthogonality_table.add_help_button(column=3,title="Coverage Score",markdown_path="markdown/coverage_score.md")
+        self.orthogonality_table.add_help_button(column=4,title="Distribution Score",markdown_path="markdown/distribution_score.md")
+        self.orthogonality_table.add_help_button(column=5,title="Orthogonality Rank",markdown_path="markdown/orthogonality_rank.md")
+        self.orthogonality_table.add_help_button(column=6,title="Agreement Indicator",markdown_path="markdown/agreement_indicator.md")
+        self.orthogonality_table.add_help_button(column=7,title="Outlier Flag",markdown_path="markdown/outlier_flag.md")
         self.orthogonality_table.set_header_label(
             [
                 "Combination #",
@@ -464,13 +481,16 @@ class ResultsPage(QFrame):
                 "Chromatographic Mode",
                 "Coverage Score",
                 "Distribution Score",
-                "Consensus Score",
-                "Consensus Ranking",
+                "Orthogonality Rank",
                 "Agreement Indicator",
-                "Outlier Group Flag",
+                "Outlier Flag",
             ])
 
         self.practical_feasibility_table = self.styled_table.get_table_from_sheet(sheet_name='Practical Feasibility')
+        self.practical_feasibility_table.add_help_button(column=3,title="Complexity",markdown_path="markdown/complexity.md")
+        self.practical_feasibility_table.add_help_button(column=4,title="Compatibility",markdown_path="markdown/compatibility.md")
+        self.practical_feasibility_table.add_help_button(column=5,title="Peak Detection Rate (%)",markdown_path="markdown/peak_detection_rate.md")
+        self.practical_feasibility_table.add_help_button(column=6,title="Peak Detection Status",markdown_path="markdown/peak_detection_status.md")
         self.practical_feasibility_table.set_header_label(
             [
                 "Combination #",
@@ -483,25 +503,38 @@ class ResultsPage(QFrame):
             ])
 
         self.seperational_potential_table = self.styled_table.get_table_from_sheet(sheet_name='Separation Potential')
+        self.seperational_potential_table.add_help_button(column=3, title="Hypothetical 2D Peak Capacity",markdown_path="markdown/hypothetical_peak_capacity.md")
+        self.seperational_potential_table.add_help_button(column=4, title="Elution Domain",markdown_path="markdown/elution_domain.md")
         self.seperational_potential_table.set_header_label(
             [
                 "Combination #",
                 "2D Combination",
                 "Chromatographic Mode",
                 "Hypothetical 2D Peak Capacity",
-                "Elution Composition Space Area",
+                "Elution Domain",
             ])
 
         self.final_recommendation_table = self.styled_table.get_table_from_sheet(sheet_name='Final Recommendation')
+        self.final_recommendation_table.add_help_button(column=3, title="Peak Capacity Rank",
+                                                          markdown_path="markdown/peak_capacity_rank.md")
+        self.final_recommendation_table.add_help_button(column=4, title="Elution Domain Rank",
+                                                          markdown_path="markdown/elution_domain_rank.md")
+        self.final_recommendation_table.add_help_button(column=5, title="Final Recommendation",
+                                                          markdown_path="markdown/final_recommendation.md")
+        self.final_recommendation_table.add_help_button(column=6, title="Final Rank",
+                                                          markdown_path="markdown/final_rank.md")
+        self.final_recommendation_table.add_help_button(column=7, title="Criterion Higlight",
+                                                          markdown_path="markdown/criterion_higlight.md")
         self.final_recommendation_table.set_header_label(
             [
                 "Combination #",
                 "2D Combination",
                 "Chromatographic Mode",
-                "Hypothetical 2D Peak Capacity Rank",
-                "Elution Composition Space Area",
-                "Final Recommendation",
+                "Orthogonality Rank"
+                "Peak Capacity Rank",
+                "Elution Domain Rank",
                 "Final Rank",
+                "Final Recommendation",
                 "Criterion Higlight",
             ])
 

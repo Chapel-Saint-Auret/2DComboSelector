@@ -358,7 +358,7 @@ class ImportDataPage(QFrame):
         data_import_inner_layout.addLayout(rt_layout)
         data_import_inner_layout.addWidget(QLabel("Experimental 1D Peak Capacities:"))
         data_import_inner_layout.addLayout(peak_layout)
-        data_import_inner_layout.addWidget(QLabel("Elution Composition Space Area"))
+        data_import_inner_layout.addWidget(QLabel("Elution-Composition Ranges "))
         data_import_inner_layout.addLayout(delta_ce_layout)
         data_import_inner_layout.addWidget(self.void_time_label)
         data_import_inner_layout.addWidget(self.void_time_widget)
@@ -715,7 +715,7 @@ class ImportDataPage(QFrame):
             self.retention_time_loaded.emit()
 
         except ValueError as e:
-            self.ret_time_import_status.set_error()
+            self.ret_time_import_status.set_wait()
             QMessageBox.warning(self, "Warning", str(e))
         except Exception as e:
             self.ret_time_import_status.set_error()
@@ -743,23 +743,23 @@ class ImportDataPage(QFrame):
                 sheet, ok = QInputDialog.getItem(
                     self, "Select excel sheet", "select sheet", sheet_names_list
                 )
-            except Exception:
-                ok = False
 
-            if ok:
-                self.model.load_data_frame_2d_peak(
-                    filepath=fileName[0], sheetname=sheet
-                )
+                if ok:
+                    self.model.load_hypothetical_2d_peak_capacity(
+                        filepath=fileName[0], sheetname=sheet
+                    )
 
-                status = self.model.get_status()
+                    status = self.model.get_status()
 
-                if status == "error":
-                    self.twoD_peak_status.set_error()
-                else:
-                    self.twoD_peak_status.set_valid()
-                    self.add_2D_peak_data_linedit.setText(fileName[0])
-                    self.exp_peak_capacities_loaded.emit()
-            else:
+                    if status == "error":
+                        self.twoD_peak_status.set_error()
+                    else:
+                        self.twoD_peak_status.set_valid()
+                        self.add_2D_peak_data_linedit.setText(fileName[0])
+                        self.exp_peak_capacities_loaded.emit()
+
+            except ValueError as e:
+                QMessageBox.warning(self, "Warning", str(e))
                 self.twoD_peak_status.set_error()
 
     def load_elution_composition_space(self) -> None:
@@ -782,24 +782,25 @@ class ImportDataPage(QFrame):
                 sheet, ok = QInputDialog.getItem(
                     self, "Select excel sheet", "select sheet", sheet_names_list
                 )
-            except Exception:
-                ok = False
 
-            if ok:
-                self.model.load_elution_composition_space_area_data(
-                    filepath=fileName[0], sheetname=sheet
-                )
+                if ok:
+                    self.model.load_elution_composition_space_area_data(
+                        filepath=fileName[0], sheetname=sheet
+                    )
 
-                status = self.model.get_status()
+                    status = self.model.get_status()
 
-                if status == "error":
-                    self.twoD_peak_status.set_error()
-                else:
-                    self.delta_ce_status.set_valid()
-                    self.add_delta_ce_linedit.setText(fileName[0])
-                    self.exp_peak_capacities_loaded.emit()
-            else:
-                self.twoD_peak_status.set_error()
+                    if status == "error":
+                        self.delta_ce_status.set_error()
+                    else:
+                        self.delta_ce_status.set_valid()
+                        self.add_delta_ce_linedit.setText(fileName[0])
+                        self.exp_peak_capacities_loaded.emit()
+
+            except ValueError as e:
+                QMessageBox.warning(self, "Warning", str(e))
+                self.delta_ce_status.set_error()
+
 
     def load_gradient_end_time_data(self) -> None:
         """Load gradient end time data from an Excel file.

@@ -323,37 +323,28 @@ class SectionHelpButton(QToolButton):
             title: str,
             markdown_path: str,
     ) -> "SectionHelpButton":
-        """Create a help button anchored inside a :class:`QGroupBox` title bar.
-
-        Instantiates the button, attaches a resize listener to keep it
-        positioned correctly, and returns it.
-
-        Args:
-            group (QGroupBox): The group box whose title bar hosts the button.
-            title (str): Title displayed in the help pop-up.
-            markdown_path (str): Path to the Markdown file for the help content.
-
-        Returns:
-            SectionHelpButton: The newly created and positioned button.
-        """
         btn = cls(title, markdown_path, parent=group)
+        btn.adjustSize()
 
         def _place_button():
-            """Reposition the button within the group box title bar.
+            font_metrics = group.fontMetrics()
+            font_height = font_metrics.height()
+            title_text = group.title() or title
+            title_width = font_metrics.horizontalAdvance(title_text)
 
-            Computes the correct ``(x, y)`` coordinates based on the group box
-            font metrics and title margin, then calls ``btn.move(x, y)``.
-            """
-            # font height gives us the text cap height; we center the button on it.
-            font_height = group.fontMetrics().height()  # actual title text height
-            margin_top = 25  # must match your stylesheet
-            title_center_y = (margin_top - font_height) // 2  # vertical center of band
+            margin_top = 25
+            title_left = 0
+            title_padding_left = 0
+            gap = 6
 
-            # Center the button on that same line
+            title_center_y = (margin_top - font_height) // 2
             y = title_center_y + (font_height - btn.height()) // 2
-            x = group.width() - btn.width() - 8
+            x = title_left + title_padding_left + title_width + gap
 
-            btn.move(x, y)
+            max_x = group.width() - btn.width() - 8
+            x = min(x, max_x)
+
+            btn.move(x, y-4.3)
             btn.raise_()
 
         _place_button()
