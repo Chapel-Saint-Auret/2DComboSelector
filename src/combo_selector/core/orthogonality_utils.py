@@ -28,6 +28,16 @@ from collections import Counter
 
 CHROM_MODE = ['RPLC', 'HILIC', 'IEX', 'SEC', 'HIC', 'SFC', 'vs']
 
+FEASABILITY =   {
+                    'RPLC vs RPLC': {'Compatibility':'High','Complexity':'Low'},
+                    'RPLC vs HILIC': {'Compatibility':'Moderate','Complexity':'Moderate'},
+                    'RPLC vs SFC': {'Compatibility':'Low','Complexity':'High'},
+                    'HILIC vs HILIC': {'Compatibility':'High','Complexity':'Low'},
+                    'HILIC vs SFC': {'Compatibility':'Moderate','Complexity':'High'},
+                    'SFC vs SFC': {'Compatibility':'Moderate','Complexity':'High'}
+                }
+
+
 METRIC_MAPPING = {
     "set_number": {
         "table_index": 0,
@@ -283,6 +293,18 @@ def resource_path(relative_path: str) -> str:
 
     return os.path.join(base_path, relative_path)
 
+
+def get_symmetric_mode_dict(data_dict, key):
+    if key in data_dict:
+        return data_dict[key]
+
+    # Try reversing
+    parts = key.split(' vs ')
+    if len(parts) == 2:
+        rev_key = f"{parts[1]} vs {parts[0]}"
+        return data_dict.get(rev_key)
+
+    return 'Unknown'
 
 def load_simple_table(filepath: str, sheetname: str = 0) -> pd.DataFrame:
     """Load a simple 2-row or 2-column table from an Excel file.
