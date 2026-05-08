@@ -37,6 +37,7 @@ from PySide6.QtWidgets import (
 
 from combo_selector.ui.config.table_color_config import COLOR_CONFIG_TABLE_FEASIBILITY, COLOR_CONFIG_TABLE_RECOMMENDATION
 from combo_selector.core.workers import ResultsWorkerComputeCustomOMScore
+from combo_selector.ui.widgets.visualization_option_panel import VisualizationOptionsPanel
 from combo_selector.ui.widgets.checkable_tree_list import CheckableTreeList
 from combo_selector.ui.widgets.section_help_button import SectionHelpButton
 from combo_selector.ui.widgets.circle_progress_bar import RoundProgressBar
@@ -164,8 +165,9 @@ class ResultsPage(QFrame):
             self.set_use_suggested_om_score_flag
         )
         self.compute_score_btn.clicked.connect(self.start_om_computation)
+        self.vizualation_settings_group.plotTypeChanged.connect(self.update_figure)
 
-        self.plot_tile_selector.plot_selected.connect(self.update_figure)
+        # self.plot_tile_selector.plot_selected.connect(self.update_figure)
         # self.compare_number.currentTextChanged.connect(self.update_om_selector_state)
 
         # for index, data in self.om_selector_map.items():
@@ -227,19 +229,19 @@ class ResultsPage(QFrame):
         """)
 
         user_input_scroll_area = QScrollArea()
-        user_input_scroll_area.setFixedWidth(350)
+        user_input_scroll_area.setFixedWidth(445)
         user_input_scroll_area.setWidgetResizable(True)
         user_input_scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
         user_input_scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
 
         user_input_frame = QFrame()
-        user_input_frame.setFixedWidth(350)
+        user_input_frame.setFixedWidth(445)
         user_input_frame_layout = QVBoxLayout(user_input_frame)
         user_input_frame_layout.setContentsMargins(20, 20, 20, 20)
         user_input_scroll_area.setWidget(user_input_frame)
 
         input_section = QFrame()
-        input_section.setFixedWidth(350)
+        input_section.setFixedWidth(445)
         input_layout = QVBoxLayout(input_section)
         input_layout.setSpacing(0)
         input_layout.setContentsMargins(0, 0, 0, 0)
@@ -249,14 +251,16 @@ class ResultsPage(QFrame):
         # Create control groups
         orthogonality_score_group = self._create_score_calculation_group()
         # ranking_selection_group = self._create_ranking_group()
-        vizualation_settings_group = self._create_visualization_settings_group()
+        # vizualation_settings_group = self._create_visualization_settings_group()
+        self.vizualation_settings_group = VisualizationOptionsPanel()
+        self.vizualation_settings_group.setStyleSheet(self._get_group_stylesheet())
 
         user_input_frame_layout.addWidget(orthogonality_score_group)
         user_input_frame_layout.addWidget(LineWidget("Horizontal"))
         # user_input_frame_layout.addWidget(ranking_selection_group)
         # user_input_frame_layout.addWidget(LineWidget("Horizontal"))
         # user_input_frame_layout.addWidget(orthogonality_compare_score_group)
-        user_input_frame_layout.addWidget(vizualation_settings_group)
+        user_input_frame_layout.addWidget(self.vizualation_settings_group)
         user_input_frame_layout.addStretch()
 
         return input_section
@@ -350,7 +354,7 @@ class ResultsPage(QFrame):
         Returns:
             QGroupBox: Group box with plot tile selector.
         """
-        vizualation_settings_group = QGroupBox("Select Result Plot")
+        vizualation_settings_group = QGroupBox("Visualization options")
         vizualation_settings_group.setStyleSheet(self._get_group_stylesheet())
         vizualation_settings_layout = QVBoxLayout()
 
@@ -427,6 +431,7 @@ class ResultsPage(QFrame):
         self.toolbar = CustomToolbar(self.canvas)
         self.plot_utils = PlotUtils(fig=self.fig,model=self.model)
         self.plot_functions_map = {
+            "Orthogonality Space": self.plot_utils.plot_orthogonality_space,
             "Multi Criteria Space": self.plot_utils.plot_peak_capacity_vs_elution,
             "Reduced Criteria Space": self.plot_utils.plot_elution_area_vs_peak_rate,
             "Chromatographic Mode Performance HM": self.plot_utils.plot_median_rank_score_heatmap,
