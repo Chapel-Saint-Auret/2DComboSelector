@@ -963,7 +963,7 @@ class PlotUtils:
         else:
             index = int(number_of_rank_to_show)
 
-        x = self.orthogonality_result_data['Consensus Rank']
+        x = self.orthogonality_result_data['Orthogonality Rank']
         y = self.orthogonality_result_data['2D Combination']
 
         sorted_x = x.sort_values()
@@ -985,6 +985,104 @@ class PlotUtils:
         self.fig.canvas.draw()
         self.fig.canvas.flush_events()
 
+    def plot_orthogonality_space(self):
+        self.fig.clear()
+        self.axe = self.fig.add_subplot(111)
+
+        x = self.orthogonality_result_data['Coverage Score']
+        y = self.orthogonality_result_data['Distribution Score']
+        final_rank = self.orthogonality_result_data['Final Rank']
+        n = len(final_rank)
+
+        final_rank_pct = (final_rank / n) * 100
+
+        def get_color(pct):
+            if pct >= 90:
+                return '#d73027'  # Top 10%
+            elif pct >= 60:
+                return '#fc8d59'  # 10-40%
+            elif pct >= 30:
+                return '#fee08b'  # 40-70%
+            else:
+                return '#91cf60'  # Bottom 30%
+
+        colors = np.array([get_color(p) for p in final_rank_pct])
+
+        self.axe.scatter(
+            x,
+            y,
+            c=colors,
+            s=34,
+            alpha=0.9,
+            edgecolors='white',
+            linewidths=0.5
+        )
+
+        self.axe.set_xlim(0, 1)
+        self.axe.set_ylim(0, 1)
+        self.axe.set_box_aspect(1)
+
+        self.axe.set_xlabel('Coverage score', fontsize=12)
+        self.axe.set_ylabel('Distribution score', fontsize=12)
+        self.axe.tick_params(axis='both', labelsize=11)
+        self.axe.grid(True, linestyle=':', linewidth=0.9, alpha=0.5)
+        self.axe.set_axisbelow(True)
+
+        self.axe.text(
+            0.5,
+            1.13,
+            'Orthogonality Space',
+            transform=self.axe.transAxes,
+            ha='center',
+            va='bottom',
+            fontsize=22,
+            fontweight='bold',
+            color='black'
+        )
+
+        self.axe.text(
+            0.5,
+            1.06,
+            'coverage vs distribution colored by consensus Orthogonality ranking',
+            transform=self.axe.transAxes,
+            ha='center',
+            va='bottom',
+            fontsize=11,
+            style='italic',
+            color='0.45'
+        )
+
+        legend_elements = [
+            Line2D([0], [0], marker='o', color='w', label='Top 10%',
+                   markerfacecolor='#d73027', markeredgecolor='#d73027', markersize=10),
+            Line2D([0], [0], marker='o', color='w', label='10-40%',
+                   markerfacecolor='#fc8d59', markeredgecolor='#fc8d59', markersize=10),
+            Line2D([0], [0], marker='o', color='w', label='40-70%',
+                   markerfacecolor='#fee08b', markeredgecolor='#fee08b', markersize=10),
+            Line2D([0], [0], marker='o', color='w', label='Bottom 30%',
+                   markerfacecolor='#91cf60', markeredgecolor='#91cf60', markersize=10),
+        ]
+
+        self.axe.legend(
+            handles=legend_elements,
+            title='Final consensus rank',
+            loc='center left',
+            bbox_to_anchor=(1.02, 0.5),
+            fontsize=10,
+            title_fontsize=11,
+            frameon=False
+        )
+
+        self.fig.subplots_adjust(
+            left=0.11,
+            right=0.78,
+            bottom=0.12,
+            top=0.80
+        )
+
+        self.fig.canvas.draw()
+        self.fig.canvas.flush_events()
+
     def plot_peak_capacity_vs_elution(self):
         self.fig.clear()
 
@@ -997,7 +1095,7 @@ class PlotUtils:
         if x_is_numeric and y_is_numeric:
 
             final_rank = self.orthogonality_result_data['Final Rank']
-            consensus_rank = self.orthogonality_result_data['Consensus Rank']
+            consensus_rank = self.orthogonality_result_data['Orthogonality Rank']
             n = len(final_rank)
 
             final_rank_pct = (final_rank / n) * 100  # controls which points are shown
@@ -1088,7 +1186,7 @@ class PlotUtils:
         if x_is_numeric and y_is_numeric:
 
             final_rank = self.orthogonality_result_data['Final Rank']
-            consensus_rank = self.orthogonality_result_data['Consensus Rank']
+            consensus_rank = self.orthogonality_result_data['Orthogonality Rank']
             n = len(final_rank)
 
             final_rank_pct = (final_rank / n) * 100  # controls which points are shown
@@ -1174,96 +1272,154 @@ class PlotUtils:
         median_df = self.model.get_median_rank_score_table()
 
         peak_col = "Peak Detection Rate (%)"
-        rank_df = median_df.drop(columns=[peak_col])
-        peak_df = median_df[[peak_col]]
+        rank_df = median_df.drop(columns=[peak_col]).copy()
+        peak_df = median_df[[peak_col]].copy()
 
         n_rows, n_rank_cols = rank_df.shape
 
+        rank_min = float(rank_df.values.min())
+        rank_max = float(rank_df.values.max())
+
+        if rank_max > rank_min:
+            rank_score = ((rank_df - rank_min) / (rank_max - rank_min)) * 100.0
+        else:
+            rank_score = rank_df * 0.0
+
+        peak_values = peak_df.astype(float).copy()
+        if peak_values.max().iloc[0] <= 1.0:
+            peak_values[peak_col] = peak_values[peak_col] * 100.0
+
         rank_cmap = LinearSegmentedColormap.from_list(
-            "rank_cmap", ["#2166ac", "#f7f7f7", "#fddbc7"], N=256
-        )
-        peak_cmap = LinearSegmentedColormap.from_list(
-            "peak_cmap", ["#fff7bc", "#fdae61", "#d7191c"], N=256
+            "rank_cmap",
+            ["#fff7bc", "#d9ef8b", "#7fcdbb", "#41b6c4", "#225ea8"],
+            N=256
         )
 
+        peak_cmap = mcolors.ListedColormap([
+            "#d73027",  # red
+            "#f46d43",  # orange
+            "#fee08b",  # yellow
+            "#66bd63",  # green
+        ])
+        peak_norm = mcolors.BoundaryNorm([0, 40, 60, 80, 100], peak_cmap.N)
+
         gs = GridSpec(
-            1, 3,
+            2, 1,
             figure=self.fig,
-            width_ratios=[n_rank_cols + 1, 0.07, 0.07],
-            left=0.16,
-            right=0.84,  # pull grid left to create gap
-            top=0.62,
-            bottom=0.28,
-            wspace=0.35  # more space between heatmap and colorbars
+            height_ratios=[12, 1.6],
+            left=0.17,
+            right=0.76,
+            top=0.70,
+            bottom=0.15,
+            hspace=0.35
         )
 
         ax_main = self.fig.add_subplot(gs[0, 0])
-        cax_rank = self.fig.add_subplot(gs[0, 1])
-        cax_peak = self.fig.add_subplot(gs[0, 2])
+        cax_rank = self.fig.add_subplot(gs[1, 0])
 
         im_rank = ax_main.imshow(
-            rank_df.values.astype(float),
+            rank_score.values.astype(float),
             cmap=rank_cmap,
             aspect="auto",
             extent=[-0.5, n_rank_cols - 0.5, n_rows - 0.5, -0.5],
-            vmin=rank_df.values.min(),
-            vmax=rank_df.values.max()
+            vmin=0,
+            vmax=100
         )
 
         im_peak = ax_main.imshow(
-            peak_df.values.astype(float),
+            peak_values.values.astype(float),
             cmap=peak_cmap,
+            norm=peak_norm,
             aspect="auto",
-            extent=[n_rank_cols - 0.5, n_rank_cols + 0.5, n_rows - 0.5, -0.5],
-            vmin=0,
-            vmax=1
+            extent=[n_rank_cols - 0.5, n_rank_cols + 0.5, n_rows - 0.5, -0.5]
         )
 
         ax_main.set_xlim(-0.5, n_rank_cols + 0.5)
         ax_main.set_ylim(n_rows - 0.5, -0.5)
 
-        all_labels = [c.replace(" ", "\n") for c in rank_df.columns] + ["Peak rate\n(value)"]
+        all_labels = [c.replace(" ", "\n") for c in rank_df.columns] + ["Peak rate"]
         ax_main.set_xticks(range(n_rank_cols + 1))
-        ax_main.set_xticklabels(all_labels, fontsize=5, fontweight="bold")
+        ax_main.set_xticklabels(all_labels, fontsize=8, fontweight="bold")
 
         ax_main.set_yticks(range(n_rows))
-        ax_main.set_yticklabels(rank_df.index, fontsize=5, fontweight="bold")
+        ax_main.set_yticklabels(rank_df.index, fontsize=10, fontweight="bold")
 
-        ax_main.tick_params(top=True, bottom=False, labeltop=True, labelbottom=False, length=0)
+        ax_main.tick_params(
+            top=True,
+            bottom=False,
+            labeltop=True,
+            labelbottom=False,
+            length=0,
+            pad=4
+        )
 
         ax_main.set_xticks(np.arange(-0.5, n_rank_cols + 1, 1), minor=True)
         ax_main.set_yticks(np.arange(-0.5, n_rows, 1), minor=True)
-        ax_main.grid(which="minor", color="white", linewidth=1.5)
+        ax_main.grid(which="minor", color="white", linewidth=2.0)
         ax_main.tick_params(which="minor", length=0)
 
         for r in range(n_rows):
             for c in range(n_rank_cols):
+                val = rank_df.iloc[r, c]
+                txt_color = "white" if rank_score.iloc[r, c] >= 65 else "black"
                 ax_main.text(
-                    c, r, f"{rank_df.iloc[r, c]:.0f}",
-                    ha="center", va="center", fontsize=7, color="black"
+                    c, r, f"{val:.0f}",
+                    ha="center", va="center", fontsize=10, color=txt_color
                 )
 
         for r in range(n_rows):
+            val = peak_values.iloc[r, 0]
+            txt_color = "white" if val < 60 else "black"
             ax_main.text(
-                n_rank_cols, r, f"{peak_df.iloc[r, 0]:.2f}",
-                ha="center", va="center", fontsize=7, color="black"
+                n_rank_cols, r, f"{val:.0f}",
+                ha="center", va="center", fontsize=10, color=txt_color
             )
 
-        cbar_rank = self.fig.colorbar(im_rank, cax=cax_rank)
-        cbar_rank.ax.tick_params(labelsize=6)
-        cbar_rank.set_label("Median rank\n(Lower = better)", fontsize=6, labelpad=2)
-        # move label to right side so it doesn't overlap ticks
-        cbar_rank.ax.yaxis.set_label_position('right')
-        cbar_rank.ax.yaxis.tick_left()  # keep ticks on left
-
-        cbar_peak = self.fig.colorbar(im_peak, cax=cax_peak)
-        cbar_peak.ax.tick_params(labelsize=6)
-        cbar_peak.set_label("Peak rate\n(raw value)", fontsize=6, labelpad=2)
-
-        self.fig.suptitle(
-            "A. Median rank heatmap by chromatographic mode",
-            fontsize=9, fontweight="bold", x=0.16, ha="left"
+        ax_main.text(
+            0.5,
+            1.36,
+            "Performance Heatmap",
+            transform=ax_main.transAxes,
+            ha="center",
+            va="bottom",
+            fontsize=16,
+            fontweight="bold",
+            color="black"
         )
+
+        ax_main.text(
+            0.5,
+            1.28,
+            "Median Rank Heatmap by Chromatographic Mode",
+            transform=ax_main.transAxes,
+            ha="center",
+            va="bottom",
+            fontsize=11,
+            style="italic",
+            color="dimgray"
+        )
+
+        cbar_rank = self.fig.colorbar(im_rank, cax=cax_rank, orientation="horizontal")
+        cbar_rank.ax.tick_params(labelsize=8)
+        cbar_rank.set_label("Median rank score", fontsize=9, labelpad=4)
+        cbar_rank.ax.xaxis.set_label_position("top")
+
+        heatmap_pos = ax_main.get_position()
+        cax_peak = self.fig.add_axes([
+            heatmap_pos.x1 + 0.015,
+            heatmap_pos.y0,
+            0.014,
+            heatmap_pos.height
+        ])
+
+        cbar_peak = self.fig.colorbar(
+            im_peak,
+            cax=cax_peak,
+            ticks=[20, 50, 70, 90]
+        )
+        cbar_peak.ax.set_yticklabels(["<40%", "40–60%", "60–80%", ">80%"])
+        cbar_peak.ax.tick_params(labelsize=8)
+        cbar_peak.set_label("Peak rate", fontsize=9, labelpad=6)
 
         self.fig.canvas.draw()
         self.fig.canvas.flush_events()
@@ -1274,21 +1430,21 @@ class PlotUtils:
         df = self.model.get_rank_score_grouped_by_chrom_mode_table()
 
         metrics = [
-            ("Consensus Rank", "Orthogonality"),
-            ("Elution Domain Rank", "Elution-composition space area"),
-            ("Peak Capacity Rank", "Hypothetical 2D peak capacity"),
-            ("Final Rank", "Final consensus rank"),
-            ("Peak Detection Rate (%)", "Peak rate"),
+            ("Orthogonality Rank", "Orthogonality"),
+            ("Elution Domain Rank", "Elution Domain"),
+            ("Peak Capacity Rank", "Peak Capacity"),
+            ("Final Rank", "Final Consensus Rank"),
+            ("Peak Detection Rate (%)", "Peak rate (%)"),
         ]
 
         gs = GridSpec(
             2, 3,
             figure=self.fig,
-            hspace=0.55,
+            hspace=0.65,
             wspace=0.35,
             left=0.08,
             right=0.96,
-            top=0.86,
+            top=0.78,
             bottom=0.16
         )
 
@@ -1309,9 +1465,11 @@ class PlotUtils:
             "#00A6A6",
         ]
 
-        for i, ((column_name, title), position) in enumerate(zip(metrics, positions)):
+        created_axes = []
 
+        for i, ((column_name, title), position) in enumerate(zip(metrics, positions)):
             self.axe = self.fig.add_subplot(gs[position[0], position[1]])
+            created_axes.append(self.axe)
 
             labels = []
             values = []
@@ -1358,8 +1516,7 @@ class PlotUtils:
                 )
 
             self.axe.set_title(title, fontsize=9, fontweight="bold")
-            self.axe.set_ylabel("Rank score", fontsize=8)
-            # self.axe.set_ylim(0, 100)
+            self.axe.set_ylabel("Rank", fontsize=8)
 
             self.axe.set_xticks(range(1, len(labels) + 1))
             self.axe.set_xticklabels(labels, rotation=45, ha="right", fontsize=7)
@@ -1372,13 +1529,34 @@ class PlotUtils:
                 linewidth=0.4,
                 alpha=0.5
             )
+            self.axe.set_axisbelow(True)
 
-        self.fig.suptitle(
-            "Example 1 — Rank score distribution by chromatographic mode",
-            fontsize=13,
-            fontweight="bold",
-            y=0.96
-        )
+        if created_axes:
+            title_ax = created_axes[1] if len(created_axes) > 1 else created_axes[0]
+
+            title_ax.text(
+                0.5,
+                1.34,
+                "Performance Barplot",
+                transform=title_ax.transAxes,
+                ha="center",
+                va="bottom",
+                fontsize=16,
+                fontweight="bold",
+                color="black"
+            )
+
+            title_ax.text(
+                0.5,
+                1.2,
+                "Rank Distribution by Chromatographic Mode",
+                transform=title_ax.transAxes,
+                ha="center",
+                va="bottom",
+                fontsize=11,
+                style="italic",
+                color="dimgray"
+            )
 
         self.fig.canvas.draw()
         self.fig.canvas.flush_events()
@@ -1498,7 +1676,7 @@ class PlotUtils:
             "Final Rank"
             if "Final Rank" in df.columns
             and pd.to_numeric(df["Final Rank"], errors="coerce").notna().any()
-            else "Consensus Rank"
+            else "Orthogonality Rank"
         )
 
         rank_numeric = pd.to_numeric(df[rank_col], errors="coerce")
@@ -1752,6 +1930,7 @@ class PlotUtils:
     def plot_final_rank_by_recommendation_class(self):
         self.fig.clear()
         self.axe = self.fig.add_subplot(111)
+        self.axe.set_box_aspect(1)
 
         grouped_df = list(self.model.get_rank_score_grouped_by_recommendation_table())
 
@@ -1774,14 +1953,6 @@ class PlotUtils:
             "Not recommended": "#d94f3d",
         }
 
-        mode_order = [
-            "RPLCxvsxRPLC",
-            "RPLCxvsxSFC",
-            "RPLCxvsxHILIC",
-            "SFCxvsxSFC",
-            "SFCxvsxHILIC",
-            "HILICxvsxHILIC",
-        ]
 
         mode_order = self.model.get_chromatographic_mode_list()
 
@@ -1880,8 +2051,8 @@ class PlotUtils:
         self.axe.set_xlabel("Recommendation class", fontsize=12, fontweight="bold")
         self.axe.set_ylabel("Final consensus rank", fontsize=12, fontweight="bold")
 
-        self.axe.set_ylim(100.5, 0.5)
-        self.axe.set_yticks([1, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100])
+        # self.axe.set_ylim(100.5, 0.5)
+        # self.axe.set_yticks([1, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100])
 
         self.axe.grid(True, axis="both", linestyle="--", linewidth=0.5, alpha=0.35)
         self.axe.set_axisbelow(True)
@@ -1933,17 +2104,6 @@ class PlotUtils:
             fontsize=16,
             fontweight="bold",
             y=0.97
-        )
-
-        self.fig.text(
-            0.5,
-            0.92,
-            "Illustrative example",
-            ha="center",
-            va="center",
-            fontsize=11,
-            style="italic",
-            color="#444444"
         )
 
         self.fig.subplots_adjust(left=0.10, right=0.80, top=0.88, bottom=0.15)
