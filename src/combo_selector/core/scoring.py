@@ -254,7 +254,7 @@ class Scoring:
 
         consensus_orthogonality_ranking_df = consensus_orthogonality_ranking_df.rank(ascending=True, method='average')
 
-        self.orthogonality_result_df['Consensus Rank'] = consensus_orthogonality_ranking_df.astype(int)
+        self.orthogonality_result_df['Orthogonality Rank'] = consensus_orthogonality_ranking_df.astype(int)
 
     def compute_consensus_orthogonality_score(self):
         """Compute the consensus orthogonality score as the median of group medians.

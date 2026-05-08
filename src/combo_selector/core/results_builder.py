@@ -296,7 +296,7 @@ class ResultsBuilder:
             "Combination #",
             "2D Combination",
             "Chromatographic Mode",
-            "Orthogonality Rank"
+            "Orthogonality Rank",
             "Peak Capacity Rank",
             "Elution Domain Rank",
             "Final Rank",
@@ -309,7 +309,7 @@ class ResultsBuilder:
     def create_median_rank_score_based_on_chromatographic_group(self):
 
         column_name = [
-            "Consensus Rank",
+            "Orthogonality Rank",
             "Elution Domain Rank",
             "Peak Capacity Rank",
             "Final Rank",
@@ -338,7 +338,7 @@ class ResultsBuilder:
     def create_rank_score_based_on_chromatographic_group(self):
 
         column_name = [
-            "Consensus Rank",
+            "Orthogonality Rank",
             "Final Recommendation",
             "Final Rank",
             "Elution Domain Rank",
@@ -370,7 +370,7 @@ class ResultsBuilder:
     def create_recommendation_distribution_group(self):
 
         column_name = [
-            "Consensus Rank",
+            "Orthogonality Rank",
             "Elution Domain Rank",
             "Peak Capacity Rank",
             "Final Rank",
@@ -397,12 +397,12 @@ class ResultsBuilder:
 
         if (self.peak_capacity_status in ["peak_capacity_loaded"] and
             self.elution_data_status in ["elution_data_loaded"] and
-                'Consensus Rank' in self.orthogonality_result_df.columns):
+                'Orthogonality Rank' in self.orthogonality_result_df.columns):
 
             self.orthogonality_result_df['Final Rank'] = pd.concat(
                 [self.orthogonality_result_df['Peak Capacity Rank'],
                  self.orthogonality_result_df['Elution Domain Rank'],
-                 self.orthogonality_result_df['Consensus Rank']],
+                 self.orthogonality_result_df['Orthogonality Rank']],
                 axis=1,
             ).mean(axis=1)
 
@@ -411,11 +411,11 @@ class ResultsBuilder:
             )
 
         elif (self.peak_capacity_status in ["peak_capacity_loaded"] and
-                'Consensus Rank' in self.orthogonality_result_df.columns):
+                'Orthogonality Rank' in self.orthogonality_result_df.columns):
 
             self.orthogonality_result_df['Final Rank'] = pd.concat(
                 [self.orthogonality_result_df['Peak Capacity Rank']
-                    ,self.orthogonality_result_df['Consensus Rank']],
+                    ,self.orthogonality_result_df['Orthogonality Rank']],
                 axis=1,
             ).mean(axis=1)
 
@@ -424,17 +424,17 @@ class ResultsBuilder:
             )
 
         elif (self.peak_capacity_status in ["elution_data_loaded"] and
-                'Consensus Rank' in self.orthogonality_result_df.columns):
+                'Orthogonality Rank' in self.orthogonality_result_df.columns):
 
             self.orthogonality_result_df['Final Rank'] = pd.concat(
                 [self.orthogonality_result_df['Elution Domain Rank'],
-                    self.orthogonality_result_df['Consensus Rank']],
+                    self.orthogonality_result_df['Orthogonality Rank']],
                 axis=1,
             ).mean(axis=1)
 
-        elif 'Consensus Rank' in self.orthogonality_result_df.columns:
+        elif 'Orthogonality Rank' in self.orthogonality_result_df.columns:
             self.orthogonality_result_df['Final Rank'] = (
-                self.orthogonality_result_df['Consensus Rank']
+                self.orthogonality_result_df['Orthogonality Rank']
             )
         else:
             self.orthogonality_result_df['Final Rank'] = 'Not available'
@@ -499,8 +499,8 @@ class ResultsBuilder:
         elution_rank_is_numeric = (self.orthogonality_result_df['Elution Domain Rank'] != 'Not available').any()
         peak_capacity_rank_is_numeric = (self.orthogonality_result_df['Peak Capacity Rank'] != 'Not available').any()
 
-        if 'Consensus Rank' in self.orthogonality_result_df.columns:
-            orthogonality_consensus_ranking = (self.orthogonality_result_df['Consensus Rank'].
+        if 'Orthogonality Rank' in self.orthogonality_result_df.columns:
+            orthogonality_consensus_ranking = (self.orthogonality_result_df['Orthogonality Rank'].
                                        apply(lambda rank: set_criterion(rank,criterion='O')))
         else:
             orthogonality_consensus_ranking = ''
