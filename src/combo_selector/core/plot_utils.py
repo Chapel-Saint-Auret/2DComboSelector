@@ -30,6 +30,34 @@ from matplotlib.lines import Line2D
 
 from combo_selector.ui.widgets.custom_toolbar import CustomToolbar
 
+SUBSET_THRESHOLDS = {
+    "All": 0,
+    "Top 50%": 50,
+    "Top 20%": 80,
+    "Top 10%": 90,
+}
+
+CRITERIA_COLUMN_MAP = {
+    "All criteria":    None,
+    "Orthogonality":   ("Orthogonality Rank",       "Orthogonality"),
+    "Elution Domain":  ("Elution Domain Rank",       "Elution Domain"),
+    "Peak Capacity":   ("Peak Capacity Rank",        "Peak Capacity"),
+    "Final consensus": ("Final Rank",                "Final Consensus Rank"),
+    "Peak rate":       ("Peak Detection Rate (%)",   "Peak rate (%)"),
+}
+
+CATEGORY_ORDER = [
+    "Highly recommended",
+    "Recommended",
+    "Use with caution",
+    "Not recommended",
+]
+COLORS = {
+    "Highly recommended": "#1a7a2e",
+    "Recommended": "#6abf4b",
+    "Use with caution": "#f5a623",
+    "Not recommended": "#d94f3d",
+}
 
 class PlotUtils:
     """Utility class for creating and managing orthogonality metric visualizations.
@@ -985,944 +1013,1081 @@ class PlotUtils:
         self.fig.canvas.draw()
         self.fig.canvas.flush_events()
 
-    def plot_orthogonality_space(self):
+    def plot_orthogonality_space(self, subset: str = "All"):
+
         self.fig.clear()
         self.axe = self.fig.add_subplot(111)
+        self.axe.set_box_aspect(1)
 
-        x = self.orthogonality_result_data['Coverage Score']
-        y = self.orthogonality_result_data['Distribution Score']
-        final_rank = self.orthogonality_result_data['Final Rank']
-        n = len(final_rank)
-
+        df = self.orthogonality_result_data.copy()
+        n = len(df)
+        final_rank = df['Final Rank']
         final_rank_pct = (final_rank / n) * 100
+
+        # --- subset filter ---
+        threshold = SUBSET_THRESHOLDS.get(subset, 0)
+        mask = final_rank_pct >= threshold
+        df_filtered = df[mask]
+        rank_pct_filtered = final_rank_pct[mask]
+
+        x = df_filtered['Coverage Score']
+        y = df_filtered['Distribution Score']
 
         def get_color(pct):
             if pct >= 90:
                 return '#d73027'  # Top 10%
-            elif pct >= 60:
-                return '#fc8d59'  # 10-40%
-            elif pct >= 30:
-                return '#fee08b'  # 40-70%
+            elif pct >= 80:
+                return '#fc8d59'  # Top 20%
+            elif pct >= 50:
+                return '#fee08b'  # Top 50%
             else:
-                return '#91cf60'  # Bottom 30%
+                return '#91cf60'  # All
 
-        colors = np.array([get_color(p) for p in final_rank_pct])
+        colors = np.array([get_color(p) for p in rank_pct_filtered])
+        self.axe.scatter(x, y, c=colors, s=34, alpha=0.9,
+                         edgecolors='white', linewidths=0.5)
 
-        self.axe.scatter(
-            x,
-            y,
-            c=colors,
-            s=34,
-            alpha=0.9,
-            edgecolors='white',
-            linewidths=0.5
-        )
+        # --- adapted legend: only show relevant tiers ---
+        tier_defs = [
+            (90, '#d73027', 'Top 10%'),  # pct >= 90
+            (80, '#fc8d59', 'Top 20%'),  # pct >= 80
+            (50, '#fee08b', 'Top 50%'),  # pct >= 50
+            (0, '#91cf60', 'All'),  # pct >= 0
+        ]
+        legend_elements = [
+            Line2D([0], [0], marker='o', color='w', label=label,
+                   markerfacecolor=color, markeredgecolor=color, markersize=10)
+            for thresh, color, label in tier_defs
+            if rank_pct_filtered.max() >= thresh  # only tiers present in filtered data
+        ]
+
+        # --- subtitle reflects subset ---
+        subtitle = f"Showing: {subset}" if subset != "All" else "All combinations"
 
         self.axe.set_xlim(0, 1)
         self.axe.set_ylim(0, 1)
         self.axe.set_box_aspect(1)
-
         self.axe.set_xlabel('Coverage score', fontsize=12)
         self.axe.set_ylabel('Distribution score', fontsize=12)
         self.axe.tick_params(axis='both', labelsize=11)
         self.axe.grid(True, linestyle=':', linewidth=0.9, alpha=0.5)
         self.axe.set_axisbelow(True)
 
-        self.axe.text(
-            0.5,
-            1.13,
-            'Orthogonality Space',
-            transform=self.axe.transAxes,
-            ha='center',
-            va='bottom',
-            fontsize=22,
-            fontweight='bold',
-            color='black'
-        )
+        self.axe.text(0.5, 1.13, 'Orthogonality Space',
+                      transform=self.axe.transAxes, ha='center', va='bottom',
+                      fontsize=22, fontweight='bold')
+        self.axe.text(0.5, 1.06, subtitle,  # ← dynamic
+                      transform=self.axe.transAxes, ha='center', va='bottom',
+                      fontsize=11, style='italic', color='0.45')
 
-        self.axe.text(
-            0.5,
-            1.06,
-            'coverage vs distribution colored by consensus Orthogonality ranking',
-            transform=self.axe.transAxes,
-            ha='center',
-            va='bottom',
-            fontsize=11,
-            style='italic',
-            color='0.45'
-        )
+        self.axe.legend(handles=legend_elements, title='Final consensus rank',
+                        loc='center left', bbox_to_anchor=(1.02, 0.5),
+                        fontsize=10, title_fontsize=11, frameon=False)
+
+        self.fig.subplots_adjust(left=0.11, right=0.78, bottom=0.12, top=0.80)
+        self.fig.canvas.draw()
+        self.fig.canvas.flush_events()
+
+    def plot_multi_criteria_space(self, subset: str = "All", axis_scale: str = "Auto"):
+
+        self.fig.clear()
+        self.axe = self.fig.add_subplot(111)
+        self.axe.set_box_aspect(1)
+
+        df = self.orthogonality_result_data.copy()
+
+        peak_capacity = df['Hypothetical 2D Peak Capacity']
+        elution_domain = df['Elution Domain']
+
+        peak_capacity_available = pd.to_numeric(peak_capacity, errors='coerce').notna().any()
+        elution_domain_available = pd.to_numeric(elution_domain, errors='coerce').notna().any()
+
+        full_criteria = peak_capacity_available and elution_domain_available
+        reduced_criteria = peak_capacity_available ^ elution_domain_available  # XOR: only one available
+
+        if not full_criteria and not reduced_criteria:
+            self._show_missing_data()
+            return
+
+        # ------------------------------------------------------------------
+        # Shared: rank-based subset filtering + coloring
+        # ------------------------------------------------------------------
+
+        final_rank = pd.to_numeric(df['Final Rank'], errors='coerce')
+        orthogonality_rank = pd.to_numeric(df['Orthogonality Rank'], errors='coerce')
+        n = len(df)
+
+        final_rank_pct = (final_rank / n) * 100  # controls which points are shown
+        orthogonality_rank_pct = (orthogonality_rank / n) * 100  # controls point color
+        
+        # Apply subset filter
+        threshold = SUBSET_THRESHOLDS.get(subset, 0)
+        mask = final_rank_pct >= threshold
+
+        df = df[mask]
+        final_rank_pct = final_rank_pct[mask]
+        orthogonality_rank_pct = orthogonality_rank_pct[mask]
+
+        if df.empty:
+            self._show_missing_data()
+            return
+
+        def get_color(pct):
+            if pct >= 90:
+                return '#1A3A9E'
+            elif pct >= 95:
+                return '#A0379A'
+            elif pct >= 90:
+                return '#E64981'
+            elif pct >= 75:
+                return '#FF7C64'
+            else:
+                return '#F9F871'
+
+        colors = np.array([get_color(p) for p in orthogonality_rank_pct])
+
+        # ------------------------------------------------------------------
+        # Axis scale helper
+        # ------------------------------------------------------------------
+
+        def apply_scale(ax, scale: str):
+            s = 'log' if scale == 'Auto' else scale.lower()
+            ax.set_xscale(s)
+            ax.set_yscale(s)
+            if s == 'log':
+                ax.xaxis.set_major_formatter(
+                    ticker.FuncFormatter(lambda val, _: f"{int(val):,}")
+                )
+                ax.xaxis.set_major_locator(ticker.LogLocator(base=10, numticks=5))
+                ax.tick_params(axis="x", labelsize=6)  # smaller to avoid overlap
+
+        # ------------------------------------------------------------------
+        # Full Criteria — both Hypothetical 2D Peak Capacity & Elution Domain
+        # ------------------------------------------------------------------
+
+        if full_criteria:
+            x = pd.to_numeric(df['Hypothetical 2D Peak Capacity'], errors='coerce')
+            y = pd.to_numeric(df['Elution Domain'], errors='coerce')
+
+            valid = x.notna() & y.notna()
+            x, y, colors_plot = x[valid], y[valid], colors[valid.values]
+
+            self.axe.scatter(x, y,
+                             c=colors_plot, s=15,
+                             edgecolors='k', alpha=0.85,
+                             linewidths=0.3, picker=5)
+
+            apply_scale(self.axe, axis_scale)
+
+            if x.notna().any():
+                self.axe.set_xlim(x.min() * 0.8, x.max() * 1.2)
+            if y.notna().any():
+                self.axe.set_ylim(y.min() * 0.8, y.max() * 1.2)
+
+            self.axe.set_xlabel('Hypothetical 2D Peak Capacity', fontsize=10)
+            self.axe.set_ylabel('Elution Domain', fontsize=10)
+
+            plot_title = 'Multi-Criteria Space'
+            plot_subtitle = f'Hypothetical peak capacity vs elution domain · {subset}'
+
+        # ------------------------------------------------------------------
+        # Reduced Criteria — only one of the two columns available
+        # ------------------------------------------------------------------
+
+        elif reduced_criteria:
+            if elution_domain_available:
+                x = pd.to_numeric(df['Elution Domain'], errors='coerce')
+                x_label = 'Elution Domain'
+            else:
+                x = pd.to_numeric(df['Hypothetical 2D Peak Capacity'], errors='coerce')
+                x_label = 'Hypothetical 2D Peak Capacity'
+
+            y = pd.to_numeric(df['Peak Detection Rate (%)'], errors='coerce')
+
+            valid = x.notna() & y.notna()
+            x, y, colors_plot = x[valid], y[valid], colors[valid.values]
+
+            self.axe.scatter(x, y,
+                             c=colors_plot, s=15,
+                             edgecolors='k', alpha=0.85,
+                             linewidths=0.3, picker=5)
+
+            apply_scale(self.axe, axis_scale)
+
+            if x.notna().any():
+                self.axe.set_xlim(x.min() * 0.8, x.max() * 1.2)
+            if y.notna().any():
+                self.axe.set_ylim(y.min() * 0.8, y.max() * 1.2)
+
+            self.axe.set_xlabel(x_label, fontsize=10)
+            self.axe.set_ylabel('Peak Detection Rate (%)', fontsize=10)
+
+            plot_title = 'Multi-Criteria Space — Reduced Criteria'
+            plot_subtitle = f'{x_label} vs peak detection rate · {subset}'
+
+        # ------------------------------------------------------------------
+        # Shared: titles, legend, grid
+        # ------------------------------------------------------------------
+
+        self.axe.tick_params(labelsize=8)
+        self.axe.xaxis.set_major_locator(ticker.LogLocator(base=10, numticks=4))
+        self.axe.grid(True, which='both', linestyle='--', linewidth=0.3, alpha=0.5)
+
+        self.axe.text(0.5, 1.10, plot_title,
+                      transform=self.axe.transAxes,
+                      ha='center', va='bottom',
+                      fontsize=16, fontweight='bold')
+
+        self.axe.text(0.5, 1.04, plot_subtitle,
+                      transform=self.axe.transAxes,
+                      ha='center', va='bottom',
+                      fontsize=9, style='italic', color='dimgray')
 
         legend_elements = [
-            Line2D([0], [0], marker='o', color='w', label='Top 10%',
-                   markerfacecolor='#d73027', markeredgecolor='#d73027', markersize=10),
-            Line2D([0], [0], marker='o', color='w', label='10-40%',
-                   markerfacecolor='#fc8d59', markeredgecolor='#fc8d59', markersize=10),
-            Line2D([0], [0], marker='o', color='w', label='40-70%',
-                   markerfacecolor='#fee08b', markeredgecolor='#fee08b', markersize=10),
-            Line2D([0], [0], marker='o', color='w', label='Bottom 30%',
-                   markerfacecolor='#91cf60', markeredgecolor='#91cf60', markersize=10),
+            patches.Patch(color='#1A3A9E', label='Top 1%'),
+            patches.Patch(color='#A0379A', label='Top 5%'),
+            patches.Patch(color='#E64981', label='Top 10%'),
+            patches.Patch(color='#FF7C64', label='Top 25%'),
+            patches.Patch(color='#F9F871', label='> 25%'),
         ]
+        self.fig.legend(handles=legend_elements,
+                        title="Orthogonality rank\npercentile",
+                        loc='center right',
+                        bbox_to_anchor=(1.0, 0.5),
+                        fontsize=8, title_fontsize=8,
+                        frameon=True, edgecolor='gray')
 
-        self.axe.legend(
-            handles=legend_elements,
-            title='Final consensus rank',
-            loc='center left',
-            bbox_to_anchor=(1.02, 0.5),
-            fontsize=10,
-            title_fontsize=11,
-            frameon=False
-        )
-
-        self.fig.subplots_adjust(
-            left=0.11,
-            right=0.78,
-            bottom=0.12,
-            top=0.80
-        )
-
+        self.fig.subplots_adjust(left=0.12, right=0.82, top=0.84, bottom=0.12)
         self.fig.canvas.draw()
         self.fig.canvas.flush_events()
 
-    def plot_peak_capacity_vs_elution(self):
+    def plot_chroma_mode_performance(self, view: str = "Heatmap", criteria: str = None):
         self.fig.clear()
 
-        x = self.orthogonality_result_data['Hypothetical 2D Peak Capacity']
-        y = self.orthogonality_result_data['Elution Domain']
+        # ------------------------------------------------------------------
+        # Availability checks
+        # ------------------------------------------------------------------
+        peak_capacity_available = pd.to_numeric(
+            self.orthogonality_result_data['Hypothetical 2D Peak Capacity'], errors='coerce'
+        ).notna().any()
 
-        x_is_numeric = (x != 'Not available').any()
-        y_is_numeric = (y != 'Not available').any()
+        elution_domain_available = pd.to_numeric(
+            self.orthogonality_result_data['Elution Domain'], errors='coerce'
+        ).notna().any()
 
-        if x_is_numeric and y_is_numeric:
+        # ------------------------------------------------------------------
+        # HEATMAP
+        # ------------------------------------------------------------------
+        if view == "Heatmap":
+            median_df = self.model.get_median_rank_score_table()
 
-            final_rank = self.orthogonality_result_data['Final Rank']
-            consensus_rank = self.orthogonality_result_data['Orthogonality Rank']
-            n = len(final_rank)
+            # Drop unavailable rank columns
+            cols_to_drop = []
+            if not elution_domain_available and "Elution Domain Rank" in median_df.columns:
+                cols_to_drop.append("Elution Domain Rank")
+            if not peak_capacity_available and "Peak Capacity Rank" in median_df.columns:
+                cols_to_drop.append("Peak Capacity Rank")
+            median_df = median_df.drop(columns=cols_to_drop)
 
-            final_rank_pct = (final_rank / n) * 100  # controls which points are shown
-            consensus_rank_pct = (consensus_rank / n) * 100  # controls point color
+            peak_col = "Peak Detection Rate (%)"
 
-            def get_color(pct):
-                if pct >= 99:
-                    return '#1A3A9E'
-                elif pct >= 95:
-                    return '#A0379A'
-                elif pct >= 90:
-                    return '#E64981'
-                elif pct >= 75:
-                    return '#FF7C64'
-                else:
-                    return '#F9F871'
+            if median_df.empty or len(median_df.columns) == 0:
+                self._show_missing_data()
+                return
 
-            colors = np.array([get_color(p) for p in consensus_rank_pct])  # color from consensus
+            rank_df = median_df.drop(columns=[peak_col], errors='ignore').copy()
+            peak_df = median_df[[peak_col]].copy() if peak_col in median_df.columns else None
 
-            panels = {
-                'All': np.ones(n, dtype=bool),
-                'Top 50%': final_rank_pct >= 50,  # filter from final_rank
-                'Top 20%': final_rank_pct >= 80,
-                'Top 10%': final_rank_pct >= 90,
-            }
+            n_rows, n_rank_cols = rank_df.shape
 
-            x_min, x_max = x.min() * 0.8, x.max() * 1.2
-            y_min, y_max = y.min() * 0.8, y.max() * 1.2
+            rank_min = float(rank_df.values.min())
+            rank_max = float(rank_df.values.max())
+            rank_score = (
+                ((rank_df - rank_min) / (rank_max - rank_min)) * 100.0
+                if rank_max > rank_min
+                else rank_df * 0.0
+            )
 
-            gs = GridSpec(2, 2, figure=self.fig, hspace=0.45, wspace=0.35,
-                          left=0.1, right=0.82, top=0.92, bottom=0.1)
+            rank_cmap = LinearSegmentedColormap.from_list(
+                "rank_cmap",
+                ["#fff7bc", "#d9ef8b", "#7fcdbb", "#41b6c4", "#225ea8"],
+                N=256
+            )
 
-            for i, (title, mask) in enumerate(panels.items()):
-                self.axe = self.fig.add_subplot(gs[i // 2, i % 2])
+            n_total_cols = n_rank_cols + (1 if peak_df is not None else 0)
 
-                x_data = x[mask]
-                y_data = y[mask]
+            gs = GridSpec(
+                2, 1, figure=self.fig,
+                height_ratios=[12, 1.6],
+                left=0.17, right=0.76, top=0.70, bottom=0.15, hspace=0.35
+            )
+            ax_main = self.fig.add_subplot(gs[0, 0])
+            cax_rank = self.fig.add_subplot(gs[1, 0])
 
-                self.axe.scatter(x_data, y_data,
-                           c=colors[mask], s=15, edgecolors='k', alpha=0.85, linewidths=0.3, picker=5)
+            im_rank = ax_main.imshow(
+                rank_score.values.astype(float),
+                cmap=rank_cmap, aspect="auto",
+                extent=[-0.5, n_rank_cols - 0.5, n_rows - 0.5, -0.5],
+                vmin=0, vmax=100
+            )
 
-                self.axe.set_xscale('log')
-                self.axe.set_yscale('log')
-                self.axe.set_xlim(x_data.min() * 0.8, x_data.max() * 1.2)
-                self.axe.set_ylim(y_data.min() * 0.8, y_data.max() * 1.2)
-                self.axe.set_title(title, fontsize=9)
-                self.axe.tick_params(labelsize=7)
-                self.axe.xaxis.set_major_locator(ticker.LogLocator(base=10, numticks=4))
-                # ax.xaxis.set_major_formatter(ticker.FuncFormatter(lambda val, _: f'{val:.0f}'))
-                # ax.yaxis.set_major_locator(ticker.LogLocator(base=10, numticks=4))
-                # ax.yaxis.set_major_formatter(ticker.LogFormatterMathtext())
-                self.axe.grid(True, which='both', linestyle='--', linewidth=0.3, alpha=0.5)
+            if peak_df is not None:
+                peak_cmap = mcolors.ListedColormap(["#d73027", "#f46d43", "#fee08b", "#66bd63"])
+                peak_norm = mcolors.BoundaryNorm([0, 40, 60, 80, 100], peak_cmap.N)
+                peak_values = peak_df.astype(float).copy()
+                if peak_values.max().iloc[0] <= 1.0:
+                    peak_values[peak_col] = peak_values[peak_col] * 100.0
 
-                if i in (0, 2):
-                    self.axe.set_ylabel('Elution-composition space area', fontsize=7)
-                if i in (2, 3):
-                   self.axe.set_xlabel('Hypothetical 2D peak capacity', fontsize=7)
+                im_peak = ax_main.imshow(
+                    peak_values.values.astype(float),
+                    cmap=peak_cmap, norm=peak_norm, aspect="auto",
+                    extent=[n_rank_cols - 0.5, n_rank_cols + 0.5, n_rows - 0.5, -0.5]
+                )
 
-            legend_elements = [
-                patches.Patch(color='#1A3A9E', label='Top 1%'),
-                patches.Patch(color='#A0379A', label='Top 5%'),
-                patches.Patch(color='#E64981', label='Top 10%'),
-                patches.Patch(color='#FF7C64', label='Top 25%'),
-                patches.Patch(color='#F9F871', label='> 25%'),
-            ]
-            leg = self.fig.legend(handles=legend_elements,
-                                  title="Percentile\nd'orthogonalité",
-                                  loc='center right',
-                                  bbox_to_anchor=(1.0, 0.5),
-                                  fontsize=8,
-                                  title_fontsize=8,
-                                  frameon=True,
-                                  edgecolor='gray')
-            leg.get_frame().set_linewidth(0.5)
+            ax_main.set_xlim(-0.5, n_total_cols - 0.5)
+            ax_main.set_ylim(n_rows - 0.5, -0.5)
 
-            self.fig.canvas.draw()
-            self.fig.canvas.flush_events()
+            all_labels = [c.replace(" ", "\n") for c in rank_df.columns]
+            if peak_df is not None:
+                all_labels += ["Peak rate"]
+            ax_main.set_xticks(range(n_total_cols))
+            ax_main.set_xticklabels(all_labels, fontsize=8, fontweight="bold")
+            ax_main.set_yticks(range(n_rows))
+            ax_main.set_yticklabels(rank_df.index, fontsize=10, fontweight="bold")
+            ax_main.tick_params(
+                top=True, bottom=False, labeltop=True, labelbottom=False, length=0, pad=4
+            )
 
-    def plot_elution_area_vs_peak_rate(self):
-        self.fig.clear()
+            ax_main.set_xticks(np.arange(-0.5, n_total_cols, 1), minor=True)
+            ax_main.set_yticks(np.arange(-0.5, n_rows, 1), minor=True)
+            ax_main.grid(which="minor", color="white", linewidth=2.0)
+            ax_main.tick_params(which="minor", length=0)
 
-        x = self.orthogonality_result_data['Elution Domain']
-        y = self.orthogonality_result_data['Peak Detection Rate (%)']
+            for r in range(n_rows):
+                for c in range(n_rank_cols):
+                    val = rank_df.iloc[r, c]
+                    txt_color = "white" if rank_score.iloc[r, c] >= 65 else "black"
+                    ax_main.text(c, r, f"{val:.0f}", ha="center", va="center",
+                                 fontsize=10, color=txt_color)
 
-        x_is_numeric = (x != 'Not available').any()
-        y_is_numeric = (y != 'Not available').any()
+            if peak_df is not None:
+                for r in range(n_rows):
+                    val = peak_values.iloc[r, 0]
+                    txt_color = "white" if val < 60 else "black"
+                    ax_main.text(n_rank_cols, r, f"{val:.0f}", ha="center", va="center",
+                                 fontsize=10, color=txt_color)
 
-        if x_is_numeric and y_is_numeric:
+            ax_main.text(0.5, 1.36, "Chromatographic Mode Performance",
+                         transform=ax_main.transAxes, ha="center", va="bottom",
+                         fontsize=16, fontweight="bold")
+            ax_main.text(0.5, 1.28, "Median Rank Heatmap by Chromatographic Mode",
+                         transform=ax_main.transAxes, ha="center", va="bottom",
+                         fontsize=11, style="italic", color="dimgray")
 
-            final_rank = self.orthogonality_result_data['Final Rank']
-            consensus_rank = self.orthogonality_result_data['Orthogonality Rank']
-            n = len(final_rank)
+            cbar_rank = self.fig.colorbar(im_rank, cax=cax_rank, orientation="horizontal")
+            cbar_rank.ax.tick_params(labelsize=8)
+            cbar_rank.set_label("Median rank score", fontsize=9, labelpad=4)
+            cbar_rank.ax.xaxis.set_label_position("top")
 
-            final_rank_pct = (final_rank / n) * 100  # controls which points are shown
-            consensus_rank_pct = (consensus_rank / n) * 100  # controls point color
+            if peak_df is not None:
+                heatmap_pos = ax_main.get_position()
+                cax_peak = self.fig.add_axes([
+                    heatmap_pos.x1 + 0.015, heatmap_pos.y0,
+                    0.014, heatmap_pos.height
+                ])
+                cbar_peak = self.fig.colorbar(im_peak, cax=cax_peak, ticks=[20, 50, 70, 90])
+                cbar_peak.ax.set_yticklabels(["<40%", "40–60%", "60–80%", ">80%"])
+                cbar_peak.ax.tick_params(labelsize=8)
+                cbar_peak.set_label("Peak rate", fontsize=9, labelpad=6)
 
-            def get_color(pct):
-                if pct >= 99:
-                    return '#1A3A9E'
-                elif pct >= 95:
-                    return '#A0379A'
-                elif pct >= 90:
-                    return '#E64981'
-                elif pct >= 75:
-                    return '#FF7C64'
-                else:
-                    return '#F9F871'
-
-            colors = np.array([get_color(p) for p in consensus_rank_pct])  # color from consensus
-
-            panels = {
-                'All': np.ones(n, dtype=bool),
-                'Top 50%': final_rank_pct >= 50,  # filter from final_rank
-                'Top 20%': final_rank_pct >= 80,
-                'Top 10%': final_rank_pct >= 90,
-            }
-
-            x_min, x_max = x.min() * 0.8, x.max() * 1.2
-            y_min, y_max = y.min() * 0.8, y.max() * 1.2
-
-            gs = GridSpec(2, 2, figure=self.fig, hspace=0.45, wspace=0.35,
-                          left=0.1, right=0.82, top=0.92, bottom=0.1)
-
-            for i, (title, mask) in enumerate(panels.items()):
-                self.axe = self.fig.add_subplot(gs[i // 2, i % 2])
-
-                x_data = x[mask]
-                y_data = y[mask]
-
-                self.axe.scatter(x_data, y_data,
-                           c=colors[mask], s=15, edgecolors='k', alpha=0.85, linewidths=0.3, picker=5)
-
-                self.axe.set_xscale('log')
-                self.axe.set_yscale('log')
-                self.axe.set_xlim(x_data.min() * 0.8, x_data.max() * 1.2)
-                self.axe.set_ylim(y_data.min() * 0.8, y_data.max() * 1.2)
-                self.axe.set_title(title, fontsize=9)
-                self.axe.tick_params(labelsize=7)
-                self.axe.xaxis.set_major_locator(ticker.LogLocator(base=10, numticks=4))
-                # ax.xaxis.set_major_formatter(ticker.FuncFormatter(lambda val, _: f'{val:.0f}'))
-                # ax.yaxis.set_major_locator(ticker.LogLocator(base=10, numticks=4))
-                # ax.yaxis.set_major_formatter(ticker.LogFormatterMathtext())
-                self.axe.grid(True, which='both', linestyle='--', linewidth=0.3, alpha=0.5)
-
-                if i in (0, 2):
-                    self.axe.set_ylabel('Peak Detection Rate (%)', fontsize=7)
-                if i in (2, 3):
-                    self.axe.set_xlabel('Elution Domain', fontsize=7)
-
-            legend_elements = [
-                patches.Patch(color='#1A3A9E', label='Top 1%'),
-                patches.Patch(color='#A0379A', label='Top 5%'),
-                patches.Patch(color='#E64981', label='Top 10%'),
-                patches.Patch(color='#FF7C64', label='Top 25%'),
-                patches.Patch(color='#F9F871', label='> 25%'),
-            ]
-            leg = self.fig.legend(handles=legend_elements,
-                                  title="Percentile\nd'orthogonalité",
-                                  loc='center right',
-                                  bbox_to_anchor=(1.0, 0.5),
-                                  fontsize=8,
-                                  title_fontsize=8,
-                                  frameon=True,
-                                  edgecolor='gray')
-            leg.get_frame().set_linewidth(0.5)
-
-            self.fig.canvas.draw()
-            self.fig.canvas.flush_events()
-
-    def plot_median_rank_score_heatmap(self):
-
-        self.fig.clear()
-
-        median_df = self.model.get_median_rank_score_table()
-
-        peak_col = "Peak Detection Rate (%)"
-        rank_df = median_df.drop(columns=[peak_col]).copy()
-        peak_df = median_df[[peak_col]].copy()
-
-        n_rows, n_rank_cols = rank_df.shape
-
-        rank_min = float(rank_df.values.min())
-        rank_max = float(rank_df.values.max())
-
-        if rank_max > rank_min:
-            rank_score = ((rank_df - rank_min) / (rank_max - rank_min)) * 100.0
+        # ------------------------------------------------------------------
+        # BOXPLOT
+        # ------------------------------------------------------------------
         else:
-            rank_score = rank_df * 0.0
+            grouped_df = list(self.model.get_rank_score_grouped_by_chrom_mode_table())
 
-        peak_values = peak_df.astype(float).copy()
-        if peak_values.max().iloc[0] <= 1.0:
-            peak_values[peak_col] = peak_values[peak_col] * 100.0
+            if not grouped_df:
+                self._show_missing_data()
+                return
 
-        rank_cmap = LinearSegmentedColormap.from_list(
-            "rank_cmap",
-            ["#fff7bc", "#d9ef8b", "#7fcdbb", "#41b6c4", "#225ea8"],
-            N=256
-        )
+            if criteria not in CRITERIA_COLUMN_MAP:
+                self._show_missing_data()
+                return
 
-        peak_cmap = mcolors.ListedColormap([
-            "#d73027",  # red
-            "#f46d43",  # orange
-            "#fee08b",  # yellow
-            "#66bd63",  # green
-        ])
-        peak_norm = mcolors.BoundaryNorm([0, 40, 60, 80, 100], peak_cmap.N)
+            BOXPLOT_COLORS = ["#E41A1C", "#377EB8", "#4DAF4A", "#984EA3", "#FF7F00", "#00A6A6"]
 
-        gs = GridSpec(
-            2, 1,
-            figure=self.fig,
-            height_ratios=[12, 1.6],
-            left=0.17,
-            right=0.76,
-            top=0.70,
-            bottom=0.15,
-            hspace=0.35
-        )
+            def _draw_single_boxplot(ax, col_name, title, show_title=True):
+                labels, values = [], []
+                for mode, group in grouped_df:
+                    labels.append(mode)
+                    values.append(group[col_name].dropna().values)
 
-        ax_main = self.fig.add_subplot(gs[0, 0])
-        cax_rank = self.fig.add_subplot(gs[1, 0])
+                box = ax.boxplot(values, patch_artist=True, widths=0.55, showfliers=False)
 
-        im_rank = ax_main.imshow(
-            rank_score.values.astype(float),
-            cmap=rank_cmap,
-            aspect="auto",
-            extent=[-0.5, n_rank_cols - 0.5, n_rows - 0.5, -0.5],
-            vmin=0,
-            vmax=100
-        )
+                for patch, color in zip(box["boxes"], BOXPLOT_COLORS):
+                    patch.set_facecolor(color)
+                    patch.set_alpha(0.25)
+                    patch.set_edgecolor(color)
+                    patch.set_linewidth(1.0)
 
-        im_peak = ax_main.imshow(
-            peak_values.values.astype(float),
-            cmap=peak_cmap,
-            norm=peak_norm,
-            aspect="auto",
-            extent=[n_rank_cols - 0.5, n_rank_cols + 0.5, n_rows - 0.5, -0.5]
-        )
+                for median in box["medians"]:
+                    median.set_color("black")
+                    median.set_linewidth(1.2)
 
-        ax_main.set_xlim(-0.5, n_rank_cols + 0.5)
-        ax_main.set_ylim(n_rows - 0.5, -0.5)
+                for whisker in box["whiskers"]:
+                    whisker.set_linewidth(0.8)
 
-        all_labels = [c.replace(" ", "\n") for c in rank_df.columns] + ["Peak rate"]
-        ax_main.set_xticks(range(n_rank_cols + 1))
-        ax_main.set_xticklabels(all_labels, fontsize=8, fontweight="bold")
+                for cap in box["caps"]:
+                    cap.set_linewidth(0.8)
 
-        ax_main.set_yticks(range(n_rows))
-        ax_main.set_yticklabels(rank_df.index, fontsize=10, fontweight="bold")
+                for j, y_data in enumerate(values, start=1):
+                    x_data = np.random.normal(j, 0.04, size=len(y_data))
+                    ax.scatter(x_data, y_data, s=10,
+                               color=BOXPLOT_COLORS[j - 1],
+                               edgecolors="k", linewidths=0.2,
+                               alpha=0.75, picker=5)
 
-        ax_main.tick_params(
-            top=True,
-            bottom=False,
-            labeltop=True,
-            labelbottom=False,
-            length=0,
-            pad=4
-        )
+                if show_title:  # ← only used in multi-panel (All criteria)
+                    ax.set_title(title, fontsize=9, fontweight="bold")
 
-        ax_main.set_xticks(np.arange(-0.5, n_rank_cols + 1, 1), minor=True)
-        ax_main.set_yticks(np.arange(-0.5, n_rows, 1), minor=True)
-        ax_main.grid(which="minor", color="white", linewidth=2.0)
-        ax_main.tick_params(which="minor", length=0)
+                ax.set_ylabel("Rank", fontsize=8)
+                ax.set_xticks(range(1, len(labels) + 1))
+                ax.set_xticklabels(labels, rotation=45, ha="right", fontsize=7)
+                ax.tick_params(axis="y", labelsize=7)
+                ax.grid(True, axis="y", linestyle="--", linewidth=0.4, alpha=0.5)
+                ax.set_axisbelow(True)
 
-        for r in range(n_rows):
-            for c in range(n_rank_cols):
-                val = rank_df.iloc[r, c]
-                txt_color = "white" if rank_score.iloc[r, c] >= 65 else "black"
-                ax_main.text(
-                    c, r, f"{val:.0f}",
-                    ha="center", va="center", fontsize=10, color=txt_color
-                )
+            col_name_value = CRITERIA_COLUMN_MAP[criteria]
 
-        for r in range(n_rows):
-            val = peak_values.iloc[r, 0]
-            txt_color = "white" if val < 60 else "black"
-            ax_main.text(
-                n_rank_cols, r, f"{val:.0f}",
-                ha="center", va="center", fontsize=10, color=txt_color
-            )
+            # ------------------------------------------------------------------
+            # All criteria — multi-panel
+            # ------------------------------------------------------------------
+            if col_name_value is None:
+                metrics = [
+                    ("Orthogonality Rank", "Orthogonality"),
+                    ("Final Rank", "Final Consensus Rank"),
+                    ("Peak Detection Rate (%)", "Peak rate (%)"),
+                ]
+                if elution_domain_available:
+                    metrics.insert(1, ("Elution Domain Rank", "Elution Domain"))
+                if peak_capacity_available:
+                    metrics.insert(2, ("Peak Capacity Rank", "Peak Capacity"))
 
-        ax_main.text(
-            0.5,
-            1.36,
-            "Performance Heatmap",
-            transform=ax_main.transAxes,
-            ha="center",
-            va="bottom",
-            fontsize=16,
-            fontweight="bold",
-            color="black"
-        )
+                n = len(metrics)
+                ncols = min(3, n)
+                nrows = int(np.ceil(n / ncols))
 
-        ax_main.text(
-            0.5,
-            1.28,
-            "Median Rank Heatmap by Chromatographic Mode",
-            transform=ax_main.transAxes,
-            ha="center",
-            va="bottom",
-            fontsize=11,
-            style="italic",
-            color="dimgray"
-        )
+                gs = GridSpec(nrows, ncols, figure=self.fig,
+                              hspace=0.65, wspace=0.35,
+                              left=0.08, right=0.96, top=0.78, bottom=0.16)
 
-        cbar_rank = self.fig.colorbar(im_rank, cax=cax_rank, orientation="horizontal")
-        cbar_rank.ax.tick_params(labelsize=8)
-        cbar_rank.set_label("Median rank score", fontsize=9, labelpad=4)
-        cbar_rank.ax.xaxis.set_label_position("top")
+                created_axes = []
+                for i, (col_name, title) in enumerate(metrics):
+                    self.axe = self.fig.add_subplot(gs[i // ncols, i % ncols])
+                    created_axes.append(self.axe)
+                    _draw_single_boxplot(self.axe, col_name, title)
 
-        heatmap_pos = ax_main.get_position()
-        cax_peak = self.fig.add_axes([
-            heatmap_pos.x1 + 0.015,
-            heatmap_pos.y0,
-            0.014,
-            heatmap_pos.height
-        ])
+                # Hide unused grid cells
+                for i in range(n, nrows * ncols):
+                    self.fig.add_subplot(gs[i // ncols, i % ncols]).axis("off")
 
-        cbar_peak = self.fig.colorbar(
-            im_peak,
-            cax=cax_peak,
-            ticks=[20, 50, 70, 90]
-        )
-        cbar_peak.ax.set_yticklabels(["<40%", "40–60%", "60–80%", ">80%"])
-        cbar_peak.ax.tick_params(labelsize=8)
-        cbar_peak.set_label("Peak rate", fontsize=9, labelpad=6)
+                if created_axes:
+                    title_ax = created_axes[min(1, len(created_axes) - 1)]
+                    title_ax.text(0.5, 1.34, "Chromatographic Mode Performance",
+                                  transform=title_ax.transAxes, ha="center", va="bottom",
+                                  fontsize=16, fontweight="bold")
+                    title_ax.text(0.5, 1.20, "Rank Distribution by Chromatographic Mode — All Criteria",
+                                  transform=title_ax.transAxes, ha="center", va="bottom",
+                                  fontsize=11, style="italic", color="dimgray")
+
+            # ------------------------------------------------------------------
+            # Single criteria
+            # ------------------------------------------------------------------
+            else:
+                col_name, title = col_name_value
+
+                # Availability guard for optional columns
+                if criteria == "Elution Domain" and not elution_domain_available:
+                    self._show_missing_data()
+                    return
+                if criteria == "Peak Capacity" and not peak_capacity_available:
+                    self._show_missing_data()
+                    return
+
+                self.axe = self.fig.add_subplot(111)
+                _draw_single_boxplot(self.axe, col_name, title, show_title=False)
+
+                self.axe.text(0.5, 1.10, "Chromatographic Mode Performance",
+                              transform=self.axe.transAxes, ha="center", va="bottom",
+                              fontsize=16, fontweight="bold")
+                self.axe.text(0.5, 1.04, f"{title} distribution by chromatographic mode",
+                              transform=self.axe.transAxes, ha="center", va="bottom",
+                              fontsize=9, style="italic", color="dimgray")
+
+                self.fig.subplots_adjust(left=0.12, right=0.95, top=0.82, bottom=0.22)
 
         self.fig.canvas.draw()
         self.fig.canvas.flush_events()
 
-    def plot_rank_score_distribution_by_mode(self):
+    def plot_feasibility_profile(self, grouping: str = "Global", axis_scale: str = "Auto"):
         self.fig.clear()
 
-        df = self.model.get_rank_score_grouped_by_chrom_mode_table()
-
-        metrics = [
-            ("Orthogonality Rank", "Orthogonality"),
-            ("Elution Domain Rank", "Elution Domain"),
-            ("Peak Capacity Rank", "Peak Capacity"),
-            ("Final Rank", "Final Consensus Rank"),
-            ("Peak Detection Rate (%)", "Peak rate (%)"),
-        ]
-
-        gs = GridSpec(
-            2, 3,
-            figure=self.fig,
-            hspace=0.65,
-            wspace=0.35,
-            left=0.08,
-            right=0.96,
-            top=0.78,
-            bottom=0.16
-        )
-
-        positions = [
-            (0, 0),
-            (0, 1),
-            (0, 2),
-            (1, 0),
-            (1, 1),
-        ]
-
-        colors = [
-            "#E41A1C",
-            "#377EB8",
-            "#4DAF4A",
-            "#984EA3",
-            "#FF7F00",
-            "#00A6A6",
-        ]
-
-        created_axes = []
-
-        for i, ((column_name, title), position) in enumerate(zip(metrics, positions)):
-            self.axe = self.fig.add_subplot(gs[position[0], position[1]])
-            created_axes.append(self.axe)
-
-            labels = []
-            values = []
-
-            for mode, group in df:
-                labels.append(mode)
-                values.append(group[column_name].dropna().values)
-
-            box = self.axe.boxplot(
-                values,
-                patch_artist=True,
-                widths=0.55,
-                showfliers=False
-            )
-
-            for patch, color in zip(box["boxes"], colors):
-                patch.set_facecolor(color)
-                patch.set_alpha(0.25)
-                patch.set_edgecolor(color)
-                patch.set_linewidth(1.0)
-
-            for median in box["medians"]:
-                median.set_color("black")
-                median.set_linewidth(1.2)
-
-            for whisker in box["whiskers"]:
-                whisker.set_linewidth(0.8)
-
-            for cap in box["caps"]:
-                cap.set_linewidth(0.8)
-
-            for j, y_data in enumerate(values, start=1):
-                x_data = np.random.normal(j, 0.04, size=len(y_data))
-
-                self.axe.scatter(
-                    x_data,
-                    y_data,
-                    s=10,
-                    color=colors[j - 1],
-                    edgecolors="k",
-                    linewidths=0.2,
-                    alpha=0.75,
-                    picker=5
+        def apply_scale(ax, scale: str):
+            if scale == "Auto":
+                return
+            s = scale.lower()
+            ax.set_xscale(s)
+            ax.set_yscale(s)
+            if scale == "Log":
+                ax.xaxis.set_major_formatter(
+                    ticker.FuncFormatter(lambda val, _: f"{int(val):,}")
                 )
+                ax.xaxis.set_major_locator(ticker.LogLocator(base=10, numticks=5))
+                ax.tick_params(axis="x", labelsize=6)  # smaller font for log ticks
 
-            self.axe.set_title(title, fontsize=9, fontweight="bold")
-            self.axe.set_ylabel("Rank", fontsize=8)
+        # ------------------------------------------------------------------
+        # GLOBAL — single plot
+        # ------------------------------------------------------------------
+        if grouping == "Global":
+            self.axe = self.fig.add_subplot(111)
 
-            self.axe.set_xticks(range(1, len(labels) + 1))
-            self.axe.set_xticklabels(labels, rotation=45, ha="right", fontsize=7)
+            df = self.orthogonality_result_data.copy()
 
-            self.axe.tick_params(axis="y", labelsize=7)
-            self.axe.grid(
-                True,
-                axis="y",
-                linestyle="--",
-                linewidth=0.4,
-                alpha=0.5
-            )
-            self.axe.set_axisbelow(True)
+            if df is None or df.empty:
+                self._show_missing_data()
+                return
 
-        if created_axes:
-            title_ax = created_axes[1] if len(created_axes) > 1 else created_axes[0]
-
-            title_ax.text(
-                0.5,
-                1.34,
-                "Performance Barplot",
-                transform=title_ax.transAxes,
-                ha="center",
-                va="bottom",
-                fontsize=16,
-                fontweight="bold",
-                color="black"
+            rank_col = (
+                "Final Rank"
+                if "Final Rank" in df.columns
+                   and pd.to_numeric(df["Final Rank"], errors="coerce").notna().any()
+                else "Orthogonality Rank"
             )
 
-            title_ax.text(
-                0.5,
-                1.2,
-                "Rank Distribution by Chromatographic Mode",
-                transform=title_ax.transAxes,
-                ha="center",
-                va="bottom",
-                fontsize=11,
-                style="italic",
-                color="dimgray"
+            rank_numeric = pd.to_numeric(df[rank_col], errors="coerce")
+            peak_rate = pd.to_numeric(df["Peak Detection Rate (%)"], errors="coerce")
+
+            valid_mask = rank_numeric.notna() & peak_rate.notna()
+            df = df.loc[valid_mask].copy()
+            rank_numeric = rank_numeric.loc[valid_mask]
+            peak_rate = peak_rate.loc[valid_mask]
+
+            if df.empty:
+                self._show_missing_data()
+                return
+
+            rank_max = rank_numeric.max()
+            x_pct = (rank_numeric / rank_max) * 100 if rank_max else rank_numeric
+
+            recommendation_colors = {
+                "Highly recommended": "#1a7a2e",
+                "Recommended": "#6abf4b",
+                "Use with caution": "#f5a623",
+                "Not recommended": "#d94f3d",
+            }
+            recommendation_order = list(recommendation_colors.keys())
+
+            mode_markers = {"HILIC HILIC": "o", "HILIC RPLC": "s", "RPLC HILIC": "^",
+                            "RPLC RPLC": "D", "SFC RPLC": "v", "SFC HILIC": "h"}
+            fallback_markers = ["o", "s", "^", "D", "v", "h", "p", "*"]
+
+            unique_modes = list(df["Chromatographic Mode"].dropna().unique())
+            mode_to_marker = {
+                mode: mode_markers.get(mode, fallback_markers[i % len(fallback_markers)])
+                for i, mode in enumerate(unique_modes)
+            }
+
+            for rec_label in recommendation_order:
+                rec_mask = df["Final Recommendation"] == rec_label
+                if not rec_mask.any():
+                    continue
+                for mode in unique_modes:
+                    mask = rec_mask & (df["Chromatographic Mode"] == mode)
+                    if not mask.any():
+                        continue
+                    self.axe.scatter(
+                        x_pct[mask], peak_rate[mask],
+                        s=22,
+                        marker=mode_to_marker[mode],
+                        color=recommendation_colors.get(rec_label, "#aaaaaa"),
+                        edgecolors="k", linewidths=0.3,
+                        alpha=0.88, zorder=5
+                    )
+
+            apply_scale(self.axe, axis_scale)
+
+            self.axe.set_xlim(1, 100)
+            self.axe.set_ylim(0, 100)
+            self.axe.set_xticks([1, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100])
+            self.axe.set_xlabel("Final consensus rank (lower = better)", fontsize=8)
+            self.axe.set_ylabel("Peak rate (%)", fontsize=8)
+            self.axe.tick_params(axis="both", labelsize=7)
+            self.axe.grid(True, linestyle="--", linewidth=0.4, alpha=0.4)
+            self.axe.spines[["top", "right"]].set_visible(False)
+
+            self.axe.text(0.5, 1.08, "Feasibility Profile",
+                          transform=self.axe.transAxes, ha="center", va="bottom",
+                          fontsize=16, fontweight="bold")
+            self.axe.text(0.5, 1.02, "Overall feasibility decision map · Global",
+                          transform=self.axe.transAxes, ha="center", va="bottom",
+                          fontsize=9, style="italic", color="dimgray")
+
+            # ------------------------------------------------------------------
+            # Legends — side by side at the bottom (same pattern as by mode)
+            # ------------------------------------------------------------------
+            rec_handles = [
+                patches.Patch(facecolor=recommendation_colors[label],
+                              edgecolor="k", linewidth=0.4, label=label)
+                for label in recommendation_order
+                if label in df["Final Recommendation"].values
+            ]
+            mode_handles = [
+                Line2D([0], [0], marker=mode_to_marker[mode], color="w",
+                       markerfacecolor="#555555", markeredgecolor="k",
+                       markeredgewidth=0.3, markersize=5,
+                       label=mode.replace(" ", "×"))
+                for mode in unique_modes
+            ]
+
+            rec_legend = self.fig.legend(
+                handles=rec_handles,
+                title="Final recommendation", title_fontsize=7,
+                loc="lower center", bbox_to_anchor=(0.30, 0.01),
+                ncol=1, fontsize=7,
+                frameon=True, framealpha=0.92, edgecolor="#aaaaaa"
             )
+            self.fig.add_artist(rec_legend)
+
+            self.fig.legend(
+                handles=mode_handles,
+                title="Chromatographic mode", title_fontsize=7,
+                loc="lower center", bbox_to_anchor=(0.72, 0.01),
+                ncol=1, fontsize=7,
+                frameon=True, framealpha=0.92, edgecolor="#aaaaaa"
+            )
+
+            self.fig.subplots_adjust(left=0.10, right=0.97, top=0.88, bottom=0.28)
+
+        # ------------------------------------------------------------------
+        # BY MODE — faceted
+        # ------------------------------------------------------------------
+        else:
+            grouped_df = list(self.model.get_rank_score_grouped_by_chrom_mode_table())
+
+            if not grouped_df:
+                self._show_missing_data()
+                return
+
+            n_modes = len(grouped_df)
+            ncols = min(3, n_modes)
+            nrows = int(np.ceil(n_modes / ncols))
+
+            gs = GridSpec(nrows, ncols, figure=self.fig,
+                          hspace=0.55, wspace=0.28,
+                          left=0.08, right=0.98, top=0.82, bottom=0.28)
+
+            recommendation_colors = {
+                "Highly recommended": "#1a7a4a",
+                "Recommended": "#6abf4b",
+                "Use with caution": "#f0a11a",
+                "Not recommended": "#d9534f",
+            }
+            mode_markers = ["o", "s", "^", "D", "v", "p", "X", "<", ">"]
+
+            for i, (mode, group) in enumerate(grouped_df):
+                ax = self.fig.add_subplot(gs[i // ncols, i % ncols])
+                marker = mode_markers[i % len(mode_markers)]
+
+                for recommendation, color in recommendation_colors.items():
+                    subset = group[group["Final Recommendation"] == recommendation]
+                    if subset.empty:
+                        continue
+                    ax.scatter(
+                        subset["Final Rank"].astype(float),
+                        subset["Peak Detection Rate (%)"].astype(float),
+                        s=28, c=color, marker=marker,
+                        edgecolors="black", linewidths=0.3, alpha=0.85
+                    )
+
+                apply_scale(ax, axis_scale)
+
+                ax.set_title(mode, fontsize=10, fontweight="bold")
+                ax.grid(True, linestyle="--", linewidth=0.4, alpha=0.4)
+                ax.tick_params(axis="both", labelsize=8)
+                ax.set_xlabel("Final consensus rank\n(lower = better)", fontsize=8)
+                ax.set_ylabel("Peak rate (%)" if i % ncols == 0 else "", fontsize=8)
+                ax.spines[["top", "right"]].set_visible(False)
+
+            # Hide unused grid cells
+            for j in range(n_modes, nrows * ncols):
+                self.fig.add_subplot(gs[j // ncols, j % ncols]).axis("off")
+
+            legend_handles = [
+                patches.Patch(facecolor="#1a7a4a", edgecolor="none", label="Highly recommended"),
+                patches.Patch(facecolor="#6abf4b", edgecolor="none", label="Recommended"),
+                patches.Patch(facecolor="#f0a11a", edgecolor="none", label="Use with caution"),
+                patches.Patch(facecolor="#d9534f", edgecolor="none", label="Not recommended"),
+            ]
+            self.fig.legend(
+                handles=legend_handles,
+                loc="lower center", ncol=2,
+                frameon=True, fancybox=True, framealpha=0.95,
+                bbox_to_anchor=(0.5, 0.01),
+                fontsize=9, columnspacing=1.8, handlelength=1.8
+            )
+
+            # Titles — suptitle high, subtitle clearly below it
+            self.fig.suptitle("Feasibility Profile",
+                              fontsize=16, fontweight="bold", y=0.97)
+            self.fig.text(0.5, 0.89,  # ← was 0.93, now lower
+                          "Faceted feasibility maps by chromatographic mode",
+                          ha="center", fontsize=9, style="italic", color="dimgray")
 
         self.fig.canvas.draw()
         self.fig.canvas.flush_events()
 
-    def plot_recommendation_distribution(self):
+    def plot_recommendation_distribution(self, grouping: str = "Global"):
         self.fig.clear()
         self.axe = self.fig.add_subplot(111)
 
-        df = self.model.get_recommendation_distribution_group_table()
+        # ------------------------------------------------------------------
+        # GLOBAL — one single stacked bar
+        # ------------------------------------------------------------------
+        if grouping == "Global":
+            recommendations = self.orthogonality_result_data.copy()['Final Recommendation']
 
-        CATEGORY_ORDER = [
-            "Highly recommended",
-            "Recommended",
-            "Use with caution",
-            "Not recommended",
-        ]
-        COLORS = {
-            "Highly recommended": "#1a7a2e",
-            "Recommended": "#6abf4b",
-            "Use with caution": "#f5a623",
-            "Not recommended": "#d94f3d",
-        }
+            if recommendations.empty:
+                self._show_missing_data()
+                return
 
-        mode_labels = []
-        data = {cat: [] for cat in CATEGORY_ORDER}
+            counts = recommendations.value_counts()
+            total = counts.sum()
+            bottom = 0
 
-        for mode, group in df:
-            mode_labels.append(mode)
-            recommendations = group.values
             for cat in CATEGORY_ORDER:
-                data[cat].append((recommendations == cat).sum())
+                val = counts.get(cat, 0)
+                if val == 0:
+                    continue
+                bar = self.axe.bar(
+                    ["All combinations"], [val],
+                    bottom=bottom,
+                    color=COLORS[cat],
+                    label=cat,
+                    width=0.4
+                )
+                self.axe.text(
+                    bar[0].get_x() + bar[0].get_width() / 2,
+                    bottom + val / 2,
+                    f"{val:,}",
+                    ha="center", va="center",
+                    fontsize=9, fontweight="bold", color="white"
+                )
+                bottom += val
 
-        x = range(len(mode_labels))
-        bar_width = 0.5
-        bottoms = [0] * len(mode_labels)
-
-        for cat in CATEGORY_ORDER:
-            values = data[cat]
-            bars = self.axe.bar(x, values, bar_width, bottom=bottoms,
-                          color=COLORS[cat], label=cat)
-
-            for bar, val, bot in zip(bars, values, bottoms):
-                if val > 0:
-                    self.axe.text(
-                        bar.get_x() + bar.get_width() / 2,
-                        bot + val / 2,
-                        f"{val:,}",
-                        ha="center", va="center",
-                        fontsize=7, fontweight="bold", color="white",
-                    )
-
-            bottoms = [b + v for b, v in zip(bottoms, values)]
-
-        # Total on top
-        for i, total in enumerate(bottoms):
+            # Total on top
             self.axe.text(
-                i, total + max(bottoms) * 0.01,
+                0, total + total * 0.01,
                 f"{total:,}",
                 ha="center", va="bottom",
-                fontsize=7, fontweight="bold", color="#2c2c2a",
+                fontsize=9, fontweight="bold", color="#2c2c2a"
             )
 
-        self.axe.set_xticks(list(x))
-        self.axe.set_xticklabels(mode_labels, fontsize=7, rotation=15, ha="right")
-        self.axe.set_xlabel("Chromatographic mode", fontsize=8)
+        # ------------------------------------------------------------------
+        # BY MODE — one stacked bar per chromatographic mode
+        # ------------------------------------------------------------------
+        else:
+            df = self.model.get_recommendation_distribution_group_table()
+
+            mode_labels = []
+            data = {cat: [] for cat in CATEGORY_ORDER}
+
+            for mode, group in df:
+                mode_labels.append(mode)
+                recommendations = group.values
+                for cat in CATEGORY_ORDER:
+                    data[cat].append((recommendations == cat).sum())
+
+            if not mode_labels:
+                self._show_missing_data()
+                return
+
+            x = range(len(mode_labels))
+            bar_width = 0.5
+            bottoms = [0] * len(mode_labels)
+
+            for cat in CATEGORY_ORDER:
+                values = data[cat]
+                bars = self.axe.bar(x, values, bar_width,
+                                    bottom=bottoms,
+                                    color=COLORS[cat],
+                                    label=cat)
+                for bar, val, bot in zip(bars, values, bottoms):
+                    if val > 0:
+                        self.axe.text(
+                            bar.get_x() + bar.get_width() / 2,
+                            bot + val / 2,
+                            f"{val:,}",
+                            ha="center", va="center",
+                            fontsize=7, fontweight="bold", color="white"
+                        )
+                bottoms = [b + v for b, v in zip(bottoms, values)]
+
+            # Totals on top
+            for i, total in enumerate(bottoms):
+                self.axe.text(
+                    i, total + max(bottoms) * 0.01,
+                    f"{total:,}",
+                    ha="center", va="bottom",
+                    fontsize=7, fontweight="bold", color="#2c2c2a"
+                )
+
+            self.axe.set_xticks(list(x))
+            self.axe.set_xticklabels(mode_labels, fontsize=7, rotation=15, ha="right")
+            self.axe.set_xlabel("Chromatographic mode", fontsize=8)
+
+        # ------------------------------------------------------------------
+        # Shared formatting
+        # ------------------------------------------------------------------
         self.axe.set_ylabel("Number of combinations", fontsize=8)
-        self.axe.set_title("Recommendation distribution", fontsize=9, fontweight="bold")
-        self.axe.yaxis.set_major_formatter(ticker.FuncFormatter(lambda v, _: f"{int(v):,}"))
+        self.axe.yaxis.set_major_formatter(
+            ticker.FuncFormatter(lambda v, _: f"{int(v):,}")
+        )
         self.axe.tick_params(axis="both", labelsize=7)
         self.axe.grid(axis="y", linestyle="--", linewidth=0.5, alpha=0.6)
         self.axe.set_axisbelow(True)
         self.axe.spines[["top", "right"]].set_visible(False)
 
+        subtitle = "All combinations" if grouping == "Global" else "By chromatographic mode"
+        self.axe.text(0.5, 1.08, "Recommendation Distribution",
+                      transform=self.axe.transAxes, ha="center", va="bottom",
+                      fontsize=16, fontweight="bold")
+        self.axe.text(0.5, 1.02, subtitle,
+                      transform=self.axe.transAxes, ha="center", va="bottom",
+                      fontsize=9, style="italic", color="dimgray")
+
         self.axe.legend(
             loc="lower center",
-            bbox_to_anchor=(0.5, -0.35),
-            ncol=2,
-            fontsize=7,
-            frameon=True,
-            edgecolor="#cccccc",
+            bbox_to_anchor=(0.5, -0.38),
+            ncol=2, fontsize=7,
+            frameon=True, edgecolor="#cccccc"
         )
 
-        # Reserve space for the legend below the axes
-        self.fig.subplots_adjust(left=0.12, right=0.97, top=0.92, bottom=0.28)
+        self.fig.subplots_adjust(left=0.14, right=0.90, top=0.72, bottom=0.30)
         self.fig.canvas.draw()
         self.fig.canvas.flush_events()
 
-    def plot_feasibility_decision_map(self) -> None:
-        """Plot a feasibility decision map colored by final recommendation.
-
-        One point = one combination.
-
-        - X-axis: Final Rank (lower = better), normalized to percentile.
-        - Y-axis: Peak Detection Rate (%).
-        - Point color: Final Recommendation.
-        - Marker shape: Chromatographic Mode.
-
-        This version does NOT use background traffic-light zones, because
-        the final recommendation already incorporates rank, peak rate,
-        compatibility, and complexity.
-
-        Side Effects:
-            - Clears and redraws ``self.fig``.
-            - Updates ``self.axe``.
-            - Redraws the figure canvas.
-        """
-        self.fig.clear()
-        self.axe = self.fig.add_subplot(111)
-
-        df = self.orthogonality_result_data.copy()
-
-        if df is None or df.empty:
-            return
-
-        # Resolve the rank column to use
-        rank_col = (
-            "Final Rank"
-            if "Final Rank" in df.columns
-            and pd.to_numeric(df["Final Rank"], errors="coerce").notna().any()
-            else "Orthogonality Rank"
-        )
-
-        rank_numeric = pd.to_numeric(df[rank_col], errors="coerce")
-        peak_rate = pd.to_numeric(df["Peak Detection Rate (%)"], errors="coerce")
-
-        valid_mask = rank_numeric.notna() & peak_rate.notna()
-        df = df.loc[valid_mask].copy()
-        rank_numeric = rank_numeric.loc[valid_mask]
-        peak_rate = peak_rate.loc[valid_mask]
-
-        if df.empty:
-            return
-
-        # Normalize rank to percentile (1–100)
-        rank_max = rank_numeric.max()
-        x_pct = (rank_numeric / rank_max) * 100 if rank_max else rank_numeric
-
-        # Recommendation colors
-        recommendation_colors = {
-            "Highly recommended": "#1a7a2e",
-            "Recommended": "#6abf4b",
-            "Use with caution": "#f5a623",
-            "Not recommended": "#d94f3d",
-        }
-
-        recommendation_order = [
-            "Highly recommended",
-            "Recommended",
-            "Use with caution",
-            "Not recommended",
-        ]
-
-        # Marker styles per chromatographic mode
-        mode_markers = {
-            "HILIC HILIC": "o",
-            "HILIC RPLC": "s",
-            "RPLC HILIC": "^",
-            "RPLC RPLC": "D",
-            "SFC RPLC": "v",
-            "SFC HILIC": "h",
-        }
-        fallback_markers = ["o", "s", "^", "D", "v", "h", "p", "*"]
-
-        unique_modes = list(df["Chromatographic Mode"].dropna().unique())
-        mode_to_marker = {
-            mode: mode_markers.get(mode, fallback_markers[i % len(fallback_markers)])
-            for i, mode in enumerate(unique_modes)
-        }
-
-        # Plot by recommendation, then by mode
-        for rec_label in recommendation_order:
-            rec_mask = df["Final Recommendation"] == rec_label
-            if not rec_mask.any():
-                continue
-
-            for mode in unique_modes:
-                mask = rec_mask & (df["Chromatographic Mode"] == mode)
-                if not mask.any():
-                    continue
-
-                self.axe.scatter(
-                    x_pct[mask],
-                    peak_rate[mask],
-                    s=22,
-                    marker=mode_to_marker[mode],
-                    color=recommendation_colors.get(rec_label, "#aaaaaa"),
-                    edgecolors="k",
-                    linewidths=0.3,
-                    alpha=0.88,
-                    zorder=5,
-                )
-
-        # Axes formatting
-        self.axe.set_xlim(1, 100)
-        self.axe.set_ylim(0, 100)
-        self.axe.set_xticks([1, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100])
-        self.axe.set_xlabel("Final consensus rank (lower = better)", fontsize=8)
-        self.axe.set_ylabel("Peak rate (%)", fontsize=8)
-        self.axe.set_title(
-            "Overall feasibility decision map\none point = one combination",
-            fontsize=9,
-            fontweight="bold",
-            loc="left",
-            pad=8,
-        )
-        self.axe.tick_params(axis="both", labelsize=7)
-        self.axe.grid(True, linestyle="--", linewidth=0.4, alpha=0.4)
-        self.axe.spines[["top", "right"]].set_visible(False)
-
-        # Recommendation legend
-        rec_handles = [
-            patches.Patch(
-                facecolor=recommendation_colors[label],
-                edgecolor="k",
-                linewidth=0.4,
-                label=label,
-            )
-            for label in recommendation_order
-            if label in df["Final Recommendation"].values
-        ]
-        rec_legend = self.axe.legend(
-            handles=rec_handles,
-            title="Final recommendation",
-            title_fontsize=7,
-            loc="lower left",
-            bbox_to_anchor=(1.0, 0.5),
-            fontsize=6,
-            frameon=True,
-            framealpha=0.92,
-            edgecolor="#aaaaaa",
-        )
-        self.axe.add_artist(rec_legend)
-
-        # Mode legend
-        from matplotlib.lines import Line2D
-
-        mode_handles = [
-            Line2D(
-                [0],
-                [0],
-                marker=mode_to_marker[mode],
-                color="w",
-                markerfacecolor="#555555",
-                markeredgecolor="k",
-                markeredgewidth=0.3,
-                markersize=5,
-                label=mode.replace(" ", "×"),
-            )
-            for mode in unique_modes
-        ]
-        self.axe.legend(
-            handles=mode_handles,
-            title="Chromatographic mode",
-            title_fontsize=7,
-            loc="upper right",
-            bbox_to_anchor=(0.99, 0.99),
-            fontsize=6,
-            frameon=True,
-            framealpha=0.92,
-            edgecolor="#aaaaaa",
-        )
-
-        self.fig.subplots_adjust(left=0.12, right=0.97, top=0.88, bottom=0.12)
-        self.fig.canvas.draw()
-        self.fig.canvas.flush_events()
-
-    def plot_feasibility_decision_map_by_mode(self):
+    def plot_feasibility_profile(self, grouping: str = "Global", axis_scale: str = "Auto"):
         self.fig.clear()
 
-        grouped_df = list(self.model.get_rank_score_grouped_by_chrom_mode_table())
-
-        if not grouped_df:
-            self.fig.canvas.draw()
-            self.fig.canvas.flush_events()
-            return
-
-        n_modes = len(grouped_df)
-        ncols = min(3, n_modes)
-        nrows = int(np.ceil(n_modes / ncols))
-
-        gs = GridSpec(
-            nrows,
-            ncols,
-            figure=self.fig,
-            hspace=0.40,
-            wspace=0.28,
-            left=0.08,
-            right=0.98,
-            top=0.88,
-            bottom=0.20
-        )
-
-        recommendation_colors = {
-            "Highly recommended": "#1a7a4a",
-            "Recommended": "#6abf4b",
-            "Use with caution": "#f0a11a",
-            "Not recommended": "#d9534f",
-        }
-
-        mode_markers = ["o", "s", "^", "D", "v", "p", "X", "<", ">"]
-
-        for i, (mode, group) in enumerate(grouped_df):
-            row = i // ncols
-            col = i % ncols
-            ax = self.fig.add_subplot(gs[row, col])
-
-            marker = mode_markers[i % len(mode_markers)]
-
-            for recommendation, color in recommendation_colors.items():
-                subset = group[group["Final Recommendation"] == recommendation]
-                if subset.empty:
-                    continue
-
-                ax.scatter(
-                    subset["Final Rank"].astype(float),
-                    subset["Peak Detection Rate (%)"].astype(float),
-                    s=28,
-                    c=color,
-                    marker=marker,
-                    edgecolors="black",
-                    linewidths=0.3,
-                    alpha=0.85
+        def apply_scale(ax, scale: str):
+            if scale == "Auto":
+                return
+            s = scale.lower()
+            ax.set_xscale(s)
+            ax.set_yscale(s)
+            if s == 'log':
+                ax.xaxis.set_major_locator(ticker.LogLocator(base=10, numticks=4))
+                ax.xaxis.set_minor_locator(ticker.NullLocator())  # ← remove minor ticks entirely
+                ax.xaxis.set_major_formatter(
+                    ticker.FuncFormatter(lambda val, _: f"{int(val):,}")
                 )
+                ax.tick_params(axis="x", labelsize=6, labelrotation=30)  # ← rotate to avoid overlap
 
-            ax.set_title(mode, fontsize=10, fontweight="bold")
+        # ------------------------------------------------------------------
+        # GLOBAL — single plot
+        # ------------------------------------------------------------------
+        if grouping == "Global":
+            self.axe = self.fig.add_subplot(111)
 
-            ax.grid(True, linestyle="--", linewidth=0.4, alpha=0.4)
-            ax.tick_params(axis="both", labelsize=8)
-            ax.set_xlabel("Final consensus rank\n(lower = better)", fontsize=8)
+            df = self.orthogonality_result_data.copy()
 
-            if col == 0:
-                ax.set_ylabel("Peak rate (%)", fontsize=8)
-            else:
-                ax.set_ylabel("")
+            if df is None or df.empty:
+                self._show_missing_data()
+                return
 
-        total_axes = nrows * ncols
-        for j in range(n_modes, total_axes):
-            ax = self.fig.add_subplot(gs[j // ncols, j % ncols])
-            ax.axis("off")
+            rank_col = (
+                "Final Rank"
+                if "Final Rank" in df.columns
+                   and pd.to_numeric(df["Final Rank"], errors="coerce").notna().any()
+                else "Orthogonality Rank"
+            )
 
-        legend_handles = [
-            patches.Patch(facecolor="#1a7a4a", edgecolor="none", label="Highly recommended"),
-            patches.Patch(facecolor="#6abf4b", edgecolor="none", label="Recommended"),
-            patches.Patch(facecolor="#f0a11a", edgecolor="none", label="Use with caution"),
-            patches.Patch(facecolor="#d9534f", edgecolor="none", label="Not recommended"),
-        ]
+            rank_numeric = pd.to_numeric(df[rank_col], errors="coerce")
+            peak_rate = pd.to_numeric(df["Peak Detection Rate (%)"], errors="coerce")
 
-        self.fig.legend(
-            handles=legend_handles,
-            loc="lower center",
-            ncol=2,
-            frameon=True,
-            fancybox=True,
-            framealpha=0.95,
-            bbox_to_anchor=(0.5, 0.03),
-            fontsize=9,
-            columnspacing=1.8,
-            handlelength=1.8
-        )
+            valid_mask = rank_numeric.notna() & peak_rate.notna()
+            df = df.loc[valid_mask].copy()
+            rank_numeric = rank_numeric.loc[valid_mask]
+            peak_rate = peak_rate.loc[valid_mask]
 
-        self.fig.suptitle(
-            "Faceted feasibility maps by mode",
-            fontsize=13,
-            fontweight="bold",
-            y=0.96
-        )
+            if df.empty:
+                self._show_missing_data()
+                return
+
+            rank_max = rank_numeric.max()
+            x_pct = (rank_numeric / rank_max) * 100 if rank_max else rank_numeric
+
+            recommendation_colors = {
+                "Highly recommended": "#1a7a2e",
+                "Recommended": "#6abf4b",
+                "Use with caution": "#f5a623",
+                "Not recommended": "#d94f3d",
+            }
+            recommendation_order = list(recommendation_colors.keys())
+
+            _marker_pool = ["o", "s", "^", "D", "v", "h", "p", "*", "<", ">", "X"]
+            unique_modes = self.model.get_chromatographic_mode_list()
+            mode_to_marker = {
+                mode: _marker_pool[i % len(_marker_pool)]
+                for i, mode in enumerate(unique_modes)
+            }
+
+
+            for rec_label in recommendation_order:
+                rec_mask = df["Final Recommendation"] == rec_label
+                if not rec_mask.any():
+                    continue
+                for mode in unique_modes:
+                    mask = rec_mask & (df["Chromatographic Mode"] == mode)
+                    if not mask.any():
+                        continue
+                    self.axe.scatter(
+                        x_pct[mask], peak_rate[mask],
+                        s=22,
+                        marker=mode_to_marker[mode],
+                        color=recommendation_colors.get(rec_label, "#aaaaaa"),
+                        edgecolors="k", linewidths=0.3,
+                        alpha=0.88, zorder=5
+                    )
+
+            apply_scale(self.axe, axis_scale)
+
+            self.axe.set_xlim(1, 100)
+            self.axe.set_ylim(0, 100)
+            self.axe.set_xticks([1, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100])
+            self.axe.set_xlabel("Final consensus rank (lower = better)", fontsize=8)
+            self.axe.set_ylabel("Peak rate (%)", fontsize=8)
+            self.axe.tick_params(axis="both", labelsize=7)
+            self.axe.grid(True, linestyle="--", linewidth=0.4, alpha=0.4)
+            self.axe.spines[["top", "right"]].set_visible(False)
+
+            self.axe.text(0.5, 1.08, "Feasibility Profile",
+                          transform=self.axe.transAxes, ha="center", va="bottom",
+                          fontsize=16, fontweight="bold")
+            self.axe.text(0.5, 1.02, "Overall feasibility decision map · Global",
+                          transform=self.axe.transAxes, ha="center", va="bottom",
+                          fontsize=9, style="italic", color="dimgray")
+
+            # ------------------------------------------------------------------
+            # Legends — side by side at the bottom (same pattern as by mode)
+            # ------------------------------------------------------------------
+            rec_handles = [
+                patches.Patch(facecolor=recommendation_colors[label],
+                              edgecolor="k", linewidth=0.4, label=label)
+                for label in recommendation_order
+                if label in df["Final Recommendation"].values
+            ]
+            mode_handles = [
+                Line2D([0], [0], marker=mode_to_marker[mode], color="w",
+                       markerfacecolor="#555555", markeredgecolor="k",
+                       markeredgewidth=0.3, markersize=5,
+                       label=mode.replace(" ", "×"))
+                for mode in unique_modes
+            ]
+
+            rec_legend = self.fig.legend(
+                handles=rec_handles,
+                title="Final recommendation", title_fontsize=7,
+                loc="lower center", bbox_to_anchor=(0.30, 0.01),
+                ncol=1, fontsize=7,
+                frameon=True, framealpha=0.92, edgecolor="#aaaaaa"
+            )
+            self.fig.add_artist(rec_legend)
+
+            self.fig.legend(
+                handles=mode_handles,
+                title="Chromatographic mode", title_fontsize=7,
+                loc="lower center", bbox_to_anchor=(0.72, 0.01),
+                ncol=1, fontsize=7,
+                frameon=True, framealpha=0.92, edgecolor="#aaaaaa"
+            )
+
+            self.fig.subplots_adjust(left=0.10, right=0.97, top=0.88, bottom=0.28)
+
+        # ------------------------------------------------------------------
+        # BY MODE — faceted
+        # ------------------------------------------------------------------
+        else:
+            grouped_df = list(self.model.get_rank_score_grouped_by_chrom_mode_table())
+
+            if not grouped_df:
+                self._show_missing_data()
+                return
+
+            n_modes = len(grouped_df)
+            ncols = min(3, n_modes)
+            nrows = int(np.ceil(n_modes / ncols))
+
+            gs = GridSpec(nrows, ncols, figure=self.fig,
+                          hspace=0.55, wspace=0.28,
+                          left=0.08, right=0.98, top=0.82, bottom=0.28)
+
+            recommendation_colors = {
+                "Highly recommended": "#1a7a4a",
+                "Recommended": "#6abf4b",
+                "Use with caution": "#f0a11a",
+                "Not recommended": "#d9534f",
+            }
+            mode_markers = ["o", "s", "^", "D", "v", "p", "X", "<", ">"]
+
+            for i, (mode, group) in enumerate(grouped_df):
+                ax = self.fig.add_subplot(gs[i // ncols, i % ncols])
+                marker = mode_markers[i % len(mode_markers)]
+
+                for recommendation, color in recommendation_colors.items():
+                    subset = group[group["Final Recommendation"] == recommendation]
+                    if subset.empty:
+                        continue
+                    ax.scatter(
+                        subset["Final Rank"].astype(float),
+                        subset["Peak Detection Rate (%)"].astype(float),
+                        s=28, c=color, marker=marker,
+                        edgecolors="black", linewidths=0.3, alpha=0.85
+                    )
+
+                apply_scale(ax, axis_scale)
+
+                ax.set_title(mode, fontsize=10, fontweight="bold")
+                ax.grid(True, linestyle="--", linewidth=0.4, alpha=0.4)
+                ax.tick_params(axis="both", labelsize=8)
+                ax.set_xlabel("Final consensus rank\n(lower = better)", fontsize=8)
+                ax.set_ylabel("Peak rate (%)" if i % ncols == 0 else "", fontsize=8)
+                ax.spines[["top", "right"]].set_visible(False)
+
+            # Hide unused grid cells
+            for j in range(n_modes, nrows * ncols):
+                self.fig.add_subplot(gs[j // ncols, j % ncols]).axis("off")
+
+            legend_handles = [
+                patches.Patch(facecolor="#1a7a4a", edgecolor="none", label="Highly recommended"),
+                patches.Patch(facecolor="#6abf4b", edgecolor="none", label="Recommended"),
+                patches.Patch(facecolor="#f0a11a", edgecolor="none", label="Use with caution"),
+                patches.Patch(facecolor="#d9534f", edgecolor="none", label="Not recommended"),
+            ]
+            self.fig.legend(
+                handles=legend_handles,
+                loc="lower center", ncol=2,
+                frameon=True, fancybox=True, framealpha=0.95,
+                bbox_to_anchor=(0.5, 0.01),
+                fontsize=9, columnspacing=1.8, handlelength=1.8
+            )
+
+            # Titles — suptitle high, subtitle clearly below it
+            self.fig.suptitle("Feasibility Profile",
+                              fontsize=16, fontweight="bold", y=0.97)
+            self.fig.text(0.5, 0.89,  # ← was 0.93, now lower
+                          "Faceted feasibility maps by chromatographic mode",
+                          ha="center", fontsize=9, style="italic", color="dimgray")
 
         self.fig.canvas.draw()
         self.fig.canvas.flush_events()
@@ -1930,13 +2095,11 @@ class PlotUtils:
     def plot_final_rank_by_recommendation_class(self):
         self.fig.clear()
         self.axe = self.fig.add_subplot(111)
-        self.axe.set_box_aspect(1)
 
         grouped_df = list(self.model.get_rank_score_grouped_by_recommendation_table())
 
         if not grouped_df:
-            self.fig.canvas.draw()
-            self.fig.canvas.flush_events()
+            self._show_missing_data()
             return
 
         recommendation_order = [
@@ -1945,7 +2108,6 @@ class PlotUtils:
             "Use with caution",
             "Not recommended",
         ]
-
         recommendation_colors = {
             "Highly recommended": "#1a7a2e",
             "Recommended": "#6abf4b",
@@ -1953,9 +2115,7 @@ class PlotUtils:
             "Not recommended": "#d94f3d",
         }
 
-
         mode_order = self.model.get_chromatographic_mode_list()
-
         mode_markers = ["o", "s", "^", "D", "v", "p", "X", "<", ">"]
         mode_to_marker = {
             mode: mode_markers[i % len(mode_markers)]
@@ -1966,17 +2126,18 @@ class PlotUtils:
         plot_labels = [label for label in recommendation_order if label in available_groups]
 
         if not plot_labels:
-            self.fig.canvas.draw()
-            self.fig.canvas.flush_events()
+            self._show_missing_data()
             return
 
         values = [
             available_groups[label]["Final Rank"].dropna().astype(float).to_numpy()
             for label in plot_labels
         ]
-
         positions = np.arange(1, len(plot_labels) + 1)
 
+        # ------------------------------------------------------------------
+        # Boxplot
+        # ------------------------------------------------------------------
         box = self.axe.boxplot(
             values,
             positions=positions,
@@ -1993,7 +2154,7 @@ class PlotUtils:
             patch.set_linewidth(1.2)
 
         for median, label in zip(box["medians"], plot_labels):
-            median.set_color(color=recommendation_colors[label])
+            median.set_color(recommendation_colors[label])
             median.set_linewidth(2.0)
 
         for whisker in box["whiskers"]:
@@ -2004,110 +2165,101 @@ class PlotUtils:
             cap.set_color("#666666")
             cap.set_linewidth(1.0)
 
+        # ------------------------------------------------------------------
+        # Jittered scatter points per mode
+        # ------------------------------------------------------------------
+        seen_modes = []
+
         for xpos, label in zip(positions, plot_labels):
             group = available_groups[label]
             point_color = recommendation_colors[label]
 
             if "Chromatographic Mode" in group.columns:
                 for mode, mode_group in group.groupby("Chromatographic Mode"):
+                    if mode not in seen_modes:
+                        seen_modes.append(mode)
+
                     marker = mode_to_marker.get(mode, "o")
                     y = mode_group["Final Rank"].dropna().astype(float).to_numpy()
-
                     if len(y) == 0:
                         continue
 
-                    x = np.random.normal(loc=xpos, scale=0.06, size=len(y))
-
                     self.axe.scatter(
-                        x,
-                        y,
-                        s=24,
-                        color=point_color,
-                        marker=marker,
-                        edgecolors="white",
-                        linewidths=0.35,
-                        alpha=0.95,
-                        zorder=3
+                        np.random.normal(loc=xpos, scale=0.06, size=len(y)), y,
+                        s=24, color=point_color, marker=marker,
+                        edgecolors="white", linewidths=0.35,
+                        alpha=0.95, zorder=3
                     )
             else:
                 y = group["Final Rank"].dropna().astype(float).to_numpy()
-
                 if len(y) > 0:
-                    x = np.random.normal(loc=xpos, scale=0.06, size=len(y))
                     self.axe.scatter(
-                        x,
-                        y,
-                        s=24,
-                        color=point_color,
-                        marker="o",
-                        edgecolors="white",
-                        linewidths=0.35,
-                        alpha=0.95,
-                        zorder=3
+                        np.random.normal(loc=xpos, scale=0.06, size=len(y)), y,
+                        s=24, color=point_color, marker="o",
+                        edgecolors="white", linewidths=0.35,
+                        alpha=0.95, zorder=3
                     )
 
+        # ------------------------------------------------------------------
+        # Axes formatting
+        # ------------------------------------------------------------------
         self.axe.set_xticks(positions)
         self.axe.set_xticklabels(plot_labels, fontsize=9)
-        self.axe.set_xlabel("Recommendation class", fontsize=12, fontweight="bold")
-        self.axe.set_ylabel("Final consensus rank", fontsize=12, fontweight="bold")
-
-        # self.axe.set_ylim(100.5, 0.5)
-        # self.axe.set_yticks([1, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100])
-
-        self.axe.grid(True, axis="both", linestyle="--", linewidth=0.5, alpha=0.35)
+        self.axe.set_xlabel("Recommendation class", fontsize=10)
+        self.axe.set_ylabel("Final consensus rank", fontsize=10)
+        self.axe.tick_params(axis="both", labelsize=8)
+        self.axe.grid(True, axis="y", linestyle="--", linewidth=0.4, alpha=0.35)
         self.axe.set_axisbelow(True)
+        self.axe.spines[["top", "right"]].set_visible(False)
+        self.axe.spines[["left", "bottom"]].set_linewidth(1.0)
 
-        self.axe.spines["top"].set_visible(False)
-        self.axe.spines["right"].set_visible(False)
-        self.axe.spines["left"].set_linewidth(1.0)
-        self.axe.spines["bottom"].set_linewidth(1.0)
-
-        seen_modes = []
-        for label in plot_labels:
-            group = available_groups[label]
-            if "Chromatographic Mode" not in group.columns:
-                continue
-            for mode in group["Chromatographic Mode"].dropna().unique():
-                if mode not in seen_modes:
-                    seen_modes.append(mode)
-
+        # ------------------------------------------------------------------
+        # Mode legend
+        # ------------------------------------------------------------------
         legend_handles = [
-            Line2D(
-                [0],
-                [0],
-                marker=mode_to_marker.get(mode, "o"),
-                color="w",
-                label=mode,
-                markerfacecolor="#666666",
-                markeredgecolor="#666666",
-                markersize=6,
-                linewidth=0
-            )
+            Line2D([0], [0], marker=mode_to_marker.get(mode, "o"), color="w",
+                   label=mode, markerfacecolor="#666666", markeredgecolor="#666666",
+                   markersize=6, linewidth=0)
             for mode in seen_modes
         ]
-
         if legend_handles:
             self.axe.legend(
                 handles=legend_handles,
                 title="Chromatographic mode",
-                loc="upper left",
-                bbox_to_anchor=(1.01, 1.0),
-                frameon=False,
-                fontsize=9,
-                title_fontsize=10,
-                handletextpad=0.6,
-                labelspacing=0.8
+                loc="lower center", bbox_to_anchor=(0.5, -0.22),
+                ncol=min(3, len(legend_handles)),  # up to 3 per row
+                frameon=True, framealpha=0.92,
+                edgecolor="#aaaaaa",
+                fontsize=8, title_fontsize=9,
+                handletextpad=0.6, columnspacing=1.2
             )
 
-        self.fig.suptitle(
-            "Final rank by recommendation class",
-            fontsize=16,
-            fontweight="bold",
-            y=0.97
+        # ------------------------------------------------------------------
+        # Titles
+        # ------------------------------------------------------------------
+        self.axe.text(0.5, 1.08, "Final Rank vs Recommendation",
+                      transform=self.axe.transAxes, ha="center", va="bottom",
+                      fontsize=16, fontweight="bold")
+        self.axe.text(0.5, 1.02, "Final consensus rank distribution by recommendation class",
+                      transform=self.axe.transAxes, ha="center", va="bottom",
+                      fontsize=9, style="italic", color="dimgray")
+
+        self.fig.subplots_adjust(left=0.10, right=0.97, top=0.88, bottom=0.25)
+        self.fig.canvas.draw()
+        self.fig.canvas.flush_events()
+
+    def _show_missing_data(self):
+        self.fig.clear()
+        ax = self.fig.add_subplot(111)
+        ax.axis('off')
+        ax.text(
+            0.5, 0.5,
+            'Missing data',
+            transform=ax.transAxes,
+            ha='center', va='center',
+            fontsize=18, color='#c0c0c0',
+            fontweight='bold'
         )
-
-        self.fig.subplots_adjust(left=0.10, right=0.80, top=0.88, bottom=0.15)
-
         self.fig.canvas.draw()
         self.fig.canvas.flush_events()
 

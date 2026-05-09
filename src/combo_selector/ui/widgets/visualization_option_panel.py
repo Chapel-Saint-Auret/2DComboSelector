@@ -10,10 +10,14 @@ from PySide6.QtWidgets import (
     QLabel, QComboBox, QWidget, QButtonGroup, QRadioButton,
     QFrame, QSizePolicy,
 )
-
-from combo_selector.ui.widgets.flat_radio_grouped_button import FlatRadioGroupedButton
 from PySide6.QtCore import Qt,Signal
 from PySide6.QtGui import QFont
+
+
+from dataclasses import dataclass
+
+from combo_selector.ui.widgets.flat_radio_grouped_button import FlatRadioGroupedButton
+
 import sys
 
 
@@ -162,6 +166,15 @@ class LabelledCombo(QWidget):
 # ---------------------------------------------------------------------------
 # Main widget
 # ---------------------------------------------------------------------------
+@dataclass
+class PlotState:
+    plot_type: str  = 'Orthogonality Space'        # always set
+    subset:     str = 'All'   # "All" | "Top 50%" | "Top 20%" | "Top 10%"
+    axis_scale: str = 'Auto'  # "Auto" | "Linear" | "Log"
+    view:       str = 'Heatmap'  # "Heatmap" | "Boxplot"
+    criteria:   str = 'All criteria'  # only when view == "Boxplot"
+    grouping:   str = 'Global' # "Global" | "By mode"
+
 
 class VisualizationOptionsPanel(QGroupBox):
     """
@@ -177,6 +190,7 @@ class VisualizationOptionsPanel(QGroupBox):
       - Final Rank vs Recommendation → (no extra options)
     """
     plotTypeChanged = Signal(str)
+    stateChanged = Signal(object)  # emits a PlotState
 
     def __init__(self, parent=None):
         super().__init__("Visualization Options", parent)
@@ -207,30 +221,6 @@ class VisualizationOptionsPanel(QGroupBox):
 
         self._plot_combo = QComboBox()
         self._plot_combo.addItems(PLOT_TYPES)
-        # self._plot_combo.setStyleSheet("""
-        #     QComboBox {
-        #         border: 1px solid #d0d5dd;
-        #         border-radius: 6px;
-        #         padding: 6px 10px;
-        #         font-size: 13px;
-        #         color: #1d2939;
-        #         background: white;
-        #     }
-        #     QComboBox::drop-down { border: none; width: 24px; }
-        #     QComboBox::down-arrow {
-        #         image: none;
-        #         border-left: 5px solid transparent;
-        #         border-right: 5px solid transparent;
-        #         border-top: 6px solid #667085;
-        #         margin-right: 8px;
-        #     }
-        #     QComboBox QAbstractItemView {
-        #         border: 1px solid #d0d5dd;
-        #         border-radius: 4px;
-        #         selection-background-color: #eff4ff;
-        #         selection-color: #1d2939;
-        #     }
-        # """)
         root.addWidget(self._plot_combo)
 
         # --- Description label ---
@@ -248,13 +238,9 @@ class VisualizationOptionsPanel(QGroupBox):
         # ------------------------------------------------------------------
 
         # Subset panel (Orthogonality + Multi-Criteria)
-        # self._percentile_panel = RadioPanel(
-        #     "Subset", ["All", "Top 50%", "Top 20%", "Top 10%"]
-        # )
         self._percentile_panel = FlatRadioGroupedButton(title='Subset',
             items=["All", "Top 50%", "Top 20%", "Top 10%"]
         )
-        # self._percentile_panel.connect_toggled(self._percentile_toggled)
 
         root.addWidget(self._percentile_panel)
 
@@ -288,9 +274,35 @@ class VisualizationOptionsPanel(QGroupBox):
         # Wire plot combo
         self._plot_combo.currentIndexChanged.connect(self._on_plot_changed)
 
+        self._plot_combo.currentIndexChanged.connect(lambda _: self._emit_state())
+        self._percentile_panel.buttonClicked.connect(lambda _: self._emit_state())
+        self._axis_panel.buttonClicked.connect(lambda _: self._emit_state())
+        self._view_panel.buttonClicked.connect(lambda _: self._emit_state())
+        self._grouping_panel.buttonClicked.connect(lambda _: self._emit_state())
+        self._criteria_combo_widget.combo.currentTextChanged.connect(lambda _: self._emit_state())
+
     # ------------------------------------------------------------------
     # Slots
     # ------------------------------------------------------------------
+
+    def _emit_state(self):
+        plot = self._plot_combo.currentText()
+
+        show_subset = plot in ("Orthogonality Space", "Multi-Criteria Space")
+        show_axis = plot in ("Multi-Criteria Space", "Feasibility Profile")
+        show_view = plot == "Chromatographic Mode Performance"
+        show_grouping = plot in ("Recommendation Distribution", "Feasibility Profile")
+        is_boxplot = show_view and self._view_panel.currentText() == "Boxplot"
+
+        state = PlotState(
+            plot_type=plot,
+            subset=self._percentile_panel.currentText() if show_subset else None,
+            axis_scale=self._axis_panel.currentText() if show_axis else None,
+            view=self._view_panel.currentText() if show_view else None,
+            criteria=self._criteria_combo_widget.combo.currentText() if is_boxplot else None,
+            grouping=self._grouping_panel.currentText() if show_grouping else None,
+        )
+        self.stateChanged.emit(state)
 
     def _on_plot_changed(self, index: int):
         plot = PLOT_TYPES[index]

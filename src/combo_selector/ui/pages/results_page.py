@@ -37,7 +37,7 @@ from PySide6.QtWidgets import (
 
 from combo_selector.ui.config.table_color_config import COLOR_CONFIG_TABLE_FEASIBILITY, COLOR_CONFIG_TABLE_RECOMMENDATION
 from combo_selector.core.workers import ResultsWorkerComputeCustomOMScore
-from combo_selector.ui.widgets.visualization_option_panel import VisualizationOptionsPanel
+from combo_selector.ui.widgets.visualization_option_panel import VisualizationOptionsPanel,PlotState
 from combo_selector.ui.widgets.checkable_tree_list import CheckableTreeList
 from combo_selector.ui.widgets.section_help_button import SectionHelpButton
 from combo_selector.ui.widgets.circle_progress_bar import RoundProgressBar
@@ -73,6 +73,7 @@ UI_TO_MODEL_MAPPING = {
     "Modeling approach": "modeling_approach",
     "Conditional entropy": "conditional_entropy",
 }
+
 
 
 class ResultsPage(QFrame):
@@ -165,7 +166,8 @@ class ResultsPage(QFrame):
             self.set_use_suggested_om_score_flag
         )
         self.compute_score_btn.clicked.connect(self.start_om_computation)
-        self.vizualation_settings_group.plotTypeChanged.connect(self.update_figure)
+        self.vizualation_settings_group.stateChanged.connect(self.plot_visualization_state_changed)
+
 
         # self.plot_tile_selector.plot_selected.connect(self.update_figure)
         # self.compare_number.currentTextChanged.connect(self.update_om_selector_state)
@@ -430,16 +432,32 @@ class ResultsPage(QFrame):
         self.canvas = FigureCanvas(self.fig)
         self.toolbar = CustomToolbar(self.canvas)
         self.plot_utils = PlotUtils(fig=self.fig,model=self.model)
-        self.plot_functions_map = {
-            "Orthogonality Space": self.plot_utils.plot_orthogonality_space,
-            "Multi Criteria Space": self.plot_utils.plot_peak_capacity_vs_elution,
-            "Reduced Criteria Space": self.plot_utils.plot_elution_area_vs_peak_rate,
-            "Chromatographic Mode Performance HM": self.plot_utils.plot_median_rank_score_heatmap,
-            "Chromatographic Mode Performance BP": self.plot_utils.plot_rank_score_distribution_by_mode,
-            "Recommendation Distribution": self.plot_utils.plot_recommendation_distribution,
-            "Feasibility Profile": self.plot_utils.plot_feasibility_decision_map,
-            "Feasibility Profile By Mode": self.plot_utils.plot_feasibility_decision_map_by_mode,
-            "Final Rank by Recommendation Class": self.plot_utils.plot_final_rank_by_recommendation_class,
+
+        self.plot_dispatch = {
+            "Orthogonality Space": (
+                self.plot_utils.plot_orthogonality_space,
+                lambda s: {"subset": s.subset}
+            ),
+            "Multi-Criteria Space": (
+                self.plot_utils.plot_multi_criteria_space,   # adapt to actual method name
+                lambda s: {"subset": s.subset, "axis_scale": s.axis_scale}
+            ),
+            "Chromatographic Mode Performance": (
+                self.plot_utils.plot_chroma_mode_performance,
+                lambda s: {"view": s.view, "criteria": s.criteria}
+            ),
+            "Recommendation Distribution": (
+                self.plot_utils.plot_recommendation_distribution,
+                lambda s: {"grouping": s.grouping}
+            ),
+            "Feasibility Profile": (
+                self.plot_utils.plot_feasibility_profile,
+                lambda s: {"axis_scale": s.axis_scale, "grouping": s.grouping}
+            ),
+            "Final Rank vs Recommendation": (
+                self.plot_utils.plot_final_rank_by_recommendation_class,
+                lambda s: {}
+            ),
         }
 
         plot_frame_layout.addWidget(plot_title)
@@ -688,7 +706,7 @@ class ResultsPage(QFrame):
         if not data.empty:
             self.plot_utils.set_orthogonality_result_data(data)
 
-        self.update_figure()
+        self.plot_visualization_state_changed()
 
     def update_orthogonality_metric_list(self, om_list: list) -> None:
         """Update the metric checklist with available metrics.
@@ -890,6 +908,12 @@ class ResultsPage(QFrame):
         """Redraw the matplotlib figure canvas."""
         self.fig.canvas.draw()
         self.fig.canvas.flush_events()
+
+    def plot_visualization_state_changed(self, state = PlotState()):
+        print(state)
+        fn, get_kwargs = self.plot_dispatch[state.plot_type]
+        fn(**get_kwargs(state))
+
 
     def update_figure(self, plot_key: str = 'Multi Criteria Space') -> None:
         """Dispatch to the plotting function for *plot_key*.
