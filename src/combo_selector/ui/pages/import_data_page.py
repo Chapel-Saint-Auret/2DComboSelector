@@ -621,19 +621,16 @@ class ImportDataPage(QFrame):
             self.model.normalize_retention_time(method)
             self.normalization_status.set_valid()
 
+            data = self.model.get_normalized_retention_time_df()
+            self.normalized_data_table.async_set_table_data(data)
+
+            self.retention_time_normalized.emit()
 
         except Exception as e:
             self.normalization_status.set_error()
             QMessageBox.critical(
                 self, "Error", f"Cannot normalize data:\n{str(e)}"
             )
-
-
-
-        data = self.model.get_normalized_retention_time_df()
-        self.normalized_data_table.async_set_table_data(data)
-
-        self.retention_time_normalized.emit()
 
     def show_nan_policy_dialog(self) -> None:
         """Open the NaN policy dialog for cleaning missing values.
