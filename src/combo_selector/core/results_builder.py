@@ -324,17 +324,6 @@ class ResultsBuilder:
 
         self.median_rank_score_df = (self.orthogonality_result_df.groupby("Chromatographic Mode")[column_name].median())
 
-        # # Invert all ranks (lower rank → higher score) then normalize to 0–100
-        # for col in column_name[0:-1]:
-        #     inverted = self.median_rank_score_df[col].max() - self.median_rank_score_df[col]
-        #     col_min, col_max = inverted.min(), inverted.max()
-        #     if col_max > col_min:
-        #         self.median_rank_score_df[col] = (inverted - col_min) / (col_max - col_min) * 100
-        #     else:
-        #         self.median_rank_score_df[col] = 50.0
-
-        print('Median Rank Score Based on Chromatographic Mode')
-
     def create_rank_score_based_on_chromatographic_group(self):
 
         column_name = [
