@@ -1,7 +1,9 @@
 ## Hypothetical 2D Peak Capacity
 
-Estimated peak capacity of the theoretical 2D combination based on the two selected 1D conditions.
+Estimated 2D peak capacity calculated from the imported experimental 1D peak capacities of the two dimensions forming the combination. 
 
-Calculated by multiplying the experimental 1D peak capacities of the two conditions included in the selected 2D combination.
+It is calculated as the product of the two corresponding 1D peak capacities:
+ 
+ - **nc,2D = nc,1 × nc,2**
 
-These values must be provided in the import section.
+Higher values indicate greater theoretical separation potential.

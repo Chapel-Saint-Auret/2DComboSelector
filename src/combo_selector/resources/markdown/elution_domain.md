@@ -1,11 +1,15 @@
 ## Elution Domain
 
-Size of the 2D separation domain in elution-composition coordinates.
+Represents the percentage of the theoretical maximum 2D elution-composition space covered by a combination.
 
-Calculated as:
+It is calculated as:
 
-Elution Domain = **ΔΦe,1 × ΔΦe,2**
+Elution Domain (%) = **(ΔΦe,1 × ΔΦe,2) / 100**
 
-Where **ΔΦe** is the elution-composition range in each dimension.
+Where **ΔΦe,1 and ΔΦe,2** are the elution-composition ranges in the first and second dimensions.
 
-These values must be provided in the import section.
+A value of 100% corresponds to the theoretical maximum space of 100 × 100, therefore, higher values indicate a larger covered domain. 
+
+
+
+
