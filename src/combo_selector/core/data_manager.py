@@ -810,6 +810,7 @@ class DataManager:
                 = combination_table
             self.peak_capacity_status = "peak_capacity_loaded"
             self.orthogonality_result_df['Peak Capacity Rank'] = self.combination_df["Hypothetical 2D Peak Capacity"].rank(ascending=False, method='average').astype(int)
+            self.status = "loaded"
         except Exception as e:
             print(f"Error loading 2D peaks: {str(e)}")
             self.status = "error"
@@ -851,10 +852,10 @@ class DataManager:
                 set_key = f"Set {set_number}"
                 expected_title = f"{columns[col1_idx]} vs {columns[col2_idx]}"
 
-                # Calculate 2D peak capacity
-                x_peak = self.load_elution_composition_df.iloc[0, col1_idx]
-                y_peak = self.load_elution_composition_df.iloc[0, col2_idx]
-                elution_composition_space = x_peak * y_peak
+                # Calculate Elution domain
+                e1 = self.load_elution_composition_df.iloc[0, col1_idx]
+                e2 = self.load_elution_composition_df.iloc[0, col2_idx]
+                elution_composition_space = (e1 * e2) / 100
 
                 # Use helper function for updates
                 self.update_metrics(set_key,"elution_composition_space",elution_composition_space,table_row_index=set_number - 1)
