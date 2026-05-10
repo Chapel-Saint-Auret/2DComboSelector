@@ -168,6 +168,8 @@ class ResultsPage(QFrame):
         self.compute_score_btn.clicked.connect(self.start_om_computation)
         self.vizualation_settings_group.stateChanged.connect(self.plot_visualization_state_changed)
 
+        self.cid = self.fig.canvas.mpl_connect('pick_event', self.plot_utils.on_pick)
+
 
         # self.plot_tile_selector.plot_selected.connect(self.update_figure)
         # self.compare_number.currentTextChanged.connect(self.update_om_selector_state)
@@ -477,7 +479,7 @@ class ResultsPage(QFrame):
         table_frame_layout.setContentsMargins(20, 20, 20, 20)
 
         self.styled_table = StyledTable(title="Evaluation Results",has_tab=True,enable_decoration=True)
-        self.styled_table.add_title_bar_info_button(markdown_path="markdown/group_metric_table.md")
+        self.styled_table.add_title_bar_info_button(markdown_path="markdown/evaluation_results_table.md")
         self.styled_table.add_sheet(sheet_name='Orthogonality',value_format=".2f")
         self.styled_table.add_sheet(value_format=".2f",
                                     color_config=COLOR_CONFIG_TABLE_FEASIBILITY,
@@ -488,7 +490,7 @@ class ResultsPage(QFrame):
         self.styled_table.add_sheet(value_format=".1f",
                                     color_config=COLOR_CONFIG_TABLE_RECOMMENDATION,
                                     bold_columns=[6, 7, 8],
-                                    sheet_name='Final Recommendation',
+                                    sheet_name='Final Evaluation',
                                     enable_decoration = True)
 
         self.orthogonality_table = self.styled_table.get_table_from_sheet(sheet_name='Orthogonality')
@@ -537,26 +539,29 @@ class ResultsPage(QFrame):
                 "Elution Domain",
             ])
 
-        self.final_recommendation_table = self.styled_table.get_table_from_sheet(sheet_name='Final Recommendation')
-        self.final_recommendation_table.add_help_button(column=3, title="Peak Capacity Rank",
+        self.final_recommendation_table = self.styled_table.get_table_from_sheet(sheet_name='Final Evaluation')
+        self.final_recommendation_table.add_help_button(column=3, title="Orthogonality Rank",
+                                                          markdown_path="markdown/orthogonality_rank.md")
+        self.final_recommendation_table.add_help_button(column=4, title="Peak Capacity Rank",
                                                           markdown_path="markdown/peak_capacity_rank.md")
-        self.final_recommendation_table.add_help_button(column=4, title="Elution Domain Rank",
+        self.final_recommendation_table.add_help_button(column=5, title="Elution Domain Rank",
                                                           markdown_path="markdown/elution_domain_rank.md")
-        self.final_recommendation_table.add_help_button(column=5, title="Final Recommendation",
+        self.final_recommendation_table.add_help_button(column=6, title="Final Consensus Rank",
+                                                          markdown_path="markdown/final_consensus_rank.md")
+        self.final_recommendation_table.add_help_button(column=7, title="Final Recommendation",
                                                           markdown_path="markdown/final_recommendation.md")
-        self.final_recommendation_table.add_help_button(column=6, title="Final Rank",
-                                                          markdown_path="markdown/final_rank.md")
-        self.final_recommendation_table.add_help_button(column=7, title="Criterion Higlight",
-                                                          markdown_path="markdown/criterion_higlight.md")
+        self.final_recommendation_table.add_help_button(column=8, title="Criterion Higlight",
+                                                          markdown_path="markdown/criterion_highlight.md")
+
         self.final_recommendation_table.set_header_label(
             [
                 "Combination #",
                 "2D Combination",
                 "Chromatographic Mode",
-                "Orthogonality Rank"
+                "Orthogonality Rank",
                 "Peak Capacity Rank",
                 "Elution Domain Rank",
-                "Final Rank",
+                "Final Consensus Rank",
                 "Final Recommendation",
                 "Criterion Higlight",
             ])

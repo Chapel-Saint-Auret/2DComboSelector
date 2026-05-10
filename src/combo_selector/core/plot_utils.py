@@ -126,13 +126,6 @@ class PlotUtils:
         """
         self.scatter_collection = scatter_collection
 
-    def set_annotation(self, annotation) -> None:
-        """Set the matplotlib Annotation for plotting.
-        Args:
-        """
-
-        self.annotation = annotation
-
     def __draw_figure(self) -> None:
         """Redraw the figure canvas and flush events.
 
@@ -1018,50 +1011,84 @@ class PlotUtils:
         self.fig.clear()
         self.axe = self.fig.add_subplot(111)
         self.axe.set_box_aspect(1)
+        self.set_annotation()
 
         df = self.orthogonality_result_data.copy()
         n = len(df)
-        final_rank = df['Final Rank']
-        final_rank_pct = (final_rank / n) * 100
 
-        # --- subset filter ---
+        final_rank = pd.to_numeric(df['Final Rank'], errors='coerce')
+        orthogonality_rank = pd.to_numeric(df['Orthogonality Rank'], errors='coerce')
+
+        final_rank_pct = (final_rank / n) * 100          # controls which points are shown
+        orthogonality_rank_pct = (orthogonality_rank / n) * 100  # controls point color
+
+        # ------------------------------------------------------------------
+        # Subset filter — same logic as plot_multi_criteria_space
+        # ------------------------------------------------------------------
         threshold = SUBSET_THRESHOLDS.get(subset, 0)
         mask = final_rank_pct >= threshold
+
         df_filtered = df[mask]
-        rank_pct_filtered = final_rank_pct[mask]
+        orthogonality_rank_pct_filtered = orthogonality_rank_pct[mask]
 
-        x = df_filtered['Coverage Score']
-        y = df_filtered['Distribution Score']
+        if df_filtered.empty:
+            self._show_missing_data()
+            return
 
+        x = pd.to_numeric(df_filtered['Coverage Score'], errors='coerce')
+        y = pd.to_numeric(df_filtered['Distribution Score'], errors='coerce')
+
+        valid = x.notna() & y.notna()
+        x = x[valid]
+        y = y[valid]
+        orthogonality_rank_pct_filtered = orthogonality_rank_pct_filtered[valid]
+
+        # ------------------------------------------------------------------
+        # Color by Orthogonality rank percentile
+        # Same palette as plot_multi_criteria_space
+        # ------------------------------------------------------------------
         def get_color(pct):
-            if pct >= 90:
-                return '#d73027'  # Top 10%
-            elif pct >= 80:
-                return '#fc8d59'  # Top 20%
-            elif pct >= 50:
-                return '#fee08b'  # Top 50%
+            if pct >= 99:
+                return '#1A3A9E'   # Top 1%
+            elif pct >= 95:
+                return '#A0379A'   # Top 5%
+            elif pct >= 90:
+                return '#E64981'   # Top 10%
+            elif pct >= 75:
+                return '#FF7C64'   # Top 25%
             else:
-                return '#91cf60'  # All
+                return '#F9F871'   # > 25%
 
-        colors = np.array([get_color(p) for p in rank_pct_filtered])
-        self.axe.scatter(x, y, c=colors, s=34, alpha=0.9,
-                         edgecolors='white', linewidths=0.5)
+        colors = np.array([get_color(p) for p in orthogonality_rank_pct_filtered])
 
-        # --- adapted legend: only show relevant tiers ---
+        self.axe.scatter(x, y,
+                         c=colors, s=15,
+                         edgecolors='k', alpha=0.85,
+                         linewidths=0.3, picker=5)
+
+        # ------------------------------------------------------------------
+        # Legend — only show tiers present in the filtered data
+        # ------------------------------------------------------------------
         tier_defs = [
-            (90, '#d73027', 'Top 10%'),  # pct >= 90
-            (80, '#fc8d59', 'Top 20%'),  # pct >= 80
-            (50, '#fee08b', 'Top 50%'),  # pct >= 50
-            (0, '#91cf60', 'All'),  # pct >= 0
-        ]
-        legend_elements = [
-            Line2D([0], [0], marker='o', color='w', label=label,
-                   markerfacecolor=color, markeredgecolor=color, markersize=10)
-            for thresh, color, label in tier_defs
-            if rank_pct_filtered.max() >= thresh  # only tiers present in filtered data
+            (99, '#1A3A9E', 'Top 1%'),
+            (95, '#A0379A', 'Top 5%'),
+            (90, '#E64981', 'Top 10%'),
+            (75, '#FF7C64', 'Top 25%'),
+            (0,  '#F9F871', '> 25%'),
         ]
 
-        # --- subtitle reflects subset ---
+        max_pct = orthogonality_rank_pct_filtered.max() \
+            if len(orthogonality_rank_pct_filtered) > 0 else 0
+
+        legend_elements = [
+            patches.Patch(facecolor=color, edgecolor='gray', linewidth=0.5, label=label)
+            for thresh, color, label in tier_defs
+            if max_pct >= thresh
+        ]
+
+        # ------------------------------------------------------------------
+        # Axes formatting
+        # ------------------------------------------------------------------
         subtitle = f"Showing: {subset}" if subset != "All" else "All combinations"
 
         self.axe.set_xlim(0, 1)
@@ -1076,15 +1103,18 @@ class PlotUtils:
         self.axe.text(0.5, 1.13, 'Orthogonality Space',
                       transform=self.axe.transAxes, ha='center', va='bottom',
                       fontsize=22, fontweight='bold')
-        self.axe.text(0.5, 1.06, subtitle,  # ← dynamic
+        self.axe.text(0.5, 1.06, subtitle,
                       transform=self.axe.transAxes, ha='center', va='bottom',
                       fontsize=11, style='italic', color='0.45')
 
-        self.axe.legend(handles=legend_elements, title='Final consensus rank',
-                        loc='center left', bbox_to_anchor=(1.02, 0.5),
-                        fontsize=10, title_fontsize=11, frameon=False)
+        self.fig.legend(handles=legend_elements,
+                        title='Orthogonality rank\npercentile',
+                        loc='center right',
+                        bbox_to_anchor=(1.0, 0.5),
+                        fontsize=10, title_fontsize=10,
+                        frameon=True, edgecolor='gray')
 
-        self.fig.subplots_adjust(left=0.11, right=0.78, bottom=0.12, top=0.80)
+        self.fig.subplots_adjust(left=0.11, right=0.80, bottom=0.12, top=0.80)
         self.fig.canvas.draw()
         self.fig.canvas.flush_events()
 
@@ -1093,6 +1123,7 @@ class PlotUtils:
         self.fig.clear()
         self.axe = self.fig.add_subplot(111)
         self.axe.set_box_aspect(1)
+        self.set_annotation()
 
         df = self.orthogonality_result_data.copy()
 
@@ -1112,15 +1143,13 @@ class PlotUtils:
         # ------------------------------------------------------------------
         # Shared: rank-based subset filtering + coloring
         # ------------------------------------------------------------------
-
         final_rank = pd.to_numeric(df['Final Rank'], errors='coerce')
         orthogonality_rank = pd.to_numeric(df['Orthogonality Rank'], errors='coerce')
         n = len(df)
 
-        final_rank_pct = (final_rank / n) * 100  # controls which points are shown
-        orthogonality_rank_pct = (orthogonality_rank / n) * 100  # controls point color
-        
-        # Apply subset filter
+        final_rank_pct = (final_rank / n) * 100
+        orthogonality_rank_pct = (orthogonality_rank / n) * 100
+
         threshold = SUBSET_THRESHOLDS.get(subset, 0)
         mask = final_rank_pct >= threshold
 
@@ -1133,23 +1162,39 @@ class PlotUtils:
             return
 
         def get_color(pct):
-            if pct >= 90:
-                return '#1A3A9E'
+            if pct >= 99:
+                return '#1A3A9E'   # Top 1%
             elif pct >= 95:
-                return '#A0379A'
+                return '#A0379A'   # Top 5%
             elif pct >= 90:
-                return '#E64981'
+                return '#E64981'   # Top 10%
             elif pct >= 75:
-                return '#FF7C64'
+                return '#FF7C64'   # Top 25%
             else:
-                return '#F9F871'
+                return '#F9F871'   # > 25%
 
         colors = np.array([get_color(p) for p in orthogonality_rank_pct])
 
         # ------------------------------------------------------------------
+        # Near-identical peak rate detection + jitter (reduced criteria only)
+        # ------------------------------------------------------------------
+        def _is_near_identical(series):
+            """Return True if value range < 1% (non-informative for visualization)."""
+            clean = pd.to_numeric(series, errors='coerce').dropna()
+            if len(clean) == 0:
+                return False
+            return (clean.max() - clean.min()) < 1.0
+
+        def _apply_jitter(series):
+            """Add small vertical jitter for visibility; seed fixed for reproducibility."""
+            pr_range = series.max() - series.min()
+            amplitude = max(pr_range * 0.5, 0.15)
+            np.random.seed(42)
+            return series + np.random.normal(0, amplitude, size=len(series))
+
+        # ------------------------------------------------------------------
         # Axis scale helper
         # ------------------------------------------------------------------
-
         def apply_scale(ax, scale: str):
             s = 'log' if scale == 'Auto' else scale.lower()
             ax.set_xscale(s)
@@ -1159,11 +1204,13 @@ class PlotUtils:
                     ticker.FuncFormatter(lambda val, _: f"{int(val):,}")
                 )
                 ax.xaxis.set_major_locator(ticker.LogLocator(base=10, numticks=5))
-                ax.tick_params(axis="x", labelsize=6)  # smaller to avoid overlap
+                ax.xaxis.set_minor_locator(ticker.NullLocator())
+                ax.tick_params(axis="x", labelsize=6)   # smaller to avoid overlap
 
         # ------------------------------------------------------------------
         # Full Criteria — both Hypothetical 2D Peak Capacity & Elution Domain
         # ------------------------------------------------------------------
+        jitter_applied = False   # default; only relevant in reduced criteria
 
         if full_criteria:
             x = pd.to_numeric(df['Hypothetical 2D Peak Capacity'], errors='coerce')
@@ -1178,6 +1225,7 @@ class PlotUtils:
                              linewidths=0.3, picker=5)
 
             apply_scale(self.axe, axis_scale)
+            self.axe.tick_params(axis='y', labelsize=8)
 
             if x.notna().any():
                 self.axe.set_xlim(x.min() * 0.8, x.max() * 1.2)
@@ -1193,7 +1241,6 @@ class PlotUtils:
         # ------------------------------------------------------------------
         # Reduced Criteria — only one of the two columns available
         # ------------------------------------------------------------------
-
         elif reduced_criteria:
             if elution_domain_available:
                 x = pd.to_numeric(df['Elution Domain'], errors='coerce')
@@ -1202,35 +1249,56 @@ class PlotUtils:
                 x = pd.to_numeric(df['Hypothetical 2D Peak Capacity'], errors='coerce')
                 x_label = 'Hypothetical 2D Peak Capacity'
 
-            y = pd.to_numeric(df['Peak Detection Rate (%)'], errors='coerce')
+            y_raw = pd.to_numeric(df['Peak Detection Rate (%)'], errors='coerce')
 
-            valid = x.notna() & y.notna()
-            x, y, colors_plot = x[valid], y[valid], colors[valid.values]
+            valid = x.notna() & y_raw.notna()
+            x = x[valid]
+            y_raw = y_raw[valid]
+            colors_plot = colors[valid.values]
 
-            self.axe.scatter(x, y,
+            # ← Detect near-identical peak rate and apply jitter if needed
+            jitter_applied = _is_near_identical(y_raw)
+            if jitter_applied:
+                y_display = _apply_jitter(y_raw)
+            else:
+                y_display = y_raw.copy()
+
+            self.axe.scatter(x, y_display,
                              c=colors_plot, s=15,
                              edgecolors='k', alpha=0.85,
                              linewidths=0.3, picker=5)
 
             apply_scale(self.axe, axis_scale)
+            self.axe.tick_params(axis='y', labelsize=8)
 
             if x.notna().any():
                 self.axe.set_xlim(x.min() * 0.8, x.max() * 1.2)
-            if y.notna().any():
-                self.axe.set_ylim(y.min() * 0.8, y.max() * 1.2)
+
+            # ← If jittered, zoom y-axis around true peak rate center
+            if jitter_applied:
+                pr_center = y_raw.mean()
+                pr_spread = max(y_display.max() - y_display.min(), 0.5)
+                self.axe.set_ylim(pr_center - pr_spread * 2.5,
+                                  pr_center + pr_spread * 2.5)
+            elif y_raw.notna().any():
+                self.axe.set_ylim(y_raw.min() * 0.8, y_raw.max() * 1.2)
 
             self.axe.set_xlabel(x_label, fontsize=10)
             self.axe.set_ylabel('Peak Detection Rate (%)', fontsize=10)
 
             plot_title = 'Multi-Criteria Space — Reduced Criteria'
-            plot_subtitle = f'{x_label} vs peak detection rate · {subset}'
+
+            # ← Subtitle warns about jitter when applied
+            if jitter_applied:
+                plot_subtitle = (
+                    'Vertical jitter added for visibility; peak rate values are near-identical.'
+                )
+            else:
+                plot_subtitle = f'{x_label} vs peak detection rate · {subset}'
 
         # ------------------------------------------------------------------
-        # Shared: titles, legend, grid
+        # Shared: grid, titles, legend
         # ------------------------------------------------------------------
-
-        self.axe.tick_params(labelsize=8)
-        self.axe.xaxis.set_major_locator(ticker.LogLocator(base=10, numticks=4))
         self.axe.grid(True, which='both', linestyle='--', linewidth=0.3, alpha=0.5)
 
         self.axe.text(0.5, 1.10, plot_title,
@@ -1241,7 +1309,9 @@ class PlotUtils:
         self.axe.text(0.5, 1.04, plot_subtitle,
                       transform=self.axe.transAxes,
                       ha='center', va='bottom',
-                      fontsize=9, style='italic', color='dimgray')
+                      fontsize=9,
+                      style='italic',
+                      color='#b05000' if jitter_applied else 'dimgray')
 
         legend_elements = [
             patches.Patch(color='#1A3A9E', label='Top 1%'),
@@ -1416,11 +1486,33 @@ class PlotUtils:
 
             BOXPLOT_COLORS = ["#E41A1C", "#377EB8", "#4DAF4A", "#984EA3", "#FF7F00", "#00A6A6"]
 
+            # ------------------------------------------------------------------
+            # Near-identical peak rate detection helper
+            # ------------------------------------------------------------------
+            def _is_near_identical(values_list):
+                """Return True if peak rate range across all groups < 1%."""
+                all_vals = np.concatenate([v for v in values_list if len(v) > 0]) \
+                    if any(len(v) > 0 for v in values_list) else np.array([])
+                if len(all_vals) == 0:
+                    return False
+                return (all_vals.max() - all_vals.min()) < 1.0
+
+            def _apply_jitter(y_data):
+                """Add small vertical jitter for near-identical peak rate visibility."""
+                pr_range = y_data.max() - y_data.min() if len(y_data) > 1 else 0.0
+                amplitude = max(pr_range * 0.5, 0.15)
+                np.random.seed(42)
+                return y_data + np.random.normal(0, amplitude, size=len(y_data))
+
             def _draw_single_boxplot(ax, col_name, title, show_title=True):
                 labels, values = [], []
                 for mode, group in grouped_df:
                     labels.append(mode)
                     values.append(group[col_name].dropna().values)
+
+                # ← Detect near-identical peak rate for this specific column
+                is_peak_rate_col = col_name == "Peak Detection Rate (%)"
+                jitter_applied = is_peak_rate_col and _is_near_identical(values)
 
                 box = ax.boxplot(values, patch_artist=True, widths=0.55, showfliers=False)
 
@@ -1440,17 +1532,43 @@ class PlotUtils:
                 for cap in box["caps"]:
                     cap.set_linewidth(0.8)
 
+                all_display_vals = []
+                np.random.seed(42)
                 for j, y_data in enumerate(values, start=1):
-                    x_data = np.random.normal(j, 0.04, size=len(y_data))
-                    ax.scatter(x_data, y_data, s=10,
+                    x_jitter = np.random.normal(j, 0.04, size=len(y_data))
+
+                    # ← Apply vertical jitter only when peak rate is near-identical
+                    if jitter_applied and len(y_data) > 0:
+                        y_plot = _apply_jitter(y_data)
+                    else:
+                        y_plot = y_data
+
+                    all_display_vals.extend(y_plot)
+
+                    ax.scatter(x_jitter, y_plot, s=10,
                                color=BOXPLOT_COLORS[j - 1],
                                edgecolors="k", linewidths=0.2,
                                alpha=0.75, picker=5)
 
-                if show_title:  # ← only used in multi-panel (All criteria)
+                if show_title:
                     ax.set_title(title, fontsize=9, fontweight="bold")
 
-                ax.set_ylabel("Rank", fontsize=8)
+                # ← Y-label and y-axis zoom when jitter applied
+                if jitter_applied:
+                    ax.set_ylabel("Peak rate (%) †", fontsize=8)
+                    if all_display_vals:
+                        disp = np.array(all_display_vals)
+                        margin = (disp.max() - disp.min()) * 0.3 or 0.5
+                        ax.set_ylim(disp.min() - margin, disp.max() + margin)
+                    # ← Small note at bottom of subplot
+                    ax.text(0.5, -0.02,
+                            "† Jitter added; values are near-identical",
+                            transform=ax.transAxes,
+                            ha="center", va="top",
+                            fontsize=6, style="italic", color="#b05000")
+                else:
+                    ax.set_ylabel("Rank", fontsize=8)
+
                 ax.set_xticks(range(1, len(labels) + 1))
                 ax.set_xticklabels(labels, rotation=45, ha="right", fontsize=7)
                 ax.tick_params(axis="y", labelsize=7)
@@ -1763,11 +1881,13 @@ class PlotUtils:
             counts = recommendations.value_counts()
             total = counts.sum()
             bottom = 0
+            present_cats = []
 
             for cat in CATEGORY_ORDER:
                 val = counts.get(cat, 0)
                 if val == 0:
                     continue
+                present_cats.append(cat)
                 bar = self.axe.bar(
                     ["All combinations"], [val],
                     bottom=bottom,
@@ -1784,13 +1904,7 @@ class PlotUtils:
                 )
                 bottom += val
 
-            # Total on top
-            self.axe.text(
-                0, total + total * 0.01,
-                f"{total:,}",
-                ha="center", va="bottom",
-                fontsize=9, fontweight="bold", color="#2c2c2a"
-            )
+            # ← Total label removed for Global view
 
         # ------------------------------------------------------------------
         # BY MODE — one stacked bar per chromatographic mode
@@ -1814,9 +1928,13 @@ class PlotUtils:
             x = range(len(mode_labels))
             bar_width = 0.5
             bottoms = [0] * len(mode_labels)
+            present_cats = []
 
             for cat in CATEGORY_ORDER:
                 values = data[cat]
+                if sum(values) == 0:
+                    continue
+                present_cats.append(cat)
                 bars = self.axe.bar(x, values, bar_width,
                                     bottom=bottoms,
                                     color=COLORS[cat],
@@ -1832,10 +1950,11 @@ class PlotUtils:
                         )
                 bottoms = [b + v for b, v in zip(bottoms, values)]
 
-            # Totals on top
+            # ← Total on top of each bar (original style)
+            max_total = max(bottoms) if bottoms else 1
             for i, total in enumerate(bottoms):
                 self.axe.text(
-                    i, total + max(bottoms) * 0.01,
+                    i, total + max_total * 0.01,
                     f"{total:,}",
                     ha="center", va="bottom",
                     fontsize=7, fontweight="bold", color="#2c2c2a"
@@ -1843,7 +1962,6 @@ class PlotUtils:
 
             self.axe.set_xticks(list(x))
             self.axe.set_xticklabels(mode_labels, fontsize=7, rotation=15, ha="right")
-            self.axe.set_xlabel("Chromatographic mode", fontsize=8)
 
         # ------------------------------------------------------------------
         # Shared formatting
@@ -1858,21 +1976,26 @@ class PlotUtils:
         self.axe.spines[["top", "right"]].set_visible(False)
 
         subtitle = "All combinations" if grouping == "Global" else "By chromatographic mode"
-        self.axe.text(0.5, 1.08, "Recommendation Distribution",
+        self.axe.text(0.5, 1.10, "Recommendation Distribution",
                       transform=self.axe.transAxes, ha="center", va="bottom",
                       fontsize=16, fontweight="bold")
-        self.axe.text(0.5, 1.02, subtitle,
+        self.axe.text(0.5, 1.03, subtitle,
                       transform=self.axe.transAxes, ha="center", va="bottom",
                       fontsize=9, style="italic", color="dimgray")
 
+        legend_handles = [
+            patches.Patch(facecolor=COLORS[cat], label=cat)
+            for cat in present_cats
+        ]
         self.axe.legend(
+            handles=legend_handles,
             loc="lower center",
             bbox_to_anchor=(0.5, -0.38),
             ncol=2, fontsize=7,
             frameon=True, edgecolor="#cccccc"
         )
 
-        self.fig.subplots_adjust(left=0.14, right=0.90, top=0.72, bottom=0.30)
+        self.fig.subplots_adjust(left=0.14, right=0.90, top=0.70, bottom=0.30)
         self.fig.canvas.draw()
         self.fig.canvas.flush_events()
 
@@ -1887,11 +2010,11 @@ class PlotUtils:
             ax.set_yscale(s)
             if s == 'log':
                 ax.xaxis.set_major_locator(ticker.LogLocator(base=10, numticks=4))
-                ax.xaxis.set_minor_locator(ticker.NullLocator())  # ← remove minor ticks entirely
+                ax.xaxis.set_minor_locator(ticker.NullLocator())
                 ax.xaxis.set_major_formatter(
                     ticker.FuncFormatter(lambda val, _: f"{int(val):,}")
                 )
-                ax.tick_params(axis="x", labelsize=6, labelrotation=30)  # ← rotate to avoid overlap
+                ax.tick_params(axis="x", labelsize=6, labelrotation=30)
 
         # ------------------------------------------------------------------
         # GLOBAL — single plot
@@ -1927,6 +2050,23 @@ class PlotUtils:
             rank_max = rank_numeric.max()
             x_pct = (rank_numeric / rank_max) * 100 if rank_max else rank_numeric
 
+            # ------------------------------------------------------------------
+            # Detect near-identical peak rate → apply vertical jitter
+            # ------------------------------------------------------------------
+            peak_range = peak_rate.max() - peak_rate.min()
+            near_identical = peak_range < 1.0  # threshold: < 1%
+
+            if near_identical:
+                jitter_scale = 0.15  # ± ~0.15% visual spread
+                np.random.seed(42)
+                peak_rate_plot = peak_rate + np.random.uniform(
+                    -jitter_scale, jitter_scale, size=len(peak_rate)
+                )
+                plot_subtitle = "Vertical jitter added for visibility; peak rate values are near-identical."
+            else:
+                peak_rate_plot = peak_rate
+                plot_subtitle = "Overall feasibility decision map · Global"
+
             recommendation_colors = {
                 "Highly recommended": "#1a7a2e",
                 "Recommended": "#6abf4b",
@@ -1942,7 +2082,6 @@ class PlotUtils:
                 for i, mode in enumerate(unique_modes)
             }
 
-
             for rec_label in recommendation_order:
                 rec_mask = df["Final Recommendation"] == rec_label
                 if not rec_mask.any():
@@ -1952,7 +2091,7 @@ class PlotUtils:
                     if not mask.any():
                         continue
                     self.axe.scatter(
-                        x_pct[mask], peak_rate[mask],
+                        x_pct[mask], peak_rate_plot[mask],
                         s=22,
                         marker=mode_to_marker[mode],
                         color=recommendation_colors.get(rec_label, "#aaaaaa"),
@@ -1963,7 +2102,15 @@ class PlotUtils:
             apply_scale(self.axe, axis_scale)
 
             self.axe.set_xlim(1, 100)
-            self.axe.set_ylim(0, 100)
+
+            if near_identical:
+                # Zoom y-axis tightly around the true value with jitter margin
+                true_val = peak_rate.mean()
+                margin = 0.5
+                self.axe.set_ylim(true_val - margin, true_val + margin)
+            else:
+                self.axe.set_ylim(0, 100)
+
             self.axe.set_xticks([1, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100])
             self.axe.set_xlabel("Final consensus rank (lower = better)", fontsize=8)
             self.axe.set_ylabel("Peak rate (%)", fontsize=8)
@@ -1974,13 +2121,15 @@ class PlotUtils:
             self.axe.text(0.5, 1.08, "Feasibility Profile",
                           transform=self.axe.transAxes, ha="center", va="bottom",
                           fontsize=16, fontweight="bold")
-            self.axe.text(0.5, 1.02, "Overall feasibility decision map · Global",
-                          transform=self.axe.transAxes, ha="center", va="bottom",
-                          fontsize=9, style="italic", color="dimgray")
+            # Subtitle — italic, red-tinted warning when jitter is active
+            self.axe.text(
+                0.5, 1.02, plot_subtitle,
+                transform=self.axe.transAxes, ha="center", va="bottom",
+                fontsize=9,
+                style="italic",
+                color="#b03030" if near_identical else "dimgray"
+            )
 
-            # ------------------------------------------------------------------
-            # Legends — side by side at the bottom (same pattern as by mode)
-            # ------------------------------------------------------------------
             rec_handles = [
                 patches.Patch(facecolor=recommendation_colors[label],
                               edgecolor="k", linewidth=0.4, label=label)
@@ -2015,7 +2164,7 @@ class PlotUtils:
             self.fig.subplots_adjust(left=0.10, right=0.97, top=0.88, bottom=0.28)
 
         # ------------------------------------------------------------------
-        # BY MODE — faceted
+        # BY MODE — faceted (unchanged)
         # ------------------------------------------------------------------
         else:
             grouped_df = list(self.model.get_rank_score_grouped_by_chrom_mode_table())
@@ -2044,13 +2193,23 @@ class PlotUtils:
                 ax = self.fig.add_subplot(gs[i // ncols, i % ncols])
                 marker = mode_markers[i % len(mode_markers)]
 
+                peak_vals = pd.to_numeric(group["Peak Detection Rate (%)"], errors="coerce").dropna()
+                near_identical_facet = (peak_vals.max() - peak_vals.min()) < 1.0 if len(peak_vals) > 1 else False
+
                 for recommendation, color in recommendation_colors.items():
-                    subset = group[group["Final Recommendation"] == recommendation]
+                    subset = group[group["Final Recommendation"] == recommendation].copy()
                     if subset.empty:
                         continue
+
+                    y_vals = subset["Peak Detection Rate (%)"].astype(float)
+
+                    if near_identical_facet:
+                        np.random.seed(42)
+                        y_vals = y_vals + np.random.uniform(-0.15, 0.15, size=len(y_vals))
+
                     ax.scatter(
                         subset["Final Rank"].astype(float),
-                        subset["Peak Detection Rate (%)"].astype(float),
+                        y_vals,
                         s=28, c=color, marker=marker,
                         edgecolors="black", linewidths=0.3, alpha=0.85
                     )
@@ -2064,7 +2223,10 @@ class PlotUtils:
                 ax.set_ylabel("Peak rate (%)" if i % ncols == 0 else "", fontsize=8)
                 ax.spines[["top", "right"]].set_visible(False)
 
-            # Hide unused grid cells
+                if near_identical_facet:
+                    true_val = peak_vals.mean()
+                    ax.set_ylim(true_val - 0.5, true_val + 0.5)
+
             for j in range(n_modes, nrows * ncols):
                 self.fig.add_subplot(gs[j // ncols, j % ncols]).axis("off")
 
@@ -2082,10 +2244,9 @@ class PlotUtils:
                 fontsize=9, columnspacing=1.8, handlelength=1.8
             )
 
-            # Titles — suptitle high, subtitle clearly below it
             self.fig.suptitle("Feasibility Profile",
                               fontsize=16, fontweight="bold", y=0.97)
-            self.fig.text(0.5, 0.89,  # ← was 0.93, now lower
+            self.fig.text(0.5, 0.89,
                           "Faceted feasibility maps by chromatographic mode",
                           ha="center", fontsize=9, style="italic", color="dimgray")
 
@@ -2226,7 +2387,7 @@ class PlotUtils:
             self.axe.legend(
                 handles=legend_handles,
                 title="Chromatographic mode",
-                loc="lower center", bbox_to_anchor=(0.5, -0.22),
+                loc="lower center", bbox_to_anchor=(0.5, -0.32),
                 ncol=min(3, len(legend_handles)),  # up to 3 per row
                 frameon=True, framealpha=0.92,
                 edgecolor="#aaaaaa",
@@ -2244,7 +2405,7 @@ class PlotUtils:
                       transform=self.axe.transAxes, ha="center", va="bottom",
                       fontsize=9, style="italic", color="dimgray")
 
-        self.fig.subplots_adjust(left=0.10, right=0.97, top=0.88, bottom=0.25)
+        self.fig.subplots_adjust(left=0.10, right=0.97, top=0.88, bottom=0.30)
         self.fig.canvas.draw()
         self.fig.canvas.flush_events()
 
@@ -2261,6 +2422,38 @@ class PlotUtils:
             fontweight='bold'
         )
         self.fig.canvas.draw()
+        self.fig.canvas.flush_events()
+
+    def set_annotation(self,annotation = None):
+
+        if annotation:
+            self.annotation = annotation
+        else:
+            self.annotation = self.axe.annotate("", xy=(0, 0), xytext=(10, 10),
+                                                                          textcoords="offset points",
+                                                                          bbox=dict(boxstyle="round", fc="white",
+                                                                                    ec="gray"),
+                                                                          arrowprops=dict(arrowstyle="->"))
+
+            self.annotation.set_visible(False)
+
+    def on_pick(self,event):
+        axe = event.artist.axes
+
+        xy_data = axe.collections[0].get_offsets()
+
+        extracted_x = xy_data[:, 0]
+        extracted_y = xy_data[:, 1]
+
+        ind = event.ind[0]
+        combination = self.model.get_combination_df()['2D Combination'][ind]
+        combination_number = self.model.get_combination_df()['Combination #'][ind]
+
+        self.annotation.xy = (extracted_x[ind], extracted_y[ind])
+        self.annotation.set_text(f"Combinataion # {combination_number}\n{combination}")
+        self.annotation.set_visible(True)
+
+        self.fig.canvas.draw_idle()
         self.fig.canvas.flush_events()
 
     def open_in_window(self):
