@@ -179,6 +179,7 @@ class ResultsBuilder:
         """
         self.compute_consensus_orthogonality_score()
         self.compute_consensus_orthogonality_ranking()
+        self.assess_metric_removal_impact_on_orthogonality_rank()
         self.compute_coverage_score()
         self.compute_distribution_score()
         self.compute_agreement_index()
@@ -195,7 +196,6 @@ class ResultsBuilder:
         self.create_practical_feasibility_table()
         self.create_separational_potential_table()
         self.create_final_recommendation_table()
-
 
         self.create_median_rank_score_based_on_chromatographic_group()
         self.create_rank_score_based_on_chromatographic_group()

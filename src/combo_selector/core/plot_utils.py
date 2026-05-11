@@ -1118,6 +1118,84 @@ class PlotUtils:
         self.fig.canvas.draw()
         self.fig.canvas.flush_events()
 
+    def plot_metric_removal_impact(self):
+        """Plot the impact of removing each metric on orthogonality rank.
+
+        Displays a horizontal bar chart where each bar corresponds to one removed
+        metric and its associated median orthogonality rank.
+
+        Expected data columns:
+            - "Metric Removed"
+            - "Median Orthogonality Rank"
+        """
+        self.fig.clear()
+        self.axe = self.fig.add_subplot(111)
+
+        impact_df = self.model.get_metric_removal_impact_on_orthogonality_rank_df()
+
+        if impact_df is None or impact_df.empty:
+            self._show_missing_data()
+            return
+
+        plot_df = impact_df.copy()
+
+        if "Metric Removed" not in plot_df.columns or "Median Orthogonality Rank Difference" not in plot_df.columns:
+            self._show_missing_data()
+            return
+
+        plot_df["Median Orthogonality Rank Difference"] = pd.to_numeric(
+            plot_df["Median Orthogonality Rank Difference"], errors="coerce"
+        )
+        plot_df = plot_df.dropna(subset=["Median Orthogonality Rank Difference"])
+
+        if plot_df.empty:
+            self._show_missing_data()
+            return
+
+        plot_df = plot_df.sort_values("Median Orthogonality Rank Difference", ascending=True)
+
+        y = plot_df["Metric Removed"]
+        x = plot_df["Median Orthogonality Rank Difference"]
+
+        bars = self.axe.barh(y, x, color="#4C78A8", edgecolor="#2F4B6E", alpha=0.9)
+
+        for bar, value in zip(bars, x):
+            self.axe.text(
+                value + (x.max() * 0.01 if x.max() > 0 else 0.1),
+                bar.get_y() + bar.get_height() / 2,
+                f"{value:.2f}",
+                va="center",
+                ha="left",
+                fontsize=8,
+                color="#333333",
+            )
+
+        self.axe.set_xlabel("Median Orthogonality Rank Difference", fontsize=10)
+        self.axe.set_ylabel("Metric Removed", fontsize=10)
+        self.axe.tick_params(axis="both", labelsize=8)
+        self.axe.grid(True, axis="x", linestyle="--", linewidth=0.4, alpha=0.5)
+        self.axe.set_axisbelow(True)
+        self.axe.spines[["top", "right"]].set_visible(False)
+
+        self.axe.text(
+            0.5, 1.08,
+            "Metric Removal Impact",
+            transform=self.axe.transAxes,
+            ha="center", va="bottom",
+            fontsize=16, fontweight="bold"
+        )
+        self.axe.text(
+            0.5, 1.02,
+            "Median orthogonality rank difference after removing each metric",
+            transform=self.axe.transAxes,
+            ha="center", va="bottom",
+            fontsize=9, style="italic", color="dimgray"
+        )
+
+        self.fig.subplots_adjust(left=0.34, right=0.95, top=0.84, bottom=0.12)
+        self.fig.canvas.draw()
+        self.fig.canvas.flush_events()
+
     def plot_multi_criteria_space(self, subset: str = "All", axis_scale: str = "Auto"):
 
         self.fig.clear()
@@ -1709,10 +1787,11 @@ class PlotUtils:
                             "RPLC RPLC": "D", "SFC RPLC": "v", "SFC HILIC": "h"}
             fallback_markers = ["o", "s", "^", "D", "v", "h", "p", "*"]
 
-            unique_modes = list(df["Chromatographic Mode"].dropna().unique())
+            mode_order = self.model.get_chromatographic_mode_list()
+            mode_markers = ["o", "s", "^", "D", "v", "p", "X", "<", ">"]
             mode_to_marker = {
-                mode: mode_markers.get(mode, fallback_markers[i % len(fallback_markers)])
-                for i, mode in enumerate(unique_modes)
+                mode: mode_markers[i % len(mode_markers)]
+                for i, mode in enumerate(mode_order)
             }
 
             for rec_label in recommendation_order:
@@ -1729,7 +1808,7 @@ class PlotUtils:
                         marker=mode_to_marker[mode],
                         color=recommendation_colors.get(rec_label, "#aaaaaa"),
                         edgecolors="k", linewidths=0.3,
-                        alpha=0.88, zorder=5
+                        alpha=0.88, zorder=5, picker=5
                     )
 
             apply_scale(self.axe, axis_scale)
@@ -1813,28 +1892,28 @@ class PlotUtils:
             mode_markers = ["o", "s", "^", "D", "v", "p", "X", "<", ">"]
 
             for i, (mode, group) in enumerate(grouped_df):
-                ax = self.fig.add_subplot(gs[i // ncols, i % ncols])
+                self.axe = self.fig.add_subplot(gs[i // ncols, i % ncols])
                 marker = mode_markers[i % len(mode_markers)]
 
                 for recommendation, color in recommendation_colors.items():
                     subset = group[group["Final Recommendation"] == recommendation]
                     if subset.empty:
                         continue
-                    ax.scatter(
+                    self.axe.scatter(
                         subset["Final Rank"].astype(float),
                         subset["Peak Detection Rate (%)"].astype(float),
                         s=28, c=color, marker=marker,
-                        edgecolors="black", linewidths=0.3, alpha=0.85
+                        edgecolors="black", linewidths=0.3, alpha=0.85, picker=5
                     )
 
-                apply_scale(ax, axis_scale)
+                apply_scale(self.axe, axis_scale)
 
-                ax.set_title(mode, fontsize=10, fontweight="bold")
-                ax.grid(True, linestyle="--", linewidth=0.4, alpha=0.4)
-                ax.tick_params(axis="both", labelsize=8)
-                ax.set_xlabel("Final consensus rank\n(lower = better)", fontsize=8)
-                ax.set_ylabel("Peak rate (%)" if i % ncols == 0 else "", fontsize=8)
-                ax.spines[["top", "right"]].set_visible(False)
+                self.axe.set_title(mode, fontsize=10, fontweight="bold")
+                self.axe.grid(True, linestyle="--", linewidth=0.4, alpha=0.4)
+                self.axe.tick_params(axis="both", labelsize=8)
+                self.axe.set_xlabel("Final consensus rank\n(lower = better)", fontsize=8)
+                self.axe.set_ylabel("Peak rate (%)" if i % ncols == 0 else "", fontsize=8)
+                self.axe.spines[["top", "right"]].set_visible(False)
 
             # Hide unused grid cells
             for j in range(n_modes, nrows * ncols):
@@ -2096,8 +2175,9 @@ class PlotUtils:
                         marker=mode_to_marker[mode],
                         color=recommendation_colors.get(rec_label, "#aaaaaa"),
                         edgecolors="k", linewidths=0.3,
-                        alpha=0.88, zorder=5
+                        alpha=0.88, zorder=5, picker=5
                     )
+                    self.set_annotation()
 
             apply_scale(self.axe, axis_scale)
 
@@ -2190,7 +2270,7 @@ class PlotUtils:
             mode_markers = ["o", "s", "^", "D", "v", "p", "X", "<", ">"]
 
             for i, (mode, group) in enumerate(grouped_df):
-                ax = self.fig.add_subplot(gs[i // ncols, i % ncols])
+                self.axe = self.fig.add_subplot(gs[i // ncols, i % ncols])
                 marker = mode_markers[i % len(mode_markers)]
 
                 peak_vals = pd.to_numeric(group["Peak Detection Rate (%)"], errors="coerce").dropna()
@@ -2207,25 +2287,26 @@ class PlotUtils:
                         np.random.seed(42)
                         y_vals = y_vals + np.random.uniform(-0.15, 0.15, size=len(y_vals))
 
-                    ax.scatter(
+                    self.axe.scatter(
                         subset["Final Rank"].astype(float),
                         y_vals,
                         s=28, c=color, marker=marker,
-                        edgecolors="black", linewidths=0.3, alpha=0.85
+                        edgecolors="black", linewidths=0.3, alpha=0.85, picker=5
                     )
+                    self.set_annotation()
 
-                apply_scale(ax, axis_scale)
+                apply_scale(self.axe, axis_scale)
 
-                ax.set_title(mode, fontsize=10, fontweight="bold")
-                ax.grid(True, linestyle="--", linewidth=0.4, alpha=0.4)
-                ax.tick_params(axis="both", labelsize=8)
-                ax.set_xlabel("Final consensus rank\n(lower = better)", fontsize=8)
-                ax.set_ylabel("Peak rate (%)" if i % ncols == 0 else "", fontsize=8)
-                ax.spines[["top", "right"]].set_visible(False)
+                self.axe.set_title(mode, fontsize=10, fontweight="bold")
+                self.axe.grid(True, linestyle="--", linewidth=0.4, alpha=0.4)
+                self.axe.tick_params(axis="both", labelsize=8)
+                self.axe.set_xlabel("Final consensus rank\n(lower = better)", fontsize=8)
+                self.axe.set_ylabel("Peak rate (%)" if i % ncols == 0 else "", fontsize=8)
+                self.axe.spines[["top", "right"]].set_visible(False)
 
                 if near_identical_facet:
                     true_val = peak_vals.mean()
-                    ax.set_ylim(true_val - 0.5, true_val + 0.5)
+                    self.axe.set_ylim(true_val - 0.5, true_val + 0.5)
 
             for j in range(n_modes, nrows * ncols):
                 self.fig.add_subplot(gs[j // ncols, j % ncols]).axis("off")
@@ -2349,7 +2430,7 @@ class PlotUtils:
                         np.random.normal(loc=xpos, scale=0.06, size=len(y)), y,
                         s=24, color=point_color, marker=marker,
                         edgecolors="white", linewidths=0.35,
-                        alpha=0.95, zorder=3
+                        alpha=0.95, zorder=3, picker=5
                     )
             else:
                 y = group["Final Rank"].dropna().astype(float).to_numpy()
@@ -2358,7 +2439,7 @@ class PlotUtils:
                         np.random.normal(loc=xpos, scale=0.06, size=len(y)), y,
                         s=24, color=point_color, marker="o",
                         edgecolors="white", linewidths=0.35,
-                        alpha=0.95, zorder=3
+                        alpha=0.95, zorder=3, picker=5
                     )
 
         # ------------------------------------------------------------------

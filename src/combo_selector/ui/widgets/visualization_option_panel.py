@@ -27,6 +27,7 @@ import sys
 
 PLOT_TYPES = [
     "Orthogonality Space",
+    "Metric Removal Impact On Orthogonality Rank",
     "Multi-Criteria Space",
     "Chromatographic Mode Performance",
     "Recommendation Distribution",
@@ -37,6 +38,8 @@ PLOT_TYPES = [
 PLOT_DESCRIPTIONS = {
     "Orthogonality Space":
         "Scatter plot of chromatographic condition pairs in orthogonality space.",
+    "Metric Removal Impact On Orthogonality Rank":
+        "Shows the median orthogonality rank obtained after removing each metric from its correlation group.",
     "Multi-Criteria Space":
         "Scatter plot of solutions in criteria space to explore trade-offs between objectives.",
     "Chromatographic Mode Performance":

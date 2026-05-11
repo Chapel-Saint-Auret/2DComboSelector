@@ -64,6 +64,14 @@ class Scoring:
         """
         return self.orthogonality_metric_ranking_corr_matrix_df
 
+    def get_metric_removal_impact_on_orthogonality_rank_df(self) -> pd.DataFrame:
+        """Get the metric removal impact DataFrame (asses the impact of metric removed
+        in orthogonality rank.
+
+        Returns:
+            pd.DataFrame: removal impact DataFrame.
+        """
+        return self.metric_removal_impact_df
     # ------------------------------------------------------------------
     # DataFrame helpers
     # ------------------------------------------------------------------
@@ -255,6 +263,88 @@ class Scoring:
         consensus_orthogonality_ranking_df = consensus_orthogonality_ranking_df.rank(ascending=True, method='average')
 
         self.orthogonality_result_df['Orthogonality Rank'] = consensus_orthogonality_ranking_df.astype(int)
+
+    def assess_metric_removal_impact_on_orthogonality_rank(self) -> pd.DataFrame:
+        """Assess the impact of removing each metric on orthogonality rank.
+
+        For each metric present in ``self.correlation_group_df['Correlated Metrics']``,
+        this method removes the metric from its group(s), recomputes the consensus
+        orthogonality ranking, compares the new rank to the original rank, and stores
+        the median of the rank differences.
+
+        Groups that become empty after metric removal are discarded.
+
+        Returns:
+            pd.DataFrame: DataFrame with:
+                - ``"Metric Removed"``
+                - ``"Median Orthogonality Rank Difference"``
+        """
+        if self.correlation_group_df.empty:
+            return pd.DataFrame(
+                columns=["Metric Removed", "Median Orthogonality Rank Difference"]
+            )
+
+        original_correlation_group_df = self.correlation_group_df.copy(deep=True)
+        original_orthogonality_group_ranking_df = self.orthogonality_group_ranking_df.copy(deep=True)
+        original_orthogonality_result_df = self.orthogonality_result_df.copy(deep=True)
+
+        original_rank = self.orthogonality_result_df["Orthogonality Rank"].copy()
+
+        results = []
+
+        metric_list = sorted({
+            metric
+            for correlated_metrics in self.correlation_group_df["Correlated Metrics"]
+            for metric in correlated_metrics
+        })
+
+        for metric_to_remove in metric_list:
+            temp_correlation_group_df = original_correlation_group_df.copy(deep=True)
+
+            # this remove the metric_to_remove from the correlation group
+            temp_correlation_group_df["Correlated Metrics"] = temp_correlation_group_df[
+                "Correlated Metrics"
+            ].apply(
+                lambda metrics: [metric for metric in metrics if metric != metric_to_remove])
+
+            # remove empty groups
+            temp_correlation_group_df = temp_correlation_group_df[
+                temp_correlation_group_df["Correlated Metrics"].map(len) > 0
+                ].reset_index(drop=True)
+
+            # if all groups disappear after removal, skip this metric
+            if temp_correlation_group_df.empty:
+                results.append({
+                    "Metric Removed": metric_to_remove,
+                    "Median Orthogonality Rank Difference": np.nan,
+                })
+                continue
+
+            # temporarily replace correlation groups and recompute ranking
+            self.correlation_group_df = temp_correlation_group_df
+
+            # compute the orthoganlity rank with the removed metric
+            self.compute_consensus_orthogonality_ranking()
+
+            new_rank = self.orthogonality_result_df["Orthogonality Rank"].copy()
+
+            rank_diff = abs(original_rank - new_rank)
+            median_rank_diff = rank_diff.median()
+
+            results.append({
+                "Metric Removed": metric_to_remove,
+                "Median Orthogonality Rank Difference": median_rank_diff,
+            })
+
+        # restore original state
+        self.correlation_group_df = original_correlation_group_df
+        self.orthogonality_group_ranking_df = original_orthogonality_group_ranking_df
+        self.orthogonality_result_df = original_orthogonality_result_df
+
+        self.metric_removal_impact_df = pd.DataFrame(results).sort_values(
+            by="Median Orthogonality Rank Difference",
+            ascending=False
+        ).reset_index(drop=True)
 
     def compute_consensus_orthogonality_score(self):
         """Compute the consensus orthogonality score as the median of group medians.

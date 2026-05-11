@@ -260,7 +260,9 @@ class ResultsPage(QFrame):
         self.vizualation_settings_group.setStyleSheet(self._get_group_stylesheet())
 
         user_input_frame_layout.addWidget(orthogonality_score_group)
+        user_input_frame_layout.addSpacing(15)
         user_input_frame_layout.addWidget(LineWidget("Horizontal"))
+        user_input_frame_layout.addSpacing(20)
         # user_input_frame_layout.addWidget(ranking_selection_group)
         # user_input_frame_layout.addWidget(LineWidget("Horizontal"))
         # user_input_frame_layout.addWidget(orthogonality_compare_score_group)
@@ -439,6 +441,10 @@ class ResultsPage(QFrame):
             "Orthogonality Space": (
                 self.plot_utils.plot_orthogonality_space,
                 lambda s: {"subset": s.subset}
+            ),
+            "Metric Removal Impact On Orthogonality Rank": (
+                self.plot_utils.plot_metric_removal_impact,
+                lambda s: {}
             ),
             "Multi-Criteria Space": (
                 self.plot_utils.plot_multi_criteria_space,   # adapt to actual method name
@@ -915,10 +921,8 @@ class ResultsPage(QFrame):
         self.fig.canvas.flush_events()
 
     def plot_visualization_state_changed(self, state = PlotState()):
-        print(state)
         fn, get_kwargs = self.plot_dispatch[state.plot_type]
         fn(**get_kwargs(state))
-
 
     def update_figure(self, plot_key: str = 'Multi Criteria Space') -> None:
         """Dispatch to the plotting function for *plot_key*.
