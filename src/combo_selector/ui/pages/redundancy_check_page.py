@@ -489,7 +489,7 @@ class RedundancyCheckPage(QFrame):
 
         self.styled_table = StyledTable("Grouped Metric Table")
         self.styled_table.add_title_bar_info_button(markdown_path="markdown/group_metric_table.md")
-        self.styled_table.set_header_label(["Group", "Correlated Metrics",'Classification'])
+        self.styled_table.set_header_label(["Group", "Correlated Metrics"])
         self.styled_table.set_default_row_count(10)
         self.styled_table.add_help_button(2, "Classification","markdown/classification.md")
 
@@ -513,7 +513,7 @@ class RedundancyCheckPage(QFrame):
             - Updates correlation groups table
         """
         self.styled_table.clean_table()
-        self.styled_table.set_header_label(["Group", "Correlated Metrics",'Classification'])
+        self.styled_table.set_header_label(["Group", "Correlated Metrics"])
 
         if self.model.get_orthogonality_metric_corr_matrix_df().empty:
             return
@@ -712,9 +712,9 @@ class RedundancyCheckPage(QFrame):
 
         correlation_group_table = self.model.get_correlation_group_df()
 
-        self.model.fill_correlation_group_classification()
+        # self.model.fill_correlation_group_classification()
 
-        self.model.build_coverage_distribution_matrix()
+        # self.model.build_coverage_distribution_matrix()
 
         self.styled_table.async_set_table_data(correlation_group_table)
         self.styled_table.set_table_proxy()
