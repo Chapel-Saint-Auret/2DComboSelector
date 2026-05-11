@@ -2,11 +2,12 @@
 
 This module provides a QHeaderView subclass that can display small
 filter buttons inside specific column headers. The buttons automatically
-reposition themselves when columns are resized or moved.
+reposition themselves when columns are resized, moved, or horizontally
+scrolled.
 
 Features:
 - Add filter buttons to any column
-- Buttons auto-reposition on resize/move
+- Buttons auto-reposition on resize/move/scroll
 - Associate dialogs or widgets with buttons
 - Emits signal when button clicked
 """
@@ -17,6 +18,7 @@ from PySide6.QtCore import QRect, QSize, Qt, Signal
 from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import (
     QApplication,
+    QAbstractScrollArea,
     QDialog,
     QHeaderView,
     QStyle,
@@ -28,8 +30,8 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from combo_selector.utils import resource_path
 from combo_selector.ui.widgets.section_help_button import SectionHelpButton
+from combo_selector.utils import resource_path
 
 
 class HeaderButton(QHeaderView):
@@ -37,7 +39,7 @@ class HeaderButton(QHeaderView):
 
     Extends QHeaderView to support small tool buttons positioned inside
     column header sections. Buttons automatically reposition when columns
-    are resized or moved.
+    are resized, moved, or horizontally scrolled.
 
     Typical use case: Add filter buttons to table columns that open filter
     dialogs when clicked.
@@ -85,6 +87,15 @@ class HeaderButton(QHeaderView):
         # Auto-reposition buttons when sections change
         self.sectionResized.connect(self._reposition_buttons)
         self.sectionMoved.connect(self._reposition_buttons)
+
+        # Reposition buttons on horizontal scroll as well
+        if isinstance(parent, QAbstractScrollArea):
+            try:
+                parent.horizontalScrollBar().valueChanged.connect(
+                    self._reposition_buttons
+                )
+            except Exception:
+                pass
 
         # Connect sectionCountChanged if available (not in all Qt versions)
         if hasattr(self, "sectionCountChanged"):
@@ -177,7 +188,7 @@ class HeaderButton(QHeaderView):
 
         For sections that have a button the label text is clipped to a
         narrowed rect so it can never overlap the button, regardless of
-        column width.  Sections without a button are painted normally.
+        column width. Sections without a button are painted normally.
 
         Args:
             painter (QPainter): Active painter for the viewport.
@@ -214,10 +225,10 @@ class HeaderButton(QHeaderView):
     # ------------------------------------------------------------------
 
     def add_header_button(
-            self,
-            column: int,
-            tooltip: str = None,
-            widget_to_show: QWidget = None
+        self,
+        column: int,
+        tooltip: str = None,
+        widget_to_show: QWidget = None,
     ) -> None:
         """Add a filter button to a column header.
 
@@ -265,10 +276,10 @@ class HeaderButton(QHeaderView):
         self._reposition_buttons()
 
     def add_header_help_button(
-            self,
-            column: int,
-            title: str,
-            markdown_path: str
+        self,
+        column: int,
+        title: str,
+        markdown_path: str,
     ) -> None:
         """Add a help button to a column header.
 
@@ -290,9 +301,11 @@ class HeaderButton(QHeaderView):
         if column in self._buttons:
             return  # Already added
 
-        btn = SectionHelpButton(title=title,
-                                markdown_path=markdown_path,
-                                parent=self)
+        btn = SectionHelpButton(
+            title=title,
+            markdown_path=markdown_path,
+            parent=self,
+        )
         btn.adjustSize()  # Ensure sizeHint is valid before first reposition
 
         btn.show()
@@ -356,7 +369,8 @@ class HeaderButton(QHeaderView):
 
         The button x position is derived from _text_end_x() which uses
         QStyle.SE_HeaderLabel + fontMetrics to find exactly where the text
-        ends, so the button tracks the text even as the column is resized.
+        ends, so the button tracks the text even as the column is resized
+        or horizontally scrolled.
 
         The section is widened automatically if it is too narrow to show
         both the text and the button.
@@ -433,6 +447,16 @@ class HeaderButton(QHeaderView):
             btn.move(x_pos, y_pos)
             btn.show()
 
+    def resizeEvent(self, event) -> None:
+        """Ensure buttons stay aligned when the header itself resizes."""
+        super().resizeEvent(event)
+        self._reposition_buttons()
+
+    def showEvent(self, event) -> None:
+        """Ensure buttons are correctly positioned when the header is shown."""
+        super().showEvent(event)
+        self._reposition_buttons()
+
 
 # =============================================================================
 # Usage Example
@@ -442,7 +466,6 @@ if __name__ == "__main__":
     """Simple usage example showing header with filter buttons."""
 
     app = QApplication(sys.argv)
-
 
     # Create sample dialog for filtering
     class SimpleFilterDialog(QDialog):
@@ -459,7 +482,6 @@ if __name__ == "__main__":
             layout = QVBoxLayout(self)
             from PySide6.QtWidgets import QLabel
             layout.addWidget(QLabel("Filter settings would go here..."))
-
 
     # Create table with custom header
     table = QTableWidget(5, 4)
@@ -493,7 +515,6 @@ if __name__ == "__main__":
     header.add_header_button(2, "Filter cities")
     header.add_header_help_button(3, "Filter scores", "no_help_found.md")
 
-
     # Connect signal to show which column was clicked
     def on_filter_requested(column):
         """Print the column index when a filter button is clicked.
@@ -502,6 +523,8 @@ if __name__ == "__main__":
             column (int): Index of the column whose filter button was clicked.
         """
         print(f"Filter button clicked for column {column}")
+
+    header.widgetRequested.connect(on_filter_requested)
 
     table.show()
     sys.exit(app.exec())
