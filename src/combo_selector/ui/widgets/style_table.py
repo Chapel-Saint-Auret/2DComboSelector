@@ -58,6 +58,7 @@ class TablePanel(QWidget):
         self,
         value_format: str = ".3f",
         enable_decoration: bool = False,
+        has_tooltip=False,
         color_config=None,
         bold_columns=None,
         parent: QWidget | None = None,
@@ -71,7 +72,8 @@ class TablePanel(QWidget):
         # Model + view
         self.model = OrthogonalityTableModel(color_config = color_config,
                                              bold_columns = bold_columns,
-                                             enable_decoration=enable_decoration)
+                                             enable_decoration=enable_decoration,
+                                             has_tooltip=has_tooltip,)
         self.table = OrthogonalityTableView(self, self.model)
 
 
@@ -116,6 +118,9 @@ class TablePanel(QWidget):
         worker = TableDataWorker(df, self.model.get_header_label(), value_format=self.value_format)
         worker.signals.finished.connect(self._handle_data)
         self.threadpool.start(worker)
+
+    def set_tooltip_config(self,tooltip_config):
+        self.model.set_tooltip_config(tooltip_config)
 
     def _handle_data(self, data: list, rows: int, cols: int) -> None:
         """Slot: receive formatted data from the async worker."""
@@ -257,6 +262,7 @@ class StyledTable(QWidget):
         color_config=None,
         bold_columns=None,
         enable_decoration: bool = False,
+        has_tooltip: bool = False,
     ) -> None:
         super().__init__()
 
@@ -296,6 +302,7 @@ class StyledTable(QWidget):
         self.table_panel = TablePanel(
             value_format=value_format,
             enable_decoration=enable_decoration,
+            has_tooltip=has_tooltip,
             color_config=color_config,
             bold_columns=bold_columns,
             parent=self,
@@ -349,12 +356,13 @@ class StyledTable(QWidget):
         self.title_layout.addWidget(title_help_btn, 0, Qt.AlignVCenter)  # ← per-item alignment flag
         self.title_layout.addStretch(1)
 
-    def add_sheet(self,sheet_name='unnamed',value_format=".3f",color_config = None,bold_columns = None,enable_decoration= False) -> None:
+    def add_sheet(self,sheet_name='unnamed',value_format=".3f",color_config = None,bold_columns = None,enable_decoration= False,has_tooltip = False) -> None:
         table_panel = TablePanel(
         value_format=value_format,
         color_config=color_config,
         bold_columns=bold_columns,
         enable_decoration = enable_decoration,
+        has_tooltip = has_tooltip,
         parent=self,
         )
 
@@ -385,6 +393,8 @@ class StyledTable(QWidget):
     # ------------------------------------------------------------------
     # Public API – forwarded to TablePanel so call sites stay the same
     # ------------------------------------------------------------------
+    def set_tooltip_config(self,tooltip_config):
+        self.table_panel.set_tooltip_config(tooltip_config)
 
     def clean_table(self) -> None:
         self.table_panel.clean_table()

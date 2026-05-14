@@ -8,6 +8,7 @@ correlations.  It has no Qt dependencies.
 import string
 
 import pandas as pd
+import numpy as np
 from scipy.stats import spearmanr, tmean
 
 from combo_selector.core.orthogonality_utils import cluster_and_fuse
@@ -210,6 +211,37 @@ class Redundancy:
         self.coverage_distribution_df.index.name = "Metric"
 
         self.coverage_distribution_df = self.coverage_distribution_df.T
+
+    def fill_correlation_group_average(self):
+        self.orthogonality_metric_corr_matrix_df
+
+        average_redundancy_list = []
+
+        for group, Correlated_Metrics_list in zip(self.correlation_group_df['Group'],
+                                                  self.correlation_group_df['Correlated Metrics']):
+
+            # 1. Get your sub-matrix
+            corr_matrix = self.orthogonality_metric_corr_matrix_df.corr().loc[
+                Correlated_Metrics_list, Correlated_Metrics_list]
+
+            # 2. Create a mask for the upper triangle
+            # k=1 excludes the diagonal (the 1.0s) (this is when you want to take the diagonal)
+            # k=0 includes the diagonal in the mask
+            # np.triu returns the upper triangle
+            mask = np.triu(np.ones_like(corr_matrix, dtype=bool), k=0)
+
+            # 3. Mask the matrix and "stack" it
+            # .stack() removes all the NaNs, leaving only the unique pairs
+            unique_pairs = corr_matrix.where(~mask).stack()
+
+            # 4. Calculate your clean mean
+            average_redundancy = round(float(unique_pairs.mean()), 2)
+            std_redundancy = round(float(unique_pairs.std()), 2)
+
+            average_redundancy_list.append(f"{average_redundancy} ± {std_redundancy}")
+
+        self.correlation_group_df['Average Group Correllation'] = average_redundancy_list
+
 
     def fill_correlation_group_classification(self):
         """Assign a coverage/distribution category label to each correlation group.

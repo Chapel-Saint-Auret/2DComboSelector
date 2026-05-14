@@ -211,7 +211,7 @@ class VisualizationOptionsPanel(QGroupBox):
         root.setSpacing(10)
 
         # --- Plot type label + combo ---
-        plot_label = QLabel("Plot type")
+        plot_label = QLabel("Plot Type")
         plot_label.setStyleSheet("font-weight: 600; color: #1d2939; font-size: 13px;")
         root.addWidget(plot_label)
 

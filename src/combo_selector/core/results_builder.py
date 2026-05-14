@@ -246,8 +246,7 @@ class ResultsBuilder:
             "Coverage Score",
             "Distribution Score",
             "Orthogonality Rank",
-            "Agreement Indicator",
-            "Outlier Flag",
+            "Agreement Indicator"
         ]
 
         self.orthogonality_table_df = self.orthogonality_result_df[column_name].copy()
@@ -301,7 +300,7 @@ class ResultsBuilder:
             "Elution Domain Rank",
             "Final Rank",
             "Final Recommendation",
-            "Criterion Higlight",
+            "Criterion Highlight",
         ]
 
         self.final_recommendation_table_df = self.orthogonality_result_df[column_name].copy()
@@ -412,7 +411,7 @@ class ResultsBuilder:
                 self.orthogonality_result_df['Final Rank'].rank(ascending=True, method='average')
             )
 
-        elif (self.peak_capacity_status in ["elution_data_loaded"] and
+        elif (self.elution_data_status in ["elution_data_loaded"] and
                 'Orthogonality Rank' in self.orthogonality_result_df.columns):
 
             self.orthogonality_result_df['Final Rank'] = pd.concat(
@@ -420,6 +419,10 @@ class ResultsBuilder:
                     self.orthogonality_result_df['Orthogonality Rank']],
                 axis=1,
             ).mean(axis=1)
+
+            self.orthogonality_result_df['Final Rank'] = (
+                self.orthogonality_result_df['Final Rank'].rank(ascending=True, method='average')
+            )
 
         elif 'Orthogonality Rank' in self.orthogonality_result_df.columns:
             self.orthogonality_result_df['Final Rank'] = (
@@ -496,21 +499,21 @@ class ResultsBuilder:
 
         if 'Elution Domain Rank' in self.orthogonality_result_df.columns and elution_rank_is_numeric:
             elution_composition_space_area_ranking = (self.orthogonality_result_df['Elution Domain Rank'].
-                                               apply(lambda rank: set_criterion(rank, criterion='ES')))
+                                               apply(lambda rank: set_criterion(rank, criterion='Δφ')))
         else:
             elution_composition_space_area_ranking = ''
 
         if 'Peak Capacity Rank' in self.orthogonality_result_df.columns and peak_capacity_rank_is_numeric:
             hypothetical_2d_peak_capacity_ranking = (self.orthogonality_result_df['Peak Capacity Rank'].
-                                               apply(lambda rank: set_criterion(rank, criterion='PS')))
+                                               apply(lambda rank: set_criterion(rank, criterion='nc')))
         else:
             hypothetical_2d_peak_capacity_ranking = ''
 
-        self.orthogonality_result_df["Criterion Higlight"] =(orthogonality_consensus_ranking + ' ' +
+        self.orthogonality_result_df["Criterion Highlight"] =(orthogonality_consensus_ranking + ' ' +
                                                              elution_composition_space_area_ranking + ' ' +
                                                              hypothetical_2d_peak_capacity_ranking)
 
-        self.orthogonality_result_df["Criterion Higlight"] = (self.orthogonality_result_df["Criterion Higlight"]
+        self.orthogonality_result_df["Criterion Highlight"] = (self.orthogonality_result_df["Criterion Highlight"]
                                                               .apply(lambda x: x.strip() if x.strip() else '---'))
 
 
@@ -521,8 +524,12 @@ class ResultsBuilder:
             - Adds ``"Final Recommendation"`` column to ``self.orthogonality_result_df``.
         """
 
+        """
+        
+        """
+
         def is_highly_recommended(row):
-            top_10_suggested_rank = int(0.1 * self.orthogonality_result_df['Final Rank'].max())
+            top_10_suggested_rank = self.orthogonality_result_df['Final Rank'].quantile(0.1)
             peak_rate = row['Peak Detection Rate (%)']
             suggested_rank = row['Final Rank']
             compatibility = row['Compatibility']
@@ -530,59 +537,59 @@ class ResultsBuilder:
 
             if (peak_rate > 80
                     and suggested_rank <= top_10_suggested_rank
-                    and compatibility in ['Good', 'Moderate']
+                    and compatibility in ['High', 'Moderate']
                     and complexity in ['Low', 'Moderate']):
                 return True
             else:
                 return False
 
         def is_recommended(row):
-            bottom_30_suggested_rank = int(0.7 * self.orthogonality_result_df['Final Rank'].max())
+            top_30_suggested_rank = self.orthogonality_result_df['Final Rank'].quantile(0.3)
             peak_rate = row['Peak Detection Rate (%)']
             suggested_rank = row['Final Rank']
             compatibility = row['Compatibility']
             complexity = row['Complexity']
 
             if (peak_rate > 60
-                    and suggested_rank >= bottom_30_suggested_rank
-                    and compatibility not in ['Good']
-                    and complexity not in ['Low']):
+                    and suggested_rank <= top_30_suggested_rank
+                    and compatibility not in ['Low']
+                    and complexity not in ['High']):
                 return True
             else:
                 return False
 
         def is_use_with_caution(row):
-            top_30_suggested_rank = int(0.3 * self.orthogonality_result_df['Final Rank'].max())
-            top_60_suggested_rank = int(0.6 * self.orthogonality_result_df['Final Rank'].max())
+            pct_30_suggested_rank = self.orthogonality_result_df['Final Rank'].quantile(0.3)
+            pct_70_suggested_rank = self.orthogonality_result_df['Final Rank'].quantile(0.7)
             peak_rate = row['Peak Detection Rate (%)']
             suggested_rank = row['Final Rank']
             compatibility = row['Compatibility']
             complexity = row['Complexity']
 
-            if (40 <= peak_rate < 70
-                    or top_30_suggested_rank <= suggested_rank <= top_60_suggested_rank
-                    or compatibility in ['Good']
-                    or complexity in ['Low']):
+            if (40 <= peak_rate <= 60
+                    or pct_30_suggested_rank < suggested_rank < pct_70_suggested_rank
+                    or compatibility in ['Low']
+                    or complexity in ['High']):
                 return True
             else:
                 return False
 
         def is_not_recommended(row):
-            top_30_suggested_rank = int(0.3 * self.orthogonality_result_df['Final Rank'].max())
+            bottom_30_suggested_rank = self.orthogonality_result_df['Final Rank'].quantile(0.7)
             suggested_rank = row['Final Rank']
             peak_rate = row['Peak Detection Rate (%)']
 
-            if peak_rate < 40 or suggested_rank < top_30_suggested_rank:
+            if peak_rate < 40 or suggested_rank >= bottom_30_suggested_rank:
                 return True
             else:
                 return False
 
         def set_final_recommendation(row):
-            if is_highly_recommended(row):
-                return 'Highly recommended'
-
             if is_not_recommended(row):
                 return 'Not recommended'
+
+            if is_highly_recommended(row):
+                return 'Highly recommended'
 
             if is_recommended(row):
                 return 'Recommended'
@@ -592,8 +599,65 @@ class ResultsBuilder:
 
             return '---'
 
+        def set_final_recommendation_text(row):
+
+            """
+            Final consensus Rank : Valeur (avec le seuil en orange, rouge, jaune ou vert)
+            Peak Detection Rate : Idem (Failed criteria si il fail nos criteres definis)
+            Complexity : High, medium etc (Failed criteria)
+            Compatibility : Idem (Failed criteria)
+            """
+            if is_not_recommended(row):
+                tooltip = (
+                    f"<table>"
+                    f"<tr><td><b>Final Consensus Rank:</b></td><td style='color: red;'>{row['Final Rank']} (Bottom 30%)</td></tr>"
+                    f"<tr><td><b>Peak Detection Rate:</b></td><td style='color: {'#c0392b' if row['Peak Detection Rate (%)'] < 40 else 'black'};'>{row['Peak Detection Rate (%)']}% (&lt;40%)</td></tr>"
+                    f"<tr><td><b>Complexity:</b></td><td style='color: black;'>{row['Complexity']}</td></tr>"
+                    f"<tr><td><b>Compatibility:</b></td><td style='color: black;'>{row['Compatibility']}</td></tr>"
+                    f"</table>"
+                )
+                return tooltip
+
+            if is_highly_recommended(row):
+                tooltip = (
+                    f"<table>"
+                    f"<tr><td><b>Final Consensus Rank:</b></td><td style='color: #1a7a2e;'>{row['Final Rank']} (Top 1%)</td></tr>"
+                    f"<tr><td><b>Peak Detection Rate:</b></td><td style='color: #1a7a2e;'>{row['Peak Detection Rate (%)']}% (&gt;80%)</td></tr>"
+                    f"<tr><td><b>Complexity:</b></td><td style='color: {'#1a7a4a' if row['Complexity'] == 'Low' else '#b36a00'};'>{row['Complexity']}</td></tr>"
+                    f"<tr><td><b>Compatibility:</b></td><td style='color: {'#1a7a4a' if row['Compatibility'] == 'High' else '#b36a00'};'>{row['Compatibility']}</td></tr>"
+                    f"</table>"
+                )
+                return tooltip
+
+            if is_recommended(row):
+                tooltip = (
+                    f"<table>"
+                    f"<tr><td><b>Final Consensus Rank:</b></td><td style='color: #b8a800;'>{row['Final Rank']} (Top 30%)</td></tr>"
+                    f"<tr><td><b>Peak Detection Rate:</b></td><td style='color: black;'>{row['Peak Detection Rate (%)']}% (&gt;60%)</td></tr>"
+                    f"<tr><td><b>Complexity:</b></td><td style='color: black;'>{row['Complexity']}</td></tr>"
+                    f"<tr><td><b>Compatibility:</b></td><td style='color: black;'>{row['Compatibility']}</td></tr>"
+                    f"</table>"
+                )
+                return tooltip
+
+            if is_use_with_caution(row):
+                tooltip = (f"<table>"
+                f"<tr><td><b>Final Consensus Rank:</b></td><td style='color: #f5a623;'>{row['Final Rank']} (30 &lt;= PR &lt;= 70)</td></tr>"
+                f"<tr><td><b>Peak Detection Rate:</b></td><td style='color: #f5a623;'>{row['Peak Detection Rate (%)']}% (40 &lt;= PR &lt;= 60)</td></tr>"
+                f"<tr><td><b>Complexity:</b></td><td style='color: #c0392b;'>{row['Complexity']}</td></tr>"
+                f"<tr><td><b>Compatibility:</b></td><td style='color: #c0392b;'>{row['Compatibility']}</td></tr>"
+                f"</table>")
+
+                return tooltip
+
+            return '---'
+
         self.orthogonality_result_df["Final Recommendation"] = (
             self.orthogonality_result_df.apply(lambda row: set_final_recommendation(row), axis=1)
+        )
+
+        self.orthogonality_result_df["Final Recommendation tooltip"] = (
+            self.orthogonality_result_df.apply(lambda row: set_final_recommendation_text(row), axis=1)
         )
 
     # ------------------------------------------------------------------
@@ -615,7 +679,7 @@ class ResultsBuilder:
 
             mode_dict = get_symmetric_mode_dict(FEASABILITY, mode)
 
-            compatibility_list.append(mode_dict['Complexity'])
+            compatibility_list.append(mode_dict['Compatibility'])
 
         self.orthogonality_result_df["Compatibility"] = compatibility_list
 

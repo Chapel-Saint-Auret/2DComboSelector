@@ -768,7 +768,7 @@ class DataManager:
                 # Calculate 2D peak capacity
                 n1 = self.retention_time_df_2d_peaks.iloc[0, col1_idx]
                 n2 = self.retention_time_df_2d_peaks.iloc[0, col2_idx]
-                peak_capacity = n1 * n2
+                peak_capacity = int(n1 * n2)
 
                 if set_key not in self.orthogonality_dict:
                     self.orthogonality_dict[set_key] = (
@@ -855,7 +855,7 @@ class DataManager:
                 # Calculate Elution domain
                 e1 = self.load_elution_composition_df.iloc[0, col1_idx]
                 e2 = self.load_elution_composition_df.iloc[0, col2_idx]
-                elution_composition_space = (e1 * e2) / 100
+                elution_composition_space = int((e1 * e2) / 100)
 
                 # Use helper function for updates
                 self.update_metrics(set_key,"elution_composition_space",elution_composition_space,table_row_index=set_number - 1)
@@ -866,7 +866,7 @@ class DataManager:
 
             self.combination_df['Elution Domain'] = self.orthogonality_result_df['Elution Domain'] \
                 = combination_table
-            self.orthogonality_result_df['Elution Domain Rank'] = self.combination_df['Elution Domain'].rank(ascending=False, method='average').astype(int)
+            self.orthogonality_result_df['Elution Domain Rank'] = self.combination_df['Elution Domain'].rank(ascending=False, method='average')
             self.elution_data_status = "elution_data_loaded"
 
         except Exception as e:

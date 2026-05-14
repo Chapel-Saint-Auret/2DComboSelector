@@ -149,7 +149,7 @@ class OrthogonalityTableModel(QAbstractTableModel):
         >>> model.set_data(df)
     """
 
-    def __init__(self,color_config=None, bold_columns=None, enable_decoration = False, data: pd.DataFrame = None):
+    def __init__(self,color_config=None, bold_columns=None, enable_decoration = False,has_tooltip = False, data: pd.DataFrame = None):
         """Initialize the table model.
 
         Args:
@@ -157,6 +157,7 @@ class OrthogonalityTableModel(QAbstractTableModel):
         """
         super().__init__()
         self._enable_decoration = enable_decoration
+        self.has_tooltip = has_tooltip
         self._color_config = color_config or {}       # { col: { val: hex } }
         self._bold_columns = bold_columns or []       # [col_index, ...]
         self._raw_data = None
@@ -292,6 +293,9 @@ class OrthogonalityTableModel(QAbstractTableModel):
         self._column_count = col_count
         self.endResetModel()
 
+    def set_tooltip_config(self,tooltip_config):
+        self.tooltip_config = tooltip_config
+
     def data(self, index: QModelIndex, role: int = Qt.DisplayRole):
         """Get data for a table cell.
 
@@ -326,6 +330,10 @@ class OrthogonalityTableModel(QAbstractTableModel):
                 font.setBold(True)
             return font
 
+        if role == Qt.ToolTipRole and self.has_tooltip:
+            if c in self.tooltip_config:
+                tooltip = self.tooltip_config[c][r]
+                return tooltip
         if role == Qt.BackgroundRole:
             val = str(self._formatted_data[r][c]).strip().lower()
             if val == 'na':

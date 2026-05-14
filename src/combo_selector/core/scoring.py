@@ -262,7 +262,7 @@ class Scoring:
 
         consensus_orthogonality_ranking_df = consensus_orthogonality_ranking_df.rank(ascending=True, method='average')
 
-        self.orthogonality_result_df['Orthogonality Rank'] = consensus_orthogonality_ranking_df.astype(int)
+        self.orthogonality_result_df['Orthogonality Rank'] = consensus_orthogonality_ranking_df
 
     def assess_metric_removal_impact_on_orthogonality_rank(self) -> pd.DataFrame:
         """Assess the impact of removing each metric on orthogonality rank.
@@ -345,6 +345,10 @@ class Scoring:
             by="Median Orthogonality Rank Difference",
             ascending=False
         ).reset_index(drop=True)
+
+        self.metric_removal_impact_df['Median Orthogonality Rank Difference'] = \
+        self.metric_removal_impact_df['Median Orthogonality Rank Difference'].apply(lambda x: (x*100)/self.nb_combination)
+
 
     def compute_consensus_orthogonality_score(self):
         """Compute the consensus orthogonality score as the median of group medians.
@@ -496,6 +500,14 @@ class Scoring:
                                                    self.correlation_group_df['Correlated Metrics']):
             rank_per_metric_per_group[group] = metric_rank_df[Correlated_Metrics_list].apply(list, axis=1)
 
+        r_g = self.orthogonality_group_ranking_df
+        m_g = r_g.mean(axis=1)
+
+        d_g = r_g.sub(m_g, axis=0).abs()
+
+        d_g_percent = d_g.apply(lambda x: 100*(x/(self.nb_combination-1)))
+
+
         median_g = self.orthogonality_group_ranking_df
 
         mad_g = rank_per_metric_per_group.map(lambda x: median_abs_deviation(x))
@@ -532,13 +544,13 @@ class Scoring:
             •	High
             """
             if peak_detection_rate < 40:
-                return 'Below Threshold'
+                return 'Insufficient '
             elif 40 <= peak_detection_rate < 60:
-                return 'Caution'
+                return 'Cautionary'
             elif 60 <= peak_detection_rate < 80:
                 return 'Acceptable'
             else:
-                return 'High'
+                return 'Suitablety'
 
         nb_of_max_peak = self.combination_df["Number of peaks"].max()
         self.orthogonality_result_df["Peak Detection Rate (%)"] = (
