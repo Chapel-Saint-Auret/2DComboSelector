@@ -75,4 +75,4 @@ where:
 
 | | HILIC - BEH Amide - EtOH - pH 7 | RPLC - C18 - ACN/H₂O - pH 3 |
 |---|---|---|
-| Peak capacity | 45 | 60 |
+| Elution-Composition Ranges | 45 | 60 |
