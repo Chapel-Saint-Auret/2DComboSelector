@@ -35,7 +35,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from combo_selector.ui.config.table_color_config import COLOR_CONFIG_TABLE_FEASIBILITY, COLOR_CONFIG_TABLE_RECOMMENDATION
+from combo_selector.ui.config.table_color_config import COLOR_CONFIG_TABLE_FEASIBILITY, COLOR_CONFIG_FINAL_EVALUATION
 from combo_selector.core.workers import ResultsWorkerComputeCustomOMScore
 from combo_selector.ui.widgets.visualization_option_panel import VisualizationOptionsPanel,PlotState
 from combo_selector.ui.widgets.checkable_tree_list import CheckableTreeList
@@ -218,7 +218,7 @@ class ResultsPage(QFrame):
         Returns:
             QFrame: Input section containing all control groups.
         """
-        input_title = QLabel("Input")
+        input_title = QLabel("Settings")
         input_title.setFixedHeight(40)
         input_title.setObjectName("TitleBar")
         input_title.setAlignment(Qt.AlignVCenter | Qt.AlignLeft)
@@ -300,7 +300,7 @@ class ResultsPage(QFrame):
         Returns:
             QGroupBox: Group box with metric selection and compute button.
         """
-        orthogonality_score_group = QGroupBox("Final Orthogonality assessment")
+        orthogonality_score_group = QGroupBox("Final Orthogonality Assessment")
         orthogonality_score_group.setStyleSheet(self._get_group_stylesheet())
 
         SectionHelpButton.for_group(
@@ -494,17 +494,18 @@ class ResultsPage(QFrame):
                                     enable_decoration = True)
         self.styled_table.add_sheet(sheet_name='Separation Potential',value_format=".2f")
         self.styled_table.add_sheet(value_format=".1f",
-                                    color_config=COLOR_CONFIG_TABLE_RECOMMENDATION,
-                                    bold_columns=[6, 7, 8],
+                                    color_config=COLOR_CONFIG_FINAL_EVALUATION,
+                                    bold_columns=[7],
                                     sheet_name='Final Evaluation',
-                                    enable_decoration = True)
+                                    enable_decoration = True,
+                                    has_tooltip = True)
 
         self.orthogonality_table = self.styled_table.get_table_from_sheet(sheet_name='Orthogonality')
         self.orthogonality_table.add_help_button(column=3,title="Coverage Score",markdown_path="markdown/coverage_score.md")
         self.orthogonality_table.add_help_button(column=4,title="Distribution Score",markdown_path="markdown/distribution_score.md")
         self.orthogonality_table.add_help_button(column=5,title="Orthogonality Rank",markdown_path="markdown/orthogonality_rank.md")
         self.orthogonality_table.add_help_button(column=6,title="Agreement Indicator",markdown_path="markdown/agreement_indicator.md")
-        self.orthogonality_table.add_help_button(column=7,title="Outlier Flag",markdown_path="markdown/outlier_flag.md")
+        # self.orthogonality_table.add_help_button(column=7,title="Outlier Flag",markdown_path="markdown/outlier_flag.md")
         self.orthogonality_table.set_header_label(
             [
                 "Combination #",
@@ -513,8 +514,7 @@ class ResultsPage(QFrame):
                 "Coverage Score",
                 "Distribution Score",
                 "Orthogonality Rank",
-                "Agreement Indicator",
-                "Outlier Flag",
+                "Agreement Indicator"
             ])
 
         self.practical_feasibility_table = self.styled_table.get_table_from_sheet(sheet_name='Practical Feasibility')
@@ -542,7 +542,7 @@ class ResultsPage(QFrame):
                 "2D Combination",
                 "Chromatographic Mode",
                 "Hypothetical 2D Peak Capacity",
-                "Elution Domain",
+                "Elution Domain (%)",
             ])
 
         self.final_recommendation_table = self.styled_table.get_table_from_sheet(sheet_name='Final Evaluation')
@@ -556,7 +556,7 @@ class ResultsPage(QFrame):
                                                           markdown_path="markdown/final_consensus_rank.md")
         self.final_recommendation_table.add_help_button(column=7, title="Final Recommendation",
                                                           markdown_path="markdown/final_recommendation.md")
-        self.final_recommendation_table.add_help_button(column=8, title="Criterion Higlight",
+        self.final_recommendation_table.add_help_button(column=8, title="Criterion Highlight",
                                                           markdown_path="markdown/criterion_highlight.md")
 
         self.final_recommendation_table.set_header_label(
@@ -569,7 +569,7 @@ class ResultsPage(QFrame):
                 "Elution Domain Rank",
                 "Final Consensus Rank",
                 "Final Recommendation",
-                "Criterion Higlight",
+                "Criterion Highlight",
             ])
 
         # self.styled_table.get_header().setSectionResizeMode(0, QHeaderView.Fixed)
@@ -1038,9 +1038,13 @@ class ResultsPage(QFrame):
             self.seperational_potential_table.set_table_proxy()
 
         data = self.model.get_final_recommendation_table()
+        result_df = self.model.get_orthogonality_result_df()
         if not data.empty:
             self.final_recommendation_table.async_set_table_data(data)
             self.final_recommendation_table.set_table_proxy()
+        if 'Final Recommendation tooltip' in result_df.columns:
+            tooltip = result_df['Final Recommendation tooltip']
+            self.final_recommendation_table.set_tooltip_config({7: tooltip})
 
         # self.styled_table.async_set_table_data(data)
         # self.styled_table.set_table_proxy()

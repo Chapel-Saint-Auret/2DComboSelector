@@ -131,6 +131,8 @@ class ImportDataPage(QFrame):
         table_frame_layout.setContentsMargins(20, 20, 20, 20)
 
         self.normalized_data_table = StyledTable("Normalized Retention Time Table")
+        # self.normalized_data_table.add_title_bar_info_button(markdown_path="markdown/retention_table.md")
+
         self.normalized_data_table.set_header_label(
             ["Compound #", "Condition 1", "Condition 2", "...", "Condition n"]
         )
@@ -403,7 +405,7 @@ class ImportDataPage(QFrame):
 
         separation_space_scaling_help_btn = SectionHelpButton(
             title="Data Normalization",
-            markdown_path="markdown/data_import.md",
+            markdown_path="markdown/normalization.md",
             parent=separation_space_scaling_bar,
         )
         separation_space_scaling_help_btn.setFixedSize(22, 22)           # ← explicit size, same as the close btn in HelpDialog
@@ -476,11 +478,11 @@ class ImportDataPage(QFrame):
         self.normalization_status = Status()
 
         # Radio buttons (exclusive)
-        self.min_max_scaling_btn = QRadioButton("Min-Max Scaling")
+        self.min_max_scaling_btn = QRadioButton("min-max Scaling")
         self.min_max_scaling_btn.setObjectName("min_max")
         self.min_max_scaling_btn.setChecked(True)
 
-        self.void_max_scaling_btn = QRadioButton("Void – Max Scaling")
+        self.void_max_scaling_btn = QRadioButton("void–max Scaling")
         self.void_max_scaling_btn.setObjectName("void_max")
 
         self.wosel_btn = QRadioButton("WOSEL Scaling")

@@ -130,8 +130,8 @@ class ExportPage(QFrame):
         top_frame_layout.setSpacing(80)
 
         # ----- Left: Input column ---------------------------------------------
-        input_title = QLabel("Input")
-        input_title.setFixedHeight(30)
+        input_title = QLabel("Settings")
+        input_title.setFixedHeight(40)
         input_title.setObjectName("TitleBar")
         input_title.setAlignment(Qt.AlignVCenter | Qt.AlignLeft)
         input_title.setContentsMargins(10, 0, 0, 0)

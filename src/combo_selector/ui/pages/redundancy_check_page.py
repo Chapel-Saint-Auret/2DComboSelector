@@ -187,7 +187,7 @@ class RedundancyCheckPage(QFrame):
         Returns:
             QFrame: Input section containing parameter controls and info.
         """
-        input_title = QLabel("Input")
+        input_title = QLabel("Settings")
         input_title.setFixedHeight(40)
         input_title.setObjectName("TitleBar")
         input_title.setAlignment(Qt.AlignVCenter | Qt.AlignLeft)
@@ -240,7 +240,7 @@ class RedundancyCheckPage(QFrame):
         Returns:
             QGroupBox: Group box with color, threshold, and display options.
         """
-        correlation_parameter_group = QGroupBox("Correllation Matrix Settings")
+        correlation_parameter_group = QGroupBox("Correllation Matrix")
         correlation_parameter_group.setStyleSheet(f"""
             QGroupBox {{
                 font-size: 14px;
@@ -276,7 +276,7 @@ class RedundancyCheckPage(QFrame):
 
         self.select_correlation_matrix = QComboBox()
         self.select_correlation_matrix.addItems(["Values",
-                                                 "Ranking"])
+                                                 "Rank"])
 
         matrix_type_info_btn = SectionHelpButton(
             title="Matrix Type",
@@ -290,6 +290,12 @@ class RedundancyCheckPage(QFrame):
         self.correlation_threshold = QDoubleSpinBox()
         self.correlation_threshold.setValue(0.85)
 
+        corr_threshold_info_btn = SectionHelpButton(
+            title="Correlation Threshold",
+            markdown_path="markdown/correlation_threshold.md",
+            parent=correlation_parameter_group,
+        )
+
         self.correlation_threshold_tolerance = QDoubleSpinBox()
         self.correlation_threshold_tolerance.setValue(0.0)
         self.correlation_threshold_tolerance.setToolTip("""
@@ -299,6 +305,12 @@ class RedundancyCheckPage(QFrame):
             For instance, if the threshold is <strong>0.85</strong>, metrics with correlation values down to <strong>0.80</strong>
             will be included.</p>
         """)
+
+        corr_tolerance_info_btn = SectionHelpButton(
+            title="Correlation Threshold Tolerance",
+            markdown_path="markdown/correlation_threshold_tolerance.md",
+            parent=correlation_parameter_group,
+        )
 
         self.show_cbar = QCheckBox("Show color bar")
         self.show_cbar.setChecked(False)
@@ -327,8 +339,18 @@ class RedundancyCheckPage(QFrame):
         matrix_type_layout.addStretch()
         form_layout.addRow("Matrix Type:", matrix_type_layout)
         form_layout.addRow("Color:", self.corr_mat_cmap)
-        form_layout.addRow("Correlation Threshold:", self.correlation_threshold)
-        form_layout.addRow("Threshold Tolerance:", self.correlation_threshold_tolerance)
+
+        correlation_threshold_layout = QHBoxLayout()
+        correlation_threshold_layout.addWidget(self.correlation_threshold)
+        correlation_threshold_layout.addWidget(corr_threshold_info_btn)
+        correlation_threshold_layout.addStretch()
+        form_layout.addRow("Correlation Threshold:", correlation_threshold_layout)
+
+        correlation_tolerance_layout = QHBoxLayout()
+        correlation_tolerance_layout.addWidget(self.correlation_threshold_tolerance)
+        correlation_tolerance_layout.addWidget(corr_tolerance_info_btn)
+        correlation_tolerance_layout.addStretch()
+        form_layout.addRow("Threshold Tolerance:", correlation_tolerance_layout)
 
         correlation_parameter_layout.addLayout(form_layout)
         correlation_parameter_layout.addWidget(LineWidget())
@@ -487,11 +509,11 @@ class RedundancyCheckPage(QFrame):
         table_frame_layout = QHBoxLayout(table_frame)
         table_frame_layout.setContentsMargins(20, 20, 20, 20)
 
-        self.styled_table = StyledTable("Grouped Metric Table")
+        self.styled_table = StyledTable("Grouped Metric Table",value_format=".2f")
         self.styled_table.add_title_bar_info_button(markdown_path="markdown/group_metric_table.md")
-        self.styled_table.set_header_label(["Group", "Correlated Metrics"])
+        self.styled_table.set_header_label(["Group", "Correlated Metrics","Average Group Correllation"])
         self.styled_table.set_default_row_count(10)
-        self.styled_table.add_help_button(2, "Classification","markdown/classification.md")
+        self.styled_table.add_help_button(2, "Average Group Correlation","markdown/average_group_correlation.md")
 
         table_frame_layout.addWidget(self.styled_table)
 
@@ -513,7 +535,7 @@ class RedundancyCheckPage(QFrame):
             - Updates correlation groups table
         """
         self.styled_table.clean_table()
-        self.styled_table.set_header_label(["Group", "Correlated Metrics"])
+        self.styled_table.set_header_label(["Group", "Correlated Metrics","Average Group Correllation"])
 
         if self.model.get_orthogonality_metric_corr_matrix_df().empty:
             return
@@ -554,7 +576,7 @@ class RedundancyCheckPage(QFrame):
             self.selected_correlation_matrix = self.model.get_orthogonality_metric_corr_matrix_df().corr()
             self._ax.set_title('Value-Based',color='0.7')
 
-        if self.select_correlation_matrix.currentText() == 'Ranking':
+        if self.select_correlation_matrix.currentText() == 'Rank':
             self.selected_correlation_matrix = self.model.get_orthogonality_metric_ranking_corr_matrix_df().corr()
             self._ax.set_title('Ranking-Based',color='0.7')
 
@@ -713,6 +735,8 @@ class RedundancyCheckPage(QFrame):
         correlation_group_table = self.model.get_correlation_group_df()
 
         # self.model.fill_correlation_group_classification()
+
+        self.model.fill_correlation_group_average()
 
         # self.model.build_coverage_distribution_matrix()
 

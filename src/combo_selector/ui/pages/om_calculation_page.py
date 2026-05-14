@@ -262,7 +262,7 @@ class OMCalculationPage(QFrame):
         Returns:
             QFrame: Input section containing metric checklist and selectors.
         """
-        input_title = QLabel("Input")
+        input_title = QLabel("Settings")
         input_title.setFixedHeight(40)
         input_title.setObjectName("TitleBar")
         input_title.setAlignment(Qt.AlignVCenter | Qt.AlignLeft)
@@ -580,7 +580,8 @@ class OMCalculationPage(QFrame):
         nav_layout.addWidget(self.table_toggle_info_btn)
 
 
-        self.styled_table = StyledTable("Metric Result Table")
+        self.styled_table = StyledTable("Metric Result Table",value_format=".2f")
+        self.styled_table.add_title_bar_info_button(markdown_path="markdown/metric_table.md")
         self.styled_table.set_header_label(
             ["Set #", "2D Combination", "Metric 1", "Metric 2", "...", "Metric n"]
         )
@@ -589,7 +590,7 @@ class OMCalculationPage(QFrame):
 
         self.styled_table.set_default_row_count(10)
 
-        self.metric_ranking_table = StyledTable("Metric Ranking table",value_format=".2f")
+        self.metric_ranking_table = StyledTable("Metric Ranking table",value_format=".1f")
         self.metric_ranking_table.add_title_bar_info_button(markdown_path="markdown/metric_rank_table.md")
         self.metric_ranking_table.set_header_label(
             ["Set #", "2D Combination", "Metric 1 Rank", "Metric 2 Rank", "...", "Metric n Rank"]

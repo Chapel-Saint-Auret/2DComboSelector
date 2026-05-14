@@ -208,7 +208,7 @@ class PlotPairWisePage(QFrame):
         Returns:
             QFrame: Input section containing selectors, info, and tips.
         """
-        input_title = QLabel("Input")
+        input_title = QLabel("Settings")
         input_title.setFixedHeight(40)
         input_title.setObjectName("TitleBar")
         input_title.setAlignment(Qt.AlignVCenter | Qt.AlignLeft)
@@ -506,15 +506,17 @@ class PlotPairWisePage(QFrame):
         table_frame_layout.setContentsMargins(20, 20, 20, 20)
 
         self.styled_table = StyledTable("2D Combination Table")
+        # self.styled_table.add_title_bar_info_button(markdown_path="markdown/2d_combination_table.md")
         self.styled_table.set_header_label(
             [
                 "Combination #",
                 "2D Combination",
                 "Number of peaks",
                 "Hypothetical 2D Peak Capacity",
-                "Elution Domain",
+                "Elution Domain (%)",
             ]
         )
+        self.styled_table.add_help_button(1, "2D Combination","markdown/2d_combination.md")
         self.styled_table.add_help_button(2, "Number of peaks","markdown/number_of_peaks.md")
         self.styled_table.add_help_button(3, "Hypothetical 2D Peak Capacity","markdown/hypothetical_peak_capacity.md")
         self.styled_table.add_help_button(4, "Elution Domain","markdown/elution_domain.md")
