@@ -460,11 +460,11 @@ class ResultsPage(QFrame):
             ),
             "Feasibility Profile": (
                 self.plot_utils.plot_feasibility_profile,
-                lambda s: {"axis_scale": s.axis_scale, "grouping": s.grouping}
+                lambda s: {"axis_scale": s.axis_scale, "grouping": s.grouping,"chrom_mode": s.chrom_mode}
             ),
             "Final Rank vs Recommendation": (
                 self.plot_utils.plot_final_rank_by_recommendation_class,
-                lambda s: {}
+                lambda s: {"recommendation": s.recommendation}
             ),
         }
 
@@ -717,6 +717,7 @@ class ResultsPage(QFrame):
         if not data.empty:
             self.plot_utils.set_orthogonality_result_data(data)
 
+        self.vizualation_settings_group.set_chrom_mode_item(["All mode"]+self.model.get_chromatographic_mode_list())
         self.plot_visualization_state_changed()
 
     def update_orthogonality_metric_list(self, om_list: list) -> None:

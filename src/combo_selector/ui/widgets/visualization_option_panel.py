@@ -61,6 +61,14 @@ CRITERIA_ITEMS = [
     "Peak rate",
 ]
 
+RECOMMENDATION_ITEMS = [
+                "All recommendation",
+                "Highly recommended",
+                "Recommended",
+                "Use with caution",
+                "Not recommended"
+]
+
 
 # ---------------------------------------------------------------------------
 # Helper: thin horizontal separator
@@ -177,6 +185,8 @@ class PlotState:
     view:       str = 'Heatmap'  # "Heatmap" | "Boxplot"
     criteria:   str = 'All criteria'  # only when view == "Boxplot"
     grouping:   str = 'Global' # "Global" | "By mode"
+    chrom_mode: str = 'All mode'
+    recommendation: str = 'All recommendation'
 
 
 class VisualizationOptionsPanel(QGroupBox):
@@ -269,7 +279,17 @@ class VisualizationOptionsPanel(QGroupBox):
         self._grouping_panel = FlatRadioGroupedButton(title='Grouping',
                                items=["Global", "By mode"]
                                )
+        self._grouping_panel.buttonClicked.connect(self._on_grouping_toggled)
         root.addWidget(self._grouping_panel)
+
+        # Chromatographic Mode combo (Chromatographic Mode Performance — Boxplot only)
+        self.chromatographic_mode_combo_widget = LabelledCombo("Chromatographic Mode", [])
+        root.addWidget(self.chromatographic_mode_combo_widget)
+
+        # Criteria combo (Chromatographic Mode Performance — Boxplot only)
+        self.recommendation_combo_widget = LabelledCombo("Recommendation class", RECOMMENDATION_ITEMS)
+        root.addWidget(self.recommendation_combo_widget)
+
 
         # Stretch at bottom
         root.addStretch()
@@ -283,10 +303,14 @@ class VisualizationOptionsPanel(QGroupBox):
         self._view_panel.buttonClicked.connect(lambda _: self._emit_state())
         self._grouping_panel.buttonClicked.connect(lambda _: self._emit_state())
         self._criteria_combo_widget.combo.currentTextChanged.connect(lambda _: self._emit_state())
+        self.chromatographic_mode_combo_widget.combo.currentTextChanged.connect(lambda _: self._emit_state())
+        self.recommendation_combo_widget.combo.currentTextChanged.connect(lambda _: self._emit_state())
 
     # ------------------------------------------------------------------
     # Slots
     # ------------------------------------------------------------------
+    def set_chrom_mode_item(self,items):
+        self.chromatographic_mode_combo_widget.combo.addItems(items)
 
     def _emit_state(self):
         plot = self._plot_combo.currentText()
@@ -296,6 +320,9 @@ class VisualizationOptionsPanel(QGroupBox):
         show_view = plot == "Chromatographic Mode Performance"
         show_grouping = plot in ("Recommendation Distribution", "Feasibility Profile")
         is_boxplot = show_view and self._view_panel.currentText() == "Boxplot"
+        show_chrom_mode = plot == "Feasibility Profile"
+        show_recommendaton = plot == "Final Rank vs Recommendation"
+
 
         state = PlotState(
             plot_type=plot,
@@ -304,6 +331,8 @@ class VisualizationOptionsPanel(QGroupBox):
             view=self._view_panel.currentText() if show_view else None,
             criteria=self._criteria_combo_widget.combo.currentText() if is_boxplot else None,
             grouping=self._grouping_panel.currentText() if show_grouping else None,
+            chrom_mode=self.chromatographic_mode_combo_widget.combo.currentText() if show_chrom_mode else None,
+            recommendation =self.recommendation_combo_widget.combo.currentText() if show_recommendaton else None
         )
         self.stateChanged.emit(state)
 
@@ -318,11 +347,15 @@ class VisualizationOptionsPanel(QGroupBox):
         show_axis = plot in ("Multi-Criteria Space", "Feasibility Profile")
         show_view = plot == "Chromatographic Mode Performance"
         show_grouping = plot in ("Recommendation Distribution", "Feasibility Profile")
+        show_chrom_mode = plot == "Feasibility Profile"
+        show_recommendaton = plot == "Final Rank vs Recommendation"
 
         self._percentile_panel.setVisible(show_subset)
         self._axis_panel.setVisible(show_axis)
         self._view_panel.setVisible(show_view)
         self._grouping_panel.setVisible(show_grouping)
+        self.chromatographic_mode_combo_widget.setVisible(show_chrom_mode)
+        self.recommendation_combo_widget.setVisible(show_recommendaton)
 
         # Criteria combo visibility depends on view panel state
         if show_view:
@@ -331,14 +364,34 @@ class VisualizationOptionsPanel(QGroupBox):
         else:
             self._criteria_combo_widget.setVisible(False)
 
+        # Chromatographic mode combo visibility depends on view panel state
+        if show_recommendaton:
+            self.chromatographic_mode_combo_widget.setVisible(True)
+        else:
+            self.chromatographic_mode_combo_widget.setVisible(False)
+
+        # Chromatographic mode combo visibility depends on view panel state
+        if show_recommendaton and show_chrom_mode:
+            text = self._grouping_panel.currentText()
+            self._update_chrom_mode_visibility(text)
+        else:
+            self.chromatographic_mode_combo_widget.setVisible(False)
+
         self.plotTypeChanged.emit(plot)
 
     def _on_view_toggled(self, text):
         self._update_criteria_visibility(text)
 
+    def _on_grouping_toggled(self,text):
+        self._update_chrom_mode_visibility(text)
+
     def _update_criteria_visibility(self,text):
         is_boxplot = text == "Boxplot"
         self._criteria_combo_widget.setVisible(is_boxplot)
+
+    def _update_chrom_mode_visibility(self,text):
+        is_by_mode = text == "By mode"
+        self.chromatographic_mode_combo_widget.setVisible(is_by_mode)
 
     def _percentile_toggled(self, button, checked):
         button.text()
