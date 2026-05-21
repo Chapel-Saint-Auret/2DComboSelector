@@ -18,6 +18,6 @@ Three normalization methods are available:
 	
 	- **Void-Max**
 
-Min-max normalization is recommended as the default option. For WOSEL and Void-Max normalization, additional input parameters are required. 
+**Min-max normalization** is recommended as the default option. For **WOSEL** and **Void-Max** normalization, additional input parameters are required. 
 
 These fields appear in the settings panel on the left when the corresponding method is selected.
