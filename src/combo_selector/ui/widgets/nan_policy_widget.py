@@ -128,7 +128,7 @@ class NanPolicyDialog(QDialog):
         self.option_remove_compound = QRadioButton(
             "Remove compounds with missing values in more than"
         )
-        self.option_remove_compound.setChecked(True)
+        # self.option_remove_compound.setChecked(True)
         self.option_remove_compound.setObjectName("option 1")
 
         # Option 2: Keep all peaks
@@ -140,6 +140,8 @@ class NanPolicyDialog(QDialog):
         self.option_replace = QRadioButton(
             'Keep all compounds and leave missing values empty'
         )
+        self.option_replace.setChecked(True)
+
         self.option_replace.setObjectName("option 3")
 
         # Radio button group
@@ -148,6 +150,8 @@ class NanPolicyDialog(QDialog):
         self.option_button_grp.addButton(self.option_remove_condition)
         self.option_button_grp.addButton(self.option_replace)
         self.option_button_grp.setExclusive(False)
+
+        self.update_button_state()
 
         # Threshold spin box
         self.threshold1_spin = QSpinBox()
