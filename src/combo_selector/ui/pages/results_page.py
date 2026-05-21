@@ -160,7 +160,7 @@ class ResultsPage(QFrame):
         self.progress_overlay.raise_()
 
         # --- Signal connections --------------------------------------------
-        # self.custom_filter_widget.filter_regexp_changed.connect(self.filter_table)
+        self.custom_filter_widget.filter_regexp_changed.connect(self.filter_table)
         # self.select_ranking_type.currentTextChanged.connect(self.set_ranking_argument)
         self.radio_button_group.buttonClicked.connect(
             self.set_use_suggested_om_score_flag
@@ -168,8 +168,16 @@ class ResultsPage(QFrame):
         self.compute_score_btn.clicked.connect(self.start_om_computation)
         self.vizualation_settings_group.stateChanged.connect(self.plot_visualization_state_changed)
 
-        self.cid = self.fig.canvas.mpl_connect('pick_event', self.plot_utils.on_pick)
-
+        # We use a lambda wrapper here because Matplotlib's 'mpl_connect' expects a function
+        # reference that takes exactly one argument (the 'event' object).
+        #
+        # If we called 'self.plot_utils.on_pick(...)' directly, it would execute immediately
+        # during setup instead of waiting for a click. The lambda delays execution and allows
+        # us to pass both Matplotlib's 'event' and our custom 'subset' data simultaneously.
+        self.cid = self.fig.canvas.mpl_connect(
+            'pick_event',
+            lambda event: self.plot_utils.on_pick(event, subset=self.vizualation_settings_group.get_subset())
+        )
 
         # self.plot_tile_selector.plot_selected.connect(self.update_figure)
         # self.compare_number.currentTextChanged.connect(self.update_om_selector_state)
@@ -501,6 +509,12 @@ class ResultsPage(QFrame):
                                     has_tooltip = True)
 
         self.orthogonality_table = self.styled_table.get_table_from_sheet(sheet_name='Orthogonality')
+
+        self.custom_filter_widget = CustomFilterDialog(self)
+        self.orthogonality_table.add_header_button(
+            column=2, tooltip="Custom filter", widget_to_show=self.custom_filter_widget
+        )
+
         self.orthogonality_table.add_help_button(column=3,title="Coverage Score",markdown_path="markdown/coverage_score.md")
         self.orthogonality_table.add_help_button(column=4,title="Distribution Score",markdown_path="markdown/distribution_score.md")
         self.orthogonality_table.add_help_button(column=5,title="Orthogonality Rank",markdown_path="markdown/orthogonality_rank.md")
@@ -518,6 +532,7 @@ class ResultsPage(QFrame):
             ])
 
         self.practical_feasibility_table = self.styled_table.get_table_from_sheet(sheet_name='Practical Feasibility')
+        self.practical_feasibility_table.add_header_button(column=2, tooltip="Custom filter", widget_to_show=self.custom_filter_widget)
         self.practical_feasibility_table.add_help_button(column=3,title="Complexity",markdown_path="markdown/complexity.md")
         self.practical_feasibility_table.add_help_button(column=4,title="Compatibility",markdown_path="markdown/compatibility.md")
         self.practical_feasibility_table.add_help_button(column=5,title="Peak Detection Rate (%)",markdown_path="markdown/peak_detection_rate.md")
@@ -534,6 +549,8 @@ class ResultsPage(QFrame):
             ])
 
         self.seperational_potential_table = self.styled_table.get_table_from_sheet(sheet_name='Separation Potential')
+        self.seperational_potential_table.add_header_button(column=2, tooltip="Custom filter",
+                                                           widget_to_show=self.custom_filter_widget)
         self.seperational_potential_table.add_help_button(column=3, title="Hypothetical 2D Peak Capacity",markdown_path="markdown/hypothetical_peak_capacity.md")
         self.seperational_potential_table.add_help_button(column=4, title="Elution Domain",markdown_path="markdown/elution_domain.md")
         self.seperational_potential_table.set_header_label(
@@ -546,6 +563,8 @@ class ResultsPage(QFrame):
             ])
 
         self.final_recommendation_table = self.styled_table.get_table_from_sheet(sheet_name='Final Evaluation')
+        self.final_recommendation_table.add_header_button(column=2, tooltip="Custom filter",
+                                                           widget_to_show=self.custom_filter_widget)
         self.final_recommendation_table.add_help_button(column=3, title="Orthogonality Rank",
                                                           markdown_path="markdown/orthogonality_rank.md")
         self.final_recommendation_table.add_help_button(column=4, title="Peak Capacity Rank",
@@ -575,14 +594,6 @@ class ResultsPage(QFrame):
         # self.styled_table.get_header().setSectionResizeMode(0, QHeaderView.Fixed)
         # self.styled_table.get_header().setSectionResizeMode(1, QHeaderView.Stretch)
         # self.styled_table.get_header().setSectionResizeMode(5, QHeaderView.Fixed)
-
-        # self.orthogonality_table.set_filter_key_column(2)
-
-        # self.custom_filter_widget = CustomFilterDialog(self)
-        # self.styled_table.add_header_button(
-        #     column=2, tooltip="Custom filter", widget_to_show=self.custom_filter_widget
-        # )
-
 
 
         table_frame_layout.addWidget(self.styled_table)
@@ -1049,7 +1060,8 @@ class ResultsPage(QFrame):
 
         # self.styled_table.async_set_table_data(data)
         # self.styled_table.set_table_proxy()
-        # self.custom_filter_widget.build_filter_list(list(data["2D Combination"]))
+        unique_mode = self.model.get_chromatographic_mode_list()
+        self.custom_filter_widget.build_filter_list(unique_mode)
 
     def filter_table(self, filter_dict: dict) -> None:
         """Apply custom filter to results table.
@@ -1069,7 +1081,13 @@ class ResultsPage(QFrame):
 
         combined_pattern = "|".join(list_of_patterns)
 
-        self.styled_table.set_proxy_filter_regexp(combined_pattern)
+        self.model.apply_chromatographic_mode_filter(combined_pattern)
+        self.orthogonality_table.set_proxy_filter_regexp(combined_pattern)
+        self.practical_feasibility_table.set_proxy_filter_regexp(combined_pattern)
+        self.seperational_potential_table.set_proxy_filter_regexp(combined_pattern)
+        self.final_recommendation_table.set_proxy_filter_regexp(combined_pattern)
+
+        self.vizualation_settings_group._emit_state()
 
     def build_filtered_point(self, combination: dict) -> None:
         """Build filter subsets from a combination of regexp/color filters.

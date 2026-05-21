@@ -30,6 +30,9 @@ class ResultsBuilder:
     def get_chromatographic_mode_list(self):
         return self.list_of_chrom_mode
 
+    def get_filtered_result_df(self):
+        return self.filtered_result_df
+
     def get_orthogonality_result_df(self) -> pd.DataFrame:
         """Get the final orthogonality results DataFrame with rankings.
 
@@ -164,6 +167,23 @@ class ResultsBuilder:
         self.orthogonality_result_df["Elution Domain"] = self.combination_df["Elution Domain"].copy()
         self.orthogonality_result_df["Elution Domain Rank"] = self.combination_df["Elution Domain"].copy()
 
+    def apply_chromatographic_mode_filter(self, combine_pattern: str = ".*") -> None:
+        mask = self.orthogonality_result_df['Chromatographic Mode'].str.contains(
+            combine_pattern, na=False, regex=True
+        )
+        self.filtered_result_df = self.orthogonality_result_df[mask].copy()
+
+        self.create_orthogonality_table()
+        self.create_practical_feasibility_table()
+        self.create_separational_potential_table()
+        self.create_final_recommendation_table()
+
+        self.create_median_rank_score_based_on_chromatographic_group()
+        self.create_rank_score_based_on_chromatographic_group()
+        self.create_rank_score_based_on_recommendation_class()
+        self.create_recommendation_distribution_group()
+
+
     def update_table_results(self) -> None:
         """Recompute all result columns and update the results table.
 
@@ -192,15 +212,7 @@ class ResultsBuilder:
         self.compute_criterion_highlight()
         self.compute_final_recommendation_factor()
 
-        self.create_orthogonality_table()
-        self.create_practical_feasibility_table()
-        self.create_separational_potential_table()
-        self.create_final_recommendation_table()
-
-        self.create_median_rank_score_based_on_chromatographic_group()
-        self.create_rank_score_based_on_chromatographic_group()
-        self.create_rank_score_based_on_recommendation_class()
-        self.create_recommendation_distribution_group()
+        self.apply_chromatographic_mode_filter()
 
     def update_result_with_new_peak_capacity(self):
         """Update the results table with the most recent peak capacity data.
@@ -249,7 +261,7 @@ class ResultsBuilder:
             "Agreement Indicator"
         ]
 
-        self.orthogonality_table_df = self.orthogonality_result_df[column_name].copy()
+        self.orthogonality_table_df = self.filtered_result_df[column_name].copy()
 
     def create_practical_feasibility_table(self):
         """Build the practical feasibility sub-table from the results DataFrame.
@@ -267,7 +279,7 @@ class ResultsBuilder:
             "Peak Detection Rate Status",
         ]
 
-        self.practical_feasibility_table_df = self.orthogonality_result_df[column_name].copy()
+        self.practical_feasibility_table_df = self.filtered_result_df[column_name].copy()
 
     def create_separational_potential_table(self):
         """Build the separational potential sub-table from the results DataFrame.
@@ -283,7 +295,7 @@ class ResultsBuilder:
             "Elution Domain",
         ]
 
-        self.separational_potential_table_df = self.orthogonality_result_df[column_name].copy()
+        self.separational_potential_table_df = self.filtered_result_df[column_name].copy()
 
     def create_final_recommendation_table(self):
         """Build the final recommendation sub-table from the results DataFrame.
@@ -303,7 +315,7 @@ class ResultsBuilder:
             "Criterion Highlight",
         ]
 
-        self.final_recommendation_table_df = self.orthogonality_result_df[column_name].copy()
+        self.final_recommendation_table_df = self.filtered_result_df[column_name].copy()
 
     def create_median_rank_score_based_on_chromatographic_group(self):
 
@@ -319,9 +331,9 @@ class ResultsBuilder:
             "Elution Domain Rank",
             "Peak Capacity Rank",
         ]:
-            self.orthogonality_result_df[col] = pd.to_numeric(self.orthogonality_result_df[col], errors="coerce").fillna(0)
+            self.filtered_result_df[col] = pd.to_numeric(self.filtered_result_df[col], errors="coerce").fillna(0)
 
-        self.median_rank_score_df = (self.orthogonality_result_df.groupby("Chromatographic Mode")[column_name].median())
+        self.median_rank_score_df = (self.filtered_result_df.groupby("Chromatographic Mode")[column_name].median())
 
     def create_rank_score_based_on_chromatographic_group(self):
 
@@ -338,9 +350,9 @@ class ResultsBuilder:
             "Elution Domain Rank",
             "Peak Capacity Rank",
         ]:
-            self.orthogonality_result_df[col] = pd.to_numeric(self.orthogonality_result_df[col], errors="coerce").fillna(0)
+            self.filtered_result_df[col] = pd.to_numeric(self.filtered_result_df[col], errors="coerce").fillna(0)
 
-        self.rank_score_grouped_by_chrom_mode_df = self.orthogonality_result_df.groupby("Chromatographic Mode")[column_name]
+        self.rank_score_grouped_by_chrom_mode_df = self.filtered_result_df.groupby("Chromatographic Mode")[column_name]
 
     def create_rank_score_based_on_recommendation_class(self):
         column_name = [
@@ -352,8 +364,8 @@ class ResultsBuilder:
             "Elution Domain Rank",
             "Peak Capacity Rank",
         ]:
-            self.orthogonality_result_df[col] = pd.to_numeric(self.orthogonality_result_df[col], errors="coerce").fillna(0)
-        self.rank_score_grouped_by_final_recommendation_df = self.orthogonality_result_df.groupby("Final Recommendation")[column_name]
+            self.filtered_result_df[col] = pd.to_numeric(self.filtered_result_df[col], errors="coerce").fillna(0)
+        self.rank_score_grouped_by_final_recommendation_df = self.filtered_result_df.groupby("Final Recommendation")[column_name]
 
     def create_recommendation_distribution_group(self):
 
@@ -369,9 +381,9 @@ class ResultsBuilder:
             "Elution Domain Rank",
             "Peak Capacity Rank",
         ]:
-            self.orthogonality_result_df[col] = pd.to_numeric(self.orthogonality_result_df[col], errors="coerce").fillna(0)
+            self.filtered_result_df[col] = pd.to_numeric(self.filtered_result_df[col], errors="coerce").fillna(0)
 
-        self.recommendation_distribution_df = self.orthogonality_result_df.groupby("Chromatographic Mode")['Final Recommendation']
+        self.recommendation_distribution_df = self.filtered_result_df.groupby("Chromatographic Mode")['Final Recommendation']
     # ------------------------------------------------------------------
     # Ranking / recommendation helpers
     # ------------------------------------------------------------------
@@ -610,10 +622,10 @@ class ResultsBuilder:
             if is_not_recommended(row):
                 tooltip = (
                     f"<table>"
-                    f"<tr><td><b>Final Consensus Rank:</b></td><td style='color: red;'>{row['Final Rank']} (Bottom 30%)</td></tr>"
-                    f"<tr><td><b>Peak Detection Rate:</b></td><td style='color: {'#c0392b' if row['Peak Detection Rate (%)'] < 40 else 'black'};'>{row['Peak Detection Rate (%)']}% (&lt;40%)</td></tr>"
-                    f"<tr><td><b>Complexity:</b></td><td style='color: black;'>{row['Complexity']}</td></tr>"
-                    f"<tr><td><b>Compatibility:</b></td><td style='color: black;'>{row['Compatibility']}</td></tr>"
+                    f"<tr><td><b>Final Consensus Rank:</b></td><td style='color: black;'>{row['Final Rank']} (Bottom 30%)</td></tr>"
+                    f"<tr><td><b>Peak Detection Rate:</b></td><td style='color: bkack'>{row['Peak Detection Rate (%)']}%(&lt;40%)</td></tr>"
+                    f"<tr><td><b>Complexity:</b></td><td style='color:{'#1a7a4a' if row['Complexity'] == 'Low' else 'black'};'>{row['Complexity']}</td></tr>"
+                    f"<tr><td><b>Compatibility:</b></td><td style='color: {'#1a7a4a' if row['Compatibility'] == 'High' else 'black'};'>{row['Compatibility']}</td></tr>"
                     f"</table>"
                 )
                 return tooltip
@@ -623,7 +635,7 @@ class ResultsBuilder:
                     f"<table>"
                     f"<tr><td><b>Final Consensus Rank:</b></td><td style='color: #1a7a2e;'>{row['Final Rank']} (Top 1%)</td></tr>"
                     f"<tr><td><b>Peak Detection Rate:</b></td><td style='color: #1a7a2e;'>{row['Peak Detection Rate (%)']}% (&gt;80%)</td></tr>"
-                    f"<tr><td><b>Complexity:</b></td><td style='color: {'#1a7a4a' if row['Complexity'] == 'Low' else '#b36a00'};'>{row['Complexity']}</td></tr>"
+                    f"<tr><td><b>Complexity:</b></td><td style='color: {'#1a7a4a' if row['Complexity'] == 'Low' else 'black'};'>{row['Complexity']}</td></tr>"
                     f"<tr><td><b>Compatibility:</b></td><td style='color: {'#1a7a4a' if row['Compatibility'] == 'High' else '#b36a00'};'>{row['Compatibility']}</td></tr>"
                     f"</table>"
                 )
@@ -634,18 +646,18 @@ class ResultsBuilder:
                     f"<table>"
                     f"<tr><td><b>Final Consensus Rank:</b></td><td style='color: #b8a800;'>{row['Final Rank']} (Top 30%)</td></tr>"
                     f"<tr><td><b>Peak Detection Rate:</b></td><td style='color: black;'>{row['Peak Detection Rate (%)']}% (&gt;60%)</td></tr>"
-                    f"<tr><td><b>Complexity:</b></td><td style='color: black;'>{row['Complexity']}</td></tr>"
-                    f"<tr><td><b>Compatibility:</b></td><td style='color: black;'>{row['Compatibility']}</td></tr>"
+                    f"<tr><td><b>Complexity:</b></td><td style='{'#1a7a4a' if row['Complexity'] == 'Low' else 'black'};'>{row['Complexity']}</td></tr>"
+                    f"<tr><td><b>Compatibility:</b></td><td style='color: {'#1a7a4a' if row['Compatibility'] == 'High' else 'black'};'>{row['Compatibility']}</td></tr>"
                     f"</table>"
                 )
                 return tooltip
 
             if is_use_with_caution(row):
                 tooltip = (f"<table>"
-                f"<tr><td><b>Final Consensus Rank:</b></td><td style='color: #f5a623;'>{row['Final Rank']} (30 &lt;= PR &lt;= 70)</td></tr>"
-                f"<tr><td><b>Peak Detection Rate:</b></td><td style='color: #f5a623;'>{row['Peak Detection Rate (%)']}% (40 &lt;= PR &lt;= 60)</td></tr>"
-                f"<tr><td><b>Complexity:</b></td><td style='color: #c0392b;'>{row['Complexity']}</td></tr>"
-                f"<tr><td><b>Compatibility:</b></td><td style='color: #c0392b;'>{row['Compatibility']}</td></tr>"
+                f"<tr><td><b>Final Consensus Rank:</b></td><td style='color: black;'>{row['Final Rank']} 30 &le; Rank &le; 70</td></tr>"
+                f"<tr><td><b>Peak Detection Rate:</b></td><td style='color:black;'>{row['Peak Detection Rate (%)']}% 40 &le; Rate &le; 60</td></tr>"
+                f"<tr><td><b>Complexity:</b></td><td style='color: {'#1a7a4a' if row['Complexity'] == 'Low' else 'black'};'>{row['Complexity']}</td></tr>"
+                f"<tr><td><b>Compatibility:</b></td><td style='color:{'#1a7a4a' if row['Compatibility'] == 'High' else 'black'};'>{row['Compatibility']}</td></tr>"
                 f"</table>")
 
                 return tooltip

@@ -149,6 +149,7 @@ class TablePanel(QWidget):
         self.header.add_header_button(
             column=column, tooltip=tooltip, widget_to_show=widget_to_show
         )
+        self.set_filter_key_column(column)
 
     def add_help_button(self, column: int, title: str,markdown_path: str):
         """Add a help button to the specified column header (placeholder).
@@ -274,7 +275,7 @@ class StyledTable(QWidget):
         # ── Card frame ────────────────────────────────────────────────
         card = QFrame()
         card.setObjectName("CardFrame")
-        card.setLayout(QVBoxLayout())
+        card.setLayout(QVBoxLayout(self))
         card.layout().setContentsMargins(5, 5, 5, 5)
         card.layout().setSpacing(0)
         card.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
@@ -467,14 +468,14 @@ class StyledTable(QWidget):
                 font-weight: bold;
                 font-size: 19px;
             }
-            
+
             QFrame#TitleBarFrame  {
                 background-color: #183881;
                 border-top-left-radius: 10px;
                 border-top-right-radius: 10px;
             }
 
-
+            /* 1. Le style global des sections de l'en-tête (Inchangé) */
             QHeaderView::section {
                 background-color: #d1d9fc;
                 color: #1859b4;
@@ -482,6 +483,23 @@ class StyledTable(QWidget):
                 padding: 4px;
                 font-weight: bold;
                 border: 1px solid #d0d4da;
+            }
+
+            /* 2. AJOUT : Emplacement de la flèche de tri */
+            QHeaderView::up-arrow, QHeaderView::down-arrow {
+                padding-right: 4px;
+                width: 10px;
+                height: 10px;
+            }
+
+            /* 3. AJOUT : Dessin de la flèche montante (Tri croissant) */
+            QHeaderView::up-arrow {
+                image: url(data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%231859b4"><path d="M7 14l5-5 5 5z"/></svg>);
+            }
+
+            /* 4. AJOUT : Dessin de la flèche descendante (Tri décroissant) */
+            QHeaderView::down-arrow {
+                image: url(data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%231859b4"><path d="M7 10l5 5 5-5z"/></svg>);
             }
 
             QTableView {

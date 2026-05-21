@@ -379,6 +379,13 @@ class VisualizationOptionsPanel(QGroupBox):
 
         self.plotTypeChanged.emit(plot)
 
+    def get_subset(self):
+        plot = self._plot_combo.currentText()
+
+        show_subset = plot in ("Orthogonality Space", "Multi-Criteria Space")
+
+        return self._percentile_panel.currentText() if show_subset else None
+
     def _on_view_toggled(self, text):
         self._update_criteria_visibility(text)
 

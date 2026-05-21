@@ -1014,8 +1014,8 @@ class PlotUtils:
         self.axe.set_box_aspect(1)
         self.set_annotation()
 
-        df = self.orthogonality_result_data.copy()
-        n = len(df)
+        df = self.model.get_filtered_result_df().copy()
+        n = self.model.get_number_of_combination()
 
         final_rank = pd.to_numeric(df['Final Rank'], errors='coerce')
         orthogonality_rank = pd.to_numeric(df['Orthogonality Rank'], errors='coerce')
@@ -1672,7 +1672,7 @@ class PlotUtils:
                             ha="center", va="top",
                             fontsize=6, style="italic", color="#b05000")
                 else:
-                    if title in "Peak rate":
+                    if title in "Peak rate (%)":
                         ax.set_ylabel("Peak rate", fontsize=8)
                     else:
                         ax.set_ylabel("Rank", fontsize=8)
@@ -1881,12 +1881,12 @@ class PlotUtils:
             self.fig.legend(
                 handles=mode_handles,
                 title="Chromatographic mode", title_fontsize=7,
-                loc="lower center", bbox_to_anchor=(0.72, -0.15),
+                loc="lower center", bbox_to_anchor=(0.72, -0.03),
                 ncol=1, fontsize=7,
                 frameon=True, framealpha=0.92, edgecolor="#aaaaaa"
             )
 
-            self.fig.subplots_adjust(left=0.10, right=0.97, top=0.88, bottom=0.28)
+            self.fig.subplots_adjust(left=0.10, right=0.97, top=0.88, bottom=0.30)
 
         # ------------------------------------------------------------------
         # BY MODE — faceted
@@ -1935,7 +1935,7 @@ class PlotUtils:
                         self.axe.set_title(mode, fontsize=10, fontweight="bold")
                         self.axe.grid(True, linestyle="--", linewidth=0.4, alpha=0.4)
                         self.axe.tick_params(axis="both", labelsize=8)
-                        self.axe.set_xlabel("Final consensus rank\n(lower = better)", fontsize=8)
+                        self.axe.set_xlabel("Final consensus rank)", fontsize=8)
                         self.axe.set_ylabel("Peak rate (%)" if i % ncols == 0 else "", fontsize=8)
                         self.axe.spines[["top", "right"]].set_visible(False)
 
@@ -2011,7 +2011,7 @@ class PlotUtils:
                     handles=legend_handles,
                     loc="lower center", ncol=2,
                     frameon=True, fancybox=True, framealpha=0.95,
-                    bbox_to_anchor=(0.5, 0.01),
+                    bbox_to_anchor=(0.5, 0.015),
                     fontsize=9, columnspacing=1.8, handlelength=1.8
                 )
 
@@ -2281,7 +2281,6 @@ class PlotUtils:
             plot_labels
             self.axe.set_xticks(positions)
             self.axe.set_xticklabels(plot_labels, fontsize=9)
-            self.axe.set_xlabel("Recommendation class", fontsize=10)
             self.axe.set_ylabel("Final consensus rank", fontsize=10)
             self.axe.tick_params(axis="both", labelsize=8)
             self.axe.grid(True, axis="y", linestyle="--", linewidth=0.4, alpha=0.35)
@@ -2386,7 +2385,7 @@ class PlotUtils:
             self.axe.legend(
                 handles=legend_handles,
                 title="Chromatographic mode",
-                loc="lower center", bbox_to_anchor=(0.5, -0.52),
+                loc="lower center", bbox_to_anchor=(0.5, -0.32),
                 ncol=min(3, len(legend_handles)),  # up to 3 per row
                 frameon=True, framealpha=0.92,
                 edgecolor="#aaaaaa",
@@ -2429,6 +2428,7 @@ class PlotUtils:
             self.annotation = annotation
         else:
             self.annotation = self.axe.annotate("", xy=(0, 0), xytext=(10, 10),
+                                                                         fontsize='x-small',
                                                                           textcoords="offset points",
                                                                           bbox=dict(boxstyle="round", fc="white",
                                                                                     ec="gray"),
@@ -2436,7 +2436,7 @@ class PlotUtils:
 
             self.annotation.set_visible(False)
 
-    def on_pick(self,event):
+    def on_pick(self,event,subset):
         axe = event.artist.axes
 
         xy_data = axe.collections[0].get_offsets()
@@ -2445,11 +2445,29 @@ class PlotUtils:
         extracted_y = xy_data[:, 1]
 
         ind = event.ind[0]
-        combination = self.model.get_combination_df()['2D Combination'][ind]
-        combination_number = self.model.get_combination_df()['Combination #'][ind]
+
+        df_filtered = self.model.get_filtered_result_df()
+        n = self.model.get_number_of_combination()
+        final_rank = pd.to_numeric(df_filtered['Final Rank'], errors='coerce')
+
+        final_rank_pct = (final_rank / n) * 100
+
+        if subset:
+            threshold = SUBSET_THRESHOLDS.get(subset, 0)
+            mask = final_rank_pct <= threshold
+
+            df_filtered = df_filtered[mask]
+
+        # convert panda series into list to reset the serie index which has been held even after filtering the data
+        # when filtering panda dataframe or series, the index stays unchanged
+        combination = list(df_filtered['2D Combination'])[ind]
+        combination_number = list(df_filtered['Combination #'])[ind]
+
+        x = extracted_x[ind]
+        y = extracted_y[ind]
 
         self.annotation.xy = (extracted_x[ind], extracted_y[ind])
-        self.annotation.set_text(f"Combination # {combination_number}\n{combination}")
+        self.annotation.set_text(f"Combination # {combination_number}\n{combination}\n(x, y) = ({x:.2f}, {y:.2f})")
         self.annotation.set_visible(True)
 
         self.fig.canvas.draw_idle()

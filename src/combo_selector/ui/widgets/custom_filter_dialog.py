@@ -132,7 +132,7 @@ class CustomFilterDialog(QDialog):
         self.model.setHorizontalHeaderLabels(['Condition', 'Qty', 'D1', '²D'])
         self.filter_condition_tree_view.setModel(self.model)
 
-        self.build_tree_view_from_data()
+        # self.build_tree_view_from_data()
 
         self.filter_condition_tree_view.header().setSectionResizeMode(1, QHeaderView.Fixed)
         self.filter_condition_tree_view.header().setSectionResizeMode(2, QHeaderView.Stretch)
@@ -146,7 +146,7 @@ class CustomFilterDialog(QDialog):
         main_layout.addWidget(filter_title)
 
         self.filtered_listview = FilteredListView()
-        self.update_combination_group()
+        # self.update_combination_group()
         main_layout.addWidget(self.filtered_listview)
 
         # --- OK / Cancel buttons ---
@@ -666,10 +666,15 @@ class FilteredListView(QWidget):
                 self.invalidateFilter()
 
         self.model = QStandardItemModel(self)
-        self.model.setHorizontalHeaderLabels(['Combination','Color'])
+        self.model.setHorizontalHeaderLabels(['Mode'])
         self.proxy = InnerProxyModel()
         self.proxy.setSourceModel(self.model)
         self.listView.setModel(self.proxy)
+
+        # Make the column(s) stretch to fit the available space
+        self.listView.horizontalHeader().setSectionResizeMode(
+            QHeaderView.ResizeMode.Stretch
+        )
 
         # Signal connections
         self.filter.textChanged.connect(self.proxy.updateFilterStr)
@@ -687,24 +692,26 @@ class FilteredListView(QWidget):
             - Adds new checkable items
             - Updates filter list
         """
-        self.model.clear()
+        # self.model.clear()
         self.__data = data
         for row, d in enumerate(self.__data):
             item = QStandardItem(d)
             item.setCheckable(True)
 
             self.model.setItem(row, 0, item)
-            self.model.setItem(row, 1, QStandardItem())
 
-            # 1. Get the index from the SOURCE model
-            source_index = self.model.index(row, 1)
-
-            # 2. Map it to the PROXY model index (which the View uses)
-            proxy_index = self.proxy.mapFromSource(source_index)
-
-            # 3. Create the button and set it using the PROXY index
-            btn = ColorPicker("basic")
-            self.listView.setIndexWidget(proxy_index, btn)
+            #TODO uncomment this part to add color picker for filtered data
+            # self.model.setItem(row, 1, QStandardItem())
+            #
+            # # 1. Get the index from the SOURCE model
+            # source_index = self.model.index(row, 1)
+            #
+            # # 2. Map it to the PROXY model index (which the View uses)
+            # proxy_index = self.proxy.mapFromSource(source_index)
+            #
+            # # 3. Create the button and set it using the PROXY index
+            # btn = ColorPicker("basic")
+            # self.listView.setIndexWidget(proxy_index, btn)
 
 
         self.update_selected_filter_list()
@@ -728,21 +735,21 @@ class FilteredListView(QWidget):
 
         for row in range(self.model.rowCount()):
             text_idx = self.model.index(row, 0)
-            color_idx = self.model.index(row, 1)
+            # color_idx = self.model.index(row, 1)
             text = self.model.data(text_idx, Qt.DisplayRole)
             # color = self.model.data(color_idx, Qt.DisplayRole)
             checked = self.model.data(text_idx, Qt.CheckStateRole)
 
             # 2. Map it to the PROXY model index (which the View uses)
-            color_proxy_index = self.proxy.mapFromSource(color_idx)
+            # color_proxy_index = self.proxy.mapFromSource(color_idx)
 
-            color_picker = self.listView.indexWidget(color_proxy_index)
+            # color_picker = self.listView.indexWidget(color_proxy_index)
 
-            if color_picker:
-                color = color_picker.get_color()
+            # if color_picker:
+            #     color = color_picker.get_color()
 
             if checked:
-                self.filters[text] = {"regexp": text,"color":color}
+                self.filters[text] = {"regexp": text,"color":'not used'}
 
         self.filterChanged.emit(self.filters)
 
