@@ -120,6 +120,9 @@ class DataManager:
         """
         return self.normalized_retention_time_df
 
+    def get_number_of_combination(self):
+        return self.nb_combination
+
     def get_number_of_condition(self) -> int:
         """Get the number of experimental conditions.
 
@@ -536,6 +539,7 @@ class DataManager:
         """
         try:
             self.gradient_end_time_df = load_simple_table(filepath, sheetname)
+            self.status = "loaded"
 
         except Exception as e:
             print(f"Error loading gradient time: {str(e)}")
@@ -561,7 +565,7 @@ class DataManager:
             # Read table, assuming headers are on the second row (row index 1, i.e., header=1)
             self.void_time_df = load_simple_table(filepath, sheetname)
 
-            print(self.void_time_df)
+            self.status = "loaded"
 
         except Exception as e:
             print(f"Error loading end time: {str(e)}")
@@ -867,7 +871,7 @@ class DataManager:
             self.combination_df['Elution Domain'] = self.orthogonality_result_df['Elution Domain'] \
                 = combination_table
             self.orthogonality_result_df['Elution Domain Rank'] = self.combination_df['Elution Domain'].rank(ascending=False, method='average')
-            self.elution_data_status = "elution_data_loaded"
+            self.status = self.elution_data_status = "elution_data_loaded"
 
         except Exception as e:
             print(f"Error loading Elution composition space area data: {str(e)}")
