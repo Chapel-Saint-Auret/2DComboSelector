@@ -20,9 +20,10 @@ Background workers are used for:
 
 import sys
 
-from PySide6.QtCore import QThreadPool
+from PySide6.QtCore import QThreadPool,Qt
 from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import QApplication,QFrame
+
 
 from combo_selector.core.orthogonality import Orthogonality
 from combo_selector.core.workers import RedundancyWorker, ResultsWorker
@@ -258,6 +259,10 @@ def main():
     Returns:
         int: Application exit code (0 for success).
     """
+    # Must be set BEFORE QApplication is created
+    QApplication.setHighDpiScaleFactorRoundingPolicy(
+        Qt.HighDpiScaleFactorRoundingPolicy.PassThrough
+    )
     app = QApplication(sys.argv)
     app_icon = QIcon(resource_path("icons/app_logo.svg"))
     app.setWindowIcon(app_icon)

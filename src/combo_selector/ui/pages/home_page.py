@@ -158,9 +158,15 @@ class HomePage(QFrame):
 
         self.tool_presentation = QLabel()
         pixmap = QPixmap(resource_path("icons/home_page.png"))
-        self.tool_presentation.setPixmap(
-            pixmap.scaled(900, 400, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+        screen = QApplication.primaryScreen()
+        dpr = screen.devicePixelRatio() if screen else 1.0
+        scaled_pixmap = pixmap.scaled(
+            int(900 * dpr), int(400 * dpr),
+            Qt.KeepAspectRatio,
+            Qt.SmoothTransformation,
         )
+        scaled_pixmap.setDevicePixelRatio(dpr)
+        self.tool_presentation.setPixmap(scaled_pixmap)
         self.tool_presentation.setAlignment(Qt.AlignCenter)
 
         home_content_frame_layout.addWidget(self.tool_presentation)
