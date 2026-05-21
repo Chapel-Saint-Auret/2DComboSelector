@@ -380,6 +380,7 @@ class OMCalculationPage(QFrame):
             "%BIN",
         ]
         self.om_tree_list = CheckableTreeList(metric_list)
+        self.om_tree_list.checked_all()
         self.om_tree_list.setFixedHeight(175)
         self.om_calculate_btn = QPushButton("Compute Metrics")
 
@@ -903,7 +904,6 @@ class OMCalculationPage(QFrame):
             - Resets computation state
             - Populates selectors
         """
-        self.om_tree_list.unchecked_all()
         self.styled_table.clean_table()
         self.styled_table.set_header_label(
             ["Set #", "2D Combination", "Metric 1", "Metric 2", "...", "Metric n"]

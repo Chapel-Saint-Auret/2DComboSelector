@@ -195,6 +195,20 @@ class CheckableTreeList(QWidget):
             child.setCheckState(0, Qt.Unchecked)
         self.tree.blockSignals(False)
 
+    def checked_all(self) -> None:
+        """Uncheck all items (parent and children).
+
+        Side Effects:
+            - Sets parent to unchecked
+            - Sets all children to unchecked
+        """
+        self.tree.blockSignals(True)
+        self.parent_item.setCheckState(0, Qt.Checked)
+        for child in self.children:
+            child.setCheckState(0, Qt.Checked)
+        self.tree.blockSignals(False)
+
+
 
 # =============================================================================
 # Usage Example
@@ -218,6 +232,7 @@ if __name__ == "__main__":
         "Convex Hull",
         "Bin Box Counting"
     ])
+    tree.checked_all()
     layout.addWidget(tree)
 
     window.show()
