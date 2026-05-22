@@ -503,7 +503,7 @@ class ResultsPage(QFrame):
         self.styled_table.add_sheet(sheet_name='Separation Potential',value_format=".2f")
         self.styled_table.add_sheet(value_format=".1f",
                                     color_config=COLOR_CONFIG_FINAL_EVALUATION,
-                                    bold_columns=[7],
+                                    bold_columns=[8],
                                     sheet_name='Final Evaluation',
                                     enable_decoration = True,
                                     has_tooltip = True)
@@ -573,9 +573,11 @@ class ResultsPage(QFrame):
                                                           markdown_path="markdown/elution_domain_rank.md")
         self.final_recommendation_table.add_help_button(column=6, title="Final Consensus Rank",
                                                           markdown_path="markdown/final_consensus_rank.md")
-        self.final_recommendation_table.add_help_button(column=7, title="Final Recommendation",
+        self.final_recommendation_table.add_help_button(column=7, title="Final Rank (Utility)",
+                                                          markdown_path="markdown/final_rank_utility.md")
+        self.final_recommendation_table.add_help_button(column=8, title="Final Recommendation",
                                                           markdown_path="markdown/final_recommendation.md")
-        self.final_recommendation_table.add_help_button(column=8, title="Criterion Highlight",
+        self.final_recommendation_table.add_help_button(column=9, title="Criterion Highlight",
                                                           markdown_path="markdown/criterion_highlight.md")
 
         self.final_recommendation_table.set_header_label(
@@ -587,6 +589,7 @@ class ResultsPage(QFrame):
                 "Peak Capacity Rank",
                 "Elution Domain Rank",
                 "Final Consensus Rank",
+                "Final Rank (Utility)",
                 "Final Recommendation",
                 "Criterion Highlight",
             ])
@@ -1056,7 +1059,7 @@ class ResultsPage(QFrame):
             self.final_recommendation_table.set_table_proxy()
         if 'Final Recommendation tooltip' in result_df.columns:
             tooltip = result_df['Final Recommendation tooltip']
-            self.final_recommendation_table.set_tooltip_config({7: tooltip})
+            self.final_recommendation_table.set_tooltip_config({8: tooltip})
 
         # self.styled_table.async_set_table_data(data)
         # self.styled_table.set_table_proxy()

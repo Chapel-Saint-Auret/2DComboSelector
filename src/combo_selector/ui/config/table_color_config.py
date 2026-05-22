@@ -28,7 +28,7 @@ COLOR_CONFIG_TABLE_RECOMMENDATION = {
 }
 
 COLOR_CONFIG_FINAL_EVALUATION = {
-    7: {
+    8: {
         "Highly recommended": "#1a7a2e", "Recommended": "#6abf4b", "Use with caution": "#f5a623", "Not recommended": "#d94f3d"
     },
 }

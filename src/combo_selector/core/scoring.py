@@ -263,6 +263,9 @@ class Scoring:
         consensus_orthogonality_ranking_df = consensus_orthogonality_ranking_df.rank(ascending=True, method='average')
 
         self.orthogonality_result_df['Orthogonality Rank'] = consensus_orthogonality_ranking_df
+        self.orthogonality_result_df['Orthogonality Utility'] = consensus_orthogonality_ranking_df.apply(lambda x: (1-(x-1))/(self.nb_combination-1))
+
+
 
     def assess_metric_removal_impact_on_orthogonality_rank(self) -> pd.DataFrame:
         """Assess the impact of removing each metric on orthogonality rank.

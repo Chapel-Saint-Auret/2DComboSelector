@@ -646,9 +646,12 @@ class ImportDataPage(QFrame):
         self.nan_policy_dialog.exec()
 
         data = self.model.get_retention_time_df()
-        self.normalized_data_table.async_set_table_data(data)
+        #TODO this is not enough as if the clean is launch and close, it will put back unormalized data even though it
+        #TODO has been normalized
+        if not data.empty:
+            self.normalized_data_table.async_set_table_data(data)
 
-        self.retention_time_loaded.emit()
+            self.retention_time_loaded.emit()
 
     def load_retention_data(self) -> None:
         """Load retention time data from an Excel file.

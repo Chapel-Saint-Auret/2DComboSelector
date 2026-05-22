@@ -311,6 +311,7 @@ class ResultsBuilder:
             "Peak Capacity Rank",
             "Elution Domain Rank",
             "Final Rank",
+            "Final Rank (Utility)",
             "Final Recommendation",
             "Criterion Highlight",
         ]
@@ -410,6 +411,16 @@ class ResultsBuilder:
                 self.orthogonality_result_df['Final Rank'].rank(ascending=True, method='average')
             )
 
+            self.orthogonality_result_df['Final Rank (Utility)'] = pd.concat(
+                [self.orthogonality_result_df['Peak Capacity Utility'],
+                 self.orthogonality_result_df['Elution Domain Utility'],
+                 self.orthogonality_result_df['Orthogonality Utility']],
+                axis=1,
+            ).mean(axis=1)
+
+            self.orthogonality_result_df['Final Rank (Utility)'] = (
+                self.orthogonality_result_df['Final Rank (Utility)'].rank(ascending=False, method='average')
+            )
         elif (self.peak_capacity_status in ["peak_capacity_loaded"] and
                 'Orthogonality Rank' in self.orthogonality_result_df.columns):
 
@@ -421,6 +432,16 @@ class ResultsBuilder:
 
             self.orthogonality_result_df['Final Rank'] = (
                 self.orthogonality_result_df['Final Rank'].rank(ascending=True, method='average')
+            )
+
+            self.orthogonality_result_df['Final Rank (Utility)'] = pd.concat(
+                [self.orthogonality_result_df['Peak Capacity Utility']
+                    ,self.orthogonality_result_df['Orthogonality Utility']],
+                axis=1,
+            ).mean(axis=1)
+
+            self.orthogonality_result_df['Final Rank (Utility)'] = (
+                self.orthogonality_result_df['Final Rank (Utility)'].rank(ascending=False, method='average')
             )
 
         elif (self.elution_data_status in ["elution_data_loaded"] and
@@ -436,12 +457,31 @@ class ResultsBuilder:
                 self.orthogonality_result_df['Final Rank'].rank(ascending=True, method='average')
             )
 
+            self.orthogonality_result_df['Final Rank (Utility)'] = pd.concat(
+                [self.orthogonality_result_df['Elution Domain Utility'],
+                    self.orthogonality_result_df['Orthogonality Utility']],
+                axis=1,
+            ).mean(axis=1)
+
+            self.orthogonality_result_df['Final Rank (Utility)'] = (
+                self.orthogonality_result_df['Final Rank (Utility)'].rank(ascending=False, method='average')
+            )
+
         elif 'Orthogonality Rank' in self.orthogonality_result_df.columns:
             self.orthogonality_result_df['Final Rank'] = (
                 self.orthogonality_result_df['Orthogonality Rank']
             )
+
+            self.orthogonality_result_df['Final Rank (Utility)'] = (
+                self.orthogonality_result_df['Orthogonality Utility']
+            )
+
+            self.orthogonality_result_df['Final Rank (Utility)'] = (
+                self.orthogonality_result_df['Final Rank (Utility)'].rank(ascending=False, method='average')
+            )
         else:
             self.orthogonality_result_df['Final Rank'] = 'Not available'
+            self.orthogonality_result_df['Final Utility'] = 'Not available'
 
     def compute_criterion_highlight(self):
         """
@@ -622,7 +662,7 @@ class ResultsBuilder:
             if is_not_recommended(row):
                 tooltip = (
                     f"<table>"
-                    f"<tr><td><b>Final Consensus Rank:</b></td><td style='color: black;'>{row['Final Rank']} (Bottom 30%)</td></tr>"
+                    f"<tr><td><b>Final Consensus Rank:</b></td><td style='color: black;'>{row['Final Rank']}</td></tr>"
                     f"<tr><td><b>Peak Detection Rate:</b></td><td style='color: bkack'>{row['Peak Detection Rate (%)']}%(&lt;40%)</td></tr>"
                     f"<tr><td><b>Complexity:</b></td><td style='color:{'#1a7a4a' if row['Complexity'] == 'Low' else 'black'};'>{row['Complexity']}</td></tr>"
                     f"<tr><td><b>Compatibility:</b></td><td style='color: {'#1a7a4a' if row['Compatibility'] == 'High' else 'black'};'>{row['Compatibility']}</td></tr>"
@@ -654,8 +694,8 @@ class ResultsBuilder:
 
             if is_use_with_caution(row):
                 tooltip = (f"<table>"
-                f"<tr><td><b>Final Consensus Rank:</b></td><td style='color: black;'>{row['Final Rank']} 30 &le; Rank &le; 70</td></tr>"
-                f"<tr><td><b>Peak Detection Rate:</b></td><td style='color:black;'>{row['Peak Detection Rate (%)']}% 40 &le; Rate &le; 60</td></tr>"
+                f"<tr><td><b>Final Consensus Rank:</b></td><td style='color: black;'>{row['Final Rank']}</td></tr>"
+                f"<tr><td><b>Peak Detection Rate:</b></td><td style='color:black;'>{row['Peak Detection Rate (%)']}%</td></tr>"
                 f"<tr><td><b>Complexity:</b></td><td style='color: {'#1a7a4a' if row['Complexity'] == 'Low' else 'black'};'>{row['Complexity']}</td></tr>"
                 f"<tr><td><b>Compatibility:</b></td><td style='color:{'#1a7a4a' if row['Compatibility'] == 'High' else 'black'};'>{row['Compatibility']}</td></tr>"
                 f"</table>")

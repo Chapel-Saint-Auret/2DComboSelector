@@ -814,6 +814,9 @@ class DataManager:
                 = combination_table
             self.peak_capacity_status = "peak_capacity_loaded"
             self.orthogonality_result_df['Peak Capacity Rank'] = self.combination_df["Hypothetical 2D Peak Capacity"].rank(ascending=False, method='average').astype(int)
+            p_min = self.combination_df["Hypothetical 2D Peak Capacity"].min()
+            p_max = self.combination_df["Hypothetical 2D Peak Capacity"].max()
+            self.orthogonality_result_df['Peak Capacity Utility'] = self.combination_df["Hypothetical 2D Peak Capacity"].apply(lambda x:(x-p_min)/(p_max-p_min))
             self.status = "loaded"
         except Exception as e:
             print(f"Error loading 2D peaks: {str(e)}")
@@ -871,6 +874,7 @@ class DataManager:
             self.combination_df['Elution Domain'] = self.orthogonality_result_df['Elution Domain'] \
                 = combination_table
             self.orthogonality_result_df['Elution Domain Rank'] = self.combination_df['Elution Domain'].rank(ascending=False, method='average')
+            self.orthogonality_result_df['Elution Domain Utility'] = self.combination_df['Elution Domain'].apply(lambda x: x/100)
             self.status = self.elution_data_status = "elution_data_loaded"
 
         except Exception as e:
