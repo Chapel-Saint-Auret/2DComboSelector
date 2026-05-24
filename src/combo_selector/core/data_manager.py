@@ -270,9 +270,9 @@ class DataManager:
             - Calls update_combination_df() to refresh combination DataFrame
         """
         function_map = {"option 1": self.remove_compound,
-                        "option 2": self.remove_condition,
-                        "option 3": self.clear_all_nan,
-                        "option 4": self.replace_rt_below_threshold,
+                        "option 2": self.replace_rt_below_threshold,
+                        "option 3": self.remove_condition,
+                        "option 4": self.clear_all_nan,
                         }
 
         for option in option_list:

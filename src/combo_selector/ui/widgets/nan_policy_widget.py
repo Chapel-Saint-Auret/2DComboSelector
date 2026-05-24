@@ -149,19 +149,19 @@ class NanPolicyDialog(QDialog):
         self.option_remove_condition = QRadioButton(
             'Remove conditions with more than'
         )
-        self.option_remove_condition.setObjectName("option 2")
+        self.option_remove_condition.setObjectName("option 3")
 
         self.option_replace = QRadioButton(
             'Keep all compounds and leave missing values empty'
         )
         self.option_replace.setChecked(True)
 
-        self.option_replace.setObjectName("option 3")
+        self.option_replace.setObjectName("option 4")
 
         self.option_replace_below_threshold = QRadioButton(
             "Replace retention times below condition-specific thresholds with blank"
         )
-        self.option_replace_below_threshold.setObjectName("option 4")
+        self.option_replace_below_threshold.setObjectName("option 2")
 
         # Radio button group
         self.option_button_grp = QButtonGroup()
@@ -228,14 +228,15 @@ class NanPolicyDialog(QDialog):
         groupbox_layout.addWidget(summary)
         groupbox_layout.addWidget(self.option_replace)
         groupbox_layout.addWidget(LineWidget())
+        groupbox_layout.addWidget(self.option_replace_below_threshold)
+        groupbox_layout.addLayout(row4_file)
+        groupbox_layout.addWidget(self.rt_threshold_note)
+        groupbox_layout.addWidget(LineWidget())
         groupbox_layout.addLayout(row1)
         groupbox_layout.addSpacing(4)
         groupbox_layout.addLayout(row2)
         groupbox_layout.addWidget(note)
-        groupbox_layout.addWidget(LineWidget())
-        groupbox_layout.addWidget(self.option_replace_below_threshold)
-        groupbox_layout.addLayout(row4_file)
-        groupbox_layout.addWidget(self.rt_threshold_note)
+
 
         # Connect signals
         self.buttonBox.accepted.connect(self.accept)
