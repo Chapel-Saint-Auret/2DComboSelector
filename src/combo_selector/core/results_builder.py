@@ -663,9 +663,9 @@ class ResultsBuilder:
                 tooltip = (
                     f"<table>"
                     f"<tr><td><b>Final Consensus Rank:</b></td><td style='color: black;'>{row['Final Rank']}</td></tr>"
-                    f"<tr><td><b>Peak Detection Rate:</b></td><td style='color: bkack'>{row['Peak Detection Rate (%)']}%(&lt;40%)</td></tr>"
-                    f"<tr><td><b>Complexity:</b></td><td style='color:{'#1a7a4a' if row['Complexity'] == 'Low' else 'black'};'>{row['Complexity']}</td></tr>"
-                    f"<tr><td><b>Compatibility:</b></td><td style='color: {'#1a7a4a' if row['Compatibility'] == 'High' else 'black'};'>{row['Compatibility']}</td></tr>"
+                    f"<tr><td><b>Peak Detection Rate:</b></td><td style='color: bkack'>{row['Peak Detection Rate (%)']}%</td></tr>"
+                    f"<tr><td><b>Complexity:</b></td><td style='color:black;'>{row['Complexity']}</td></tr>"
+                    f"<tr><td><b>Compatibility:</b></td><td style='color: black;'>{row['Compatibility']}</td></tr>"
                     f"</table>"
                 )
                 return tooltip
@@ -673,10 +673,10 @@ class ResultsBuilder:
             if is_highly_recommended(row):
                 tooltip = (
                     f"<table>"
-                    f"<tr><td><b>Final Consensus Rank:</b></td><td style='color: #1a7a2e;'>{row['Final Rank']} (Top 1%)</td></tr>"
-                    f"<tr><td><b>Peak Detection Rate:</b></td><td style='color: #1a7a2e;'>{row['Peak Detection Rate (%)']}% (&gt;80%)</td></tr>"
-                    f"<tr><td><b>Complexity:</b></td><td style='color: {'#1a7a4a' if row['Complexity'] == 'Low' else 'black'};'>{row['Complexity']}</td></tr>"
-                    f"<tr><td><b>Compatibility:</b></td><td style='color: {'#1a7a4a' if row['Compatibility'] == 'High' else '#b36a00'};'>{row['Compatibility']}</td></tr>"
+                    f"<tr><td><b>Final Consensus Rank:</b></td><td style='color: black;'>{row['Final Rank']}</td></tr>"
+                    f"<tr><td><b>Peak Detection Rate:</b></td><td style='color: black;'>{row['Peak Detection Rate (%)']}%</td></tr>"
+                    f"<tr><td><b>Complexity:</b></td><td style='color: black;'>{row['Complexity']}</td></tr>"
+                    f"<tr><td><b>Compatibility:</b></td><td style='color: black;'>{row['Compatibility']}</td></tr>"
                     f"</table>"
                 )
                 return tooltip
@@ -684,10 +684,10 @@ class ResultsBuilder:
             if is_recommended(row):
                 tooltip = (
                     f"<table>"
-                    f"<tr><td><b>Final Consensus Rank:</b></td><td style='color: #b8a800;'>{row['Final Rank']} (Top 30%)</td></tr>"
-                    f"<tr><td><b>Peak Detection Rate:</b></td><td style='color: black;'>{row['Peak Detection Rate (%)']}% (&gt;60%)</td></tr>"
-                    f"<tr><td><b>Complexity:</b></td><td style='{'#1a7a4a' if row['Complexity'] == 'Low' else 'black'};'>{row['Complexity']}</td></tr>"
-                    f"<tr><td><b>Compatibility:</b></td><td style='color: {'#1a7a4a' if row['Compatibility'] == 'High' else 'black'};'>{row['Compatibility']}</td></tr>"
+                    f"<tr><td><b>Final Consensus Rank:</b></td><td style='color: black;'>{row['Final Rank']}</td></tr>"
+                    f"<tr><td><b>Peak Detection Rate:</b></td><td style='color: black;'>{row['Peak Detection Rate (%)']}%</td></tr>"
+                    f"<tr><td><b>Complexity:</b></td><td style='black'>{row['Complexity']}</td></tr>"
+                    f"<tr><td><b>Compatibility:</b></td><td style='color: black'>{row['Compatibility']}</td></tr>"
                     f"</table>"
                 )
                 return tooltip
@@ -696,8 +696,8 @@ class ResultsBuilder:
                 tooltip = (f"<table>"
                 f"<tr><td><b>Final Consensus Rank:</b></td><td style='color: black;'>{row['Final Rank']}</td></tr>"
                 f"<tr><td><b>Peak Detection Rate:</b></td><td style='color:black;'>{row['Peak Detection Rate (%)']}%</td></tr>"
-                f"<tr><td><b>Complexity:</b></td><td style='color: {'#1a7a4a' if row['Complexity'] == 'Low' else 'black'};'>{row['Complexity']}</td></tr>"
-                f"<tr><td><b>Compatibility:</b></td><td style='color:{'#1a7a4a' if row['Compatibility'] == 'High' else 'black'};'>{row['Compatibility']}</td></tr>"
+                f"<tr><td><b>Complexity:</b></td><td style='color: black;'>{row['Complexity']}</td></tr>"
+                f"<tr><td><b>Compatibility:</b></td><td style='color:black;'>{row['Compatibility']}</td></tr>"
                 f"</table>")
 
                 return tooltip

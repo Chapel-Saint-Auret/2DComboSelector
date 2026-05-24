@@ -553,7 +553,7 @@ class Scoring:
             elif 60 <= peak_detection_rate < 80:
                 return 'Acceptable'
             else:
-                return 'Suitablety'
+                return 'Suitable'
 
         nb_of_max_peak = self.combination_df["Number of peaks"].max()
         self.orthogonality_result_df["Peak Detection Rate (%)"] = (

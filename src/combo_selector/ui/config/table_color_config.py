@@ -3,14 +3,14 @@
 
 COLOR_CONFIG_TABLE_FEASIBILITY = {
     4: {
-        "High": "#1a7a4a", "Moderate": "#b36a00", "Low": "#c0392b"
+        "High": "#1a7a2e", "Moderate": "#f5a623", "Low": "#d94f3d"
     },
     3: {
-        "Low": "#1a7a4a", "Moderate": "#b36a00", "High": "#c0392b", "NC": "#888888"
+        "Low": "#1a7a2e", "Moderate": "#f5a623", "High": "#d94f3d", "NC": "#888888"
     },
     6: {
-        "Insufficient ": "#c0392b", "Cautionary": "#b36a00",
-        "Acceptable": "#b8a800", "Suitable": "#1a7a4a"
+        "Insufficient ": "#d94f3d", "Cautionary": "#f5a623",
+        "Acceptable": "#1a7a2e", "Suitable": "#6abf4b"
     },
 }
 
@@ -22,8 +22,8 @@ COLOR_CONFIG_TABLE_RECOMMENDATION = {
         "Low": "#1a7a4a", "Moderate": "#b36a00", "High": "#c0392b", "NC": "#888888"
     },
     8: {
-        "Not recommended": "#c0392b", "Use with caution": "#b36a00",
-        "Recommended": "#b8a800", "Highly recommended": "#1a7a4a"
+        "Not recommended": "#d94f3d", "Use with caution": "#f5a623",
+        "Recommended": "#6abf4b", "Highly recommended": "#1a7a2e"
     },
 }
 
