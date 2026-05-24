@@ -2407,6 +2407,300 @@ class PlotUtils:
         self.fig.canvas.draw()
         self.fig.canvas.flush_events()
 
+    def plot_rank_shift_scatter(self, color_by: str = "Chromatographic Mode"):
+        """Scatter plot of Old Rank vs New Rank (Utility) with y=x diagonal.
+
+        Points below the diagonal → combination moves up in the new ranking.
+        Points above the diagonal → combination moves down.
+
+        Args:
+            color_by (str): Column used to color points.
+                            One of 'Chromatographic Mode', 'Hypothetical 2D Peak Capacity',
+                            'Elution Domain'. Defaults to 'Chromatographic Mode'.
+
+        Side Effects:
+            - Clears the figure and redraws from scratch.
+            - Draws scatter + diagonal + legend.
+        """
+        self.fig.clear()
+        self.axe = self.fig.add_subplot(111)
+
+        df = self.orthogonality_result_data.copy()
+
+        old_rank = pd.to_numeric(df.get("Final Rank"), errors="coerce")
+        new_rank = pd.to_numeric(df.get("Final Rank (Utility)"), errors="coerce")
+
+        valid = old_rank.notna() & new_rank.notna()
+        if not valid.any():
+            self._show_missing_data()
+            return
+
+        df = df[valid]
+        x = old_rank[valid]
+        y = new_rank[valid]
+
+        # ------------------------------------------------------------------
+        # Coloring strategy
+        # ------------------------------------------------------------------
+        if color_by == "Chromatographic Mode":
+            modes = df["Chromatographic Mode"].fillna("Unknown")
+            unique_modes = list(modes.unique())
+            palette = [
+                "#1f77b4", "#ff7f0e", "#2ca02c", "#d62728",
+                "#9467bd", "#8c564b", "#e377c2", "#7f7f7f",
+                "#bcbd22", "#17becf",
+            ]
+            mode_color = {m: palette[i % len(palette)] for i, m in enumerate(unique_modes)}
+            colors = [mode_color[m] for m in modes]
+
+            legend_handles = [
+                patches.Patch(facecolor=mode_color[m], edgecolor="k",
+                              linewidth=0.4, label=m)
+                for m in unique_modes
+            ]
+            legend_title = "Chromatographic Mode"
+
+        else:
+            # Continuous colormap — Peak Capacity or Elution Domain
+            col_values = pd.to_numeric(df.get(color_by, pd.Series(dtype=float)),
+                                       errors="coerce")
+            cmap = (
+                "plasma" if color_by == "Hypothetical 2D Peak Capacity" else "viridis"
+            )
+            sc = self.axe.scatter(
+                x, y,
+                c=col_values, cmap=cmap,
+                s=18, edgecolors="k", linewidths=0.3,
+                alpha=0.80, picker=5
+            )
+            cbar = self.fig.colorbar(sc, ax=self.axe, pad=0.02, shrink=0.85)
+            cbar.set_label(color_by, fontsize=9)
+            cbar.ax.tick_params(labelsize=8)
+            colors = None  # already plotted above
+
+        # ------------------------------------------------------------------
+        # Scatter (categorical color_by only — continuous path already drawn)
+        # ------------------------------------------------------------------
+        if colors is not None:
+            self.axe.scatter(
+                x, y,
+                c=colors,
+                s=18, edgecolors="k", linewidths=0.3,
+                alpha=0.80, picker=5
+            )
+            self.axe.legend(
+                handles=legend_handles,
+                title=legend_title,
+                loc="lower center",
+                bbox_to_anchor=(0.5, -0.38),
+                ncol=min(3, len(legend_handles)),
+                fontsize=8, title_fontsize=9,
+                frameon=True, edgecolor="#aaaaaa"
+            )
+
+        # ------------------------------------------------------------------
+        # Diagonal y = x  (no change line)
+        # ------------------------------------------------------------------
+        rank_min = min(x.min(), y.min())
+        rank_max = max(x.max(), y.max())
+        diag = np.linspace(rank_min, rank_max, 200)
+        self.axe.plot(
+            diag, diag,
+            color="#999999", linewidth=1.0,
+            linestyle="--", zorder=0,
+            label="No change (y = x)"
+        )
+
+        # ------------------------------------------------------------------
+        # Annotations
+        # ------------------------------------------------------------------
+        x_center = (rank_min + rank_max) / 2
+        pad = (rank_max - rank_min) * 0.04
+
+        self.axe.text(
+            x_center, x_center - pad * 2.5,
+            "▼ moves up",
+            ha="center", va="top",
+            fontsize=7, color="#1a7a2e", style="italic",
+            rotation=-42
+        )
+        self.axe.text(
+            x_center, x_center + pad * 2.5,
+            "▲ moves down",
+            ha="center", va="bottom",
+            fontsize=7, color="#d94f3d", style="italic",
+            rotation=-42
+        )
+
+        # ------------------------------------------------------------------
+        # Axes formatting
+        # ------------------------------------------------------------------
+        self.axe.set_xlabel("Old Rank  (Final Rank)", fontsize=11)
+        self.axe.set_ylabel("New Rank  (Utility)", fontsize=11)
+        self.axe.tick_params(axis="both", labelsize=9)
+        self.axe.grid(True, linestyle=":", linewidth=0.8, alpha=0.5)
+        self.axe.set_axisbelow(True)
+        self.axe.set_box_aspect(1)
+        self.axe.spines[["top", "right"]].set_visible(False)
+
+        self.axe.text(
+            0.5, 1.10, "Rank Shift Analysis",
+            transform=self.axe.transAxes, ha="center", va="bottom",
+            fontsize=16, fontweight="bold"
+        )
+        self.axe.text(
+            0.5, 1.03,
+            f"Old Rank vs New Rank (Utility)  ·  colored by {color_by}",
+            transform=self.axe.transAxes, ha="center", va="bottom",
+            fontsize=9, style="italic", color="dimgray"
+        )
+
+        self.fig.subplots_adjust(left=0.12, right=0.95, top=0.84, bottom=0.30)
+        self.fig.canvas.draw()
+        self.fig.canvas.flush_events()
+
+    def plot_rank_shift_distribution(self, view: str = "Boxplot"):
+        """Distribution of Rank Gain = Old Rank − New Rank (Utility).
+
+        Positive gain → combination moves up.
+        Negative gain → combination moves down.
+
+        Args:
+            view (str): 'Histogram' for a global distribution,
+                        'Boxplot' for one box per chromatographic mode.
+
+        Side Effects:
+            - Clears the figure and redraws from scratch.
+        """
+        self.fig.clear()
+        self.axe = self.fig.add_subplot(111)
+
+        df = self.orthogonality_result_data.copy()
+        old_rank = pd.to_numeric(df.get("Final Rank"), errors="coerce")
+        new_rank = pd.to_numeric(df.get("Final Rank (Utility)"), errors="coerce")
+
+        valid = old_rank.notna() & new_rank.notna()
+        if not valid.any():
+            self._show_missing_data()
+            return
+
+        df = df[valid].copy()
+        rank_gain = (old_rank[valid] - new_rank[valid])
+        df["Rank Gain"] = rank_gain.values
+
+        # ------------------------------------------------------------------
+        # HISTOGRAM — global distribution
+        # ------------------------------------------------------------------
+        if view == "Histogram":
+            n_bins = max(20, int(np.sqrt(len(rank_gain))))
+
+            pos_mask = rank_gain >= 0
+            neg_mask = rank_gain < 0
+
+            if pos_mask.any():
+                self.axe.hist(
+                    rank_gain[pos_mask], bins=n_bins,
+                    color="#1a7a2e", alpha=0.75, edgecolor="white",
+                    linewidth=0.4, label="Moves up (gain ≥ 0)"
+                )
+            if neg_mask.any():
+                self.axe.hist(
+                    rank_gain[neg_mask], bins=n_bins,
+                    color="#d94f3d", alpha=0.75, edgecolor="white",
+                    linewidth=0.4, label="Moves down (gain < 0)"
+                )
+
+            self.axe.axvline(0, color="#555555", linewidth=1.2, linestyle="--", zorder=5)
+            self.axe.axvline(
+                rank_gain.median(),
+                color="#f5a623", linewidth=1.2, linestyle="-.",
+                label=f"Median gain = {rank_gain.median():.0f}", zorder=5
+            )
+
+            self.axe.set_xlabel("Rank Gain  (Old − New)", fontsize=11)
+            self.axe.set_ylabel("Number of combinations", fontsize=11)
+            self.axe.legend(fontsize=8, frameon=True, edgecolor="#cccccc")
+            subtitle = "Global rank gain distribution"
+
+        # ------------------------------------------------------------------
+        # BOXPLOT — one box per chromatographic mode
+        # ------------------------------------------------------------------
+        else:
+            if "Chromatographic Mode" not in df.columns:
+                self._show_missing_data()
+                return
+
+            mode_order = self.model.get_chromatographic_mode_list()
+            palette = [
+                "#E41A1C", "#377EB8", "#4DAF4A", "#984EA3",
+                "#FF7F00", "#00A6A6", "#A65628", "#F781BF",
+            ]
+
+            labels, values = [], []
+            for mode in mode_order:
+                group = df[df["Chromatographic Mode"] == mode]["Rank Gain"].dropna()
+                if group.empty:
+                    continue
+                labels.append(mode)
+                values.append(group.values)
+
+            if not labels:
+                self._show_missing_data()
+                return
+
+            box = self.axe.boxplot(
+                values, patch_artist=True,
+                widths=0.55, showfliers=False
+            )
+            for patch, color in zip(box["boxes"], palette):
+                patch.set_facecolor(color)
+                patch.set_alpha(0.25)
+                patch.set_edgecolor(color)
+                patch.set_linewidth(1.0)
+            for median in box["medians"]:
+                median.set_color("black")
+                median.set_linewidth(1.2)
+
+            # jittered points
+            np.random.seed(42)
+            for j, (y_data, color) in enumerate(zip(values, palette), start=1):
+                x_jitter = np.random.normal(j, 0.05, size=len(y_data))
+                self.axe.scatter(
+                    x_jitter, y_data,
+                    s=10, color=color,
+                    edgecolors="k", linewidths=0.2,
+                    alpha=0.70, picker=5
+                )
+
+            self.axe.axhline(0, color="#555555", linewidth=1.0, linestyle="--", zorder=0)
+            self.axe.set_xticks(range(1, len(labels) + 1))
+            self.axe.set_xticklabels(labels, rotation=30, ha="right", fontsize=8)
+            self.axe.set_ylabel("Rank Gain  (Old − New)", fontsize=11)
+            subtitle = "Rank gain by chromatographic mode"
+
+        # ------------------------------------------------------------------
+        # Shared formatting
+        # ------------------------------------------------------------------
+        self.axe.tick_params(axis="both", labelsize=9)
+        self.axe.grid(True, axis="y", linestyle="--", linewidth=0.4, alpha=0.5)
+        self.axe.set_axisbelow(True)
+        self.axe.spines[["top", "right"]].set_visible(False)
+
+        self.axe.text(
+            0.5, 1.10, "Rank Shift Distribution",
+            transform=self.axe.transAxes, ha="center", va="bottom",
+            fontsize=16, fontweight="bold"
+        )
+        self.axe.text(
+            0.5, 1.03, subtitle,
+            transform=self.axe.transAxes, ha="center", va="bottom",
+            fontsize=9, style="italic", color="dimgray"
+        )
+
+        self.fig.subplots_adjust(left=0.12, right=0.95, top=0.84, bottom=0.28)
+        self.fig.canvas.draw()
+        self.fig.canvas.flush_events()
+
     def _show_missing_data(self):
         self.fig.clear()
         ax = self.fig.add_subplot(111)

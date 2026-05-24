@@ -33,6 +33,8 @@ PLOT_TYPES = [
     "Recommendation Distribution",
     "Feasibility Profile",
     "Final Rank vs Recommendation",
+    "Final Rank Shift Scatter",
+    "Final Rank Shift Distribution"
 ]
 
 PLOT_DESCRIPTIONS = {
@@ -50,7 +52,12 @@ PLOT_DESCRIPTIONS = {
         "Displays feasibility scores across the evaluated condition space.",
     "Final Rank vs Recommendation":
         "Cross-plots the final consensus rank against recommendation scores.",
+    "Final Rank Shift Scatter":
+        "",
+    "Final Rank Shift Distribution":
+        ""
 }
+
 
 CRITERIA_ITEMS = [
     "All criteria",

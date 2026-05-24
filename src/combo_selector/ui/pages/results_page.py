@@ -474,6 +474,16 @@ class ResultsPage(QFrame):
                 self.plot_utils.plot_final_rank_by_recommendation_class,
                 lambda s: {"recommendation": s.recommendation}
             ),
+
+            "Final Rank Shift Scatter": (
+                self.plot_utils.plot_rank_shift_scatter,
+                lambda s: {}
+            ),
+
+            "Final Rank Shift Distribution": (
+                self.plot_utils.plot_rank_shift_distribution,
+                lambda s: {}
+            )
         }
 
         plot_frame_layout.addWidget(plot_title)
