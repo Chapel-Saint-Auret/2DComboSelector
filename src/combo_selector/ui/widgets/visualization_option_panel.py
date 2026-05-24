@@ -34,7 +34,9 @@ PLOT_TYPES = [
     "Feasibility Profile",
     "Final Rank vs Recommendation",
     "Final Rank Shift Scatter",
-    "Final Rank Shift Distribution"
+    "Final Rank Shift Distribution",
+    "Rank Shift by Combination",
+    "Top Rank Overlap",
 ]
 
 PLOT_DESCRIPTIONS = {
@@ -55,7 +57,11 @@ PLOT_DESCRIPTIONS = {
     "Final Rank Shift Scatter":
         "",
     "Final Rank Shift Distribution":
-        ""
+        "",
+    "Rank Shift by Combination":
+        "Lollipop chart showing rank shift (New − Old) for each combination, sorted by old rank.",
+    "Top Rank Overlap":
+        "Bar chart comparing how many combinations are shared between old and new top-10, top-50, and top-100 lists.",
 }
 
 

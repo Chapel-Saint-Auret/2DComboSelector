@@ -483,6 +483,16 @@ class ResultsPage(QFrame):
             "Final Rank Shift Distribution": (
                 self.plot_utils.plot_rank_shift_distribution,
                 lambda s: {}
+            ),
+
+            "Rank Shift by Combination": (
+                self.plot_utils.plot_rank_shift_by_combination,
+                lambda s: {}
+            ),
+
+            "Top Rank Overlap": (
+                self.plot_utils.plot_top_rank_overlap,
+                lambda s: {}
             )
         }
 
