@@ -262,7 +262,7 @@ class ImportDataPage(QFrame):
         self.add_ret_time_btn = QPushButton(
             QIcon(resource_path("icons/folder_icon.png")), "Import"
         )
-        self.clean_retention_time_btn = QPushButton(QIcon(resource_path("icons/setting_icon.png")),"Missing Values ")
+        self.clean_retention_time_btn = QPushButton(QIcon(resource_path("icons/setting_icon.png")),"Data Cleanup ")
         self.clean_retention_time_btn.setLayoutDirection(Qt.RightToLeft)
         self.clean_retention_time_btn.setIconSize(QSize(19, 19))
         self.clean_retention_time_btn.setFixedHeight(35)
