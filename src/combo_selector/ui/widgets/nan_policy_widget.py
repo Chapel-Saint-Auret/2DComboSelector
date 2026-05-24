@@ -11,6 +11,7 @@ condition-specific thresholds with blank values.
 
 import sys
 
+import pandas as pd
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QFont
 from PySide6.QtWidgets import (
@@ -255,7 +256,6 @@ class NanPolicyDialog(QDialog):
 
     def _load_rt_threshold_file(self):
         from PySide6.QtWidgets import QFileDialog, QInputDialog, QMessageBox
-        import pandas as pd
 
         file_path, _ = QFileDialog.getOpenFileName(
             self, "Open RT Threshold File", "", "Excel Files (*.xlsx *.xls)"

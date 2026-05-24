@@ -228,7 +228,7 @@ class DataManager:
 
         Requires load_rt_below_threshold_data() to have been called first.
         """
-        if not hasattr(self, "rt_below_threshold_df") or self.rt_below_threshold_df is None:
+        if self.rt_below_threshold_df is None:
             return
 
         for column_name in self.retention_time_df.columns[2:]:
@@ -236,8 +236,16 @@ class DataManager:
                 continue
             threshold = self.rt_below_threshold_df[column_name].iloc[0]
 
+            def _blank_if_below_threshold(value):
+                if value == "" or pd.isna(value):
+                    return value
+                try:
+                    return "" if float(value) < threshold else value
+                except (TypeError, ValueError):
+                    return value
+
             self.retention_time_df[column_name] = self.retention_time_df[column_name].apply(
-                lambda x: "" if (x != "" and pd.notna(x) and float(x) < threshold) else x
+                _blank_if_below_threshold
             )
 
     def clean_nan_value(self, option_list: str) -> None:
