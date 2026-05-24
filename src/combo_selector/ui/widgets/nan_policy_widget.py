@@ -1,11 +1,12 @@
-"""Dialog for handling missing retention time (NaN) values in chromatography data.
+"""Dialog for retention-time data cleanup operations in chromatography data.
 
 This module provides a dialog that allows users to configure how missing
-retention time values (NaN) should be handled during data processing.
+retention time values and other quality issues should be handled during data
+processing.
 
-Two options are available:
-1. Remove peaks if NaN percentage exceeds a threshold
-2. Keep all peaks and leave NaN values blank
+Available operations include removing compounds/conditions by missing-value
+threshold, keeping blank values, and replacing retention times below
+condition-specific thresholds with blank values.
 """
 
 import sys
@@ -21,6 +22,8 @@ from PySide6.QtWidgets import (
     QGroupBox,
     QHBoxLayout,
     QLabel,
+    QLineEdit,
+    QPushButton,
     QRadioButton,
     QSpinBox,
     QVBoxLayout,
@@ -30,14 +33,21 @@ from combo_selector.ui.widgets.removal_summary_dialog import RemovalSummaryDialo
 from combo_selector.ui.widgets.line_widget import LineWidget
 
 class NanPolicyDialog(QDialog):
-    """Dialog for configuring NaN retention time handling policy.
+    """Dialog for configuring retention-time data cleanup operations.
 
-    Presents users with two options for handling missing retention time data:
+    Presents users with options for handling missing retention time data and
+    threshold-based retention-time blanking:
 
     Option 1: Remove peaks if the percentage of NaN retention times exceeds
               a user-defined threshold (default 50%).
 
-    Option 2: Keep all peaks and leave NaN values blank.
+    Option 2: Remove conditions if the percentage of missing values exceeds
+              a user-defined threshold (default 50%).
+
+    Option 3: Keep all compounds and leave missing values blank.
+
+    Option 4: Replace retention times below loaded condition-specific
+              thresholds with blank values.
 
     The dialog communicates with a model object to apply the selected policy.
 
@@ -76,7 +86,7 @@ class NanPolicyDialog(QDialog):
         self.model = model
         main_layout = QVBoxLayout(self)
 
-        self.setFixedWidth(550)
+        self.setFixedWidth(600)
 
         # Create button box
         self.buttonBox = QDialogButtonBox(
@@ -84,7 +94,7 @@ class NanPolicyDialog(QDialog):
         )
 
         # Create group box with styling
-        groupbox = QGroupBox("Missing retention time values were detected in your dataset.")
+        groupbox = QGroupBox("Retention Time Data Cleanup Options")
         groupbox.setStyleSheet("""
             QGroupBox {
                 font-size: 14px;
@@ -119,7 +129,7 @@ class NanPolicyDialog(QDialog):
         font = QFont()
         font.setBold(True)
         summary = QLabel(
-            "How would you like to handle them?"
+            "Select one or more cleanup operations to apply:"
         )
         summary.setFont(font)
         summary.setWordWrap(True)
@@ -144,11 +154,17 @@ class NanPolicyDialog(QDialog):
 
         self.option_replace.setObjectName("option 3")
 
+        self.option_replace_below_threshold = QRadioButton(
+            "Replace retention times below a condition-specific threshold with blank"
+        )
+        self.option_replace_below_threshold.setObjectName("option 4")
+
         # Radio button group
         self.option_button_grp = QButtonGroup()
         self.option_button_grp.addButton(self.option_remove_compound)
         self.option_button_grp.addButton(self.option_remove_condition)
         self.option_button_grp.addButton(self.option_replace)
+        self.option_button_grp.addButton(self.option_replace_below_threshold)
         self.option_button_grp.setExclusive(False)
 
         self.update_button_state()
@@ -186,6 +202,24 @@ class NanPolicyDialog(QDialog):
         )
         note.setWordWrap(True)
 
+        self.rt_threshold_file_label = QLineEdit()
+        self.rt_threshold_file_label.setPlaceholderText("No threshold file loaded...")
+        self.rt_threshold_file_label.setReadOnly(True)
+
+        self.rt_threshold_load_btn = QPushButton("Browse…")
+        self.rt_threshold_load_btn.clicked.connect(self._load_rt_threshold_file)
+
+        row4_file = QHBoxLayout()
+        row4_file.addWidget(self.rt_threshold_file_label)
+        row4_file.addWidget(self.rt_threshold_load_btn)
+
+        self.rt_threshold_note = QLabel(
+            "Load a single-row Excel file whose columns match the condition names. "
+            "Each value is the minimum acceptable retention time for that condition. "
+            "Any RT below this value will be replaced with blank."
+        )
+        self.rt_threshold_note.setWordWrap(True)
+
         # Assemble layout
         groupbox_layout.addWidget(summary)
         groupbox_layout.addWidget(self.option_replace)
@@ -194,6 +228,10 @@ class NanPolicyDialog(QDialog):
         groupbox_layout.addSpacing(4)
         groupbox_layout.addLayout(row2)
         groupbox_layout.addWidget(note)
+        groupbox_layout.addWidget(LineWidget())
+        groupbox_layout.addWidget(self.option_replace_below_threshold)
+        groupbox_layout.addLayout(row4_file)
+        groupbox_layout.addWidget(self.rt_threshold_note)
 
         # Connect signals
         self.buttonBox.accepted.connect(self.accept)
@@ -208,10 +246,36 @@ class NanPolicyDialog(QDialog):
             self.option_button_grp.setExclusive(True)
             self.option_remove_compound.setChecked(False)
             self.option_remove_condition.setChecked(False)
+            self.option_replace_below_threshold.setChecked(False)
 
         if (self.option_remove_compound.isChecked() or
-                self.option_remove_condition.isChecked()):
+                self.option_remove_condition.isChecked() or
+                self.option_replace_below_threshold.isChecked()):
             self.option_button_grp.setExclusive(False)
+
+    def _load_rt_threshold_file(self):
+        from PySide6.QtWidgets import QFileDialog, QInputDialog, QMessageBox
+        import pandas as pd
+
+        file_path, _ = QFileDialog.getOpenFileName(
+            self, "Open RT Threshold File", "", "Excel Files (*.xlsx *.xls)"
+        )
+        if not file_path:
+            return
+
+        try:
+            sheet_names = pd.ExcelFile(file_path, engine="openpyxl").sheet_names
+            selected_sheet, ok = QInputDialog.getItem(
+                self, "Select Sheet", "Choose a sheet:", sheet_names, editable=False
+            )
+            if not ok:
+                return
+
+            if self.model:
+                self.model.load_rt_below_threshold_data(file_path, selected_sheet)
+                self.rt_threshold_file_label.setText(file_path)
+        except Exception as e:
+            QMessageBox.critical(self, "Error", f"Failed to load threshold file:\n{e}")
 
     def set_threshold1(self) -> None:
         """Update the model with the new threshold value.

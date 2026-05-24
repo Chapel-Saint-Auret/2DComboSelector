@@ -64,6 +64,7 @@ class DataManager:
         self.coverage_score_df = pd.DataFrame()
         self.gradient_end_time_df = pd.DataFrame()
         self.void_time_df = pd.DataFrame()
+        self.rt_below_threshold_df = None
         self.combination_df = pd.DataFrame()
         self.retention_time_df = pd.DataFrame()
         self.normalized_retention_time_df = pd.DataFrame()
@@ -207,6 +208,38 @@ class DataManager:
 
         self.retention_time_df.fillna("", inplace=True)
 
+    def load_rt_below_threshold_data(self, filepath: str, sheetname: str) -> None:
+        """Load per-condition minimum retention time thresholds from a single-row Excel file.
+
+        Args:
+            filepath (str): Path to the Excel file.
+            sheetname (str): Name of the sheet to load.
+
+        The file must have one row of numeric values; each column header must match
+        a condition name in the retention time DataFrame.
+        """
+        self.rt_below_threshold_df = load_simple_table(filepath, sheetname)
+
+    def replace_rt_below_threshold(self):
+        """Replace retention times below per-condition thresholds with blank strings.
+
+        For each condition column, any RT value strictly below the loaded threshold
+        for that condition is replaced with "".
+
+        Requires load_rt_below_threshold_data() to have been called first.
+        """
+        if not hasattr(self, "rt_below_threshold_df") or self.rt_below_threshold_df is None:
+            return
+
+        for column_name in self.retention_time_df.columns[2:]:
+            if column_name not in self.rt_below_threshold_df.columns:
+                continue
+            threshold = self.rt_below_threshold_df[column_name].iloc[0]
+
+            self.retention_time_df[column_name] = self.retention_time_df[column_name].apply(
+                lambda x: "" if (x != "" and pd.notna(x) and float(x) < threshold) else x
+            )
+
     def clean_nan_value(self, option_list: str) -> None:
         """Handle NaN values in retention time data according to the specified option.
 
@@ -223,6 +256,7 @@ class DataManager:
         function_map = {"option 1": self.remove_compound,
                         "option 2": self.remove_condition,
                         "option 3": self.clear_all_nan,
+                        "option 4": self.replace_rt_below_threshold,
                         }
 
         for option in option_list:
@@ -984,4 +1018,3 @@ class DataManager:
         self.nb_peaks = self.combination_df["Number of peaks"].max()
         self.nb_combination = len(self.combination_df["2D Combination"])
         self.bin_number = round(sqrt(self.nb_peaks))
-
