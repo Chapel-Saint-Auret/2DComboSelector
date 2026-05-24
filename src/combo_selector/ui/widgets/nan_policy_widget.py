@@ -159,7 +159,7 @@ class NanPolicyDialog(QDialog):
         self.option_replace.setObjectName("option 3")
 
         self.option_replace_below_threshold = QRadioButton(
-            "Replace retention times below a condition-specific threshold with blank"
+            "Replace retention times below condition-specific thresholds with blank"
         )
         self.option_replace_below_threshold.setObjectName("option 4")
 
