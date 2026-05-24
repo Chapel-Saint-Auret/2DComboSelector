@@ -235,6 +235,10 @@ class DataManager:
             if column_name not in self.rt_below_threshold_df.columns:
                 continue
             threshold = self.rt_below_threshold_df[column_name].iloc[0]
+            try:
+                threshold = float(threshold)
+            except (TypeError, ValueError):
+                continue
 
             def _blank_if_below_threshold(value):
                 if value == "" or pd.isna(value):

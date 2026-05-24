@@ -20,10 +20,13 @@ from PySide6.QtWidgets import (
     QButtonGroup,
     QDialog,
     QDialogButtonBox,
+    QFileDialog,
     QGroupBox,
     QHBoxLayout,
+    QInputDialog,
     QLabel,
     QLineEdit,
+    QMessageBox,
     QPushButton,
     QRadioButton,
     QSpinBox,
@@ -255,8 +258,6 @@ class NanPolicyDialog(QDialog):
             self.option_button_grp.setExclusive(False)
 
     def _load_rt_threshold_file(self):
-        from PySide6.QtWidgets import QFileDialog, QInputDialog, QMessageBox
-
         file_path, _ = QFileDialog.getOpenFileName(
             self, "Open RT Threshold File", "", "Excel Files (*.xlsx *.xls)"
         )
