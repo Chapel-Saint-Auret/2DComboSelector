@@ -231,8 +231,11 @@ class DataManager:
         if self.rt_below_threshold_df is None:
             return
 
-        # Skip metadata columns: 'Peak#' and 'Compound Name'.
-        for column_name in self.retention_time_df.columns[2:]:
+        if self.rt_below_threshold_df.empty:
+            return
+
+        metadata_column_count = 2  # 'Peak#' and 'Compound Name'
+        for column_name in self.retention_time_df.columns[metadata_column_count:]:
             if column_name not in self.rt_below_threshold_df.columns:
                 continue
             threshold = self.rt_below_threshold_df[column_name].iloc[0]
