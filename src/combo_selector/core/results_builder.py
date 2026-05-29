@@ -482,7 +482,7 @@ class ResultsBuilder:
             )
         else:
             self.orthogonality_result_df['Final Rank'] = 'Not available'
-            self.orthogonality_result_df['Final Utility'] = 'Not available'
+            self.orthogonality_result_df['Final Rank (Utility)'] = 'Not available'
 
     def compute_criterion_highlight(self):
         """
