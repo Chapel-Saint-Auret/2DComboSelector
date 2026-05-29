@@ -2787,7 +2787,7 @@ class PlotUtils:
             return
 
         palette = ["#2471a3", "#1e8449", "#6c3483", "#b7770d", "#117a65", "#922b21"]
-        color_map = {k: palette[i] for i, k in enumerate(top_ks)}
+        color_map = {k: palette[i % len(palette)] for i, k in enumerate(top_ks)}
         overlaps, percentages = [], []
         for k in top_ks:
             old_top = set(rank_df.nsmallest(k, "Old Rank").index)
@@ -2815,6 +2815,7 @@ class PlotUtils:
         self.axe.grid(True, axis="y", linestyle="--", linewidth=0.6, alpha=0.5, zorder=0)
         self.axe.spines[["top", "right"]].set_visible(False)
 
+        # Reduce font size by 1pt for each bar beyond 3 so annotations don't overlap, floor at 8pt
         annot_fs = max(8, 11 - max(0, len(top_ks) - 3))
         for bar, k, count, pct, color in zip(bars, top_ks, overlaps, percentages, bar_colors):
             self.axe.text(
