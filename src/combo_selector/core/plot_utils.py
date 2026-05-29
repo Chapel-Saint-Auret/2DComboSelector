@@ -2781,17 +2781,17 @@ class PlotUtils:
             "New Rank": new_rank[valid],
         })
 
-        top_ks = [k for k in [10, 50, 100] if k <= len(rank_df)]
+        top_ks = [k for k in [10, 50, 100,200,500,1000] if k <= len(rank_df)]
         if not top_ks:
             self._show_missing_data()
             return
 
-        color_map = {10: "#2471a3", 50: "#1e8449", 100: "#6c3483"}
+        color_map = {10: "#2471a3", 50: "#1e8449", 100: "#6c3483",200: "#6c3483",500: "#6c3483",1000: "#6c3483"}
         overlaps, percentages = [], []
         for k in top_ks:
-            old_top = set(rank_df.nsmallest(k, "Old Rank").index)
-            new_top = set(rank_df.nsmallest(k, "New Rank").index)
-            overlap_count = len(old_top & new_top)
+            old_top = rank_df.nsmallest(k, "Old Rank").index
+            new_top = rank_df.nsmallest(k, "New Rank").index
+            overlap_count = np.sum(old_top == new_top)
             overlaps.append(overlap_count)
             percentages.append((overlap_count / k) * 100)
 
@@ -2822,26 +2822,26 @@ class PlotUtils:
                 ha="center", va="bottom", fontsize=11, color=color, fontweight="bold"
             )
 
-        cell_text = [
-            [f"{count}/{k}" for count, k in zip(overlaps, top_ks)],
-            [f"({pct:.0f}%)" for pct in percentages],
-        ]
-        table = self.axe.table(
-            cellText=cell_text,
-            rowLabels=["Overlap (count)", "Overlap (%)"],
-            colLabels=[f"Top {k}" for k in top_ks],
-            cellLoc="center",
-            bbox=[0.0, -0.43, 1.0, 0.23],
-        )
-        table.auto_set_font_size(False)
-        table.set_fontsize(10)
-
-        self.axe.text(
-            0.5, -0.56,
-            "Higher values indicate greater agreement between old and new top-k combination lists.",
-            transform=self.axe.transAxes, ha="center", va="top",
-            fontsize=9, style="italic", color="dimgray"
-        )
+        # cell_text = [
+        #     [f"{count}/{k}" for count, k in zip(overlaps, top_ks)],
+        #     [f"({pct:.0f}%)" for pct in percentages],
+        # ]
+        # table = self.axe.table(
+        #     cellText=cell_text,
+        #     rowLabels=["Overlap (count)", "Overlap (%)"],
+        #     colLabels=[f"Top {k}" for k in top_ks],
+        #     cellLoc="center",
+        #     bbox=[0.0, -0.43, 1.0, 0.23],
+        # )
+        # table.auto_set_font_size(False)
+        # table.set_fontsize(10)
+        #
+        # self.axe.text(
+        #     0.5, -0.56,
+        #     "Higher values indicate greater agreement between old and new top-k combination lists.",
+        #     transform=self.axe.transAxes, ha="center", va="top",
+        #     fontsize=9, style="italic", color="dimgray"
+        # )
 
         self.fig.subplots_adjust(left=0.12, right=0.95, top=0.83, bottom=0.42)
         self.fig.canvas.draw()
