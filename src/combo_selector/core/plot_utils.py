@@ -2790,9 +2790,9 @@ class PlotUtils:
         color_map = {k: palette[i % len(palette)] for i, k in enumerate(top_ks)}
         overlaps, percentages = [], []
         for k in top_ks:
-            old_top = set(rank_df.nsmallest(k, "Old Rank").index)
-            new_top = set(rank_df.nsmallest(k, "New Rank").index)
-            overlap_count = len(old_top & new_top)
+            old_top = rank_df.nsmallest(k, "Old Rank").index
+            new_top = rank_df.nsmallest(k, "New Rank").index
+            overlap_count = len(old_top.intersection(new_top))
             overlaps.append(overlap_count)
             percentages.append((overlap_count / k) * 100)
 
