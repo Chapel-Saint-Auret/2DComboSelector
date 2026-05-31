@@ -2790,9 +2790,9 @@ class PlotUtils:
         color_map = {k: palette[i % len(palette)] for i, k in enumerate(top_ks)}
         overlaps, percentages = [], []
         for k in top_ks:
-            old_top = rank_df.nsmallest(k, "Old Rank").index
-            new_top = rank_df.nsmallest(k, "New Rank").index
-            overlap_count = len(old_top.intersection(new_top))
+            old_top = rank_df.nsmallest(k, "Old Rank").index.to_numpy()
+            new_top = rank_df.nsmallest(k, "New Rank").index.to_numpy()
+            overlap_count = int(np.sum(old_top == new_top))
             overlaps.append(overlap_count)
             percentages.append((overlap_count / k) * 100)
 
@@ -2803,29 +2803,36 @@ class PlotUtils:
         self.axe.set_xticks(x)
         self.axe.set_xticklabels([f"Top {k}" for k in top_ks], fontsize=11)
         self.axe.set_ylabel("Overlap (shared combinations)", fontsize=11)
-        self.axe.set_title("Overlap of Top Ranked Combinations", fontsize=14, fontweight="bold")
         self.axe.text(
-            0.5, 1.02, "Shared combinations between old and new top-k lists",
+            0.5, 1.10, "Overlap of Top Ranked Combinations",
             transform=self.axe.transAxes, ha="center", va="bottom",
-            fontsize=10, style="italic", color="dimgray"
+            fontsize=14, fontweight="bold"
+        )
+        self.axe.text(
+            0.5, 1.03, "Shared combinations between old and new top-k lists",
+            transform=self.axe.transAxes, ha="center", va="bottom",
+            fontsize=9, style="italic", color="dimgray"
         )
 
         max_overlap = max(overlaps)
-        self.axe.set_ylim(0, max_overlap * 1.25 if max_overlap > 0 else 1)
+        y_max = max(5, max_overlap) * 1.25
+        self.axe.set_ylim(0, y_max)
+        self.axe.yaxis.set_major_locator(ticker.MaxNLocator(integer=True))
         self.axe.grid(True, axis="y", linestyle="--", linewidth=0.6, alpha=0.5, zorder=0)
         self.axe.spines[["top", "right"]].set_visible(False)
 
         # Reduce font size by 1pt for each bar beyond 3 so annotations don't overlap, floor at 8pt
         annot_fs = max(8, 11 - max(0, len(top_ks) - 3))
+        label_offset = max(1, max_overlap) * 0.01
         for bar, k, count, pct, color in zip(bars, top_ks, overlaps, percentages, bar_colors):
             self.axe.text(
                 bar.get_x() + bar.get_width() / 2,
-                bar.get_height() + max(0.5, max_overlap * 0.03),
+                bar.get_height() + label_offset,
                 f"{count}/{k}\n({pct:.0f}%)",
                 ha="center", va="bottom", fontsize=annot_fs, color=color, fontweight="bold"
             )
 
-        self.fig.subplots_adjust(left=0.12, right=0.95, top=0.83, bottom=0.12)
+        self.fig.subplots_adjust(left=0.12, right=0.95, top=0.72, bottom=0.12)
         self.fig.canvas.draw()
         self.fig.canvas.flush_events()
 
