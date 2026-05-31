@@ -328,7 +328,7 @@ class VisualizationOptionsPanel(QGroupBox):
     def _emit_state(self):
         plot = self._plot_combo.currentText()
 
-        show_subset = plot in ("Orthogonality Space", "Multi-Criteria Space")
+        show_subset = plot in ("Orthogonality Space", "Multi-Criteria Space","Rank Shift by Combination")
         show_axis = plot in ("Multi-Criteria Space", "Feasibility Profile")
         show_view = plot == "Chromatographic Mode Performance"
         show_grouping = plot in ("Recommendation Distribution", "Feasibility Profile")
@@ -356,7 +356,7 @@ class VisualizationOptionsPanel(QGroupBox):
         self._desc_label.setText(PLOT_DESCRIPTIONS.get(plot, ""))
 
         # Determine visibility of each panel
-        show_subset = plot in ("Orthogonality Space", "Multi-Criteria Space")
+        show_subset = plot in ("Orthogonality Space", "Multi-Criteria Space","Rank Shift by Combination")
         show_axis = plot in ("Multi-Criteria Space", "Feasibility Profile")
         show_view = plot == "Chromatographic Mode Performance"
         show_grouping = plot in ("Recommendation Distribution", "Feasibility Profile")
@@ -395,7 +395,7 @@ class VisualizationOptionsPanel(QGroupBox):
     def get_subset(self):
         plot = self._plot_combo.currentText()
 
-        show_subset = plot in ("Orthogonality Space", "Multi-Criteria Space")
+        show_subset = plot in ("Orthogonality Space", "Multi-Criteria Space","Rank Shift by Combination")
 
         return self._percentile_panel.currentText() if show_subset else None
 
