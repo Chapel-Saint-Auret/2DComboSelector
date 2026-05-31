@@ -2789,6 +2789,8 @@ class PlotUtils:
         palette = ["#2471a3", "#1e8449", "#6c3483", "#b7770d", "#117a65", "#922b21"]
         color_map = {k: palette[i % len(palette)] for i, k in enumerate(top_ks)}
         overlaps, percentages = [], []
+        # Positional overlap: count how many combinations share the same rank position
+        # in both old-top-k and new-top-k lists.
         for k in top_ks:
             old_top = rank_df.nsmallest(k, "Old Rank").index.to_numpy()
             new_top = rank_df.nsmallest(k, "New Rank").index.to_numpy()
@@ -2823,7 +2825,7 @@ class PlotUtils:
 
         # Reduce font size by 1pt for each bar beyond 3 so annotations don't overlap, floor at 8pt
         annot_fs = max(8, 11 - max(0, len(top_ks) - 3))
-        label_offset = max(1, max_overlap) * 0.01
+        label_offset = y_max * 0.02
         for bar, k, count, pct, color in zip(bars, top_ks, overlaps, percentages, bar_colors):
             self.axe.text(
                 bar.get_x() + bar.get_width() / 2,
