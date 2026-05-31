@@ -49,7 +49,7 @@ class HeaderButton(QHeaderView):
             Args: column index.
 
     Attributes:
-        _buttons (dict): Maps column index to QToolButton.
+        _buttons (dict): Maps column index to list of QToolButton.
         _button_widget (dict): Maps column index to associated widget/dialog.
 
     Example:
@@ -81,7 +81,7 @@ class HeaderButton(QHeaderView):
         self.setHighlightSections(False)
 
         # Button storage
-        self._buttons = {}  # column_index -> QToolButton
+        self._buttons: dict[int, list[QToolButton]] = {}  # column_index -> buttons
         self._button_widget = {}  # column_index -> widget (dialog or widget)
 
         # Auto-reposition buttons when sections change
@@ -199,9 +199,9 @@ class HeaderButton(QHeaderView):
             super().paintSection(painter, rect, logical_index)
             return
 
-        btn = self._buttons[logical_index]
-        btn_w = btn.sizeHint().width()
         gap = 4  # px between text right edge and button left edge
+        buttons = self._buttons.get(logical_index, [])
+        total_btn_w = sum(btn.sizeHint().width() for btn in buttons) + gap * len(buttons)
 
         painter.save()
 
@@ -213,7 +213,7 @@ class HeaderButton(QHeaderView):
         self.style().drawControl(QStyle.CE_Header, opt_bg, painter, self)
 
         # 2. Draw the label text clipped to the area left of the button
-        text_rect = rect.adjusted(0, 0, -(btn_w + gap), 0)
+        text_rect = rect.adjusted(0, 0, -total_btn_w, 0)
         opt_text = QStyleOptionHeader(opt)
         opt_text.rect = text_rect
         self.style().drawControl(QStyle.CE_Header, opt_text, painter, self)
@@ -249,9 +249,6 @@ class HeaderButton(QHeaderView):
             - Stores widget association
             - Repositions all buttons
         """
-        if column in self._buttons:
-            return  # Already added
-
         # Store the widget (dialog or other) to show later on click
         if widget_to_show is not None:
             self._button_widget[column] = widget_to_show
@@ -272,7 +269,9 @@ class HeaderButton(QHeaderView):
         )
 
         btn.show()
-        self._buttons[column] = btn
+        if column not in self._buttons:
+            self._buttons[column] = []
+        self._buttons[column].append(btn)
         self._reposition_buttons()
 
     def add_header_help_button(
@@ -298,9 +297,6 @@ class HeaderButton(QHeaderView):
             - Stores the button in ``_buttons[column]``.
             - Repositions all header buttons.
         """
-        if column in self._buttons:
-            return  # Already added
-
         btn = SectionHelpButton(
             title=title,
             markdown_path=markdown_path,
@@ -309,7 +305,9 @@ class HeaderButton(QHeaderView):
         btn.adjustSize()  # Ensure sizeHint is valid before first reposition
 
         btn.show()
-        self._buttons[column] = btn
+        if column not in self._buttons:
+            self._buttons[column] = []
+        self._buttons[column].append(btn)
         self._reposition_buttons()
 
     def remove_filter_button(self, column: int) -> None:
@@ -322,8 +320,8 @@ class HeaderButton(QHeaderView):
             - Deletes button widget
             - Removes widget association
         """
-        btn = self._buttons.pop(column, None)
-        if btn:
+        buttons = self._buttons.pop(column, [])
+        for btn in buttons:
             btn.deleteLater()
         self._button_widget.pop(column, None)
         self.viewport().update()
@@ -402,10 +400,14 @@ class HeaderButton(QHeaderView):
 
         gap = 4  # px between text right edge and button left edge
 
-        for col, btn in list(self._buttons.items()):
+        for col, buttons in list(self._buttons.items()):
+            if not buttons:
+                continue
+
             # Hide if column out of range
             if col < 0 or col >= section_count:
-                btn.hide()
+                for btn in buttons:
+                    btn.hide()
                 continue
 
             # Hide if section is hidden
@@ -414,12 +416,13 @@ class HeaderButton(QHeaderView):
             except Exception:
                 hidden = False
             if hidden:
-                btn.hide()
+                for btn in buttons:
+                    btn.hide()
                 continue
 
-            btn_size = btn.sizeHint()
-            btn_w = btn_size.width()
-            btn_h = btn_size.height()
+            button_sizes = [btn.sizeHint() for btn in buttons]
+            total_btn_w = sum(size.width() for size in button_sizes)
+            gaps_between = gap * (len(buttons) - 1)
 
             sec_x = self.sectionViewportPosition(col)
             sec_w = self.sectionSize(col)
@@ -431,21 +434,22 @@ class HeaderButton(QHeaderView):
             fm = self.fontMetrics()
             text_w = fm.horizontalAdvance(opt.text)
 
-            # Minimum width: left margin + text + gap + button + right margin
+            # Minimum width: left margin + text + gap + all buttons + gaps-between
             left_margin = label_rect.left() - sec_x
-            right_margin = gap
-            min_w = left_margin + text_w + gap + btn_w + right_margin
+            min_w = left_margin + text_w + gap + total_btn_w + gaps_between
             if sec_w < min_w:
                 self.blockSignals(True)
                 self.resizeSection(col, min_w)
                 self.blockSignals(False)
                 sec_w = min_w
 
-            # Place button right after the text, vertically centred
+            # Place buttons right after text, left-to-right, vertically centered
             x_pos = self._text_end_x(col) + gap
-            y_pos = (self.height() - btn_h) // 2
-            btn.move(x_pos, y_pos)
-            btn.show()
+            for btn, btn_size in zip(buttons, button_sizes):
+                y_pos = (self.height() - btn_size.height()) // 2
+                btn.move(x_pos, y_pos)
+                btn.show()
+                x_pos += btn_size.width() + gap
 
     def resizeEvent(self, event) -> None:
         """Ensure buttons stay aligned when the header itself resizes."""
