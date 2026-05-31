@@ -2701,7 +2701,7 @@ class PlotUtils:
         self.fig.canvas.draw()
         self.fig.canvas.flush_events()
 
-    def plot_rank_shift_by_combination(self):
+    def plot_rank_shift_by_combination(self, subset: str = "All"):
         self.fig.clear()
         self.axe = self.fig.add_subplot(111)
 
@@ -2713,6 +2713,19 @@ class PlotUtils:
 
         old_rank = pd.to_numeric(df["Final Rank"], errors="coerce")
         new_rank = pd.to_numeric(df["Final Rank (Utility)"], errors="coerce")
+
+        # ------------------------------------------------------------------
+        # Shared: rank-based subset filtering + coloring
+        # ------------------------------------------------------------------
+        n = len(df)
+
+        old_rank_pct = (old_rank / n) * 100
+
+        threshold = SUBSET_THRESHOLDS.get(subset, 0)
+        mask = old_rank_pct <= threshold
+
+        old_rank = old_rank[mask]
+        new_rank = new_rank[mask]
 
         if old_rank.notna().sum() == 0 or new_rank.notna().sum() == 0:
             self._show_missing_data()
@@ -2792,9 +2805,21 @@ class PlotUtils:
         # Positional overlap: count how many combinations share the same rank position
         # in both old-top-k and new-top-k lists.
         for k in top_ks:
-            old_top = rank_df.nsmallest(k, "Old Rank").index.to_numpy()
-            new_top = rank_df.nsmallest(k, "New Rank").index.to_numpy()
-            overlap_count = int(np.sum(old_top == new_top))
+
+            #this check if top k of old and new rank shared overlaping combination rank
+            #meaning if there are combination that has not changed rank
+            # old_top = rank_df.nsmallest(k, "Old Rank").index.to_numpy()
+            # new_top = rank_df.nsmallest(k, "New Rank").index.to_numpy()
+            # overlap_count = int(np.sum(old_top == new_top))
+
+            #check if top k of old and new rank shared combination regardles of rank position
+            top_k_combination_old_rank = df["2D Combination"].iloc[rank_df.nsmallest(k, "Old Rank").index]
+            top_k_combination_new_rank = df["2D Combination"].iloc[rank_df.nsmallest(k, "New Rank").index]
+
+            top_k_combination_old_rank = set(top_k_combination_old_rank)
+            top_k_combination_new_rank = set(top_k_combination_new_rank)
+
+            overlap_count = len(top_k_combination_old_rank.intersection(top_k_combination_new_rank))
             overlaps.append(overlap_count)
             percentages.append((overlap_count / k) * 100)
 

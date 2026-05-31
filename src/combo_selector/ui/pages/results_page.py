@@ -487,7 +487,7 @@ class ResultsPage(QFrame):
 
             "Rank Shift by Combination": (
                 self.plot_utils.plot_rank_shift_by_combination,
-                lambda s: {}
+                lambda s: {"subset": s.subset}
             ),
 
             "Top Rank Overlap": (
