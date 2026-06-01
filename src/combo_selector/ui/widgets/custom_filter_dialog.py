@@ -270,9 +270,10 @@ class CustomFilterDialog(QDialog):
 
             # Extract word tokens (ignore "vs")
             toks = re.findall(r'\b[A-Za-z0-9-]+\b', s)
-            toks = [t for t in toks if t.lower() != 'vs']
+            # toks = [t for t in toks if t.lower() != 'vs']
 
-            if len(toks) >= 2:
+            if 'vs' in toks:
+
                 a, b = re.escape(toks[0]), re.escape(toks[-1])
                 # Match both orders: A vs B or B vs A
                 parts.append(rf'\b{a}\b.*?vs.*?\b{b}\b')
@@ -280,7 +281,7 @@ class CustomFilterDialog(QDialog):
                 filter_regexp = re.compile('|'.join(parts), flags=re.IGNORECASE)
             else:
                 # Compile the pattern with start (^) and end ($) anchors
-                filter_regexp = re.compile(rf"^{re.escape(toks[0])}$")
+                filter_regexp = re.compile(rf"^{re.escape(s)}$")
 
             selected_filter[key]["regexp"] = filter_regexp.pattern
 

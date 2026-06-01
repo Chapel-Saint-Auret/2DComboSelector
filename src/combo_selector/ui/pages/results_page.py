@@ -529,7 +529,7 @@ class ResultsPage(QFrame):
         self.peak_detection_status_filter_dialog = CustomFilterDialog(parent=self,filter_name="Peak Detection Rate Status", filter_column=6)
         self.complexity_filter_dialog = CustomFilterDialog(parent=self,filter_name='Complexity', filter_column=3)
         self.compatibility_filter_dialog = CustomFilterDialog(parent=self,filter_name='Compatibility', filter_column=4)
-        self.final_recommendation_filter_dialog = CustomFilterDialog(parent=self,filter_name='Final Recommendation', filter_column=3)
+        self.final_recommendation_filter_dialog = CustomFilterDialog(parent=self,filter_name='Final Recommendation', filter_column=8)
 
         self.orthogonality_table.add_header_button(
             column=2, tooltip="Custom filter", widget_to_show=self.chrom_mode_filter_dialog
