@@ -165,6 +165,7 @@ class ResultsPage(QFrame):
         self.peak_detection_status_filter_dialog.filter_regexp_changed.connect(self.filter_table)
         self.complexity_filter_dialog.filter_regexp_changed.connect(self.filter_table)
         self.compatibility_filter_dialog.filter_regexp_changed.connect(self.filter_table)
+        self.final_recommendation_filter_dialog.filter_regexp_changed.connect(self.filter_table)
         # self.select_ranking_type.currentTextChanged.connect(self.set_ranking_argument)
         self.radio_button_group.buttonClicked.connect(
             self.set_use_suggested_om_score_flag
@@ -598,7 +599,7 @@ class ResultsPage(QFrame):
         self.final_recommendation_table.add_help_button(column=7, title="Final Rank (Utility)",
                                                           markdown_path="markdown/final_rank_utility.md")
 
-        self.final_recommendation_table.add_header_button(column=3, tooltip="Complexity filter", widget_to_show=self.final_recommendation_filter_dialog)
+        self.final_recommendation_table.add_header_button(column=8, tooltip="Final Recommendation filter", widget_to_show=self.final_recommendation_filter_dialog)
         self.final_recommendation_table.add_help_button(column=8, title="Final Recommendation",
                                                           markdown_path="markdown/final_recommendation.md")
         self.final_recommendation_table.add_help_button(column=9, title="Criterion Highlight",
