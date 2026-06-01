@@ -547,7 +547,7 @@ class Scoring:
             •	High
             """
             if peak_detection_rate < 40:
-                return 'Insufficient '
+                return 'Insufficient'
             elif 40 <= peak_detection_rate < 60:
                 return 'Cautionary'
             elif 60 <= peak_detection_rate < 80:

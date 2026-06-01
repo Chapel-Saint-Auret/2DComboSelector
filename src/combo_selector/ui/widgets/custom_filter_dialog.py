@@ -91,9 +91,9 @@ class CustomFilterDialog(QDialog):
         >>> dialog.exec()
     """
 
-    filter_regexp_changed = Signal(object)
+    filter_regexp_changed = Signal(str,int,object)
 
-    def __init__(self, parent=None):
+    def __init__(self,filter_name,filter_column,parent=None):
         """Initialize the filter dialog.
 
         Args:
@@ -101,6 +101,8 @@ class CustomFilterDialog(QDialog):
         """
         super().__init__(parent)
         self.chromatographic_mode = None
+        self.filter_name = filter_name
+        self.filter_column = filter_column
         self.setWindowTitle("Custom Filter")
 
         main_layout = QVBoxLayout()
@@ -243,7 +245,7 @@ class CustomFilterDialog(QDialog):
 
         self.chromatographic_mode = list(set(x for x in chromatographic_mode))
 
-        self.filtered_listview.populate(self.chromatographic_mode)
+        self.filtered_listview.populate(combination_list)
 
 
     def selected_filter_changed(self) -> None:
@@ -275,12 +277,14 @@ class CustomFilterDialog(QDialog):
                 # Match both orders: A vs B or B vs A
                 parts.append(rf'\b{a}\b.*?vs.*?\b{b}\b')
                 parts.append(rf'\b{b}\b.*?vs.*?\b{a}\b')
-
-            filter_regexp = re.compile('|'.join(parts), flags=re.IGNORECASE)
+                filter_regexp = re.compile('|'.join(parts), flags=re.IGNORECASE)
+            else:
+                # Compile the pattern with start (^) and end ($) anchors
+                filter_regexp = re.compile(rf"^{re.escape(toks[0])}$")
 
             selected_filter[key]["regexp"] = filter_regexp.pattern
 
-        self.filter_regexp_changed.emit(selected_filter)
+        self.filter_regexp_changed.emit(self.filter_name,self.filter_column,selected_filter)
         self.accept()
 
     def insert_parent_item(self, text: str) -> None:

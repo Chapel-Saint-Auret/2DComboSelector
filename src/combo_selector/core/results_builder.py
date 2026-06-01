@@ -167,8 +167,9 @@ class ResultsBuilder:
         self.orthogonality_result_df["Elution Domain"] = self.combination_df["Elution Domain"].copy()
         self.orthogonality_result_df["Elution Domain Rank"] = self.combination_df["Elution Domain"].copy()
 
-    def apply_chromatographic_mode_filter(self, combine_pattern: str = ".*") -> None:
-        mask = self.orthogonality_result_df['Chromatographic Mode'].str.contains(
+    def apply_chromatographic_mode_filter(self,filter_name: str = "Chromatographic Mode", combine_pattern: str = ".*") -> None:
+
+        mask = self.orthogonality_result_df[filter_name].str.contains(
             combine_pattern, na=False, regex=True
         )
         self.filtered_result_df = self.orthogonality_result_df[mask].copy()

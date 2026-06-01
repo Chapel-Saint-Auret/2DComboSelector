@@ -73,8 +73,9 @@ UI_TO_MODEL_MAPPING = {
     "Modeling approach": "modeling_approach",
     "Conditional entropy": "conditional_entropy",
 }
-
-
+PEAK_RATE_STATUS = ['Suitable','Acceptable','Cautionary','Insufficient']
+FEASABILITY = ['High','Moderate','Low']
+FINAL_RECOMMENDATION = ['Highly recommended','Recommended','Use with caution','Not recommended']
 
 class ResultsPage(QFrame):
     """Page for computing, ranking, and visualizing final results.
@@ -160,7 +161,10 @@ class ResultsPage(QFrame):
         self.progress_overlay.raise_()
 
         # --- Signal connections --------------------------------------------
-        self.custom_filter_widget.filter_regexp_changed.connect(self.filter_table)
+        self.chrom_mode_filter_dialog.filter_regexp_changed.connect(self.filter_table)
+        self.peak_detection_status_filter_dialog.filter_regexp_changed.connect(self.filter_table)
+        self.complexity_filter_dialog.filter_regexp_changed.connect(self.filter_table)
+        self.compatibility_filter_dialog.filter_regexp_changed.connect(self.filter_table)
         # self.select_ranking_type.currentTextChanged.connect(self.set_ranking_argument)
         self.radio_button_group.buttonClicked.connect(
             self.set_use_suggested_om_score_flag
@@ -520,9 +524,14 @@ class ResultsPage(QFrame):
 
         self.orthogonality_table = self.styled_table.get_table_from_sheet(sheet_name='Orthogonality')
 
-        self.custom_filter_widget = CustomFilterDialog(self)
+        self.chrom_mode_filter_dialog = CustomFilterDialog(parent=self,filter_name='Chromatographic Mode', filter_column=2)
+        self.peak_detection_status_filter_dialog = CustomFilterDialog(parent=self,filter_name="Peak Detection Rate Status", filter_column=6)
+        self.complexity_filter_dialog = CustomFilterDialog(parent=self,filter_name='Complexity', filter_column=3)
+        self.compatibility_filter_dialog = CustomFilterDialog(parent=self,filter_name='Compatibility', filter_column=4)
+        self.final_recommendation_filter_dialog = CustomFilterDialog(parent=self,filter_name='Final Recommendation', filter_column=3)
+
         self.orthogonality_table.add_header_button(
-            column=2, tooltip="Custom filter", widget_to_show=self.custom_filter_widget
+            column=2, tooltip="Custom filter", widget_to_show=self.chrom_mode_filter_dialog
         )
 
         self.orthogonality_table.add_help_button(column=3,title="Coverage Score",markdown_path="markdown/coverage_score.md")
@@ -542,10 +551,13 @@ class ResultsPage(QFrame):
             ])
 
         self.practical_feasibility_table = self.styled_table.get_table_from_sheet(sheet_name='Practical Feasibility')
-        self.practical_feasibility_table.add_header_button(column=2, tooltip="Custom filter", widget_to_show=self.custom_filter_widget)
+        self.practical_feasibility_table.add_header_button(column=2, tooltip="Chromatographic Mode filter", widget_to_show=self.chrom_mode_filter_dialog)
+        self.practical_feasibility_table.add_header_button(column=3, tooltip="Complexity filter", widget_to_show=self.complexity_filter_dialog)
         self.practical_feasibility_table.add_help_button(column=3,title="Complexity",markdown_path="markdown/complexity.md")
+        self.practical_feasibility_table.add_header_button(column=4, tooltip="Compatibility filter", widget_to_show=self.compatibility_filter_dialog)
         self.practical_feasibility_table.add_help_button(column=4,title="Compatibility",markdown_path="markdown/compatibility.md")
         self.practical_feasibility_table.add_help_button(column=5,title="Peak Detection Rate (%)",markdown_path="markdown/peak_detection_rate.md")
+        self.practical_feasibility_table.add_header_button(column=6, tooltip="Peak Detection Status filter", widget_to_show=self.peak_detection_status_filter_dialog)
         self.practical_feasibility_table.add_help_button(column=6,title="Peak Detection Status",markdown_path="markdown/peak_detection_status.md")
         self.practical_feasibility_table.set_header_label(
             [
@@ -560,7 +572,7 @@ class ResultsPage(QFrame):
 
         self.seperational_potential_table = self.styled_table.get_table_from_sheet(sheet_name='Separation Potential')
         self.seperational_potential_table.add_header_button(column=2, tooltip="Custom filter",
-                                                           widget_to_show=self.custom_filter_widget)
+                                                           widget_to_show=self.chrom_mode_filter_dialog)
         self.seperational_potential_table.add_help_button(column=3, title="Hypothetical 2D Peak Capacity",markdown_path="markdown/hypothetical_peak_capacity.md")
         self.seperational_potential_table.add_help_button(column=4, title="Elution Domain",markdown_path="markdown/elution_domain.md")
         self.seperational_potential_table.set_header_label(
@@ -574,7 +586,7 @@ class ResultsPage(QFrame):
 
         self.final_recommendation_table = self.styled_table.get_table_from_sheet(sheet_name='Final Evaluation')
         self.final_recommendation_table.add_header_button(column=2, tooltip="Custom filter",
-                                                           widget_to_show=self.custom_filter_widget)
+                                                           widget_to_show=self.chrom_mode_filter_dialog)
         self.final_recommendation_table.add_help_button(column=3, title="Orthogonality Rank",
                                                           markdown_path="markdown/orthogonality_rank.md")
         self.final_recommendation_table.add_help_button(column=4, title="Peak Capacity Rank",
@@ -585,6 +597,8 @@ class ResultsPage(QFrame):
                                                           markdown_path="markdown/final_consensus_rank.md")
         self.final_recommendation_table.add_help_button(column=7, title="Final Rank (Utility)",
                                                           markdown_path="markdown/final_rank_utility.md")
+
+        self.final_recommendation_table.add_header_button(column=3, tooltip="Complexity filter", widget_to_show=self.final_recommendation_filter_dialog)
         self.final_recommendation_table.add_help_button(column=8, title="Final Recommendation",
                                                           markdown_path="markdown/final_recommendation.md")
         self.final_recommendation_table.add_help_button(column=9, title="Criterion Highlight",
@@ -1074,9 +1088,13 @@ class ResultsPage(QFrame):
         # self.styled_table.async_set_table_data(data)
         # self.styled_table.set_table_proxy()
         unique_mode = self.model.get_chromatographic_mode_list()
-        self.custom_filter_widget.build_filter_list(unique_mode)
+        self.chrom_mode_filter_dialog.build_filter_list(unique_mode)
+        self.peak_detection_status_filter_dialog.build_filter_list(PEAK_RATE_STATUS)
+        self.complexity_filter_dialog.build_filter_list(FEASABILITY)
+        self.compatibility_filter_dialog.build_filter_list(FEASABILITY)
+        self.final_recommendation_filter_dialog.build_filter_list(FINAL_RECOMMENDATION)
 
-    def filter_table(self, filter_dict: dict) -> None:
+    def filter_table(self,filter_name,filter_key_column, filter_dict: dict) -> None:
         """Apply custom filter to results table.
 
         Args:
@@ -1094,11 +1112,11 @@ class ResultsPage(QFrame):
 
         combined_pattern = "|".join(list_of_patterns)
 
-        self.model.apply_chromatographic_mode_filter(combined_pattern)
-        self.orthogonality_table.set_proxy_filter_regexp(combined_pattern)
-        self.practical_feasibility_table.set_proxy_filter_regexp(combined_pattern)
-        self.seperational_potential_table.set_proxy_filter_regexp(combined_pattern)
-        self.final_recommendation_table.set_proxy_filter_regexp(combined_pattern)
+        self.model.apply_chromatographic_mode_filter(filter_name=filter_name,combine_pattern=combined_pattern)
+        self.orthogonality_table.set_proxy_filter_regexp(filter_key_column,combined_pattern)
+        self.practical_feasibility_table.set_proxy_filter_regexp(filter_key_column,combined_pattern)
+        self.seperational_potential_table.set_proxy_filter_regexp(filter_key_column,combined_pattern)
+        self.final_recommendation_table.set_proxy_filter_regexp(filter_key_column,combined_pattern)
 
         self.vizualation_settings_group._emit_state()
 

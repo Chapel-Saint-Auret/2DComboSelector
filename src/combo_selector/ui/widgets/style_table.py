@@ -149,7 +149,7 @@ class TablePanel(QWidget):
         self.header.add_header_button(
             column=column, tooltip=tooltip, widget_to_show=widget_to_show
         )
-        self.set_filter_key_column(column)
+        # self.set_filter_key_column(column)
 
     def add_help_button(self, column: int, title: str,markdown_path: str):
         """Add a help button to the specified column header (placeholder).
@@ -202,9 +202,11 @@ class TablePanel(QWidget):
         """Set the column used for text-based proxy filtering."""
         self.table.setFilterKeyColumn(column)
 
-    def set_proxy_filter_regexp(self, regexp: str) -> None:
+    def set_proxy_filter_regexp(self, filter_key_column, regexp: str) -> None:
         """Apply a regular-expression filter to the proxy model."""
         self.table.filterExpChanged(regexp)
+
+        self.table.setFilterKeyColumn(filter_key_column)
 
     def set_table_proxy(self) -> None:
         """Wire the model to the view's proxy model."""
