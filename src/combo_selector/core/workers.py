@@ -6,7 +6,7 @@ a specific type of computation:
 
 - RedundancyWorker: Processes correlation heatmaps and redundancy checks
 - ResultsWorker: Computes final results and rankings
-- ResultsWorkerComputeCustomOMScore: Computes custom orthogonality scores
+- UpdateTableResultsWorker: Calls model.update_table_results() in a background thread
 - OMWorkerComputeOM: Computes orthogonality metrics
 - OMWorkerUpdateNumBin: Updates bin numbers for grid-based metrics
 - TableDataWorker: Formats table data for display
@@ -146,12 +146,12 @@ class ResultsWorker(QRunnable):
             logging.exception(f"[ResultsWorker] Error: {e}")
 
 
-class ResultsWorkerComputeCustomOMScore(QRunnable):
-    """Background worker for computing custom orthogonality scores.
+class UpdateTableResultsWorker(QRunnable):
+    """Background worker for updating the results table.
 
-    Computes a custom orthogonality score based on user-selected metrics,
-    then calculates practical 2D peak capacity and generates the results table.
-    Emits progress updates during computation.
+    Calls ``model.update_table_results()`` in a background thread to avoid
+    blocking the GUI, then emits ``finished`` so the results page can refresh
+    its display via ``update_results_table()``.
 
     Attributes:
         page: Reference to the ResultsPage instance.
@@ -159,7 +159,7 @@ class ResultsWorkerComputeCustomOMScore(QRunnable):
     """
 
     def __init__(self, page):
-        """Initialize the custom score worker.
+        """Initialize the results table update worker.
 
         Args:
             page: ResultsPage instance containing UI and data model.
@@ -170,22 +170,20 @@ class ResultsWorkerComputeCustomOMScore(QRunnable):
 
     @Slot()
     def run(self):
-        """Execute custom score computation with progress reporting.
+        """Execute the results table update in a background thread.
 
         Performs the following operations:
         1. Gets checked metrics from the page (progress: 30%)
         2. Computes custom orthogonality score (progress: 70%)
-        3. Calculates practical 2D peak capacities (progress: 95%)
-        4. Creates final results table
-        5. Emits finished signal
+        3. Updates the model results table
+        4. Emits finished signal so the page can refresh its display
 
         Side Effects:
-            - Emits progress signals at 30%, 70%, and 95%
+            - Emits progress signals at 30% and 70%
             - Updates model's computed scores
-            - Updates practical 2D peak capacity values
-            - Creates results table in model
+            - Updates model's results table via update_table_results()
             - Emits finished signal
-            - Logs debug message and exceptions
+            - Logs exceptions if errors occur
         """
         try:
             metric_list = self.page.om_list.get_checked_items()
@@ -194,10 +192,10 @@ class ResultsWorkerComputeCustomOMScore(QRunnable):
             self.signals.progress.emit(70)
             self.page.get_model().update_table_results()
 
-            logging.debug("ResultsWorker finished")
+            logging.debug("UpdateTableResultsWorker finished")
             self.signals.finished.emit()
         except Exception as e:
-            logging.exception(f"[ResultsWorker] Error: {e}")
+            logging.exception(f"[UpdateTableResultsWorker] Error: {e}")
 
 
 class OMWorkerSignals(QObject):

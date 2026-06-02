@@ -36,7 +36,7 @@ from PySide6.QtWidgets import (
 )
 
 from combo_selector.ui.config.table_color_config import COLOR_CONFIG_TABLE_FEASIBILITY, COLOR_CONFIG_FINAL_EVALUATION
-from combo_selector.core.workers import ResultsWorkerComputeCustomOMScore
+from combo_selector.core.workers import UpdateTableResultsWorker
 from combo_selector.ui.widgets.visualization_option_panel import VisualizationOptionsPanel,PlotState
 from combo_selector.ui.widgets.checkable_tree_list import CheckableTreeList
 from combo_selector.ui.widgets.section_help_button import SectionHelpButton
@@ -819,7 +819,7 @@ class ResultsPage(QFrame):
             - Starts computation in thread pool
             - Updates results when complete
         """
-        worker = ResultsWorkerComputeCustomOMScore(self)
+        worker = UpdateTableResultsWorker(self)
         worker.signals.progress.connect(self.handle_progress_update)
         worker.signals.finished.connect(self.handle_finished)
         self.threadpool.start(worker)
@@ -868,7 +868,6 @@ class ResultsPage(QFrame):
             - Sets progress to 100%
             - Schedules overlay hide after 800ms
             - Updates results table
-            - Refreshes plots
         """
         logging.info("Computation done")
         self.progress_bar.rpb_setValue(100)
@@ -876,7 +875,6 @@ class ResultsPage(QFrame):
         QTimer.singleShot(800, self.hide_progress_overlay)
 
         self.update_results_table()
-        self.plot_orthogonality_vs_2d_peaks()
 
     def hide_progress_overlay(self) -> None:
         """Hide the progress overlay and return to main view."""
@@ -989,50 +987,6 @@ class ResultsPage(QFrame):
         plot_fn = self.plot_functions_map.get(plot_key)
         if plot_fn is not None:
             plot_fn()
-
-    def plot_orthogonality_vs_2d_peaks(self) -> None:
-        """Plot selected score vs. 2D peak capacity scatter plot.
-
-        Side Effects:
-            - Removes old scatter collection if exists
-            - Creates new scatter plot
-            - Sets axes labels
-            - Redraws canvas
-        """
-        if self.model.get_status() not in ["peak_capacity_loaded"]:
-            return
-
-        if not self.selected_score:
-            return
-
-        orthogonality_score_dict = self.model.get_orthogonality_score_df()
-        orthogonality_score_df = pd.DataFrame.from_dict(
-            orthogonality_score_dict, orient="index"
-        )
-
-        score = UI_TO_MODEL_MAPPING[self.selected_score]
-
-        x = orthogonality_score_df[score]
-        y = orthogonality_score_df["2d_peak_capacity"]
-
-        self.selected_axe.set_xlabel(self.selected_score, fontsize=12)
-        self.selected_axe.set_ylabel("Hypothetical 2D Peak Capacity", fontsize=12)
-
-        if self.selected_scatter_collection in self.selected_axe.collections:
-            self.selected_scatter_collection.remove()
-            self.selected_scatter_collection = None
-
-        self.selected_scatter_collection = self.selected_axe.scatter(
-            x, y, s=20, color="silver", edgecolor="black", linewidths=0.9
-        )
-
-        # 3) Hide legend if present
-        leg = self.selected_axe.get_legend()
-        if leg:
-            leg.set_visible(False)
-
-        self.fig.canvas.draw()
-        self.fig.canvas.flush_events()
 
     # ==========================================================================
     # Ranking & Filtering
@@ -1185,18 +1139,6 @@ class ResultsPage(QFrame):
                 y = subset['2d_peak_capacity']
 
                 scatter = self.selected_axe.scatter(x, y, s=20, color=facecolor, edgecolor="black", linewidths=0.9)
-
-        else:
-            self.plot_orthogonality_vs_2d_peaks()
-
-
-
-
-
-            # self.selected_scatter_collection.set_offsets(list(zip(x, y)))
-
-
-
 
         self.fig.canvas.draw()
         self.fig.canvas.flush_events()
