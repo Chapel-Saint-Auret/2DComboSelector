@@ -228,9 +228,9 @@ class ComboSelectorMain(CustomMainWindow):
         self.om_calculation_page.hide_progress_overlay()
 
         # 2. Build correlation groups before initializing the results page.
-        #    Block signals so the auto-connected correlation_group_ready →
-        #    compute_custom_orthogonality_metric_score path does not fire
-        #    while the results page is still being set up.
+        #    Block signals so the correlation_group_ready signal (connected in
+        #    __init__ to results_page.compute_custom_orthogonality_metric_score)
+        #    does not fire prematurely while the results page is still being set up.
         self.redundancy_page.blockSignals(True)
         self.redundancy_page.update_correlation_group_table()
         self.redundancy_page.blockSignals(False)

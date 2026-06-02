@@ -173,15 +173,17 @@ class UpdateTableResultsWorker(QRunnable):
         """Execute the results table update in a background thread.
 
         Performs the following operations:
-        1. Gets checked metrics from the page (progress: 30%)
-        2. Computes custom orthogonality score (progress: 70%)
-        3. Updates the model results table
-        4. Emits finished signal so the page can refresh its display
+        1. Gets checked metrics from the page
+        2. Emits 30% progress
+        3. Computes custom orthogonality score from checked metrics
+        4. Emits 70% progress
+        5. Calls model.update_table_results() to rebuild the results table
+        6. Emits finished signal so the page can call update_results_table()
 
         Side Effects:
             - Emits progress signals at 30% and 70%
-            - Updates model's computed scores
-            - Updates model's results table via update_table_results()
+            - Updates model's computed scores via compute_custom_orthogonality_score()
+            - Rebuilds the model results table via update_table_results()
             - Emits finished signal
             - Logs exceptions if errors occur
         """
