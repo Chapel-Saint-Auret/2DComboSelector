@@ -47,7 +47,7 @@ class Redundancy:
     # Correlation groups
     # ------------------------------------------------------------------
 
-    def create_correlation_group(self, threshold: float, tol: float) -> pd.DataFrame:
+    def create_correlation_group(self,matrix_type: str, threshold: float, tol: float) -> pd.DataFrame:
         """Identify and group correlated orthogonality metrics based on correlation threshold.
 
         This method finds groups of metrics that are highly correlated with each other,
@@ -66,21 +66,30 @@ class Redundancy:
             Algorithm based on work by @yatharthranjan
             https://medium.com/@yatharthranjan/finding-top-correlation-pairs-from-a-large-number-of-variables-in-pandas-f530be53e82a
         """
-        if self.orthogonality_metric_corr_matrix_df.empty:
-            return pd.DataFrame()
 
-        orig_corr = self.orthogonality_metric_corr_matrix_df.corr()
+
+        if matrix_type == 'Values':
+            if self.orthogonality_metric_corr_matrix_df.empty:
+                return pd.DataFrame()
+
+            corr_matrix = self.orthogonality_metric_corr_matrix_df.corr()
+        else:
+            if self.orthogonality_metric_ranking_corr_matrix_df.empty:
+                return pd.DataFrame()
+
+            corr_matrix = self.orthogonality_metric_ranking_corr_matrix_df.corr()
+
 
         Correlated_Metrics = set()
 
-        for row in orig_corr.itertuples():
+        for row in corr_matrix.itertuples():
 
             row_metric_list = []
             row_metric_name = row.Index
             row_metric_list.append(row_metric_name)
 
             for i in range(1, len(row)):
-                column_metric_name = orig_corr.columns[i - 1]
+                column_metric_name = corr_matrix.columns[i - 1]
                 value = row[i]
                 if abs(value) >= (threshold - tol):
                     row_metric_list.append(column_metric_name)
@@ -212,16 +221,19 @@ class Redundancy:
 
         self.coverage_distribution_df = self.coverage_distribution_df.T
 
-    def fill_correlation_group_average(self):
-        self.orthogonality_metric_corr_matrix_df
-
+    def fill_correlation_group_average(self,matrix_type: str = 'Values'):
         average_redundancy_list = []
 
         for group, Correlated_Metrics_list in zip(self.correlation_group_df['Group'],
                                                   self.correlation_group_df['Correlated Metrics']):
 
             # 1. Get your sub-matrix
-            corr_matrix = self.orthogonality_metric_corr_matrix_df.corr().loc[
+            if matrix_type == 'Values':
+                corr_matrix = self.orthogonality_metric_corr_matrix_df.corr()
+            else:
+                corr_matrix = self.orthogonality_metric_ranking_corr_matrix_df.corr()
+
+            corr_matrix = corr_matrix.loc[
                 Correlated_Metrics_list, Correlated_Metrics_list]
 
             # 2. Create a mask for the upper triangle

@@ -154,7 +154,7 @@ class RedundancyCheckPage(QFrame):
             self.plot_correlation_heat_map
         )
         self.show_triangle_grp.buttonClicked.connect(self.plot_correlation_heat_map)
-        self.select_correlation_matrix.currentIndexChanged.connect(self.plot_correlation_heat_map)
+        self.select_correlation_matrix.currentIndexChanged.connect(self.update_plot_and_redundacy_group)
 
     def _create_top_section(self) -> QFrame:
         """Create the top section with input panel and heatmap.
@@ -540,8 +540,12 @@ class RedundancyCheckPage(QFrame):
         if self.model.get_orthogonality_metric_corr_matrix_df().empty:
             return
 
-        self.plot_correlation_heat_map()
+        self.update_plot_and_redundacy_group()
+
+    def update_plot_and_redundacy_group(self):
         self.update_correlation_group_table()
+        self.plot_correlation_heat_map()
+
 
     # ==========================================================================
     # Heatmap Visualization
@@ -565,12 +569,6 @@ class RedundancyCheckPage(QFrame):
         # self._ax = self.fig.add_subplot(121)
         # self._ax2 = self.fig.add_subplot(122)
 
-        self.corr_matrix = self.model.get_orthogonality_metric_corr_matrix_df().corr()
-
-        self.ranking_corr_matrix = self.model.get_orthogonality_metric_ranking_corr_matrix_df()
-
-        # if self.model.get_orthogonality_metric_ranking_corr_matrix_df():
-        self.ranking_corr_matrix = self.model.get_orthogonality_metric_ranking_corr_matrix_df().corr()
 
         if self.select_correlation_matrix.currentText() == 'Values':
             self.selected_correlation_matrix = self.model.get_orthogonality_metric_corr_matrix_df().corr()
@@ -583,18 +581,18 @@ class RedundancyCheckPage(QFrame):
         if self.select_correlation_matrix.currentText() == 'coverage vs distribution':
             self.selected_correlation_matrix = self.model.get_coverage_distribution_matrix_df()
 
-        if self.corr_matrix.empty:
+        if self.selected_correlation_matrix.empty:
             return
 
         cmap = self.corr_mat_cmap.currentText()
 
         # Map to abbreviated display names
         metric_list = [
-            METRIC_CORR_MAP[metric] for metric in list(self.corr_matrix.columns)
+            METRIC_CORR_MAP[metric] for metric in list(self.selected_correlation_matrix.columns)
         ]
 
         if self.hierarchical_clustering.checkState() == Qt.Checked:
-            self.corr_matrix = self.cluster_corr(self.corr_matrix)
+            self.selected_correlation_matrix = self.cluster_corr(self.selected_correlation_matrix)
 
         if self.show_cbar.checkState() == Qt.Checked:
             cbar_state = True
@@ -730,20 +728,23 @@ class RedundancyCheckPage(QFrame):
         """
         threshold = self.correlation_threshold.value()
         tolerance = self.correlation_threshold_tolerance.value()
-        self.model.create_correlation_group(threshold=threshold, tol=tolerance)
 
-        correlation_group_table = self.model.get_correlation_group_df()
+        matrix_type = self.select_correlation_matrix.currentText()
+
+        self.model.create_correlation_group(matrix_type=matrix_type,threshold=threshold, tol=tolerance)
 
         # self.model.fill_correlation_group_classification()
 
-        self.model.fill_correlation_group_average()
+        self.model.fill_correlation_group_average(matrix_type)
+
+        correlation_group_table = self.model.get_correlation_group_df()
 
         # self.model.build_coverage_distribution_matrix()
 
         self.styled_table.async_set_table_data(correlation_group_table)
-        self.styled_table.set_table_proxy()
+        # self.styled_table.set_table_proxy()
 
-        self.highlight_correlation_threshold()
+        # self.highlight_correlation_threshold()
 
         self.correlation_group_ready.emit()
 
