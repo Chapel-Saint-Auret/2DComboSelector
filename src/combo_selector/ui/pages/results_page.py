@@ -763,6 +763,8 @@ class ResultsPage(QFrame):
         logging.debug("Running ResultsPage: update_orthogonality_metric_list")
         self.update_orthogonality_metric_list(om_list)
 
+        self.model.update_table_results()
+
         logging.debug("Running ResultsPage: update_results_table")
         self.update_results_table()
 

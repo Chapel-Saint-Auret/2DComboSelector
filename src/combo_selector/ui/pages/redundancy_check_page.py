@@ -543,8 +543,8 @@ class RedundancyCheckPage(QFrame):
         self.update_plot_and_redundacy_group()
 
     def update_plot_and_redundacy_group(self):
-        self.update_correlation_group_table()
         self.plot_correlation_heat_map()
+        self.update_correlation_group_table()
 
 
     # ==========================================================================

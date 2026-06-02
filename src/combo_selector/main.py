@@ -235,6 +235,11 @@ class ComboSelectorMain(CustomMainWindow):
         self.redundancy_page.update_correlation_group_table()
         self.redundancy_page.blockSignals(False)
 
+        # 5. Now that the results page is fully initialized, start the
+        #    background score computation.  When it finishes it will call
+        #    results_page.update_results_table() to refresh the display.
+        self.results_page.compute_custom_orthogonality_metric_score()
+
         # 3. Initialize the results page — correlation groups are now in the
         #    model, so init_page() can use them safely.
         self.results_page.init_page(self._cached_metric_list)
@@ -244,10 +249,7 @@ class ComboSelectorMain(CustomMainWindow):
         self.export_page.init_page(self.metric_list_for_figure)
         self.set_status_text("Export page ready!")
 
-        # 5. Now that the results page is fully initialized, start the
-        #    background score computation.  When it finishes it will call
-        #    results_page.update_results_table() to refresh the display.
-        self.results_page.compute_custom_orthogonality_metric_score()
+
 
     def update_results_with_new_exp_peak_capacities(self) -> None:
         """Update results when experimental peak capacities are loaded.
