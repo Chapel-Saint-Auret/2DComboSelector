@@ -63,7 +63,12 @@ class ComboSelectorMain(CustomMainWindow):
         1. retention_time_loaded → init_pages()
         2. retention_time_normalized → update_plots()
         3. metric_computed → orthogonality_metric_computed()
-           → redundancy worker → results worker → pages initialized
+           → RedundancyWorker (plots heatmap)
+           → _on_redundancy_finished():
+               • results page initialized
+               • export page initialized
+               • update_correlation_group_table() → correlation_group_ready
+               → ResultsWorkerComputeCustomOMScore (computes scores)
         4. exp_peak_capacities_loaded → update_results_with_new_exp_peak_capacities()
     """
 
@@ -205,15 +210,37 @@ class ComboSelectorMain(CustomMainWindow):
             self.threadpool.start(self.redundancy_worker)
 
     def _on_redundancy_finished(self):
-        """Called when redundancy computation finishes."""
-        # Hide the OM calculation overlay now that redundancy is done
+        """Called when redundancy computation finishes.
+
+        Executed in strict order so that the results page is fully
+        initialized before score computation begins:
+
+        1. Hide the OM calculation progress overlay.
+        2. Initialize the results page UI (metric list, table layout, plots).
+        3. Initialize the export page.
+        4. Update the correlation group table on the redundancy page — this
+           populates ``correlation_group_df`` in the model and emits
+           ``correlation_group_ready``, which triggers
+           ``results_page.compute_custom_orthogonality_metric_score`` via
+           the signal connected in ``__init__``.
+
+        Keeping step 4 last prevents ``ResultsWorkerComputeCustomOMScore``
+        from running while the results page is still being set up.
+        """
+        # 1. Hide the OM calculation overlay now that redundancy is done
         self.om_calculation_page.hide_progress_overlay()
 
-        # Continue with results worker
+        # 2. Initialize the results page so it is ready before score computation
         self.results_page.init_page(self._cached_metric_list)
         self.set_status_text("Result page ready!")
+
+        # 3. Initialize the export page
         self.export_page.init_page(self.metric_list_for_figure)
         self.set_status_text("Export page ready!")
+
+        # 4. Build correlation groups and emit correlation_group_ready, which
+        #    triggers compute_custom_orthogonality_metric_score on the results page.
+        self.redundancy_page.update_correlation_group_table()
 
     def update_results_with_new_exp_peak_capacities(self) -> None:
         """Update results when experimental peak capacities are loaded.

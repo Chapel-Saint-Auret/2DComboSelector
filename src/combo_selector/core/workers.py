@@ -62,19 +62,21 @@ class RedundancyWorker(QRunnable):
 
         Performs the following operations:
         1. Plots correlation heatmap of orthogonality metrics
-        2. Updates correlation group table showing related metrics
-        3. Emits finished signal upon completion
+        2. Emits finished signal upon completion
+
+        Note:
+            Correlation group table update is intentionally deferred to the
+            main thread (via ``_on_redundancy_finished`` in the main window)
+            so that the results page is fully initialized before the
+            ``correlation_group_ready`` signal triggers score computation.
 
         Side Effects:
             - Updates page's correlation heatmap visualization
-            - Updates correlation group table
             - Emits finished signal
             - Logs exceptions if errors occur
         """
         try:
             self.page.plot_correlation_heat_map()
-
-            self.page.update_correlation_group_table()
 
             self.signals.finished.emit()
         except Exception as e:
