@@ -54,6 +54,7 @@ class DataManager:
         self.correlation_group_df = pd.DataFrame()
         self.orthogonality_metric_df = pd.DataFrame()
         self.orthogonality_table_df = pd.DataFrame()
+        self.filtered_result_df = pd.DataFrame()
         self.practical_feasibility_table_df = pd.DataFrame()
         self.separational_potential_table_df = pd.DataFrame()
         self.final_recommendation_table_df = pd.DataFrame()
