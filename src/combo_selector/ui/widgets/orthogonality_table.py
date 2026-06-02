@@ -16,6 +16,7 @@ Features:
 """
 
 import math
+import re
 import sys
 from enum import Enum
 
@@ -67,6 +68,8 @@ class OrthogonalityTableSortProxy(QSortFilterProxyModel):
     def __init__(self):
         """Initialize the sort proxy."""
         super().__init__()
+        self._column_regexes = {}
+        self._filters_spec_list = []
 
     def lessThan(self, left: QModelIndex, right: QModelIndex) -> bool:
         """Compare two values for sorting.
@@ -126,6 +129,64 @@ class OrthogonalityTableSortProxy(QSortFilterProxyModel):
         """
         return self.mapToSource(self.index(proxy_row, 0)).row()
 
+    def set_multi_column_filters(self, filters_spec_list: dict) -> None:
+        # filters = {col: (filter_name, pattern)}
+        self._filters_spec_list = filters_spec_list
+        self.invalidateFilter()
+
+    def setColumnRegex(self, column: int, pattern: str, case_sensitive: bool = True):
+        """Compile and store a regex pattern for a specific column."""
+        if not pattern:
+            # If the pattern is empty, remove the filter for this column
+            self._column_regexes.pop(column, None)
+        else:
+            # Choose case sensitivity flag
+            flags = 0 if case_sensitive else re.IGNORECASE
+
+            # Compile the regex pattern using Python's re module
+            self._column_regexes[column] = pattern
+
+        # Tell the widget to redraw and re-filter the data
+        self.invalidateFilter()
+
+    def filterAcceptsRow(self, source_row, source_parent):
+        model = self.sourceModel()
+
+        for filter_spec in self._filters_spec_list:
+            col = filter_spec["filter_column"]
+            patterns = filter_spec["patterns"]
+
+            if not patterns:  # no active pattern for this column, skip
+                continue
+
+            index = model.index(source_row, col, source_parent)
+            cell_value = str(model.data(index) or "")
+
+            python_re = re.compile(patterns)
+
+            if not python_re.search(cell_value):
+                return False  # this filter fails → row is rejected
+
+        return True  # all filters passed → row is visible
+
+    # def filterAcceptsRow(self, source_row: int, source_parent: QModelIndex) -> bool:
+    #     # If no active regex filters exist, show the row
+    #     if not self._column_regexes:
+    #         return True
+    #
+    #     # Check every active column filter (AND logic)
+    #     for column, compiled_regex in self._column_regexes.items():
+    #         index = self.sourceModel().index(source_row, column, source_parent)
+    #         cell_data = str(self.sourceModel().data(index, self.filterRole()))
+    #
+    #         # 2. Compile it using Python's engine
+    #         python_re = re.compile(compiled_regex)
+    #
+    #         # 3. Use search
+    #         if python_re.search(cell_data):
+    #             return True
+    #
+    #     return False  # Keep the row if it passes ALL filters
 
 class OrthogonalityTableModel(QAbstractTableModel):
     """Table model for orthogonality analysis results.
@@ -542,7 +603,7 @@ class OrthogonalityTableView(QTableView):
         """
         filterLineEdit.textChanged.connect(self.filterExpChanged)
 
-    def setFilterKeyColumn(self, column: int) -> None:
+    def setColumnRegex(self, column: int, pattern: str, case_sensitive: bool = True) -> None:
         """Set the column used for text-based filtering.
 
         Args:
@@ -551,7 +612,7 @@ class OrthogonalityTableView(QTableView):
         Side Effects:
             - Updates the proxy model's filter key column.
         """
-        self._proxyModel.setFilterKeyColumn(column)
+        self._proxyModel.setColumnRegex(column=column, pattern=pattern, case_sensitive=case_sensitive)
 
     def filterExpChanged(self, text: str) -> None:
         """Update filter based on search text.

@@ -2555,7 +2555,7 @@ class PlotUtils:
             fontsize=9, style="italic", color="dimgray"
         )
 
-        self.fig.subplots_adjust(left=0.12, right=0.95, top=0.84, bottom=0.30)
+        self.fig.subplots_adjust(left=0.12, right=0.95, top=0.87, bottom=0.250)
         self.fig.canvas.draw()
         self.fig.canvas.flush_events()
 

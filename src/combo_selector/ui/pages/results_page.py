@@ -161,17 +161,22 @@ class ResultsPage(QFrame):
         self.progress_overlay.raise_()
 
         # --- Signal connections --------------------------------------------
-        self.chrom_mode_filter_dialog.filter_regexp_changed.connect(self.filter_table)
-        self.peak_detection_status_filter_dialog.filter_regexp_changed.connect(self.filter_table)
-        self.complexity_filter_dialog.filter_regexp_changed.connect(self.filter_table)
-        self.compatibility_filter_dialog.filter_regexp_changed.connect(self.filter_table)
-        self.final_recommendation_filter_dialog.filter_regexp_changed.connect(self.filter_table)
+        # self.chrom_mode_filter_dialog.filter_regexp_changed.connect(self.filter_table)
+        # self.peak_detection_status_filter_dialog.filter_regexp_changed.connect(self.filter_table)
+        # self.complexity_filter_dialog.filter_regexp_changed.connect(self.filter_table)
+        # self.compatibility_filter_dialog.filter_regexp_changed.connect(self.filter_table)
+        # self.final_recommendation_filter_dialog.filter_regexp_changed.connect(self.filter_table)
         # self.select_ranking_type.currentTextChanged.connect(self.set_ranking_argument)
         self.radio_button_group.buttonClicked.connect(
             self.set_use_suggested_om_score_flag
         )
         self.compute_score_btn.clicked.connect(self.start_om_computation)
         self.vizualation_settings_group.stateChanged.connect(self.plot_visualization_state_changed)
+
+        self.orthogonality_table.filter_changed.connect(self.filter_table_changed)
+        self.practical_feasibility_table.filter_changed.connect(self.filter_table_changed)
+        self.seperational_potential_table.filter_changed.connect(self.filter_table_changed)
+        self.final_recommendation_table.filter_changed.connect(self.filter_table_changed)
 
         # We use a lambda wrapper here because Matplotlib's 'mpl_connect' expects a function
         # reference that takes exactly one argument (the 'event' object).
@@ -827,8 +832,6 @@ class ResultsPage(QFrame):
             - Updates practical 2D peak capacity
             - Recreates results table
         """
-        metric_list = self.om_list.get_checked_items()
-        self.model.compute_custom_orthogonality_score(metric_list)
         self.model.update_table_results()
 
     def handle_progress_update(self, value: int) -> None:
@@ -1105,29 +1108,9 @@ class ResultsPage(QFrame):
         self.compatibility_filter_dialog.build_filter_list(FEASABILITY)
         self.final_recommendation_filter_dialog.build_filter_list(FINAL_RECOMMENDATION)
 
-    def filter_table(self,filter_name,filter_key_column, filter_dict: dict) -> None:
-        """Apply custom filter to results table.
+    def filter_table_changed(self, filter_spec_list:list = None ) -> None:
 
-        Args:
-            regexp (str): Regular expression filter pattern.
-
-        Side Effects:
-            - Applies filter to table proxy model
-        """
-        # self.build_filtered_point(filter_dict)
-        # self.display_filtered_point()
-
-        list_of_patterns = []
-        for key in filter_dict:
-            list_of_patterns.append(filter_dict[key]["regexp"])
-
-        combined_pattern = "|".join(list_of_patterns)
-
-        self.model.apply_chromatographic_mode_filter(filter_name=filter_name,combine_pattern=combined_pattern)
-        self.orthogonality_table.set_proxy_filter_regexp(filter_key_column,combined_pattern)
-        self.practical_feasibility_table.set_proxy_filter_regexp(filter_key_column,combined_pattern)
-        self.seperational_potential_table.set_proxy_filter_regexp(filter_key_column,combined_pattern)
-        self.final_recommendation_table.set_proxy_filter_regexp(filter_key_column,combined_pattern)
+        self.model.apply_multi_column_filter(filter_spec_list)
 
         self.vizualation_settings_group._emit_state()
 

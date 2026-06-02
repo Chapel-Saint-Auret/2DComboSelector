@@ -167,11 +167,36 @@ class ResultsBuilder:
         self.orthogonality_result_df["Elution Domain"] = self.combination_df["Elution Domain"].copy()
         self.orthogonality_result_df["Elution Domain Rank"] = self.combination_df["Elution Domain"].copy()
 
-    def apply_chromatographic_mode_filter(self,filter_name: str = "Chromatographic Mode", combine_pattern: str = ".*") -> None:
+    # def apply_chromatographic_mode_filter(self,filter_name: str = "Chromatographic Mode", combine_pattern: str = ".*") -> None:
+    #
+    #     mask = self.orthogonality_result_df[filter_name].str.contains(
+    #         combine_pattern, na=False, regex=True
+    #     )
+    #     self.filtered_result_df = self.orthogonality_result_df[mask].copy()
+    #
+    #     self.create_orthogonality_table()
+    #     self.create_practical_feasibility_table()
+    #     self.create_separational_potential_table()
+    #     self.create_final_recommendation_table()
+    #
+    #     self.create_median_rank_score_based_on_chromatographic_group()
+    #     self.create_rank_score_based_on_chromatographic_group()
+    #     self.create_rank_score_based_on_recommendation_class()
+    #     self.create_recommendation_distribution_group()
 
-        mask = self.orthogonality_result_df[filter_name].str.contains(
-            combine_pattern, na=False, regex=True
-        )
+    def apply_multi_column_filter(self, filter_spec_list:list = None) -> None:
+        mask = pd.Series([True] * len(self.orthogonality_result_df))
+
+        if filter_spec_list:
+            for filter_spec in filter_spec_list:
+                col = filter_spec['filter_column']
+                col_name = filter_spec['filter_name']
+                patern = filter_spec['patterns']
+
+                mask &= self.orthogonality_result_df[col_name].str.contains(
+                    patern, na=False, regex=True
+                )
+
         self.filtered_result_df = self.orthogonality_result_df[mask].copy()
 
         self.create_orthogonality_table()
@@ -183,7 +208,6 @@ class ResultsBuilder:
         self.create_rank_score_based_on_chromatographic_group()
         self.create_rank_score_based_on_recommendation_class()
         self.create_recommendation_distribution_group()
-
 
     def update_table_results(self) -> None:
         """Recompute all result columns and update the results table.
@@ -213,7 +237,7 @@ class ResultsBuilder:
         self.compute_criterion_highlight()
         self.compute_final_recommendation_factor()
 
-        self.apply_chromatographic_mode_filter()
+        self.apply_multi_column_filter()
 
     def update_result_with_new_peak_capacity(self):
         """Update the results table with the most recent peak capacity data.

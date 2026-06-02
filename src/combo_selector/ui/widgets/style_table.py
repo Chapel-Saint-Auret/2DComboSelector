@@ -53,6 +53,7 @@ class TablePanel(QWidget):
     """
 
     selectionChanged = Signal()
+    filter_changed = Signal(list)
 
     def __init__(
         self,
@@ -80,6 +81,7 @@ class TablePanel(QWidget):
         # Custom header with filter-button support
         self.header = HeaderButton(Qt.Horizontal, self.table)
         self.table.setHorizontalHeader(self.header)
+        self.header_widgets: list[QWidget] = []
 
         # Delegate for NaN highlighting
         self.table.setItemDelegate(SquareBackgroundDelegate(self.table))
@@ -149,6 +151,9 @@ class TablePanel(QWidget):
         self.header.add_header_button(
             column=column, tooltip=tooltip, widget_to_show=widget_to_show
         )
+        self.header_widgets.append(widget_to_show)
+
+        widget_to_show.state_changed.connect(self.button_state_has_changed)
         # self.set_filter_key_column(column)
 
     def add_help_button(self, column: int, title: str,markdown_path: str):
@@ -160,6 +165,17 @@ class TablePanel(QWidget):
         self.header.add_header_help_button(
             column=column, title=title, markdown_path=markdown_path
         )
+
+    def button_state_has_changed(self):
+
+        filter_spec_list = []
+
+        for widget in self.header_widgets:
+            filter_spec_list.append(widget.get_filter_spec())
+
+        self.table.getProxyModel().set_multi_column_filters(filter_spec_list)
+
+        self.filter_changed.emit(filter_spec_list)
 
     def get_header(self) -> HeaderButton:
         """Return the :class:`HeaderButton` instance."""
@@ -198,15 +214,14 @@ class TablePanel(QWidget):
     # Filtering / proxy
     # ------------------------------------------------------------------
 
-    def set_filter_key_column(self, column: int) -> None:
+    def set_column_regex(self, column: int) -> None:
         """Set the column used for text-based proxy filtering."""
-        self.table.setFilterKeyColumn(column)
+        self.table.setColumnRegex(column)
 
     def set_proxy_filter_regexp(self, filter_key_column, regexp: str) -> None:
         """Apply a regular-expression filter to the proxy model."""
-        self.table.filterExpChanged(regexp)
 
-        self.table.setFilterKeyColumn(filter_key_column)
+        self.table.setColumnRegex(column=filter_key_column, pattern=regexp)
 
     def set_table_proxy(self) -> None:
         """Wire the model to the view's proxy model."""
@@ -436,7 +451,7 @@ class StyledTable(QWidget):
         self.table_panel.set_section_resize_mode()
 
     def set_filter_key_column(self, column: int) -> None:
-        self.table_panel.set_filter_key_column(column)
+        self.table_panel.set_column_regex(column)
 
     def set_proxy_filter_regexp(self, regexp: str) -> None:
         self.table_panel.set_proxy_filter_regexp(regexp)

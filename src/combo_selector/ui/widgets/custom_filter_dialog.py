@@ -92,8 +92,9 @@ class CustomFilterDialog(QDialog):
     """
 
     filter_regexp_changed = Signal(str,int,object)
+    state_changed = Signal()
 
-    def __init__(self,filter_name,filter_column,parent=None):
+    def __init__(self,filter_name='',filter_column='',parent=None):
         """Initialize the filter dialog.
 
         Args:
@@ -103,8 +104,14 @@ class CustomFilterDialog(QDialog):
         self.chromatographic_mode = None
         self.filter_name = filter_name
         self.filter_column = filter_column
-        self.setWindowTitle("Custom Filter")
 
+        self.filter_spec = {
+            "filter_name": filter_name,  # e.g. 'Chromatographic Mode'
+            "filter_column": filter_column,  # e.g. 2
+            "patterns": ".*"
+        }
+
+        self.setWindowTitle("Custom Filter")
         main_layout = QVBoxLayout()
         self._apply_styles()
 
@@ -217,6 +224,9 @@ class CustomFilterDialog(QDialog):
                 font-size: 14px;
             }
         """)
+    def get_filter_spec(self):
+        return self.filter_spec
+
     def build_filter_list(self, combination_list):
         """Extract unique chromatographic modes from a list of combination names.
 
@@ -262,30 +272,37 @@ class CustomFilterDialog(QDialog):
 
         selected_filter = self.filtered_listview.get_selected_filters()
 
+        list_of_patterns = []
 
-        for key in selected_filter:
-            parts = []
+        if selected_filter:
+            for key in selected_filter:
+                parts = []
 
-            s = key
+                s = key
 
-            # Extract word tokens (ignore "vs")
-            toks = re.findall(r'\b[A-Za-z0-9-]+\b', s)
-            # toks = [t for t in toks if t.lower() != 'vs']
+                # Extract word tokens (ignore "vs")
+                toks = re.findall(r'\b[A-Za-z0-9-]+\b', s)
+                # toks = [t for t in toks if t.lower() != 'vs']
 
-            if 'vs' in toks:
+                if 'vs' in toks:
 
-                a, b = re.escape(toks[0]), re.escape(toks[-1])
-                # Match both orders: A vs B or B vs A
-                parts.append(rf'\b{a}\b.*?vs.*?\b{b}\b')
-                parts.append(rf'\b{b}\b.*?vs.*?\b{a}\b')
-                filter_regexp = re.compile('|'.join(parts), flags=re.IGNORECASE)
-            else:
-                # Compile the pattern with start (^) and end ($) anchors
-                filter_regexp = re.compile(rf"^{re.escape(s)}$")
+                    a, b = re.escape(toks[0]), re.escape(toks[-1])
+                    # Match both orders: A vs B or B vs A
+                    parts.append(rf'\b{a}\b.*?vs.*?\b{b}\b')
+                    parts.append(rf'\b{b}\b.*?vs.*?\b{a}\b')
+                    filter_regexp = re.compile('|'.join(parts), flags=re.IGNORECASE)
+                else:
+                    # Compile the pattern with start (^) and end ($) anchors
+                    filter_regexp = re.compile(rf"^{re.escape(s)}$")
 
-            selected_filter[key]["regexp"] = filter_regexp.pattern
+                selected_filter[key]["regexp"] = filter_regexp.pattern
+                list_of_patterns.append(filter_regexp.pattern)
 
-        self.filter_regexp_changed.emit(self.filter_name,self.filter_column,selected_filter)
+                self.filter_spec["patterns"] = "|".join(list_of_patterns)
+        else:
+            self.filter_spec["patterns"] = ".*"
+        # self.filter_regexp_changed.emit(self.filter_name,self.filter_column,selected_filter)
+        self.state_changed.emit()
         self.accept()
 
     def insert_parent_item(self, text: str) -> None:
@@ -774,6 +791,7 @@ if __name__ == "__main__":
     app = QApplication(sys.argv)
 
     dialog = CustomFilterDialog()
+    dialog.build_filter_list(['Low','High','Medium'])
 
 
     def on_filter_changed(pattern):
