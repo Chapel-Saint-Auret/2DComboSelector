@@ -591,7 +591,7 @@ class OMCalculationPage(QFrame):
 
         self.styled_table.set_default_row_count(10)
 
-        self.metric_ranking_table = StyledTable("Metric Ranking table",value_format=".1f")
+        self.metric_ranking_table = StyledTable("Metric Ranking Table",value_format=".1f")
         self.metric_ranking_table.add_title_bar_info_button(markdown_path="markdown/metric_rank_table.md")
         self.metric_ranking_table.set_header_label(
             ["Set #", "2D Combination", "Metric 1 Rank", "Metric 2 Rank", "...", "Metric n Rank"]

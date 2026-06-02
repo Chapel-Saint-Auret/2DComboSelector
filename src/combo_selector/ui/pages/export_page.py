@@ -109,11 +109,16 @@ class ExportPage(QFrame):
 
         # Map table names to model getter methods
         self.table_functions_map = {
-            "Normalized retention table": self.model.get_normalized_retention_time_df,
-            "2D Combination table": self.model.get_combination_df,
-            "OM result table": self.model.get_orthogonality_metric_df,
-            "Orthogonality result correlation table": self.model.get_correlation_group_df,
-            "Final result and ranking table": self.model.get_orthogonality_result_df,
+            "Normalized Retention Table": self.model.get_normalized_retention_time_df,
+            "2D Combination Table": self.model.get_combination_df,
+            "Metric Result Table": self.model.get_orthogonality_metric_df,
+            "Metric Ranking Table": self.model.get_orthogonality_metric_ranking_df,
+            "Grouped Metric Table": self.model.get_correlation_group_df,
+            "Orthogonality Table": self.model.get_orthogonality_table,
+            "Practical Feasability Table": self.model.get_practical_feasibility_table,
+            "Seperational Potential Table": self.model.get_separational_potential_table,
+            "Final Evaluation Table": self.model.get_final_recommendation_table,
+            "Overal Results Table": self.model.get_orthogonality_result_df,
         }
 
         # --- Page frame & outer layout ----------------------------------------
@@ -293,11 +298,16 @@ class ExportPage(QFrame):
         """)
 
         table_list = [
-            "Normalized retention table",
-            "2D Combination table",
-            "OM result table",
-            "Orthogonality result correlation table",
-            "Final result and ranking table",
+            "Normalized Retention Table",
+            "2D Combination Table",
+            "Metric Result Table",
+            "Metric Ranking Table",
+            "Grouped Metric Table",
+            "Orthogonality Table",
+            "Practical Feasability Table",
+            "Seperational Potential Table",
+            "Final Evaluation Table",
+            "Overal Results Table",
         ]
         self.table_selection = CheckableTreeList(table_list)
         self.table_selection.setFixedHeight(175)
