@@ -827,12 +827,15 @@ class ResultsPage(QFrame):
     def compute_custom_orthogonality_metric_score(self) -> None:
         """Compute custom score from checked metrics.
 
+        Delegates to the background worker so the heavy computation does not
+        block the UI thread.
+
         Side Effects:
-            - Computes weighted score from selected metrics
+            - Computes weighted score from selected metrics in a background thread
             - Updates practical 2D peak capacity
             - Recreates results table
         """
-        self.model.update_table_results()
+        self.start_om_computation()
 
     def handle_progress_update(self, value: int) -> None:
         """Update progress bar during computation.
