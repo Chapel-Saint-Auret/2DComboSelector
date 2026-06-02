@@ -239,7 +239,8 @@ class ComboSelectorMain(CustomMainWindow):
         self.set_status_text("Export page ready!")
 
         # 4. Build correlation groups and emit correlation_group_ready, which
-        #    triggers compute_custom_orthogonality_metric_score on the results page.
+        #    triggers results_page.compute_custom_orthogonality_metric_score()
+        #    → start_om_computation() → ResultsWorkerComputeCustomOMScore.
         self.redundancy_page.update_correlation_group_table()
 
     def update_results_with_new_exp_peak_capacities(self) -> None:
