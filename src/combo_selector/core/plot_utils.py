@@ -12,6 +12,7 @@ This module provides the PlotUtils class which handles all visualization tasks i
 
 from math import sqrt
 from typing import Optional
+import warnings
 
 import numpy as np
 import pandas as pd
@@ -133,7 +134,13 @@ class PlotUtils:
         Private method to update the display after plotting operations.
         """
 
-        self.fig.canvas.draw()
+        with warnings.catch_warnings():
+            warnings.filterwarnings(
+                "ignore",
+                message="constrained_layout not applied",
+                category=UserWarning,
+            )
+            self.fig.canvas.draw()
         self.fig.canvas.flush_events()
 
     def clf(self) -> None:

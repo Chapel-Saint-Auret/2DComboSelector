@@ -187,7 +187,7 @@ class DataManager:
 
         self.retention_time_df = self.retention_time_df.drop(remove_compound_index)
         self.compound_name_list = self.retention_time_df['Compound Name'].tolist()
-        self.retention_time_df = self.retention_time_df.fillna("")
+        self.retention_time_df = self.retention_time_df.astype(object).fillna("")
 
     def remove_condition(self):
         self.removed_condition_list = []
@@ -201,13 +201,13 @@ class DataManager:
                 self.removed_condition_list.append(column_data[0])
 
         self.retention_time_df = self.retention_time_df.drop(columns=self.removed_condition_list)
-        self.retention_time_df = self.retention_time_df.fillna("")
+        self.retention_time_df = self.retention_time_df.astype(object).fillna("")
 
     def clear_all_nan(self):
         self.removed_compound_list = []
         self.removed_condition_list = []
 
-        self.retention_time_df.fillna("", inplace=True)
+        self.retention_time_df = self.retention_time_df.astype(object).fillna("")
 
     def load_rt_below_threshold_data(self, filepath: str, sheetname: str) -> None:
         """Load per-condition minimum retention time thresholds from a single-row Excel file.

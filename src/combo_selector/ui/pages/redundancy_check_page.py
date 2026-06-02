@@ -482,7 +482,7 @@ class RedundancyCheckPage(QFrame):
         plot_title_layout.addWidget(plot_help_btn, 0, Qt.AlignVCenter)  # ← per-item alignment flag
         plot_title_layout.addStretch(1)
 
-        self.fig = Figure(figsize=(15, 15),constrained_layout = True)
+        self.fig = Figure(figsize=(15, 15))
         self.fig.suptitle('Inter-metric correlation heatmap', fontsize=13)
         self.canvas = FigureCanvas(self.fig)
         self.toolbar = CustomToolbar(self.canvas)
