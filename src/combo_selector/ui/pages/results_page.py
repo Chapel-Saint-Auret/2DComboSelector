@@ -35,9 +35,15 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from combo_selector.ui.config.table_color_config import COLOR_CONFIG_TABLE_FEASIBILITY, COLOR_CONFIG_FINAL_EVALUATION
+from combo_selector.ui.config.table_color_config import (
+    COLOR_CONFIG_TABLE_FEASIBILITY,
+    COLOR_CONFIG_FINAL_EVALUATION,
+)
 from combo_selector.core.workers import UpdateTableResultsWorker
-from combo_selector.ui.widgets.visualization_option_panel import VisualizationOptionsPanel,PlotState
+from combo_selector.ui.widgets.visualization_option_panel import (
+    VisualizationOptionsPanel,
+    PlotState,
+)
 from combo_selector.ui.widgets.checkable_tree_list import CheckableTreeList
 from combo_selector.ui.widgets.section_help_button import SectionHelpButton
 from combo_selector.ui.widgets.circle_progress_bar import RoundProgressBar
@@ -73,9 +79,15 @@ UI_TO_MODEL_MAPPING = {
     "Modeling approach": "modeling_approach",
     "Conditional entropy": "conditional_entropy",
 }
-PEAK_RATE_STATUS = ['Suitable','Acceptable','Cautionary','Insufficient']
-FEASABILITY = ['High','Moderate','Low']
-FINAL_RECOMMENDATION = ['Highly recommended','Recommended','Use with caution','Not recommended']
+PEAK_RATE_STATUS = ["Suitable", "Acceptable", "Cautionary", "Insufficient"]
+FEASIBILITY = ["High", "Moderate", "Low"]
+FINAL_RECOMMENDATION = [
+    "Highly recommended",
+    "Recommended",
+    "Use with caution",
+    "Not recommended",
+]
+
 
 class ResultsPage(QFrame):
     """Page for computing, ranking, and visualizing final results.
@@ -171,12 +183,20 @@ class ResultsPage(QFrame):
             self.set_use_suggested_om_score_flag
         )
         self.compute_score_btn.clicked.connect(self.start_om_computation)
-        self.vizualation_settings_group.stateChanged.connect(self.plot_visualization_state_changed)
+        self.vizualation_settings_group.stateChanged.connect(
+            self.plot_visualization_state_changed
+        )
 
         self.orthogonality_table.filter_changed.connect(self.filter_table_changed)
-        self.practical_feasibility_table.filter_changed.connect(self.filter_table_changed)
-        self.seperational_potential_table.filter_changed.connect(self.filter_table_changed)
-        self.final_recommendation_table.filter_changed.connect(self.filter_table_changed)
+        self.practical_feasibility_table.filter_changed.connect(
+            self.filter_table_changed
+        )
+        self.seperational_potential_table.filter_changed.connect(
+            self.filter_table_changed
+        )
+        self.final_recommendation_table.filter_changed.connect(
+            self.filter_table_changed
+        )
 
         # We use a lambda wrapper here because Matplotlib's 'mpl_connect' expects a function
         # reference that takes exactly one argument (the 'event' object).
@@ -185,8 +205,10 @@ class ResultsPage(QFrame):
         # during setup instead of waiting for a click. The lambda delays execution and allows
         # us to pass both Matplotlib's 'event' and our custom 'subset' data simultaneously.
         self.cid = self.fig.canvas.mpl_connect(
-            'pick_event',
-            lambda event: self.plot_utils.on_pick(event, subset=self.vizualation_settings_group.get_subset())
+            "pick_event",
+            lambda event: self.plot_utils.on_pick(
+                event, subset=self.vizualation_settings_group.get_subset()
+            ),
         )
 
         # self.plot_tile_selector.plot_selected.connect(self.update_figure)
@@ -305,7 +327,11 @@ class ResultsPage(QFrame):
         ranking_layout.addWidget(QLabel("Ranking based on:"))
         self.select_ranking_type = QComboBox()
         self.select_ranking_type.addItems(
-            ["Orthogonality score", "Practical 2D peak capacity","Heinisch inspired method"]
+            [
+                "Orthogonality score",
+                "Practical 2D peak capacity",
+                "Heinisch inspired method",
+            ]
         )
         ranking_layout.addWidget(self.select_ranking_type)
         ranking_layout.addSpacing(20)
@@ -371,7 +397,6 @@ class ResultsPage(QFrame):
 
         return orthogonality_score_group
 
-
     def _create_visualization_settings_group(self) -> QGroupBox:
         """Create plot selection group with tile-style plot selector.
 
@@ -385,26 +410,36 @@ class ResultsPage(QFrame):
         self.coverage_vs_distribution_button = QRadioButton("Coverage vs Distribution")
         self.coverage_vs_distribution_button.setChecked(True)
         self.peak_vs_selectivity_button = QRadioButton("Peak Capacity vs Selectivity")
-        self.suggested_rank_vs_peak_detection_button = QRadioButton("Final Rank vs Peak Detection Rate")
+        self.suggested_rank_vs_peak_detection_button = QRadioButton(
+            "Final Rank vs Peak Detection Rate"
+        )
         self.top_ranked_combination_button = QRadioButton("Top Ranked combination")
         self.top_ranked_combination_button.setChecked(False)
 
         self.vizualation_settings_button_group = QButtonGroup()
-        self.vizualation_settings_button_group.addButton(self.coverage_vs_distribution_button)
-        self.vizualation_settings_button_group.addButton(self.peak_vs_selectivity_button)
-        self.vizualation_settings_button_group.addButton(self.suggested_rank_vs_peak_detection_button)
-        self.vizualation_settings_button_group.addButton(self.top_ranked_combination_button)
+        self.vizualation_settings_button_group.addButton(
+            self.coverage_vs_distribution_button
+        )
+        self.vizualation_settings_button_group.addButton(
+            self.peak_vs_selectivity_button
+        )
+        self.vizualation_settings_button_group.addButton(
+            self.suggested_rank_vs_peak_detection_button
+        )
+        self.vizualation_settings_button_group.addButton(
+            self.top_ranked_combination_button
+        )
         self.vizualation_settings_button_group.setExclusive(True)
 
         self.top_10_button = QRadioButton("10")
-        self.top_10_button.setObjectName('10')
+        self.top_10_button.setObjectName("10")
         self.top_20_button = QRadioButton("20")
-        self.top_20_button.setObjectName('20')
+        self.top_20_button.setObjectName("20")
         self.top_20_button.setChecked(True)
         self.top_50_button = QRadioButton("50")
-        self.top_50_button.setObjectName('50')
+        self.top_50_button.setObjectName("50")
         self.all_button = QRadioButton("All")
-        self.all_button.setObjectName('all')
+        self.all_button.setObjectName("all")
 
         self.top_number_button_group = QButtonGroup()
         self.top_number_button_group.addButton(self.top_10_button)
@@ -453,57 +488,54 @@ class ResultsPage(QFrame):
         self.fig = Figure(figsize=(10, 6))
         self.canvas = FigureCanvas(self.fig)
         self.toolbar = CustomToolbar(self.canvas)
-        self.plot_utils = PlotUtils(fig=self.fig,model=self.model)
+        self.plot_utils = PlotUtils(fig=self.fig, model=self.model)
 
         self.plot_dispatch = {
             "Orthogonality Space": (
                 self.plot_utils.plot_orthogonality_space,
-                lambda s: {"subset": s.subset}
+                lambda s: {"subset": s.subset},
             ),
             "Metric Removal Impact On Orthogonality Rank": (
                 self.plot_utils.plot_metric_removal_impact,
-                lambda s: {}
+                lambda s: {},
             ),
             "Multi-Criteria Space": (
-                self.plot_utils.plot_multi_criteria_space,   # adapt to actual method name
-                lambda s: {"subset": s.subset, "axis_scale": s.axis_scale}
+                self.plot_utils.plot_multi_criteria_space,  # adapt to actual method name
+                lambda s: {"subset": s.subset, "axis_scale": s.axis_scale},
             ),
             "Chromatographic Mode Performance": (
                 self.plot_utils.plot_chroma_mode_performance,
-                lambda s: {"view": s.view, "criteria": s.criteria}
+                lambda s: {"view": s.view, "criteria": s.criteria},
             ),
             "Recommendation Distribution": (
                 self.plot_utils.plot_recommendation_distribution,
-                lambda s: {"grouping": s.grouping}
+                lambda s: {"grouping": s.grouping},
             ),
             "Feasibility Profile": (
                 self.plot_utils.plot_feasibility_profile,
-                lambda s: {"axis_scale": s.axis_scale, "grouping": s.grouping,"chrom_mode": s.chrom_mode}
+                lambda s: {
+                    "axis_scale": s.axis_scale,
+                    "grouping": s.grouping,
+                    "chrom_mode": s.chrom_mode,
+                },
             ),
             "Final Rank vs Recommendation": (
                 self.plot_utils.plot_final_rank_by_recommendation_class,
-                lambda s: {"recommendation": s.recommendation}
+                lambda s: {"recommendation": s.recommendation},
             ),
-
             "Final Rank Shift Scatter": (
                 self.plot_utils.plot_rank_shift_scatter,
-                lambda s: {}
+                lambda s: {},
             ),
-
             "Final Rank Shift Distribution": (
                 self.plot_utils.plot_rank_shift_distribution,
-                lambda s: {}
+                lambda s: {},
             ),
-
             "Rank Shift by Combination": (
                 self.plot_utils.plot_rank_shift_by_combination,
-                lambda s: {"subset": s.subset}
+                lambda s: {"subset": s.subset},
             ),
-
-            "Top Rank Overlap": (
-                self.plot_utils.plot_top_rank_overlap,
-                lambda s: {}
-            )
+            "Top Rank Overlap": (self.plot_utils.plot_top_rank_overlap, lambda s: {}),
         }
 
         plot_frame_layout.addWidget(plot_title)
@@ -522,38 +554,76 @@ class ResultsPage(QFrame):
         table_frame_layout = QHBoxLayout(table_frame)
         table_frame_layout.setContentsMargins(20, 20, 20, 20)
 
-        self.styled_table = StyledTable(title="Evaluation Results",has_tab=True,enable_decoration=True)
-        self.styled_table.add_title_bar_info_button(markdown_path="markdown/evaluation_results_table.md")
-        self.styled_table.add_sheet(sheet_name='Orthogonality',value_format=".2f")
-        self.styled_table.add_sheet(value_format=".2f",
-                                    color_config=COLOR_CONFIG_TABLE_FEASIBILITY,
-                                    bold_columns=[3,4,6],
-                                    sheet_name='Practical Feasibility',
-                                    enable_decoration = True)
-        self.styled_table.add_sheet(sheet_name='Separation Potential',value_format=".2f")
-        self.styled_table.add_sheet(value_format=".1f",
-                                    color_config=COLOR_CONFIG_FINAL_EVALUATION,
-                                    bold_columns=[8],
-                                    sheet_name='Final Evaluation',
-                                    enable_decoration = True,
-                                    has_tooltip = True)
-
-        self.orthogonality_table = self.styled_table.get_table_from_sheet(sheet_name='Orthogonality')
-
-        self.chrom_mode_filter_dialog = CustomFilterDialog(parent=self,filter_name='Chromatographic Mode', filter_column=2)
-        self.peak_detection_status_filter_dialog = CustomFilterDialog(parent=self,filter_name="Peak Detection Rate Status", filter_column=6)
-        self.complexity_filter_dialog = CustomFilterDialog(parent=self,filter_name='Complexity', filter_column=3)
-        self.compatibility_filter_dialog = CustomFilterDialog(parent=self,filter_name='Compatibility', filter_column=4)
-        self.final_recommendation_filter_dialog = CustomFilterDialog(parent=self,filter_name='Final Recommendation', filter_column=8)
-
-        self.orthogonality_table.add_header_button(
-            column=2, tooltip="Custom filter", widget_to_show=self.chrom_mode_filter_dialog
+        self.styled_table = StyledTable(
+            title="Evaluation Results", has_tab=True, enable_decoration=True
+        )
+        self.styled_table.add_title_bar_info_button(
+            markdown_path="markdown/evaluation_results_table.md"
+        )
+        self.styled_table.add_sheet(sheet_name="Orthogonality", value_format=".2f")
+        self.styled_table.add_sheet(
+            value_format=".2f",
+            color_config=COLOR_CONFIG_TABLE_FEASIBILITY,
+            bold_columns=[3, 4, 6],
+            sheet_name="Practical Feasibility",
+            enable_decoration=True,
+        )
+        self.styled_table.add_sheet(
+            sheet_name="Separation Potential", value_format=".2f"
+        )
+        self.styled_table.add_sheet(
+            value_format=".1f",
+            color_config=COLOR_CONFIG_FINAL_EVALUATION,
+            bold_columns=[8],
+            sheet_name="Final Evaluation",
+            enable_decoration=True,
+            has_tooltip=True,
         )
 
-        self.orthogonality_table.add_help_button(column=3,title="Coverage Score",markdown_path="markdown/coverage_score.md")
-        self.orthogonality_table.add_help_button(column=4,title="Distribution Score",markdown_path="markdown/distribution_score.md")
-        self.orthogonality_table.add_help_button(column=5,title="Orthogonality Rank",markdown_path="markdown/orthogonality_rank.md")
-        self.orthogonality_table.add_help_button(column=6,title="Agreement Indicator",markdown_path="markdown/agreement_indicator.md")
+        self.orthogonality_table = self.styled_table.get_table_from_sheet(
+            sheet_name="Orthogonality"
+        )
+
+        self.chrom_mode_filter_dialog = CustomFilterDialog(
+            parent=self, filter_name="Chromatographic Mode", filter_column=2
+        )
+        self.peak_detection_status_filter_dialog = CustomFilterDialog(
+            parent=self, filter_name="Peak Detection Rate Status", filter_column=6
+        )
+        self.complexity_filter_dialog = CustomFilterDialog(
+            parent=self, filter_name="Complexity", filter_column=3
+        )
+        self.compatibility_filter_dialog = CustomFilterDialog(
+            parent=self, filter_name="Compatibility", filter_column=4
+        )
+        self.final_recommendation_filter_dialog = CustomFilterDialog(
+            parent=self, filter_name="Final Recommendation", filter_column=8
+        )
+
+        self.orthogonality_table.add_header_button(
+            column=2,
+            tooltip="Custom filter",
+            widget_to_show=self.chrom_mode_filter_dialog,
+        )
+
+        self.orthogonality_table.add_help_button(
+            column=3, title="Coverage Score", markdown_path="markdown/coverage_score.md"
+        )
+        self.orthogonality_table.add_help_button(
+            column=4,
+            title="Distribution Score",
+            markdown_path="markdown/distribution_score.md",
+        )
+        self.orthogonality_table.add_help_button(
+            column=5,
+            title="Orthogonality Rank",
+            markdown_path="markdown/orthogonality_rank.md",
+        )
+        self.orthogonality_table.add_help_button(
+            column=6,
+            title="Agreement Indicator",
+            markdown_path="markdown/agreement_indicator.md",
+        )
         # self.orthogonality_table.add_help_button(column=7,title="Outlier Flag",markdown_path="markdown/outlier_flag.md")
         self.orthogonality_table.set_header_label(
             [
@@ -563,18 +633,49 @@ class ResultsPage(QFrame):
                 "Coverage Score",
                 "Distribution Score",
                 "Orthogonality Rank",
-                "Agreement Indicator"
-            ])
+                "Agreement Indicator",
+            ]
+        )
 
-        self.practical_feasibility_table = self.styled_table.get_table_from_sheet(sheet_name='Practical Feasibility')
-        self.practical_feasibility_table.add_header_button(column=2, tooltip="Chromatographic Mode filter", widget_to_show=self.chrom_mode_filter_dialog)
-        self.practical_feasibility_table.add_header_button(column=3, tooltip="Complexity filter", widget_to_show=self.complexity_filter_dialog)
-        self.practical_feasibility_table.add_help_button(column=3,title="Complexity",markdown_path="markdown/complexity.md")
-        self.practical_feasibility_table.add_header_button(column=4, tooltip="Compatibility filter", widget_to_show=self.compatibility_filter_dialog)
-        self.practical_feasibility_table.add_help_button(column=4,title="Compatibility",markdown_path="markdown/compatibility.md")
-        self.practical_feasibility_table.add_help_button(column=5,title="Peak Detection Rate (%)",markdown_path="markdown/peak_detection_rate.md")
-        self.practical_feasibility_table.add_header_button(column=6, tooltip="Peak Detection Status filter", widget_to_show=self.peak_detection_status_filter_dialog)
-        self.practical_feasibility_table.add_help_button(column=6,title="Peak Detection Status",markdown_path="markdown/peak_detection_status.md")
+        self.practical_feasibility_table = self.styled_table.get_table_from_sheet(
+            sheet_name="Practical Feasibility"
+        )
+        self.practical_feasibility_table.add_header_button(
+            column=2,
+            tooltip="Chromatographic Mode filter",
+            widget_to_show=self.chrom_mode_filter_dialog,
+        )
+        self.practical_feasibility_table.add_header_button(
+            column=3,
+            tooltip="Complexity filter",
+            widget_to_show=self.complexity_filter_dialog,
+        )
+        self.practical_feasibility_table.add_help_button(
+            column=3, title="Complexity", markdown_path="markdown/complexity.md"
+        )
+        self.practical_feasibility_table.add_header_button(
+            column=4,
+            tooltip="Compatibility filter",
+            widget_to_show=self.compatibility_filter_dialog,
+        )
+        self.practical_feasibility_table.add_help_button(
+            column=4, title="Compatibility", markdown_path="markdown/compatibility.md"
+        )
+        self.practical_feasibility_table.add_help_button(
+            column=5,
+            title="Peak Detection Rate (%)",
+            markdown_path="markdown/peak_detection_rate.md",
+        )
+        self.practical_feasibility_table.add_header_button(
+            column=6,
+            tooltip="Peak Detection Status filter",
+            widget_to_show=self.peak_detection_status_filter_dialog,
+        )
+        self.practical_feasibility_table.add_help_button(
+            column=6,
+            title="Peak Detection Status",
+            markdown_path="markdown/peak_detection_status.md",
+        )
         self.practical_feasibility_table.set_header_label(
             [
                 "Combination #",
@@ -584,13 +685,25 @@ class ResultsPage(QFrame):
                 "Compatibility",
                 "Peak Detection Rate (%)",
                 "Peak Detection Status",
-            ])
+            ]
+        )
 
-        self.seperational_potential_table = self.styled_table.get_table_from_sheet(sheet_name='Separation Potential')
-        self.seperational_potential_table.add_header_button(column=2, tooltip="Custom filter",
-                                                           widget_to_show=self.chrom_mode_filter_dialog)
-        self.seperational_potential_table.add_help_button(column=3, title="Hypothetical 2D Peak Capacity",markdown_path="markdown/hypothetical_peak_capacity.md")
-        self.seperational_potential_table.add_help_button(column=4, title="Elution Domain",markdown_path="markdown/elution_domain.md")
+        self.seperational_potential_table = self.styled_table.get_table_from_sheet(
+            sheet_name="Separation Potential"
+        )
+        self.seperational_potential_table.add_header_button(
+            column=2,
+            tooltip="Custom filter",
+            widget_to_show=self.chrom_mode_filter_dialog,
+        )
+        self.seperational_potential_table.add_help_button(
+            column=3,
+            title="Hypothetical 2D Peak Capacity",
+            markdown_path="markdown/hypothetical_peak_capacity.md",
+        )
+        self.seperational_potential_table.add_help_button(
+            column=4, title="Elution Domain", markdown_path="markdown/elution_domain.md"
+        )
         self.seperational_potential_table.set_header_label(
             [
                 "Combination #",
@@ -598,27 +711,58 @@ class ResultsPage(QFrame):
                 "Chromatographic Mode",
                 "Hypothetical 2D Peak Capacity",
                 "Elution Domain (%)",
-            ])
+            ]
+        )
 
-        self.final_recommendation_table = self.styled_table.get_table_from_sheet(sheet_name='Final Evaluation')
-        self.final_recommendation_table.add_header_button(column=2, tooltip="Custom filter",
-                                                           widget_to_show=self.chrom_mode_filter_dialog)
-        self.final_recommendation_table.add_help_button(column=3, title="Orthogonality Rank",
-                                                          markdown_path="markdown/orthogonality_rank.md")
-        self.final_recommendation_table.add_help_button(column=4, title="Peak Capacity Rank",
-                                                          markdown_path="markdown/peak_capacity_rank.md")
-        self.final_recommendation_table.add_help_button(column=5, title="Elution Domain Rank",
-                                                          markdown_path="markdown/elution_domain_rank.md")
-        self.final_recommendation_table.add_help_button(column=6, title="Final Consensus Rank",
-                                                          markdown_path="markdown/final_consensus_rank.md")
-        self.final_recommendation_table.add_help_button(column=7, title="Final Rank (Utility)",
-                                                          markdown_path="markdown/final_rank_utility.md")
+        self.final_recommendation_table = self.styled_table.get_table_from_sheet(
+            sheet_name="Final Evaluation"
+        )
+        self.final_recommendation_table.add_header_button(
+            column=2,
+            tooltip="Custom filter",
+            widget_to_show=self.chrom_mode_filter_dialog,
+        )
+        self.final_recommendation_table.add_help_button(
+            column=3,
+            title="Orthogonality Rank",
+            markdown_path="markdown/orthogonality_rank.md",
+        )
+        self.final_recommendation_table.add_help_button(
+            column=4,
+            title="Peak Capacity Rank",
+            markdown_path="markdown/peak_capacity_rank.md",
+        )
+        self.final_recommendation_table.add_help_button(
+            column=5,
+            title="Elution Domain Rank",
+            markdown_path="markdown/elution_domain_rank.md",
+        )
+        self.final_recommendation_table.add_help_button(
+            column=6,
+            title="Final Consensus Rank",
+            markdown_path="markdown/final_consensus_rank.md",
+        )
+        self.final_recommendation_table.add_help_button(
+            column=7,
+            title="Final Rank (Utility)",
+            markdown_path="markdown/final_rank_utility.md",
+        )
 
-        self.final_recommendation_table.add_header_button(column=8, tooltip="Final Recommendation filter", widget_to_show=self.final_recommendation_filter_dialog)
-        self.final_recommendation_table.add_help_button(column=8, title="Final Recommendation",
-                                                          markdown_path="markdown/final_recommendation.md")
-        self.final_recommendation_table.add_help_button(column=9, title="Criterion Highlight",
-                                                          markdown_path="markdown/criterion_highlight.md")
+        self.final_recommendation_table.add_header_button(
+            column=8,
+            tooltip="Final Recommendation filter",
+            widget_to_show=self.final_recommendation_filter_dialog,
+        )
+        self.final_recommendation_table.add_help_button(
+            column=8,
+            title="Final Recommendation",
+            markdown_path="markdown/final_recommendation.md",
+        )
+        self.final_recommendation_table.add_help_button(
+            column=9,
+            title="Criterion Highlight",
+            markdown_path="markdown/criterion_highlight.md",
+        )
 
         self.final_recommendation_table.set_header_label(
             [
@@ -632,12 +776,12 @@ class ResultsPage(QFrame):
                 "Final Rank (Utility)",
                 "Final Recommendation",
                 "Criterion Highlight",
-            ])
+            ]
+        )
 
         # self.styled_table.get_header().setSectionResizeMode(0, QHeaderView.Fixed)
         # self.styled_table.get_header().setSectionResizeMode(1, QHeaderView.Stretch)
         # self.styled_table.get_header().setSectionResizeMode(5, QHeaderView.Fixed)
-
 
         table_frame_layout.addWidget(self.styled_table)
 
@@ -773,7 +917,9 @@ class ResultsPage(QFrame):
         if not data.empty:
             self.plot_utils.set_orthogonality_result_data(data)
 
-        self.vizualation_settings_group.set_chrom_mode_item(["All mode"]+self.model.get_chromatographic_mode_list())
+        self.vizualation_settings_group.set_chrom_mode_item(
+            ["All mode"] + self.model.get_chromatographic_mode_list()
+        )
         self.plot_visualization_state_changed()
 
     def update_orthogonality_metric_list(self, om_list: list) -> None:
@@ -976,11 +1122,11 @@ class ResultsPage(QFrame):
         self.fig.canvas.draw()
         self.fig.canvas.flush_events()
 
-    def plot_visualization_state_changed(self, state = PlotState()):
+    def plot_visualization_state_changed(self, state=PlotState()):
         fn, get_kwargs = self.plot_dispatch[state.plot_type]
         fn(**get_kwargs(state))
 
-    def update_figure(self, plot_key: str = 'Multi Criteria Space') -> None:
+    def update_figure(self, plot_key: str = "Multi Criteria Space") -> None:
         """Dispatch to the plotting function for *plot_key*.
 
         Args:
@@ -1054,8 +1200,8 @@ class ResultsPage(QFrame):
         if not data.empty:
             self.final_recommendation_table.async_set_table_data(data)
             self.final_recommendation_table.set_table_proxy()
-        if 'Final Recommendation tooltip' in result_df.columns:
-            tooltip = result_df['Final Recommendation tooltip']
+        if "Final Recommendation tooltip" in result_df.columns:
+            tooltip = result_df["Final Recommendation tooltip"]
             self.final_recommendation_table.set_tooltip_config({8: tooltip})
 
         # self.styled_table.async_set_table_data(data)
@@ -1063,11 +1209,11 @@ class ResultsPage(QFrame):
         unique_mode = self.model.get_chromatographic_mode_list()
         self.chrom_mode_filter_dialog.build_filter_list(unique_mode)
         self.peak_detection_status_filter_dialog.build_filter_list(PEAK_RATE_STATUS)
-        self.complexity_filter_dialog.build_filter_list(FEASABILITY)
-        self.compatibility_filter_dialog.build_filter_list(FEASABILITY)
+        self.complexity_filter_dialog.build_filter_list(FEASIBILITY)
+        self.compatibility_filter_dialog.build_filter_list(FEASIBILITY)
         self.final_recommendation_filter_dialog.build_filter_list(FINAL_RECOMMENDATION)
 
-    def filter_table_changed(self, filter_spec_list:list = None ) -> None:
+    def filter_table_changed(self, filter_spec_list: list = None) -> None:
 
         self.model.apply_multi_column_filter(filter_spec_list)
 
@@ -1097,21 +1243,22 @@ class ResultsPage(QFrame):
 
         # combination = {"filter_name": {"regexp": regexp,"color":"#AF23A5"}}
 
-        self.orthogonality_score= self.model.get_orthogonality_score_df()
-        data_frame = pd.DataFrame.from_dict(self.orthogonality_score, orient='index')
+        self.orthogonality_score = self.model.get_orthogonality_score_df()
+        data_frame = pd.DataFrame.from_dict(self.orthogonality_score, orient="index")
 
         self.filter_subset_dict = {}
-
 
         for filter_name in combination:
             regexp = combination[filter_name]["regexp"]
             color = combination[filter_name]["color"]
 
-            data_frame_mask1 = data_frame['title'].str.contains(regexp)
+            data_frame_mask1 = data_frame["title"].str.contains(regexp)
 
-            self.filter_subset_dict[filter_name] = {'mask': data_frame_mask1,
-                                                     'data_frame1': data_frame[data_frame_mask1],
-                                                     'color':color}
+            self.filter_subset_dict[filter_name] = {
+                "mask": data_frame_mask1,
+                "data_frame1": data_frame[data_frame_mask1],
+                "color": color,
+            }
 
     def display_filtered_point(self):
         """Redraw scatter highlights on the results plot for active filters.
@@ -1132,15 +1279,16 @@ class ResultsPage(QFrame):
             self.selected_axe.collections[0].remove()
 
         if self.filter_subset_dict:
-
             for filter_name in self.filter_subset_dict:
-                subset = self.filter_subset_dict[filter_name]['data_frame1']
-                facecolor = self.filter_subset_dict[filter_name]['color']
+                subset = self.filter_subset_dict[filter_name]["data_frame1"]
+                facecolor = self.filter_subset_dict[filter_name]["color"]
 
                 x = subset[score]
-                y = subset['2d_peak_capacity']
+                y = subset["2d_peak_capacity"]
 
-                scatter = self.selected_axe.scatter(x, y, s=20, color=facecolor, edgecolor="black", linewidths=0.9)
+                scatter = self.selected_axe.scatter(
+                    x, y, s=20, color=facecolor, edgecolor="black", linewidths=0.9
+                )
 
         self.fig.canvas.draw()
         self.fig.canvas.flush_events()

@@ -20,7 +20,9 @@ from combo_selector.core.scoring import Scoring
 from combo_selector.ui.widgets.nan_policy_widget import NanPolicyDialog
 
 
-class Orthogonality(DataManager, MetricEngine, Redundancy, Scoring, ResultsBuilder, QObject):
+class Orthogonality(
+    DataManager, MetricEngine, Redundancy, Scoring, ResultsBuilder, QObject
+):
     """Facade that unifies data management, metric computation, redundancy analysis,
     scoring, and results building into a single model object.
 

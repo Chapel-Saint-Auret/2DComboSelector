@@ -18,7 +18,7 @@ import numpy as np
 import pandas as pd
 from matplotlib.backends.backend_qtagg import FigureCanvas
 from matplotlib.figure import Figure
-from PySide6.QtWidgets import QDialog,QVBoxLayout
+from PySide6.QtWidgets import QDialog, QVBoxLayout
 from matplotlib import collections, patches, ticker
 from matplotlib.gridspec import GridSpec
 from matplotlib.collections import QuadMesh
@@ -39,12 +39,12 @@ SUBSET_THRESHOLDS = {
 }
 
 CRITERIA_COLUMN_MAP = {
-    "All criteria":    None,
-    "Orthogonality":   ("Orthogonality Rank",       "Orthogonality"),
-    "Elution Domain":  ("Elution Domain Rank",       "Elution Domain"),
-    "Peak Capacity":   ("Peak Capacity Rank",        "Peak Capacity"),
-    "Final consensus": ("Final Rank",                "Final Consensus Rank"),
-    "Peak rate":       ("Peak Detection Rate (%)",   "Peak rate (%)"),
+    "All criteria": None,
+    "Orthogonality": ("Orthogonality Rank", "Orthogonality"),
+    "Elution Domain": ("Elution Domain Rank", "Elution Domain"),
+    "Peak Capacity": ("Peak Capacity Rank", "Peak Capacity"),
+    "Final consensus": ("Final Rank", "Final Consensus Rank"),
+    "Peak rate": ("Peak Detection Rate (%)", "Peak rate (%)"),
 }
 
 
@@ -61,6 +61,7 @@ COLORS = {
     "Not recommended": "#d94f3d",
 }
 
+
 class PlotUtils:
     """Utility class for creating and managing orthogonality metric visualizations.
 
@@ -76,7 +77,7 @@ class PlotUtils:
         scatter_collection (PathCollection): Scatter plot collection for updating points.
     """
 
-    def __init__(self, fig: Figure,model=None):
+    def __init__(self, fig: Figure, model=None):
         """Initialize the PlotUtils with a matplotlib Figure.
 
         Args:
@@ -91,7 +92,9 @@ class PlotUtils:
         self.set_number = "Set 1"
         self.scatter_collection = None
 
-    def set_orthogonality_result_data(self, orthogonality_result_df: pd.DataFrame) -> None:
+    def set_orthogonality_result_data(
+        self, orthogonality_result_df: pd.DataFrame
+    ) -> None:
         self.orthogonality_result_data = orthogonality_result_df
 
     def set_orthogonality_data(self, orthogonality_dict: dict) -> None:
@@ -204,11 +207,11 @@ class PlotUtils:
         self.fig.patch.set_facecolor("white")
 
     def plot_scatter(
-            self,
-            set_number: str = "",
-            title: Optional[str] = None,
-            draw: bool = True,
-            dirname: str = "",
+        self,
+        set_number: str = "",
+        title: Optional[str] = None,
+        draw: bool = True,
+        dirname: str = "",
     ) -> None:
         """Create or update a scatter plot of retention time data.
 
@@ -268,8 +271,8 @@ class PlotUtils:
         self.__draw_figure()
 
     def plot_percent_bin(
-            self,
-            set_number: str = "",
+        self,
+        set_number: str = "",
     ) -> None:
         """Plot the percent bin (%BIN) metric visualization with statistics.
 
@@ -337,7 +340,7 @@ class PlotUtils:
         self.__draw_figure()
 
     def plot_modeling_approach(
-            self, set_number: str = "", erase_previous: bool = True, draw: bool = True
+        self, set_number: str = "", erase_previous: bool = True, draw: bool = True
     ) -> None:
         """Plot the modeling approach metric with bin grid and regression line.
 
@@ -424,7 +427,7 @@ class PlotUtils:
             self.__draw_figure()
 
     def plot_bin_box(
-            self, set_number: str = "", erase_previous: bool = True, draw: bool = True
+        self, set_number: str = "", erase_previous: bool = True, draw: bool = True
     ) -> None:
         """Plot the bin box counting grid overlay.
 
@@ -480,7 +483,7 @@ class PlotUtils:
             self.__draw_figure()
 
     def plot_conditional_entropy(
-            self, set_number: str = "", erase_previous: bool = True, draw: bool = True
+        self, set_number: str = "", erase_previous: bool = True, draw: bool = True
     ) -> None:
         """Plot the conditional entropy heatmap.
 
@@ -684,8 +687,8 @@ class PlotUtils:
         self.__draw_figure()
 
     def plot_linear_reg(
-            self,
-            set_number: str = "",
+        self,
+        set_number: str = "",
     ) -> None:
         """Draw linear regression line with correlation statistics.
 
@@ -758,8 +761,8 @@ class PlotUtils:
         self.__draw_figure()
 
     def plot_percent_fit_xy(
-            self,
-            set_number: str = "",
+        self,
+        set_number: str = "",
     ) -> None:
         """Plot %FIT metric with X vs Y quadratic regression.
 
@@ -826,8 +829,8 @@ class PlotUtils:
         self.__draw_figure()
 
     def plot_percent_fit_yx(
-            self,
-            set_number: str = "",
+        self,
+        set_number: str = "",
     ) -> None:
         """Plot %FIT metric with Y vs X quadratic regression (axes swapped).
 
@@ -894,7 +897,7 @@ class PlotUtils:
         self.__draw_figure()
 
     def plot_convex_hull(
-            self, set_number: str = "", erase_previous: bool = True
+        self, set_number: str = "", erase_previous: bool = True
     ) -> None:
         """Draw the convex hull boundary around retention time data points.
 
@@ -943,17 +946,16 @@ class PlotUtils:
 
     def plot_coverage_vs_distribution(self):
 
-        x = self.orthogonality_result_data['Coverage Score']
-        y = self.orthogonality_result_data['Distribution Score']
+        x = self.orthogonality_result_data["Coverage Score"]
+        y = self.orthogonality_result_data["Distribution Score"]
 
-        self.axe.set_xlabel('Coverage Score', fontsize=12)
-        self.axe.set_ylabel('Distribution Score', fontsize=12)
-
+        self.axe.set_xlabel("Coverage Score", fontsize=12)
+        self.axe.set_ylabel("Distribution Score", fontsize=12)
 
         # 2) Create or update scatter
         self.scatter_collection = self.axe.scatter(
-                x, y, s=20, c="k", marker="o", alpha=0.5
-            )
+            x, y, s=20, c="k", marker="o", alpha=0.5
+        )
 
         # 3) Hide legend if present
         leg = self.axe.get_legend()
@@ -965,17 +967,17 @@ class PlotUtils:
 
     def plot_peak_capacity_vs_consensus_score(self):
 
-        x = self.orthogonality_result_data['Practical 2D Peak Capacity']
-        y = self.orthogonality_result_data['Consensus Score']
+        x = self.orthogonality_result_data["Practical 2D Peak Capacity"]
+        y = self.orthogonality_result_data["Consensus Score"]
 
-        self.axe.set_xlabel('Practical 2D Peak Capacity', fontsize=12)
-        self.axe.set_ylabel('Consensus Score', fontsize=12)
+        self.axe.set_xlabel("Practical 2D Peak Capacity", fontsize=12)
+        self.axe.set_ylabel("Consensus Score", fontsize=12)
 
         # 2) Create or update scatter
 
         self.scatter_collection = self.axe.scatter(
-                x, y, s=20, c="k", marker="o", alpha=0.5
-            )
+            x, y, s=20, c="k", marker="o", alpha=0.5
+        )
 
         # 3) Hide legend if present
         leg = self.axe.get_legend()
@@ -985,15 +987,15 @@ class PlotUtils:
         self.fig.canvas.draw()
         self.fig.canvas.flush_events()
 
-    def plot_top_ranked_combination(self,number_of_rank_to_show):
+    def plot_top_ranked_combination(self, number_of_rank_to_show):
 
-        if number_of_rank_to_show == 'all':
+        if number_of_rank_to_show == "all":
             index = None
         else:
             index = int(number_of_rank_to_show)
 
-        x = self.orthogonality_result_data['Orthogonality Rank']
-        y = self.orthogonality_result_data['2D Combination']
+        x = self.orthogonality_result_data["Orthogonality Rank"]
+        y = self.orthogonality_result_data["2D Combination"]
 
         sorted_x = x.sort_values()
 
@@ -1001,8 +1003,8 @@ class PlotUtils:
 
         sorted_y = y[sorted_x_index]
 
-        sorted_x = sorted_x[0:index-1]
-        sorted_y = sorted_y[0:index-1]
+        sorted_x = sorted_x[0 : index - 1]
+        sorted_y = sorted_y[0 : index - 1]
 
         self.axe.barh(sorted_y, sorted_x)
 
@@ -1024,10 +1026,10 @@ class PlotUtils:
         df = self.model.get_filtered_result_df().copy()
         n = self.model.get_number_of_combination()
 
-        final_rank = pd.to_numeric(df['Final Rank'], errors='coerce')
-        orthogonality_rank = pd.to_numeric(df['Orthogonality Rank'], errors='coerce')
+        final_rank = pd.to_numeric(df["Final Rank"], errors="coerce")
+        orthogonality_rank = pd.to_numeric(df["Orthogonality Rank"], errors="coerce")
 
-        final_rank_pct = (final_rank / n) * 100          # controls which points are shown
+        final_rank_pct = (final_rank / n) * 100  # controls which points are shown
         orthogonality_rank_pct = (orthogonality_rank / n) * 100  # controls point color
 
         # ------------------------------------------------------------------
@@ -1043,8 +1045,8 @@ class PlotUtils:
             self._show_missing_data()
             return
 
-        x = pd.to_numeric(df_filtered['Coverage Score'], errors='coerce')
-        y = pd.to_numeric(df_filtered['Distribution Score'], errors='coerce')
+        x = pd.to_numeric(df_filtered["Coverage Score"], errors="coerce")
+        y = pd.to_numeric(df_filtered["Distribution Score"], errors="coerce")
 
         valid = x.notna() & y.notna()
         x = x[valid]
@@ -1057,39 +1059,41 @@ class PlotUtils:
         # ------------------------------------------------------------------
         def get_color(pct):
             if pct <= 1:
-                return '#1A3A9E'   # Top 1%
+                return "#1A3A9E"  # Top 1%
             elif pct <= 5:
-                return '#A0379A'   # Top 5%
+                return "#A0379A"  # Top 5%
             elif pct <= 10:
-                return '#E64981'   # Top 10%
+                return "#E64981"  # Top 10%
             elif pct <= 25:
-                return '#FF7C64'   # Top 25%
+                return "#FF7C64"  # Top 25%
             else:
-                return '#F9F871'   # > 25%
+                return "#F9F871"  # > 25%
 
         colors = np.array([get_color(p) for p in orthogonality_rank_pct_filtered])
 
-        self.axe.scatter(x, y,
-                         c=colors, s=15,
-                         edgecolors='k', alpha=0.85,
-                         linewidths=0.3, picker=5)
+        self.axe.scatter(
+            x, y, c=colors, s=15, edgecolors="k", alpha=0.85, linewidths=0.3, picker=5
+        )
 
         # ------------------------------------------------------------------
         # Legend — only show tiers present in the filtered data
         # ------------------------------------------------------------------
         tier_defs = [
-            (1, '#1A3A9E', 'Top 1%'),
-            (5, '#A0379A', 'Top 5%'),
-            (10,'#E64981', 'Top 10%'),
-            (25,'#FF7C64', 'Top 25%'),
-            (100,'#F9F871', '> 25%'),
+            (1, "#1A3A9E", "Top 1%"),
+            (5, "#A0379A", "Top 5%"),
+            (10, "#E64981", "Top 10%"),
+            (25, "#FF7C64", "Top 25%"),
+            (100, "#F9F871", "> 25%"),
         ]
 
-        max_pct = orthogonality_rank_pct_filtered.max() \
-            if len(orthogonality_rank_pct_filtered) > 0 else 0
+        max_pct = (
+            orthogonality_rank_pct_filtered.max()
+            if len(orthogonality_rank_pct_filtered) > 0
+            else 0
+        )
 
         legend_elements = [
-            patches.Patch(facecolor=color, edgecolor='gray', linewidth=0.5, label=label)
+            patches.Patch(facecolor=color, edgecolor="gray", linewidth=0.5, label=label)
             for thresh, color, label in tier_defs
             if max_pct >= thresh
         ]
@@ -1113,25 +1117,44 @@ class PlotUtils:
             self.axe.set_ylim(max(0, y_min - y_pad), min(1, y_max + y_pad))
 
         self.axe.set_box_aspect(1)
-        self.axe.set_xlabel('Coverage Score', fontsize=12)
-        self.axe.set_ylabel('Distribution Score', fontsize=12)
-        self.axe.tick_params(axis='both', labelsize=11)
-        self.axe.grid(True, linestyle=':', linewidth=0.9, alpha=0.5)
+        self.axe.set_xlabel("Coverage Score", fontsize=12)
+        self.axe.set_ylabel("Distribution Score", fontsize=12)
+        self.axe.tick_params(axis="both", labelsize=11)
+        self.axe.grid(True, linestyle=":", linewidth=0.9, alpha=0.5)
         self.axe.set_axisbelow(True)
 
-        self.axe.text(0.5, 1.13, 'Orthogonality Space',
-                      transform=self.axe.transAxes, ha='center', va='bottom',
-                      fontsize=22, fontweight='bold')
-        self.axe.text(0.5, 1.06, subtitle,
-                      transform=self.axe.transAxes, ha='center', va='bottom',
-                      fontsize=11, style='italic', color='0.45')
+        self.axe.text(
+            0.5,
+            1.13,
+            "Orthogonality Space",
+            transform=self.axe.transAxes,
+            ha="center",
+            va="bottom",
+            fontsize=22,
+            fontweight="bold",
+        )
+        self.axe.text(
+            0.5,
+            1.06,
+            subtitle,
+            transform=self.axe.transAxes,
+            ha="center",
+            va="bottom",
+            fontsize=11,
+            style="italic",
+            color="0.45",
+        )
 
-        self.fig.legend(handles=legend_elements,
-                        title='Orthogonality rank\npercentile',
-                        loc='center right',
-                        bbox_to_anchor=(1.0, 0.5),
-                        fontsize=10, title_fontsize=10,
-                        frameon=True, edgecolor='gray')
+        self.fig.legend(
+            handles=legend_elements,
+            title="Orthogonality rank\npercentile",
+            loc="center right",
+            bbox_to_anchor=(1.0, 0.5),
+            fontsize=10,
+            title_fontsize=10,
+            frameon=True,
+            edgecolor="gray",
+        )
 
         self.fig.subplots_adjust(left=0.11, right=0.80, bottom=0.12, top=0.80)
         self.fig.canvas.draw()
@@ -1158,7 +1181,10 @@ class PlotUtils:
 
         plot_df = impact_df.copy()
 
-        if "Metric Removed" not in plot_df.columns or "Median Orthogonality Rank Difference" not in plot_df.columns:
+        if (
+            "Metric Removed" not in plot_df.columns
+            or "Median Orthogonality Rank Difference" not in plot_df.columns
+        ):
             self._show_missing_data()
             return
 
@@ -1171,7 +1197,9 @@ class PlotUtils:
             self._show_missing_data()
             return
 
-        plot_df = plot_df.sort_values("Median Orthogonality Rank Difference", ascending=True)
+        plot_df = plot_df.sort_values(
+            "Median Orthogonality Rank Difference", ascending=True
+        )
 
         y = plot_df["Metric Removed"]
         x = plot_df["Median Orthogonality Rank Difference"].round(1)
@@ -1197,18 +1225,25 @@ class PlotUtils:
         self.axe.spines[["top", "right"]].set_visible(False)
 
         self.axe.text(
-            0.5, 1.08,
+            0.5,
+            1.08,
             "Metric Removal Impact",
             transform=self.axe.transAxes,
-            ha="center", va="bottom",
-            fontsize=16, fontweight="bold"
+            ha="center",
+            va="bottom",
+            fontsize=16,
+            fontweight="bold",
         )
         self.axe.text(
-            0.5, 1.02,
+            0.5,
+            1.02,
             "Median orthogonality rank difference after removing each metric",
             transform=self.axe.transAxes,
-            ha="center", va="bottom",
-            fontsize=9, style="italic", color="dimgray"
+            ha="center",
+            va="bottom",
+            fontsize=9,
+            style="italic",
+            color="dimgray",
         )
 
         self.fig.subplots_adjust(left=0.34, right=0.95, top=0.84, bottom=0.12)
@@ -1224,14 +1259,20 @@ class PlotUtils:
 
         df = self.model.get_filtered_result_df().copy()
 
-        peak_capacity = df['Hypothetical 2D Peak Capacity']
-        elution_domain = df['Elution Domain']
+        peak_capacity = df["Hypothetical 2D Peak Capacity"]
+        elution_domain = df["Elution Domain"]
 
-        peak_capacity_available = pd.to_numeric(peak_capacity, errors='coerce').notna().any()
-        elution_domain_available = pd.to_numeric(elution_domain, errors='coerce').notna().any()
+        peak_capacity_available = (
+            pd.to_numeric(peak_capacity, errors="coerce").notna().any()
+        )
+        elution_domain_available = (
+            pd.to_numeric(elution_domain, errors="coerce").notna().any()
+        )
 
         full_criteria = peak_capacity_available and elution_domain_available
-        reduced_criteria = peak_capacity_available ^ elution_domain_available  # XOR: only one available
+        reduced_criteria = (
+            peak_capacity_available ^ elution_domain_available
+        )  # XOR: only one available
 
         if not full_criteria and not reduced_criteria:
             self._show_missing_data()
@@ -1240,8 +1281,8 @@ class PlotUtils:
         # ------------------------------------------------------------------
         # Shared: rank-based subset filtering + coloring
         # ------------------------------------------------------------------
-        final_rank = pd.to_numeric(df['Final Rank'], errors='coerce')
-        orthogonality_rank = pd.to_numeric(df['Orthogonality Rank'], errors='coerce')
+        final_rank = pd.to_numeric(df["Final Rank"], errors="coerce")
+        orthogonality_rank = pd.to_numeric(df["Orthogonality Rank"], errors="coerce")
         n = len(df)
 
         final_rank_pct = (final_rank / n) * 100
@@ -1260,15 +1301,15 @@ class PlotUtils:
 
         def get_color(pct):
             if pct <= 1:
-                return '#1A3A9E'   # Top 1%
+                return "#1A3A9E"  # Top 1%
             elif pct <= 5:
-                return '#A0379A'   # Top 5%
+                return "#A0379A"  # Top 5%
             elif pct <= 10:
-                return '#E64981'   # Top 10%
+                return "#E64981"  # Top 10%
             elif pct <= 25:
-                return '#FF7C64'   # Top 25%
+                return "#FF7C64"  # Top 25%
             else:
-                return '#F9F871'   # > 25%
+                return "#F9F871"  # > 25%
 
         colors = np.array([get_color(p) for p in orthogonality_rank_pct])
 
@@ -1277,7 +1318,7 @@ class PlotUtils:
         # ------------------------------------------------------------------
         def _is_near_identical(series):
             """Return True if value range < 1% (non-informative for visualization)."""
-            clean = pd.to_numeric(series, errors='coerce').dropna()
+            clean = pd.to_numeric(series, errors="coerce").dropna()
             if len(clean) == 0:
                 return False
             return (clean.max() - clean.min()) < 1.0
@@ -1307,61 +1348,66 @@ class PlotUtils:
                 self.axe.set_xlim(max(0, x_min - x_pad), min(1, x_max + x_pad))
                 self.axe.set_ylim(max(0, y_min - y_pad), min(1, y_max + y_pad))
 
-            s = 'log' if scale == 'Auto' else scale.lower()
+            s = "log" if scale == "Auto" else scale.lower()
             ax.set_xscale(s)
             ax.set_yscale(s)
-            if s == 'log':
+            if s == "log":
                 ax.xaxis.set_major_formatter(
                     ticker.FuncFormatter(lambda val, _: f"{int(val):,}")
                 )
                 ax.xaxis.set_major_locator(ticker.LogLocator(base=10, numticks=5))
                 ax.xaxis.set_minor_locator(ticker.NullLocator())
-                ax.tick_params(axis="x", labelsize=6)   # smaller to avoid overlap
-
+                ax.tick_params(axis="x", labelsize=6)  # smaller to avoid overlap
 
         # ------------------------------------------------------------------
         # Full Criteria — both Hypothetical 2D Peak Capacity & Elution Domain
         # ------------------------------------------------------------------
-        jitter_applied = False   # default; only relevant in reduced criteria
+        jitter_applied = False  # default; only relevant in reduced criteria
 
         if full_criteria:
-            x = pd.to_numeric(df['Hypothetical 2D Peak Capacity'], errors='coerce')
-            y = pd.to_numeric(df['Elution Domain'], errors='coerce')
+            x = pd.to_numeric(df["Hypothetical 2D Peak Capacity"], errors="coerce")
+            y = pd.to_numeric(df["Elution Domain"], errors="coerce")
 
             valid = x.notna() & y.notna()
             x, y, colors_plot = x[valid], y[valid], colors[valid.values]
 
-            self.axe.scatter(x, y,
-                             c=colors_plot, s=15,
-                             edgecolors='k', alpha=0.85,
-                             linewidths=0.3, picker=5)
+            self.axe.scatter(
+                x,
+                y,
+                c=colors_plot,
+                s=15,
+                edgecolors="k",
+                alpha=0.85,
+                linewidths=0.3,
+                picker=5,
+            )
 
             apply_scale(self.axe, subset, axis_scale)
-            self.axe.tick_params(axis='y', labelsize=8)
+            self.axe.tick_params(axis="y", labelsize=8)
 
             if x.notna().any():
                 self.axe.set_xlim(x.min() * 0.8, x.max() * 1.2)
             if y.notna().any():
                 self.axe.set_ylim(y.min() * 0.8, y.max() * 1.2)
 
-            self.axe.set_xlabel('Hypothetical 2D Peak Capacity', fontsize=10)
-            self.axe.set_ylabel('Elution Domain (%)', fontsize=10)
+            self.axe.set_xlabel("Hypothetical 2D Peak Capacity", fontsize=10)
+            self.axe.set_ylabel("Elution Domain (%)", fontsize=10)
 
-            plot_title = 'Multi-Criteria Space'
-            plot_subtitle = f'Hypothetical peak capacity vs elution domain · {subset}'
+            plot_title = "Multi-Criteria Space"
+            plot_subtitle = f"Hypothetical peak capacity vs elution domain · {subset}"
 
         # ------------------------------------------------------------------
         # Reduced Criteria — only one of the two columns available
         # ------------------------------------------------------------------
         elif reduced_criteria:
             if elution_domain_available:
-                x = pd.to_numeric(df['Elution Domain'], errors='coerce')
-                x_label = 'Elution Domain'
+                x = pd.to_numeric(df["Elution Domain"], errors="coerce")
+                x_label = "Elution Domain"
             else:
-                x = pd.to_numeric(df['Hypothetical 2D Peak Capacity'], errors='coerce')
-                x_label = 'Hypothetical 2D Peak Capacity'
+                x = pd.to_numeric(df["Hypothetical 2D Peak Capacity"], errors="coerce")
+                x_label = "Hypothetical 2D Peak Capacity"
 
-            y_raw = pd.to_numeric(df['Peak Detection Rate (%)'], errors='coerce')
+            y_raw = pd.to_numeric(df["Peak Detection Rate (%)"], errors="coerce")
 
             valid = x.notna() & y_raw.notna()
             x = x[valid]
@@ -1375,13 +1421,19 @@ class PlotUtils:
             else:
                 y_display = y_raw.copy()
             y = y_display
-            self.axe.scatter(x, y_display,
-                             c=colors_plot, s=15,
-                             edgecolors='k', alpha=0.85,
-                             linewidths=0.3, picker=5)
+            self.axe.scatter(
+                x,
+                y_display,
+                c=colors_plot,
+                s=15,
+                edgecolors="k",
+                alpha=0.85,
+                linewidths=0.3,
+                picker=5,
+            )
 
-            apply_scale(self.axe,subset , axis_scale)
-            self.axe.tick_params(axis='y', labelsize=8)
+            apply_scale(self.axe, subset, axis_scale)
+            self.axe.tick_params(axis="y", labelsize=8)
 
             if x.notna().any():
                 self.axe.set_xlim(x.min() * 0.8, x.max() * 1.2)
@@ -1390,57 +1442,71 @@ class PlotUtils:
             if jitter_applied:
                 pr_center = y_raw.mean()
                 pr_spread = max(y_display.max() - y_display.min(), 0.5)
-                self.axe.set_ylim(pr_center - pr_spread * 2.5,
-                                  pr_center + pr_spread * 2.5)
+                self.axe.set_ylim(
+                    pr_center - pr_spread * 2.5, pr_center + pr_spread * 2.5
+                )
             elif y_raw.notna().any():
                 self.axe.set_ylim(y_raw.min() * 0.8, y_raw.max() * 1.2)
 
             self.axe.set_xlabel(x_label, fontsize=10)
-            self.axe.set_ylabel('Peak Detection Rate (%)', fontsize=10)
+            self.axe.set_ylabel("Peak Detection Rate (%)", fontsize=10)
 
-            plot_title = 'Multi-Criteria Space — Reduced Criteria'
+            plot_title = "Multi-Criteria Space — Reduced Criteria"
 
             if elution_domain_available:
-                self.axe.set_xlim(0,100)
-                self.axe.set_ylim(0,100)
+                self.axe.set_xlim(0, 100)
+                self.axe.set_ylim(0, 100)
             # ← Subtitle warns about jitter when applied
             if jitter_applied:
-                plot_subtitle = (
-                    'Vertical jitter added for visibility; peak rate values are near-identical.'
-                )
+                plot_subtitle = "Vertical jitter added for visibility; peak rate values are near-identical."
             else:
-                plot_subtitle = f'{x_label} vs peak detection rate · {subset}'
+                plot_subtitle = f"{x_label} vs peak detection rate · {subset}"
 
         # ------------------------------------------------------------------
         # Shared: grid, titles, legend
         # ------------------------------------------------------------------
-        self.axe.grid(True, which='both', linestyle='--', linewidth=0.3, alpha=0.5)
+        self.axe.grid(True, which="both", linestyle="--", linewidth=0.3, alpha=0.5)
 
-        self.axe.text(0.5, 1.10, plot_title,
-                      transform=self.axe.transAxes,
-                      ha='center', va='bottom',
-                      fontsize=16, fontweight='bold')
+        self.axe.text(
+            0.5,
+            1.10,
+            plot_title,
+            transform=self.axe.transAxes,
+            ha="center",
+            va="bottom",
+            fontsize=16,
+            fontweight="bold",
+        )
 
-        self.axe.text(0.5, 1.04, plot_subtitle,
-                      transform=self.axe.transAxes,
-                      ha='center', va='bottom',
-                      fontsize=9,
-                      style='italic',
-                      color='#b05000' if jitter_applied else 'dimgray')
+        self.axe.text(
+            0.5,
+            1.04,
+            plot_subtitle,
+            transform=self.axe.transAxes,
+            ha="center",
+            va="bottom",
+            fontsize=9,
+            style="italic",
+            color="#b05000" if jitter_applied else "dimgray",
+        )
 
         legend_elements = [
-            patches.Patch(color='#1A3A9E', label='Top 1%'),
-            patches.Patch(color='#A0379A', label='Top 5%'),
-            patches.Patch(color='#E64981', label='Top 10%'),
-            patches.Patch(color='#FF7C64', label='Top 25%'),
-            patches.Patch(color='#F9F871', label='> 25%'),
+            patches.Patch(color="#1A3A9E", label="Top 1%"),
+            patches.Patch(color="#A0379A", label="Top 5%"),
+            patches.Patch(color="#E64981", label="Top 10%"),
+            patches.Patch(color="#FF7C64", label="Top 25%"),
+            patches.Patch(color="#F9F871", label="> 25%"),
         ]
-        self.fig.legend(handles=legend_elements,
-                        title="Orthogonality rank\npercentile",
-                        loc='center right',
-                        bbox_to_anchor=(1.0, 0.5),
-                        fontsize=8, title_fontsize=8,
-                        frameon=True, edgecolor='gray')
+        self.fig.legend(
+            handles=legend_elements,
+            title="Orthogonality rank\npercentile",
+            loc="center right",
+            bbox_to_anchor=(1.0, 0.5),
+            fontsize=8,
+            title_fontsize=8,
+            frameon=True,
+            edgecolor="gray",
+        )
 
         self.fig.subplots_adjust(left=0.12, right=0.82, top=0.84, bottom=0.12)
         self.fig.canvas.draw()
@@ -1452,13 +1518,22 @@ class PlotUtils:
         # ------------------------------------------------------------------
         # Availability checks
         # ------------------------------------------------------------------
-        peak_capacity_available = pd.to_numeric(
-            self.orthogonality_result_data['Hypothetical 2D Peak Capacity'], errors='coerce'
-        ).notna().any()
+        peak_capacity_available = (
+            pd.to_numeric(
+                self.orthogonality_result_data["Hypothetical 2D Peak Capacity"],
+                errors="coerce",
+            )
+            .notna()
+            .any()
+        )
 
-        elution_domain_available = pd.to_numeric(
-            self.orthogonality_result_data['Elution Domain'], errors='coerce'
-        ).notna().any()
+        elution_domain_available = (
+            pd.to_numeric(
+                self.orthogonality_result_data["Elution Domain"], errors="coerce"
+            )
+            .notna()
+            .any()
+        )
 
         # ------------------------------------------------------------------
         # HEATMAP
@@ -1468,9 +1543,15 @@ class PlotUtils:
 
             # Drop unavailable rank columns
             cols_to_drop = []
-            if not elution_domain_available and "Elution Domain Rank" in median_df.columns:
+            if (
+                not elution_domain_available
+                and "Elution Domain Rank" in median_df.columns
+            ):
                 cols_to_drop.append("Elution Domain Rank")
-            if not peak_capacity_available and "Peak Capacity Rank" in median_df.columns:
+            if (
+                not peak_capacity_available
+                and "Peak Capacity Rank" in median_df.columns
+            ):
                 cols_to_drop.append("Peak Capacity Rank")
             median_df = median_df.drop(columns=cols_to_drop)
 
@@ -1480,8 +1561,10 @@ class PlotUtils:
                 self._show_missing_data()
                 return
 
-            rank_df = median_df.drop(columns=[peak_col], errors='ignore').copy()
-            peak_df = median_df[[peak_col]].copy() if peak_col in median_df.columns else None
+            rank_df = median_df.drop(columns=[peak_col], errors="ignore").copy()
+            peak_df = (
+                median_df[[peak_col]].copy() if peak_col in median_df.columns else None
+            )
 
             n_rows, n_rank_cols = rank_df.shape
 
@@ -1496,36 +1579,47 @@ class PlotUtils:
             rank_cmap = LinearSegmentedColormap.from_list(
                 "rank_cmap",
                 ["#fff7bc", "#d9ef8b", "#7fcdbb", "#41b6c4", "#225ea8"],
-                N=256
+                N=256,
             )
 
             n_total_cols = n_rank_cols + (1 if peak_df is not None else 0)
 
             gs = GridSpec(
-                2, 1, figure=self.fig,
+                2,
+                1,
+                figure=self.fig,
                 height_ratios=[12, 1.6],
-                left=0.17, right=0.76, top=0.70, bottom=0.15, hspace=0.35
+                left=0.17,
+                right=0.76,
+                top=0.70,
+                bottom=0.15,
+                hspace=0.35,
             )
             ax_main = self.fig.add_subplot(gs[0, 0])
             cax_rank = self.fig.add_subplot(gs[1, 0])
 
             im_rank = ax_main.imshow(
                 rank_df.values.astype(float),
-                cmap=rank_cmap, aspect="auto",
+                cmap=rank_cmap,
+                aspect="auto",
                 extent=[-0.5, n_rank_cols - 0.5, n_rows - 0.5, -0.5],
-                vmin=rank_min, vmax=rank_max
+                vmin=rank_min,
+                vmax=rank_max,
             )
 
             if peak_df is not None:
-                peak_cmap = mcolors.ListedColormap(["#d73027", "#f46d43", "#fee08b", "#66bd63"])
+                peak_cmap = mcolors.ListedColormap(
+                    ["#d73027", "#f46d43", "#fee08b", "#66bd63"]
+                )
                 peak_values = peak_df.astype(float).copy()
                 if peak_values.max().iloc[0] <= 1.0:
                     peak_values[peak_col] = peak_values[peak_col] * 100.0
 
                 im_peak = ax_main.imshow(
                     peak_values.values.astype(float),
-                    cmap=peak_cmap, aspect="auto",
-                    extent=[n_rank_cols - 0.5, n_rank_cols + 0.5, n_rows - 0.5, -0.5]
+                    cmap=peak_cmap,
+                    aspect="auto",
+                    extent=[n_rank_cols - 0.5, n_rank_cols + 0.5, n_rows - 0.5, -0.5],
                 )
 
             ax_main.set_xlim(-0.5, n_total_cols - 0.5)
@@ -1539,7 +1633,12 @@ class PlotUtils:
             ax_main.set_yticks(range(n_rows))
             ax_main.set_yticklabels(rank_df.index, fontsize=10, fontweight="bold")
             ax_main.tick_params(
-                top=True, bottom=False, labeltop=True, labelbottom=False, length=0, pad=4
+                top=True,
+                bottom=False,
+                labeltop=True,
+                labelbottom=False,
+                length=0,
+                pad=4,
             )
 
             ax_main.set_xticks(np.arange(-0.5, n_total_cols, 1), minor=True)
@@ -1550,34 +1649,66 @@ class PlotUtils:
             for r in range(n_rows):
                 for c in range(n_rank_cols):
                     val = rank_df.iloc[r, c]
-                    ax_main.text(c, r, f"{val:.0f}", ha="center", va="center",
-                                 fontsize=10, color='black')
+                    ax_main.text(
+                        c,
+                        r,
+                        f"{val:.0f}",
+                        ha="center",
+                        va="center",
+                        fontsize=10,
+                        color="black",
+                    )
 
             if peak_df is not None:
                 for r in range(n_rows):
                     val = peak_values.iloc[r, 0]
-                    ax_main.text(n_rank_cols, r, f"{val:.0f}", ha="center", va="center",
-                                 fontsize=10, color='black')
+                    ax_main.text(
+                        n_rank_cols,
+                        r,
+                        f"{val:.0f}",
+                        ha="center",
+                        va="center",
+                        fontsize=10,
+                        color="black",
+                    )
 
-            ax_main.text(0.5, 1.36, "Chromatographic Mode Performance",
-                         transform=ax_main.transAxes, ha="center", va="bottom",
-                         fontsize=16, fontweight="bold")
-            ax_main.text(0.5, 1.28, "Median Rank Heatmap by Chromatographic Mode",
-                         transform=ax_main.transAxes, ha="center", va="bottom",
-                         fontsize=11, style="italic", color="dimgray")
+            ax_main.text(
+                0.5,
+                1.36,
+                "Chromatographic Mode Performance",
+                transform=ax_main.transAxes,
+                ha="center",
+                va="bottom",
+                fontsize=16,
+                fontweight="bold",
+            )
+            ax_main.text(
+                0.5,
+                1.28,
+                "Median Rank Heatmap by Chromatographic Mode",
+                transform=ax_main.transAxes,
+                ha="center",
+                va="bottom",
+                fontsize=11,
+                style="italic",
+                color="dimgray",
+            )
 
-            cbar_rank = self.fig.colorbar(im_rank, cax=cax_rank, orientation="horizontal")
+            cbar_rank = self.fig.colorbar(
+                im_rank, cax=cax_rank, orientation="horizontal"
+            )
             cbar_rank.ax.tick_params(labelsize=8)
             cbar_rank.set_label("Median rank score", fontsize=9, labelpad=4)
             cbar_rank.ax.xaxis.set_label_position("top")
 
             if peak_df is not None:
                 heatmap_pos = ax_main.get_position()
-                cax_peak = self.fig.add_axes([
-                    heatmap_pos.x1 + 0.015, heatmap_pos.y0,
-                    0.014, heatmap_pos.height
-                ])
-                cbar_peak = self.fig.colorbar(im_peak, cax=cax_peak, ticks=[20, 50, 70, 90])
+                cax_peak = self.fig.add_axes(
+                    [heatmap_pos.x1 + 0.015, heatmap_pos.y0, 0.014, heatmap_pos.height]
+                )
+                cbar_peak = self.fig.colorbar(
+                    im_peak, cax=cax_peak, ticks=[20, 50, 70, 90]
+                )
                 cbar_peak.ax.set_yticklabels(["<40%", "40–60%", "60–80%", ">80%"])
                 cbar_peak.ax.tick_params(labelsize=8)
                 cbar_peak.set_label("Peak rate", fontsize=9, labelpad=6)
@@ -1596,15 +1727,25 @@ class PlotUtils:
                 self._show_missing_data()
                 return
 
-            BOXPLOT_COLORS = ["#E41A1C", "#377EB8", "#4DAF4A", "#984EA3", "#FF7F00", "#00A6A6"]
+            BOXPLOT_COLORS = [
+                "#E41A1C",
+                "#377EB8",
+                "#4DAF4A",
+                "#984EA3",
+                "#FF7F00",
+                "#00A6A6",
+            ]
 
             # ------------------------------------------------------------------
             # Near-identical peak rate detection helper
             # ------------------------------------------------------------------
             def _is_near_identical(values_list):
                 """Return True if peak rate range across all groups < 1%."""
-                all_vals = np.concatenate([v for v in values_list if len(v) > 0]) \
-                    if any(len(v) > 0 for v in values_list) else np.array([])
+                all_vals = (
+                    np.concatenate([v for v in values_list if len(v) > 0])
+                    if any(len(v) > 0 for v in values_list)
+                    else np.array([])
+                )
                 if len(all_vals) == 0:
                     return False
                 return (all_vals.max() - all_vals.min()) < 1.0
@@ -1626,7 +1767,9 @@ class PlotUtils:
                 is_peak_rate_col = col_name == "Peak Detection Rate (%)"
                 jitter_applied = is_peak_rate_col and _is_near_identical(values)
 
-                box = ax.boxplot(values, patch_artist=True, widths=0.55, showfliers=False)
+                box = ax.boxplot(
+                    values, patch_artist=True, widths=0.55, showfliers=False
+                )
 
                 for patch, color in zip(box["boxes"], BOXPLOT_COLORS):
                     patch.set_facecolor(color)
@@ -1657,10 +1800,16 @@ class PlotUtils:
 
                     all_display_vals.extend(y_plot)
 
-                    ax.scatter(x_jitter, y_plot, s=10,
-                               color=BOXPLOT_COLORS[j - 1],
-                               edgecolors="k", linewidths=0.2,
-                               alpha=0.75, picker=5)
+                    ax.scatter(
+                        x_jitter,
+                        y_plot,
+                        s=10,
+                        color=BOXPLOT_COLORS[j - 1],
+                        edgecolors="k",
+                        linewidths=0.2,
+                        alpha=0.75,
+                        picker=5,
+                    )
 
                 if show_title:
                     ax.set_title(title, fontsize=9, fontweight="bold")
@@ -1673,11 +1822,17 @@ class PlotUtils:
                         margin = (disp.max() - disp.min()) * 0.3 or 0.5
                         ax.set_ylim(disp.min() - margin, disp.max() + margin)
                     # ← Small note at bottom of subplot
-                    ax.text(0.5, -0.02,
-                            "† Jitter added; values are near-identical",
-                            transform=ax.transAxes,
-                            ha="center", va="top",
-                            fontsize=6, style="italic", color="#b05000")
+                    ax.text(
+                        0.5,
+                        -0.02,
+                        "† Jitter added; values are near-identical",
+                        transform=ax.transAxes,
+                        ha="center",
+                        va="top",
+                        fontsize=6,
+                        style="italic",
+                        color="#b05000",
+                    )
                 else:
                     if title in "Peak rate (%)":
                         ax.set_ylabel("Peak rate", fontsize=8)
@@ -1710,9 +1865,17 @@ class PlotUtils:
                 ncols = min(3, n)
                 nrows = int(np.ceil(n / ncols))
 
-                gs = GridSpec(nrows, ncols, figure=self.fig,
-                              hspace=0.65, wspace=0.35,
-                              left=0.08, right=0.96, top=0.78, bottom=0.16)
+                gs = GridSpec(
+                    nrows,
+                    ncols,
+                    figure=self.fig,
+                    hspace=0.65,
+                    wspace=0.35,
+                    left=0.08,
+                    right=0.96,
+                    top=0.78,
+                    bottom=0.16,
+                )
 
                 created_axes = []
                 for i, (col_name, title) in enumerate(metrics):
@@ -1726,12 +1889,27 @@ class PlotUtils:
 
                 if created_axes:
                     title_ax = created_axes[min(1, len(created_axes) - 1)]
-                    title_ax.text(0.5, 1.34, "Chromatographic Mode Performance",
-                                  transform=title_ax.transAxes, ha="center", va="bottom",
-                                  fontsize=16, fontweight="bold")
-                    title_ax.text(0.5, 1.20, "Rank Distribution by Chromatographic Mode — All Criteria",
-                                  transform=title_ax.transAxes, ha="center", va="bottom",
-                                  fontsize=11, style="italic", color="dimgray")
+                    title_ax.text(
+                        0.5,
+                        1.34,
+                        "Chromatographic Mode Performance",
+                        transform=title_ax.transAxes,
+                        ha="center",
+                        va="bottom",
+                        fontsize=16,
+                        fontweight="bold",
+                    )
+                    title_ax.text(
+                        0.5,
+                        1.20,
+                        "Rank Distribution by Chromatographic Mode — All Criteria",
+                        transform=title_ax.transAxes,
+                        ha="center",
+                        va="bottom",
+                        fontsize=11,
+                        style="italic",
+                        color="dimgray",
+                    )
 
             # ------------------------------------------------------------------
             # Single criteria
@@ -1750,19 +1928,39 @@ class PlotUtils:
                 self.axe = self.fig.add_subplot(111)
                 _draw_single_boxplot(self.axe, col_name, title, show_title=False)
 
-                self.axe.text(0.5, 1.10, "Chromatographic Mode Performance",
-                              transform=self.axe.transAxes, ha="center", va="bottom",
-                              fontsize=16, fontweight="bold")
-                self.axe.text(0.5, 1.04, f"{title} distribution by chromatographic mode",
-                              transform=self.axe.transAxes, ha="center", va="bottom",
-                              fontsize=9, style="italic", color="dimgray")
+                self.axe.text(
+                    0.5,
+                    1.10,
+                    "Chromatographic Mode Performance",
+                    transform=self.axe.transAxes,
+                    ha="center",
+                    va="bottom",
+                    fontsize=16,
+                    fontweight="bold",
+                )
+                self.axe.text(
+                    0.5,
+                    1.04,
+                    f"{title} distribution by chromatographic mode",
+                    transform=self.axe.transAxes,
+                    ha="center",
+                    va="bottom",
+                    fontsize=9,
+                    style="italic",
+                    color="dimgray",
+                )
 
                 self.fig.subplots_adjust(left=0.12, right=0.95, top=0.82, bottom=0.22)
 
         self.fig.canvas.draw()
         self.fig.canvas.flush_events()
 
-    def plot_feasibility_profile(self, grouping: str = "Global", axis_scale: str = "Auto",chrom_mode: str = 'All mode'):
+    def plot_feasibility_profile(
+        self,
+        grouping: str = "Global",
+        axis_scale: str = "Auto",
+        chrom_mode: str = "All mode",
+    ):
         self.fig.clear()
 
         def apply_scale(ax, scale: str):
@@ -1793,7 +1991,7 @@ class PlotUtils:
             rank_col = (
                 "Final Rank"
                 if "Final Rank" in df.columns
-                   and pd.to_numeric(df["Final Rank"], errors="coerce").notna().any()
+                and pd.to_numeric(df["Final Rank"], errors="coerce").notna().any()
                 else "Orthogonality Rank"
             )
 
@@ -1836,12 +2034,16 @@ class PlotUtils:
                     if not mask.any():
                         continue
                     self.axe.scatter(
-                        rank_numeric[mask], peak_rate[mask],
+                        rank_numeric[mask],
+                        peak_rate[mask],
                         s=15,
                         marker=mode_to_marker[mode],
                         color=recommendation_colors.get(rec_label, "#aaaaaa"),
-                        edgecolors="k", linewidths=0.3,
-                        alpha=0.88, zorder=5, picker=5
+                        edgecolors="k",
+                        linewidths=0.3,
+                        alpha=0.88,
+                        zorder=5,
+                        picker=5,
                     )
 
             apply_scale(self.axe, axis_scale)
@@ -1852,45 +2054,81 @@ class PlotUtils:
             self.axe.grid(True, linestyle="--", linewidth=0.4, alpha=0.4)
             self.axe.spines[["top", "right"]].set_visible(False)
 
-            self.axe.text(0.5, 1.08, "Feasibility Profile",
-                          transform=self.axe.transAxes, ha="center", va="bottom",
-                          fontsize=16, fontweight="bold")
-            self.axe.text(0.5, 1.02, "Overall feasibility decision map · Global",
-                          transform=self.axe.transAxes, ha="center", va="bottom",
-                          fontsize=9, style="italic", color="dimgray")
+            self.axe.text(
+                0.5,
+                1.08,
+                "Feasibility Profile",
+                transform=self.axe.transAxes,
+                ha="center",
+                va="bottom",
+                fontsize=16,
+                fontweight="bold",
+            )
+            self.axe.text(
+                0.5,
+                1.02,
+                "Overall feasibility decision map · Global",
+                transform=self.axe.transAxes,
+                ha="center",
+                va="bottom",
+                fontsize=9,
+                style="italic",
+                color="dimgray",
+            )
 
             # ------------------------------------------------------------------
             # Legends — side by side at the bottom (same pattern as by mode)
             # ------------------------------------------------------------------
             rec_handles = [
-                patches.Patch(facecolor=recommendation_colors[label],
-                              edgecolor="k", linewidth=0.4, label=label)
+                patches.Patch(
+                    facecolor=recommendation_colors[label],
+                    edgecolor="k",
+                    linewidth=0.4,
+                    label=label,
+                )
                 for label in recommendation_order
                 if label in df["Final Recommendation"].values
             ]
             mode_handles = [
-                Line2D([0], [0], marker=mode_to_marker[mode], color="w",
-                       markerfacecolor="#555555", markeredgecolor="k",
-                       markeredgewidth=0.3, markersize=5,
-                       label=mode.replace(" ", "×"))
+                Line2D(
+                    [0],
+                    [0],
+                    marker=mode_to_marker[mode],
+                    color="w",
+                    markerfacecolor="#555555",
+                    markeredgecolor="k",
+                    markeredgewidth=0.3,
+                    markersize=5,
+                    label=mode.replace(" ", "×"),
+                )
                 for mode in unique_modes
             ]
 
             rec_legend = self.fig.legend(
                 handles=rec_handles,
-                title="Final recommendation", title_fontsize=7,
-                loc="lower center", bbox_to_anchor=(0.30, 0.01),
-                ncol=1, fontsize=7,
-                frameon=True, framealpha=0.92, edgecolor="#aaaaaa"
+                title="Final recommendation",
+                title_fontsize=7,
+                loc="lower center",
+                bbox_to_anchor=(0.30, 0.01),
+                ncol=1,
+                fontsize=7,
+                frameon=True,
+                framealpha=0.92,
+                edgecolor="#aaaaaa",
             )
             self.fig.add_artist(rec_legend)
 
             self.fig.legend(
                 handles=mode_handles,
-                title="Chromatographic mode", title_fontsize=7,
-                loc="lower center", bbox_to_anchor=(0.72, -0.03),
-                ncol=1, fontsize=7,
-                frameon=True, framealpha=0.92, edgecolor="#aaaaaa"
+                title="Chromatographic mode",
+                title_fontsize=7,
+                loc="lower center",
+                bbox_to_anchor=(0.72, -0.03),
+                ncol=1,
+                fontsize=7,
+                frameon=True,
+                framealpha=0.92,
+                edgecolor="#aaaaaa",
             )
 
             self.fig.subplots_adjust(left=0.10, right=0.97, top=0.88, bottom=0.30)
@@ -1918,9 +2156,17 @@ class PlotUtils:
                 ncols = min(3, n_modes)
                 nrows = int(np.ceil(n_modes / ncols))
 
-                gs = GridSpec(nrows, ncols, figure=self.fig,
-                              hspace=0.55, wspace=0.28,
-                              left=0.08, right=0.98, top=0.82, bottom=0.28)
+                gs = GridSpec(
+                    nrows,
+                    ncols,
+                    figure=self.fig,
+                    hspace=0.55,
+                    wspace=0.28,
+                    left=0.08,
+                    right=0.98,
+                    top=0.82,
+                    bottom=0.28,
+                )
 
                 for i, (mode, group) in enumerate(grouped_df):
                     self.axe = self.fig.add_subplot(gs[i // ncols, i % ncols])
@@ -1933,8 +2179,13 @@ class PlotUtils:
                         self.axe.scatter(
                             subset["Final Rank"].astype(float),
                             subset["Peak Detection Rate (%)"].astype(float),
-                            s=15, c=color, marker=marker,
-                            edgecolors="black", linewidths=0.3, alpha=0.85, picker=5
+                            s=15,
+                            c=color,
+                            marker=marker,
+                            edgecolors="black",
+                            linewidths=0.3,
+                            alpha=0.85,
+                            picker=5,
                         )
 
                         apply_scale(self.axe, axis_scale)
@@ -1943,7 +2194,9 @@ class PlotUtils:
                         self.axe.grid(True, linestyle="--", linewidth=0.4, alpha=0.4)
                         self.axe.tick_params(axis="both", labelsize=8)
                         self.axe.set_xlabel("Final consensus rank)", fontsize=8)
-                        self.axe.set_ylabel("Peak rate (%)" if i % ncols == 0 else "", fontsize=8)
+                        self.axe.set_ylabel(
+                            "Peak rate (%)" if i % ncols == 0 else "", fontsize=8
+                        )
                         self.axe.spines[["top", "right"]].set_visible(False)
 
                     # Hide unused grid cells
@@ -1951,25 +2204,51 @@ class PlotUtils:
                         self.fig.add_subplot(gs[j // ncols, j % ncols]).axis("off")
 
                     legend_handles = [
-                        patches.Patch(facecolor="#1a7a4a", edgecolor="none", label="Highly recommended"),
-                        patches.Patch(facecolor="#6abf4b", edgecolor="none", label="Recommended"),
-                        patches.Patch(facecolor="#f0a11a", edgecolor="none", label="Use with caution"),
-                        patches.Patch(facecolor="#d9534f", edgecolor="none", label="Not recommended"),
+                        patches.Patch(
+                            facecolor="#1a7a4a",
+                            edgecolor="none",
+                            label="Highly recommended",
+                        ),
+                        patches.Patch(
+                            facecolor="#6abf4b", edgecolor="none", label="Recommended"
+                        ),
+                        patches.Patch(
+                            facecolor="#f0a11a",
+                            edgecolor="none",
+                            label="Use with caution",
+                        ),
+                        patches.Patch(
+                            facecolor="#d9534f",
+                            edgecolor="none",
+                            label="Not recommended",
+                        ),
                     ]
                     self.fig.legend(
                         handles=legend_handles,
-                        loc="lower center", ncol=2,
-                        frameon=True, fancybox=True, framealpha=0.95,
+                        loc="lower center",
+                        ncol=2,
+                        frameon=True,
+                        fancybox=True,
+                        framealpha=0.95,
                         bbox_to_anchor=(0.5, 0.01),
-                        fontsize=9, columnspacing=1.8, handlelength=1.8
+                        fontsize=9,
+                        columnspacing=1.8,
+                        handlelength=1.8,
                     )
 
                     # Titles — suptitle high, subtitle clearly below it
-                    self.fig.suptitle("Feasibility Profile",
-                                      fontsize=16, fontweight="bold", y=0.97)
-                    self.fig.text(0.5, 0.89,  # ← was 0.93, now lower
-                                  "Faceted feasibility maps by chromatographic mode",
-                                  ha="center", fontsize=9, style="italic", color="dimgray")
+                    self.fig.suptitle(
+                        "Feasibility Profile", fontsize=16, fontweight="bold", y=0.97
+                    )
+                    self.fig.text(
+                        0.5,
+                        0.89,  # ← was 0.93, now lower
+                        "Faceted feasibility maps by chromatographic mode",
+                        ha="center",
+                        fontsize=9,
+                        style="italic",
+                        color="dimgray",
+                    )
 
             # ------------------------------------------------------------------
             # Single mode
@@ -1981,18 +2260,35 @@ class PlotUtils:
                 i = chrom_mode_list.index(chrom_mode)
                 marker = mode_markers[i % len(mode_markers)]
 
-                chrom_mode_df = self.model.get_rank_score_grouped_by_chrom_mode_table().get_group(chrom_mode)
+                chrom_mode_df = (
+                    self.model.get_rank_score_grouped_by_chrom_mode_table().get_group(
+                        chrom_mode
+                    )
+                )
                 for recommendation, color in recommendation_colors.items():
-                    subset = chrom_mode_df[chrom_mode_df["Final Recommendation"] == recommendation]
+                    subset = chrom_mode_df[
+                        chrom_mode_df["Final Recommendation"] == recommendation
+                    ]
                     if subset.empty:
                         continue
-                    if not chrom_mode_df[chrom_mode_df["Final Recommendation"] == recommendation].any().any():
+                    if (
+                        not chrom_mode_df[
+                            chrom_mode_df["Final Recommendation"] == recommendation
+                        ]
+                        .any()
+                        .any()
+                    ):
                         continue
                     self.axe.scatter(
                         subset["Final Rank"].astype(float),
                         subset["Peak Detection Rate (%)"].astype(float),
-                        s=15, c=color, marker=marker,
-                        edgecolors="black", linewidths=0.3, alpha=0.85, picker=5
+                        s=15,
+                        c=color,
+                        marker=marker,
+                        edgecolors="black",
+                        linewidths=0.3,
+                        alpha=0.85,
+                        picker=5,
                     )
 
                     apply_scale(self.axe, axis_scale)
@@ -2009,33 +2305,52 @@ class PlotUtils:
                 #     self.fig.add_subplot(gs[j // ncols, j % ncols]).axis("off")
 
                 legend_handles = [
-                    patches.Patch(facecolor="#1a7a4a", edgecolor="none", label="Highly recommended"),
-                    patches.Patch(facecolor="#6abf4b", edgecolor="none", label="Recommended"),
-                    patches.Patch(facecolor="#f0a11a", edgecolor="none", label="Use with caution"),
-                    patches.Patch(facecolor="#d9534f", edgecolor="none", label="Not recommended"),
+                    patches.Patch(
+                        facecolor="#1a7a4a",
+                        edgecolor="none",
+                        label="Highly recommended",
+                    ),
+                    patches.Patch(
+                        facecolor="#6abf4b", edgecolor="none", label="Recommended"
+                    ),
+                    patches.Patch(
+                        facecolor="#f0a11a", edgecolor="none", label="Use with caution"
+                    ),
+                    patches.Patch(
+                        facecolor="#d9534f", edgecolor="none", label="Not recommended"
+                    ),
                 ]
                 self.fig.legend(
                     handles=legend_handles,
-                    loc="lower center", ncol=2,
-                    frameon=True, fancybox=True, framealpha=0.95,
+                    loc="lower center",
+                    ncol=2,
+                    frameon=True,
+                    fancybox=True,
+                    framealpha=0.95,
                     bbox_to_anchor=(0.5, 0.015),
-                    fontsize=9, columnspacing=1.8, handlelength=1.8
+                    fontsize=9,
+                    columnspacing=1.8,
+                    handlelength=1.8,
                 )
 
                 # Titles — suptitle high, subtitle clearly below it
-                self.fig.suptitle("Feasibility Profile",
-                                  fontsize=16, fontweight="bold", y=0.97)
-                self.fig.text(0.5, 0.89,  # ← was 0.93, now lower
-                              chrom_mode,
-                              ha="center", fontsize=9, style="italic", color="dimgray")
+                self.fig.suptitle(
+                    "Feasibility Profile", fontsize=16, fontweight="bold", y=0.97
+                )
+                self.fig.text(
+                    0.5,
+                    0.89,  # ← was 0.93, now lower
+                    chrom_mode,
+                    ha="center",
+                    fontsize=9,
+                    style="italic",
+                    color="dimgray",
+                )
 
                 self.fig.subplots_adjust(left=0.12, right=0.95, top=0.82, bottom=0.22)
 
-
-
         self.fig.canvas.draw()
         self.fig.canvas.flush_events()
-
 
     def plot_recommendation_distribution(self, grouping: str = "Global"):
         self.fig.clear()
@@ -2045,7 +2360,9 @@ class PlotUtils:
         # GLOBAL — one single stacked bar
         # ------------------------------------------------------------------
         if grouping == "Global":
-            recommendations = self.orthogonality_result_data.copy()['Final Recommendation']
+            recommendations = self.orthogonality_result_data.copy()[
+                "Final Recommendation"
+            ]
 
             if recommendations.empty:
                 self._show_missing_data()
@@ -2062,18 +2379,22 @@ class PlotUtils:
                     continue
                 present_cats.append(cat)
                 bar = self.axe.bar(
-                    ["All combinations"], [val],
+                    ["All combinations"],
+                    [val],
                     bottom=bottom,
                     color=COLORS[cat],
                     label=cat,
-                    width=0.4
+                    width=0.4,
                 )
                 self.axe.text(
                     bar[0].get_x() + bar[0].get_width() / 2,
                     bottom + val / 2,
                     f"{val:,}",
-                    ha="center", va="center",
-                    fontsize=9, fontweight="bold", color="white"
+                    ha="center",
+                    va="center",
+                    fontsize=9,
+                    fontweight="bold",
+                    color="white",
                 )
                 bottom += val
 
@@ -2108,18 +2429,20 @@ class PlotUtils:
                 if sum(values) == 0:
                     continue
                 present_cats.append(cat)
-                bars = self.axe.bar(x, values, bar_width,
-                                    bottom=bottoms,
-                                    color=COLORS[cat],
-                                    label=cat)
+                bars = self.axe.bar(
+                    x, values, bar_width, bottom=bottoms, color=COLORS[cat], label=cat
+                )
                 for bar, val, bot in zip(bars, values, bottoms):
                     if val > 0:
                         self.axe.text(
                             bar.get_x() + bar.get_width() / 2,
                             bot + val / 2,
                             f"{val:,}",
-                            ha="center", va="center",
-                            fontsize=7, fontweight="bold", color="white"
+                            ha="center",
+                            va="center",
+                            fontsize=7,
+                            fontweight="bold",
+                            color="white",
                         )
                 bottoms = [b + v for b, v in zip(bottoms, values)]
 
@@ -2127,10 +2450,14 @@ class PlotUtils:
             max_total = max(bottoms) if bottoms else 1
             for i, total in enumerate(bottoms):
                 self.axe.text(
-                    i, total + max_total * 0.01,
+                    i,
+                    total + max_total * 0.01,
                     f"{total:,}",
-                    ha="center", va="bottom",
-                    fontsize=7, fontweight="bold", color="#2c2c2a"
+                    ha="center",
+                    va="bottom",
+                    fontsize=7,
+                    fontweight="bold",
+                    color="#2c2c2a",
                 )
 
             self.axe.set_xticks(list(x))
@@ -2148,31 +2475,51 @@ class PlotUtils:
         self.axe.set_axisbelow(True)
         self.axe.spines[["top", "right"]].set_visible(False)
 
-        subtitle = "All combinations" if grouping == "Global" else "By chromatographic mode"
-        self.axe.text(0.5, 1.10, "Recommendation Distribution",
-                      transform=self.axe.transAxes, ha="center", va="bottom",
-                      fontsize=16, fontweight="bold")
-        self.axe.text(0.5, 1.03, subtitle,
-                      transform=self.axe.transAxes, ha="center", va="bottom",
-                      fontsize=9, style="italic", color="dimgray")
+        subtitle = (
+            "All combinations" if grouping == "Global" else "By chromatographic mode"
+        )
+        self.axe.text(
+            0.5,
+            1.10,
+            "Recommendation Distribution",
+            transform=self.axe.transAxes,
+            ha="center",
+            va="bottom",
+            fontsize=16,
+            fontweight="bold",
+        )
+        self.axe.text(
+            0.5,
+            1.03,
+            subtitle,
+            transform=self.axe.transAxes,
+            ha="center",
+            va="bottom",
+            fontsize=9,
+            style="italic",
+            color="dimgray",
+        )
 
         legend_handles = [
-            patches.Patch(facecolor=COLORS[cat], label=cat)
-            for cat in present_cats
+            patches.Patch(facecolor=COLORS[cat], label=cat) for cat in present_cats
         ]
         self.axe.legend(
             handles=legend_handles,
             loc="lower center",
             bbox_to_anchor=(0.5, -0.38),
-            ncol=2, fontsize=7,
-            frameon=True, edgecolor="#cccccc"
+            ncol=2,
+            fontsize=7,
+            frameon=True,
+            edgecolor="#cccccc",
         )
 
         self.fig.subplots_adjust(left=0.14, right=0.90, top=0.70, bottom=0.30)
         self.fig.canvas.draw()
         self.fig.canvas.flush_events()
 
-    def plot_final_rank_by_recommendation_class(self,recommendation: str = 'All recommendation'):
+    def plot_final_rank_by_recommendation_class(
+        self, recommendation: str = "All recommendation"
+    ):
         self.fig.clear()
         self.axe = self.fig.add_subplot(111)
 
@@ -2202,15 +2549,16 @@ class PlotUtils:
             for i, mode in enumerate(mode_order)
         }
 
-
         available_groups = {label: group for label, group in grouped_df}
-        plot_labels = [label for label in recommendation_order if label in available_groups]
+        plot_labels = [
+            label for label in recommendation_order if label in available_groups
+        ]
 
         if not plot_labels:
             self._show_missing_data()
             return
 
-        if recommendation == 'All recommendation':
+        if recommendation == "All recommendation":
             values = [
                 available_groups[label]["Final Rank"].dropna().astype(float).to_numpy()
                 for label in plot_labels
@@ -2225,7 +2573,7 @@ class PlotUtils:
                 positions=positions,
                 widths=0.46,
                 patch_artist=True,
-                showfliers=False
+                showfliers=False,
             )
 
             for patch, label in zip(box["boxes"], plot_labels):
@@ -2267,19 +2615,31 @@ class PlotUtils:
                             continue
 
                         self.axe.scatter(
-                            np.random.normal(loc=xpos, scale=0.06, size=len(y)), y,
-                            s=24, color=point_color, marker=marker,
-                            edgecolors="white", linewidths=0.35,
-                            alpha=0.95, zorder=3, picker=5
+                            np.random.normal(loc=xpos, scale=0.06, size=len(y)),
+                            y,
+                            s=24,
+                            color=point_color,
+                            marker=marker,
+                            edgecolors="white",
+                            linewidths=0.35,
+                            alpha=0.95,
+                            zorder=3,
+                            picker=5,
                         )
                 else:
                     y = group["Final Rank"].dropna().astype(float).to_numpy()
                     if len(y) > 0:
                         self.axe.scatter(
-                            np.random.normal(loc=xpos, scale=0.06, size=len(y)), y,
-                            s=24, color=point_color, marker="o",
-                            edgecolors="white", linewidths=0.35,
-                            alpha=0.95, zorder=3, picker=5
+                            np.random.normal(loc=xpos, scale=0.06, size=len(y)),
+                            y,
+                            s=24,
+                            color=point_color,
+                            marker="o",
+                            edgecolors="white",
+                            linewidths=0.35,
+                            alpha=0.95,
+                            zorder=3,
+                            picker=5,
                         )
 
             # ------------------------------------------------------------------
@@ -2296,22 +2656,23 @@ class PlotUtils:
             self.axe.spines[["left", "bottom"]].set_linewidth(1.0)
 
         else:
-
             if recommendation not in available_groups:
                 self._show_missing_data()
                 return
 
-            value = available_groups[recommendation]["Final Rank"].dropna().astype(float).to_numpy()
+            value = (
+                available_groups[recommendation]["Final Rank"]
+                .dropna()
+                .astype(float)
+                .to_numpy()
+            )
 
             position = [1]
             # ------------------------------------------------------------------
             # Boxplot (Single recommendation)
             # ------------------------------------------------------------------
             box = self.axe.boxplot(
-                value,
-                widths=0.46,
-                patch_artist=True,
-                showfliers=False
+                value, widths=0.46, patch_artist=True, showfliers=False
             )
 
             patch = box["boxes"][0]
@@ -2352,19 +2713,31 @@ class PlotUtils:
                         continue
 
                     self.axe.scatter(
-                        np.random.normal(loc=position, scale=0.06, size=len(y)), y,
-                        s=24, color=point_color, marker=marker,
-                        edgecolors="white", linewidths=0.35,
-                        alpha=0.95, zorder=3, picker=5
+                        np.random.normal(loc=position, scale=0.06, size=len(y)),
+                        y,
+                        s=24,
+                        color=point_color,
+                        marker=marker,
+                        edgecolors="white",
+                        linewidths=0.35,
+                        alpha=0.95,
+                        zorder=3,
+                        picker=5,
                     )
             else:
                 y = group["Final Rank"].dropna().astype(float).to_numpy()
                 if len(y) > 0:
                     self.axe.scatter(
-                        np.random.normal(loc=position, scale=0.06, size=len(y)), y,
-                        s=24, color=point_color, marker="o",
-                        edgecolors="white", linewidths=0.35,
-                        alpha=0.95, zorder=3, picker=5
+                        np.random.normal(loc=position, scale=0.06, size=len(y)),
+                        y,
+                        s=24,
+                        color=point_color,
+                        marker="o",
+                        edgecolors="white",
+                        linewidths=0.35,
+                        alpha=0.95,
+                        zorder=3,
+                        picker=5,
                     )
 
             # ------------------------------------------------------------------
@@ -2383,32 +2756,59 @@ class PlotUtils:
         # Mode legend
         # ------------------------------------------------------------------
         legend_handles = [
-            Line2D([0], [0], marker=mode_to_marker.get(mode, "o"), color="w",
-                   label=mode, markerfacecolor="#666666", markeredgecolor="#666666",
-                   markersize=6, linewidth=0)
+            Line2D(
+                [0],
+                [0],
+                marker=mode_to_marker.get(mode, "o"),
+                color="w",
+                label=mode,
+                markerfacecolor="#666666",
+                markeredgecolor="#666666",
+                markersize=6,
+                linewidth=0,
+            )
             for mode in seen_modes
         ]
         if legend_handles:
             self.axe.legend(
                 handles=legend_handles,
                 title="Chromatographic mode",
-                loc="lower center", bbox_to_anchor=(0.5, -0.32),
+                loc="lower center",
+                bbox_to_anchor=(0.5, -0.32),
                 ncol=min(3, len(legend_handles)),  # up to 3 per row
-                frameon=True, framealpha=0.92,
+                frameon=True,
+                framealpha=0.92,
                 edgecolor="#aaaaaa",
-                fontsize=8, title_fontsize=9,
-                handletextpad=0.6, columnspacing=1.2
+                fontsize=8,
+                title_fontsize=9,
+                handletextpad=0.6,
+                columnspacing=1.2,
             )
 
         # ------------------------------------------------------------------
         # Titles
         # ------------------------------------------------------------------
-        self.axe.text(0.5, 1.08, "Final Rank vs Recommendation",
-                      transform=self.axe.transAxes, ha="center", va="bottom",
-                      fontsize=16, fontweight="bold")
-        self.axe.text(0.5, 1.02, "Final consensus rank distribution by recommendation class",
-                      transform=self.axe.transAxes, ha="center", va="bottom",
-                      fontsize=9, style="italic", color="dimgray")
+        self.axe.text(
+            0.5,
+            1.08,
+            "Final Rank vs Recommendation",
+            transform=self.axe.transAxes,
+            ha="center",
+            va="bottom",
+            fontsize=16,
+            fontweight="bold",
+        )
+        self.axe.text(
+            0.5,
+            1.02,
+            "Final consensus rank distribution by recommendation class",
+            transform=self.axe.transAxes,
+            ha="center",
+            va="bottom",
+            fontsize=9,
+            style="italic",
+            color="dimgray",
+        )
 
         self.fig.subplots_adjust(left=0.10, right=0.97, top=0.88, bottom=0.30)
         self.fig.canvas.draw()
@@ -2453,32 +2853,48 @@ class PlotUtils:
             modes = df["Chromatographic Mode"].fillna("Unknown")
             unique_modes = list(modes.unique())
             palette = [
-                "#1f77b4", "#ff7f0e", "#2ca02c", "#d62728",
-                "#9467bd", "#8c564b", "#e377c2", "#7f7f7f",
-                "#bcbd22", "#17becf",
+                "#1f77b4",
+                "#ff7f0e",
+                "#2ca02c",
+                "#d62728",
+                "#9467bd",
+                "#8c564b",
+                "#e377c2",
+                "#7f7f7f",
+                "#bcbd22",
+                "#17becf",
             ]
-            mode_color = {m: palette[i % len(palette)] for i, m in enumerate(unique_modes)}
+            mode_color = {
+                m: palette[i % len(palette)] for i, m in enumerate(unique_modes)
+            }
             colors = [mode_color[m] for m in modes]
 
             legend_handles = [
-                patches.Patch(facecolor=mode_color[m], edgecolor="k",
-                              linewidth=0.4, label=m)
+                patches.Patch(
+                    facecolor=mode_color[m], edgecolor="k", linewidth=0.4, label=m
+                )
                 for m in unique_modes
             ]
             legend_title = "Chromatographic Mode"
 
         else:
             # Continuous colormap — Peak Capacity or Elution Domain
-            col_values = pd.to_numeric(df.get(color_by, pd.Series(dtype=float)),
-                                       errors="coerce")
+            col_values = pd.to_numeric(
+                df.get(color_by, pd.Series(dtype=float)), errors="coerce"
+            )
             cmap = (
                 "plasma" if color_by == "Hypothetical 2D Peak Capacity" else "viridis"
             )
             sc = self.axe.scatter(
-                x, y,
-                c=col_values, cmap=cmap,
-                s=18, edgecolors="k", linewidths=0.3,
-                alpha=0.80, picker=5
+                x,
+                y,
+                c=col_values,
+                cmap=cmap,
+                s=18,
+                edgecolors="k",
+                linewidths=0.3,
+                alpha=0.80,
+                picker=5,
             )
             cbar = self.fig.colorbar(sc, ax=self.axe, pad=0.02, shrink=0.85)
             cbar.set_label(color_by, fontsize=9)
@@ -2490,10 +2906,14 @@ class PlotUtils:
         # ------------------------------------------------------------------
         if colors is not None:
             self.axe.scatter(
-                x, y,
+                x,
+                y,
                 c=colors,
-                s=18, edgecolors="k", linewidths=0.3,
-                alpha=0.80, picker=5
+                s=18,
+                edgecolors="k",
+                linewidths=0.3,
+                alpha=0.80,
+                picker=5,
             )
             self.axe.legend(
                 handles=legend_handles,
@@ -2501,8 +2921,10 @@ class PlotUtils:
                 loc="lower center",
                 bbox_to_anchor=(0.5, -0.38),
                 ncol=min(3, len(legend_handles)),
-                fontsize=8, title_fontsize=9,
-                frameon=True, edgecolor="#aaaaaa"
+                fontsize=8,
+                title_fontsize=9,
+                frameon=True,
+                edgecolor="#aaaaaa",
             )
 
         # ------------------------------------------------------------------
@@ -2512,10 +2934,13 @@ class PlotUtils:
         rank_max = max(x.max(), y.max())
         diag = np.linspace(rank_min, rank_max, 200)
         self.axe.plot(
-            diag, diag,
-            color="#999999", linewidth=1.0,
-            linestyle="--", zorder=0,
-            label="No change (y = x)"
+            diag,
+            diag,
+            color="#999999",
+            linewidth=1.0,
+            linestyle="--",
+            zorder=0,
+            label="No change (y = x)",
         )
 
         # ------------------------------------------------------------------
@@ -2525,18 +2950,26 @@ class PlotUtils:
         pad = (rank_max - rank_min) * 0.04
 
         self.axe.text(
-            x_center, x_center - pad * 2.5,
+            x_center,
+            x_center - pad * 2.5,
             "▼ moves up",
-            ha="center", va="top",
-            fontsize=7, color="#1a7a2e", style="italic",
-            rotation=-42
+            ha="center",
+            va="top",
+            fontsize=7,
+            color="#1a7a2e",
+            style="italic",
+            rotation=-42,
         )
         self.axe.text(
-            x_center, x_center + pad * 2.5,
+            x_center,
+            x_center + pad * 2.5,
             "▲ moves down",
-            ha="center", va="bottom",
-            fontsize=7, color="#d94f3d", style="italic",
-            rotation=-42
+            ha="center",
+            va="bottom",
+            fontsize=7,
+            color="#d94f3d",
+            style="italic",
+            rotation=-42,
         )
 
         # ------------------------------------------------------------------
@@ -2551,15 +2984,25 @@ class PlotUtils:
         self.axe.spines[["top", "right"]].set_visible(False)
 
         self.axe.text(
-            0.5, 1.10, "Rank Shift Analysis",
-            transform=self.axe.transAxes, ha="center", va="bottom",
-            fontsize=16, fontweight="bold"
+            0.5,
+            1.10,
+            "Rank Shift Analysis",
+            transform=self.axe.transAxes,
+            ha="center",
+            va="bottom",
+            fontsize=16,
+            fontweight="bold",
         )
         self.axe.text(
-            0.5, 1.03,
+            0.5,
+            1.03,
             f"Old Rank vs New Rank (Utility)  ·  colored by {color_by}",
-            transform=self.axe.transAxes, ha="center", va="bottom",
-            fontsize=9, style="italic", color="dimgray"
+            transform=self.axe.transAxes,
+            ha="center",
+            va="bottom",
+            fontsize=9,
+            style="italic",
+            color="dimgray",
         )
 
         self.fig.subplots_adjust(left=0.12, right=0.95, top=0.87, bottom=0.250)
@@ -2592,7 +3035,7 @@ class PlotUtils:
             return
 
         df = df[valid].copy()
-        rank_gain = (old_rank[valid] - new_rank[valid])
+        rank_gain = old_rank[valid] - new_rank[valid]
         df["Rank Gain"] = rank_gain.values
 
         # ------------------------------------------------------------------
@@ -2606,22 +3049,35 @@ class PlotUtils:
 
             if pos_mask.any():
                 self.axe.hist(
-                    rank_gain[pos_mask], bins=n_bins,
-                    color="#1a7a2e", alpha=0.75, edgecolor="white",
-                    linewidth=0.4, label="Moves up (gain ≥ 0)"
+                    rank_gain[pos_mask],
+                    bins=n_bins,
+                    color="#1a7a2e",
+                    alpha=0.75,
+                    edgecolor="white",
+                    linewidth=0.4,
+                    label="Moves up (gain ≥ 0)",
                 )
             if neg_mask.any():
                 self.axe.hist(
-                    rank_gain[neg_mask], bins=n_bins,
-                    color="#d94f3d", alpha=0.75, edgecolor="white",
-                    linewidth=0.4, label="Moves down (gain < 0)"
+                    rank_gain[neg_mask],
+                    bins=n_bins,
+                    color="#d94f3d",
+                    alpha=0.75,
+                    edgecolor="white",
+                    linewidth=0.4,
+                    label="Moves down (gain < 0)",
                 )
 
-            self.axe.axvline(0, color="#555555", linewidth=1.2, linestyle="--", zorder=5)
+            self.axe.axvline(
+                0, color="#555555", linewidth=1.2, linestyle="--", zorder=5
+            )
             self.axe.axvline(
                 rank_gain.median(),
-                color="#f5a623", linewidth=1.2, linestyle="-.",
-                label=f"Median gain = {rank_gain.median():.0f}", zorder=5
+                color="#f5a623",
+                linewidth=1.2,
+                linestyle="-.",
+                label=f"Median gain = {rank_gain.median():.0f}",
+                zorder=5,
             )
 
             self.axe.set_xlabel("Rank Gain  (Old − New)", fontsize=11)
@@ -2639,8 +3095,14 @@ class PlotUtils:
 
             mode_order = self.model.get_chromatographic_mode_list()
             palette = [
-                "#E41A1C", "#377EB8", "#4DAF4A", "#984EA3",
-                "#FF7F00", "#00A6A6", "#A65628", "#F781BF",
+                "#E41A1C",
+                "#377EB8",
+                "#4DAF4A",
+                "#984EA3",
+                "#FF7F00",
+                "#00A6A6",
+                "#A65628",
+                "#F781BF",
             ]
 
             labels, values = [], []
@@ -2656,8 +3118,7 @@ class PlotUtils:
                 return
 
             box = self.axe.boxplot(
-                values, patch_artist=True,
-                widths=0.55, showfliers=False
+                values, patch_artist=True, widths=0.55, showfliers=False
             )
             for patch, color in zip(box["boxes"], palette):
                 patch.set_facecolor(color)
@@ -2673,13 +3134,19 @@ class PlotUtils:
             for j, (y_data, color) in enumerate(zip(values, palette), start=1):
                 x_jitter = np.random.normal(j, 0.05, size=len(y_data))
                 self.axe.scatter(
-                    x_jitter, y_data,
-                    s=10, color=color,
-                    edgecolors="k", linewidths=0.2,
-                    alpha=0.70, picker=5
+                    x_jitter,
+                    y_data,
+                    s=10,
+                    color=color,
+                    edgecolors="k",
+                    linewidths=0.2,
+                    alpha=0.70,
+                    picker=5,
                 )
 
-            self.axe.axhline(0, color="#555555", linewidth=1.0, linestyle="--", zorder=0)
+            self.axe.axhline(
+                0, color="#555555", linewidth=1.0, linestyle="--", zorder=0
+            )
             self.axe.set_xticks(range(1, len(labels) + 1))
             self.axe.set_xticklabels(labels, rotation=30, ha="right", fontsize=8)
             self.axe.set_ylabel("Rank Gain  (Old − New)", fontsize=11)
@@ -2694,14 +3161,25 @@ class PlotUtils:
         self.axe.spines[["top", "right"]].set_visible(False)
 
         self.axe.text(
-            0.5, 1.10, "Rank Shift Distribution",
-            transform=self.axe.transAxes, ha="center", va="bottom",
-            fontsize=16, fontweight="bold"
+            0.5,
+            1.10,
+            "Rank Shift Distribution",
+            transform=self.axe.transAxes,
+            ha="center",
+            va="bottom",
+            fontsize=16,
+            fontweight="bold",
         )
         self.axe.text(
-            0.5, 1.03, subtitle,
-            transform=self.axe.transAxes, ha="center", va="bottom",
-            fontsize=9, style="italic", color="dimgray"
+            0.5,
+            1.03,
+            subtitle,
+            transform=self.axe.transAxes,
+            ha="center",
+            va="bottom",
+            fontsize=9,
+            style="italic",
+            color="dimgray",
         )
 
         self.fig.subplots_adjust(left=0.12, right=0.95, top=0.84, bottom=0.28)
@@ -2743,10 +3221,12 @@ class PlotUtils:
             self._show_missing_data()
             return
 
-        plot_df = pd.DataFrame({
-            "Old Rank": old_rank[valid],
-            "Rank Shift": (new_rank[valid] - old_rank[valid])
-        }).sort_values("Old Rank")
+        plot_df = pd.DataFrame(
+            {
+                "Old Rank": old_rank[valid],
+                "Rank Shift": (new_rank[valid] - old_rank[valid]),
+            }
+        ).sort_values("Old Rank")
 
         x = np.arange(1, len(plot_df) + 1)
         y = plot_df["Rank Shift"].to_numpy()
@@ -2764,12 +3244,28 @@ class PlotUtils:
         self.axe.spines[["top", "right"]].set_visible(False)
 
         legend_handles = [
-            Line2D([0], [0], marker="o", color="#2471a3", markersize=7, linestyle="None",
-                   label="Negative = improved rank"),
-            Line2D([0], [0], marker="o", color="#f39c12", markersize=7, linestyle="None",
-                   label="Positive = worsened rank"),
+            Line2D(
+                [0],
+                [0],
+                marker="o",
+                color="#2471a3",
+                markersize=7,
+                linestyle="None",
+                label="Negative = improved rank",
+            ),
+            Line2D(
+                [0],
+                [0],
+                marker="o",
+                color="#f39c12",
+                markersize=7,
+                linestyle="None",
+                label="Positive = worsened rank",
+            ),
         ]
-        self.axe.legend(handles=legend_handles, fontsize=9, frameon=True, edgecolor="#cccccc")
+        self.axe.legend(
+            handles=legend_handles, fontsize=9, frameon=True, edgecolor="#cccccc"
+        )
 
         self.fig.canvas.draw()
         self.fig.canvas.flush_events()
@@ -2796,10 +3292,12 @@ class PlotUtils:
             self._show_missing_data()
             return
 
-        rank_df = pd.DataFrame({
-            "Old Rank": old_rank[valid],
-            "New Rank": new_rank[valid],
-        })
+        rank_df = pd.DataFrame(
+            {
+                "Old Rank": old_rank[valid],
+                "New Rank": new_rank[valid],
+            }
+        )
 
         top_ks = [k for k in [10, 50, 100, 200, 500, 1000] if k <= len(rank_df)]
         if not top_ks:
@@ -2812,21 +3310,26 @@ class PlotUtils:
         # Positional overlap: count how many combinations share the same rank position
         # in both old-top-k and new-top-k lists.
         for k in top_ks:
-
-            #this check if top k of old and new rank shared overlaping combination rank
-            #meaning if there are combination that has not changed rank
+            # this check if top k of old and new rank shared overlaping combination rank
+            # meaning if there are combination that has not changed rank
             # old_top = rank_df.nsmallest(k, "Old Rank").index.to_numpy()
             # new_top = rank_df.nsmallest(k, "New Rank").index.to_numpy()
             # overlap_count = int(np.sum(old_top == new_top))
 
-            #check if top k of old and new rank shared combination regardles of rank position
-            top_k_combination_old_rank = df["2D Combination"].iloc[rank_df.nsmallest(k, "Old Rank").index]
-            top_k_combination_new_rank = df["2D Combination"].iloc[rank_df.nsmallest(k, "New Rank").index]
+            # check if top k of old and new rank shared combination regardles of rank position
+            top_k_combination_old_rank = df["2D Combination"].iloc[
+                rank_df.nsmallest(k, "Old Rank").index
+            ]
+            top_k_combination_new_rank = df["2D Combination"].iloc[
+                rank_df.nsmallest(k, "New Rank").index
+            ]
 
             top_k_combination_old_rank = set(top_k_combination_old_rank)
             top_k_combination_new_rank = set(top_k_combination_new_rank)
 
-            overlap_count = len(top_k_combination_old_rank.intersection(top_k_combination_new_rank))
+            overlap_count = len(
+                top_k_combination_old_rank.intersection(top_k_combination_new_rank)
+            )
             overlaps.append(overlap_count)
             percentages.append((overlap_count / k) * 100)
 
@@ -2838,32 +3341,51 @@ class PlotUtils:
         self.axe.set_xticklabels([f"Top {k}" for k in top_ks], fontsize=11)
         self.axe.set_ylabel("Overlap (shared combinations)", fontsize=11)
         self.axe.text(
-            0.5, 1.10, "Overlap of Top Ranked Combinations",
-            transform=self.axe.transAxes, ha="center", va="bottom",
-            fontsize=14, fontweight="bold"
+            0.5,
+            1.10,
+            "Overlap of Top Ranked Combinations",
+            transform=self.axe.transAxes,
+            ha="center",
+            va="bottom",
+            fontsize=14,
+            fontweight="bold",
         )
         self.axe.text(
-            0.5, 1.03, "Shared combinations between old and new top-k lists",
-            transform=self.axe.transAxes, ha="center", va="bottom",
-            fontsize=9, style="italic", color="dimgray"
+            0.5,
+            1.03,
+            "Shared combinations between old and new top-k lists",
+            transform=self.axe.transAxes,
+            ha="center",
+            va="bottom",
+            fontsize=9,
+            style="italic",
+            color="dimgray",
         )
 
         max_overlap = max(overlaps)
         y_max = max(5, max_overlap) * 1.25
         self.axe.set_ylim(0, y_max)
         self.axe.yaxis.set_major_locator(ticker.MaxNLocator(integer=True))
-        self.axe.grid(True, axis="y", linestyle="--", linewidth=0.6, alpha=0.5, zorder=0)
+        self.axe.grid(
+            True, axis="y", linestyle="--", linewidth=0.6, alpha=0.5, zorder=0
+        )
         self.axe.spines[["top", "right"]].set_visible(False)
 
         # Reduce font size by 1pt for each bar beyond 3 so annotations don't overlap, floor at 8pt
         annot_fs = max(8, 11 - max(0, len(top_ks) - 3))
         label_offset = y_max * 0.02
-        for bar, k, count, pct, color in zip(bars, top_ks, overlaps, percentages, bar_colors):
+        for bar, k, count, pct, color in zip(
+            bars, top_ks, overlaps, percentages, bar_colors
+        ):
             self.axe.text(
                 bar.get_x() + bar.get_width() / 2,
                 bar.get_height() + label_offset,
                 f"{count}/{k}\n({pct:.0f}%)",
-                ha="center", va="bottom", fontsize=annot_fs, color=color, fontweight="bold"
+                ha="center",
+                va="bottom",
+                fontsize=annot_fs,
+                color=color,
+                fontweight="bold",
             )
 
         self.fig.subplots_adjust(left=0.12, right=0.95, top=0.72, bottom=0.12)
@@ -2873,33 +3395,39 @@ class PlotUtils:
     def _show_missing_data(self):
         self.fig.clear()
         ax = self.fig.add_subplot(111)
-        ax.axis('off')
+        ax.axis("off")
         ax.text(
-            0.5, 0.5,
-            'Missing data',
+            0.5,
+            0.5,
+            "Missing data",
             transform=ax.transAxes,
-            ha='center', va='center',
-            fontsize=18, color='#c0c0c0',
-            fontweight='bold'
+            ha="center",
+            va="center",
+            fontsize=18,
+            color="#c0c0c0",
+            fontweight="bold",
         )
         self.fig.canvas.draw()
         self.fig.canvas.flush_events()
 
-    def set_annotation(self,annotation = None):
+    def set_annotation(self, annotation=None):
 
         if annotation:
             self.annotation = annotation
         else:
-            self.annotation = self.axe.annotate("", xy=(0, 0), xytext=(10, 10),
-                                                                         fontsize='x-small',
-                                                                          textcoords="offset points",
-                                                                          bbox=dict(boxstyle="round", fc="white",
-                                                                                    ec="gray"),
-                                                                          arrowprops=dict(arrowstyle="->"))
+            self.annotation = self.axe.annotate(
+                "",
+                xy=(0, 0),
+                xytext=(10, 10),
+                fontsize="x-small",
+                textcoords="offset points",
+                bbox=dict(boxstyle="round", fc="white", ec="gray"),
+                arrowprops=dict(arrowstyle="->"),
+            )
 
             self.annotation.set_visible(False)
 
-    def on_pick(self,event,subset):
+    def on_pick(self, event, subset):
         axe = event.artist.axes
 
         xy_data = axe.collections[0].get_offsets()
@@ -2911,7 +3439,7 @@ class PlotUtils:
 
         df_filtered = self.model.get_filtered_result_df()
         n = self.model.get_number_of_combination()
-        final_rank = pd.to_numeric(df_filtered['Final Rank'], errors='coerce')
+        final_rank = pd.to_numeric(df_filtered["Final Rank"], errors="coerce")
 
         final_rank_pct = (final_rank / n) * 100
 
@@ -2923,14 +3451,16 @@ class PlotUtils:
 
         # convert panda series into list to reset the serie index which has been held even after filtering the data
         # when filtering panda dataframe or series, the index stays unchanged
-        combination = list(df_filtered['2D Combination'])[ind]
-        combination_number = list(df_filtered['Combination #'])[ind]
+        combination = list(df_filtered["2D Combination"])[ind]
+        combination_number = list(df_filtered["Combination #"])[ind]
 
         x = extracted_x[ind]
         y = extracted_y[ind]
 
         self.annotation.xy = (extracted_x[ind], extracted_y[ind])
-        self.annotation.set_text(f"Combination # {combination_number}\n{combination}\n(x, y) = ({x:.2f}, {y:.2f})")
+        self.annotation.set_text(
+            f"Combination # {combination_number}\n{combination}\n(x, y) = ({x:.2f}, {y:.2f})"
+        )
         self.annotation.set_visible(True)
 
         self.fig.canvas.draw_idle()

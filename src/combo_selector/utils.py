@@ -13,7 +13,7 @@ import sys
 import pandas as pd
 
 
-def resource_path(relative_path):
+def resource_path(relative_path: str) -> str:
     """
     Get absolute path to resource in dev, pip, or PyInstaller (frozen).
     Example: resource_path("icons/close_window.svg")
@@ -48,7 +48,7 @@ def resource_path(relative_path):
         )
 
 
-def load_simple_table(filepath, sheetname=0):
+def load_simple_table(filepath: str, sheetname: int | str = 0) -> pd.DataFrame:
     """Read a simple two-value table from an Excel sheet with no header row.
 
     The table can be laid out either horizontally (first row is header, second
@@ -86,8 +86,11 @@ def load_simple_table(filepath, sheetname=0):
 
 
 def load_table_with_header_anywhere(
-    filepath, sheetname=0, min_header_cols=2, auto_fix_duplicates=True
-):
+    filepath: str,
+    sheetname: int | str = 0,
+    min_header_cols: int = 2,
+    auto_fix_duplicates: bool = True,
+) -> pd.DataFrame:
     """
     Loads the first table in an Excel sheet, starting from the first row
     with at least `min_header_cols` non-NaN values (assumed header).
@@ -129,7 +132,7 @@ def load_table_with_header_anywhere(
     return df
 
 
-def get_version():
+def get_version() -> str:
     """
     Reads the 'version' from the [project] section of pyproject.toml
     located two directories above this script.

@@ -20,9 +20,9 @@ Background workers are used for:
 
 import sys
 
-from PySide6.QtCore import QThreadPool,Qt
+from PySide6.QtCore import QThreadPool, Qt
 from PySide6.QtGui import QIcon
-from PySide6.QtWidgets import QApplication,QFrame
+from PySide6.QtWidgets import QApplication
 
 
 from combo_selector.core.orthogonality import Orthogonality
@@ -127,7 +127,9 @@ class ComboSelectorMain(CustomMainWindow):
         )
 
         self.add_side_bar_item(
-            "Multi-Criteria\nEvaluation", self.results_page, resource_path("icons/rank_icon.png")
+            "Multi-Criteria\nEvaluation",
+            self.results_page,
+            resource_path("icons/rank_icon.png"),
         )
 
         self.add_side_bar_item(
@@ -135,7 +137,7 @@ class ComboSelectorMain(CustomMainWindow):
         )
 
         self.add_side_bar_item(
-            "About",self.about_page, resource_path("icons/about.png"),has_page=False
+            "About", self.about_page, resource_path("icons/about.png"), has_page=False
         )
 
         # --- Signal connections --------------------------------------------

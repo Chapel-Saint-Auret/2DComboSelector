@@ -47,7 +47,9 @@ class Redundancy:
     # Correlation groups
     # ------------------------------------------------------------------
 
-    def create_correlation_group(self,matrix_type: str, threshold: float, tol: float) -> pd.DataFrame:
+    def create_correlation_group(
+        self, matrix_type: str, threshold: float, tol: float
+    ) -> pd.DataFrame:
         """Identify and group correlated orthogonality metrics based on correlation threshold.
 
         This method finds groups of metrics that are highly correlated with each other,
@@ -67,8 +69,7 @@ class Redundancy:
             https://medium.com/@yatharthranjan/finding-top-correlation-pairs-from-a-large-number-of-variables-in-pandas-f530be53e82a
         """
 
-
-        if matrix_type == 'Values':
+        if matrix_type == "Values":
             if self.orthogonality_metric_corr_matrix_df.empty:
                 return pd.DataFrame()
 
@@ -79,11 +80,9 @@ class Redundancy:
 
             corr_matrix = self.orthogonality_metric_ranking_corr_matrix_df.corr()
 
-
-        Correlated_Metrics = set()
+        correlated_metrics = set()
 
         for row in corr_matrix.itertuples():
-
             row_metric_list = []
             row_metric_name = row.Index
             row_metric_list.append(row_metric_name)
@@ -99,16 +98,16 @@ class Redundancy:
             row_metric_list = sorted(set(row_metric_list))
 
             # you cannot add list in set() object
-            Correlated_Metrics.add(tuple(row_metric_list))
+            correlated_metrics.add(tuple(row_metric_list))
 
-        sorted_Correlated_Metrics = sorted(Correlated_Metrics, key=len, reverse=True)
+        sorted_correlated_metrics = sorted(correlated_metrics, key=len, reverse=True)
 
-        groups, sorted_Correlated_Metrics = cluster_and_fuse(sorted_Correlated_Metrics)
+        groups, sorted_correlated_metrics = cluster_and_fuse(sorted_correlated_metrics)
 
         # If you pass a list of tuples directly → Pandas splits the tuples into multiple columns.
         # If you pass a dictionary with a column name → Pandas keeps each tuple as a single cell in that column.
         self.correlation_group_df = pd.DataFrame(
-            {"Correlated Metrics": list(sorted_Correlated_Metrics)}
+            {"Correlated Metrics": list(sorted_correlated_metrics)}
         )
 
         # Add a new column with letters A-Z
@@ -122,7 +121,7 @@ class Redundancy:
 
         return self.correlation_group_df
 
-    def compute_rho_coverage(self):
+    def compute_rho_coverage(self) -> None:
         """Compute Spearman correlation (ρ) between each metric and the coverage anchor.
 
         Uses the bin box counting metric ranking as the coverage anchor.
@@ -134,7 +133,7 @@ class Redundancy:
             - Updates ``self.group_rho_coverage`` with trimmed means per group.
         """
 
-        coverage_anchor = self.orthogonality_metric_ranking_df['Bin box counting']
+        coverage_anchor = self.orthogonality_metric_ranking_df["Bin box counting"]
 
         # dictionary of rho coverage value per group
         self.group_rho_coverage = {}
@@ -142,15 +141,17 @@ class Redundancy:
         # dictionary of rho coverage value per metric
         self.metric_rho_coverage = {}
 
-        temp_df = self.correlation_group_df.rename(columns={'Correlated Metrics': 'Correlated_Metrics'})
+        temp_df = self.correlation_group_df.rename(
+            columns={"Correlated Metrics": "Correlated_Metrics"}
+        )
 
         for row in temp_df.itertuples():
             group = row.Group
             rho_coverage_list = []
 
-            Correlated_Metrics_list = row.Correlated_Metrics
+            correlated_metrics_list = row.Correlated_Metrics
 
-            for metric in Correlated_Metrics_list:
+            for metric in correlated_metrics_list:
                 values = self.orthogonality_metric_ranking_df[metric]
                 rho_coverage = spearmanr(coverage_anchor, values)[0]
 
@@ -160,7 +161,7 @@ class Redundancy:
             self.metric_rho_coverage = dict(sorted(self.metric_rho_coverage.items()))
             self.group_rho_coverage[group] = tmean(rho_coverage_list)
 
-    def compute_rho_distribution(self):
+    def compute_rho_distribution(self) -> None:
         """Compute Spearman correlation (ρ) between each metric and the distribution anchor.
 
         Uses the mean chromatographic coverage (cc_mean) rank as the
@@ -177,7 +178,9 @@ class Redundancy:
 
         om_dataframe = pd.DataFrame(self.orthogonality_score).T
 
-        distribution_anchor = om_dataframe['cc_mean'].rank(ascending=False, method='average')
+        distribution_anchor = om_dataframe["cc_mean"].rank(
+            ascending=False, method="average"
+        )
 
         # dictionary of rho distribution value per group
         self.group_rho_distribution = {}
@@ -185,25 +188,29 @@ class Redundancy:
         # dictionary of rho coverage value per metric
         self.metric_rho_distribution = {}
 
-        temp_df = self.correlation_group_df.rename(columns={'Correlated Metrics': 'Correlated_Metrics'})
+        temp_df = self.correlation_group_df.rename(
+            columns={"Correlated Metrics": "Correlated_Metrics"}
+        )
 
         for row in temp_df.itertuples():
             group = row.Group
             rho_distribution_list = []
 
-            Correlated_Metrics_list = row.Correlated_Metrics
+            correlated_metrics_list = row.Correlated_Metrics
 
-            for metric in Correlated_Metrics_list:
+            for metric in correlated_metrics_list:
                 values = self.orthogonality_metric_ranking_df[metric]
                 rho_distribution = spearmanr(distribution_anchor, values)[0]
 
                 rho_distribution_list.append(abs(rho_distribution))
                 self.metric_rho_distribution[metric] = abs(rho_distribution)
 
-            self.metric_rho_distribution = dict(sorted(self.metric_rho_distribution.items()))
+            self.metric_rho_distribution = dict(
+                sorted(self.metric_rho_distribution.items())
+            )
             self.group_rho_distribution[group] = tmean(rho_distribution_list)
 
-    def build_coverage_distribution_matrix(self):
+    def build_coverage_distribution_matrix(self) -> None:
         """Build a DataFrame summarising ρ coverage and ρ distribution per metric.
 
         Combines :attr:`metric_rho_coverage` and :attr:`metric_rho_distribution`
@@ -212,29 +219,48 @@ class Redundancy:
         Side Effects:
             - Creates and stores ``self.coverage_distribution_df``.
         """
-        self.coverage_distribution_df = pd.DataFrame({
-            "rho coverage ": self.metric_rho_coverage,
-            "rho distribution": self.metric_rho_distribution,
-        })
+        self.coverage_distribution_df = pd.DataFrame(
+            {
+                "rho coverage ": self.metric_rho_coverage,
+                "rho distribution": self.metric_rho_distribution,
+            }
+        )
 
         self.coverage_distribution_df.index.name = "Metric"
 
         self.coverage_distribution_df = self.coverage_distribution_df.T
 
-    def fill_correlation_group_average(self,matrix_type: str = 'Values'):
+    def fill_correlation_group_average(self, matrix_type: str = "Values") -> None:
+        """Compute average pairwise correlation for each correlation group.
+
+        For each group in ``correlation_group_df``, calculates the mean and
+        standard deviation of the lower-triangle pairwise correlations within
+        the group's sub-matrix.
+
+        Args:
+            matrix_type (str): Which correlation matrix to use. ``"Values"``
+                uses raw metric values; any other value uses the ranking matrix.
+                Defaults to ``"Values"``.
+
+        Side Effects:
+            - Adds ``"Average Group Correlation"`` column to
+              ``self.correlation_group_df``.
+        """
         average_redundancy_list = []
 
-        for group, Correlated_Metrics_list in zip(self.correlation_group_df['Group'],
-                                                  self.correlation_group_df['Correlated Metrics']):
-
+        for group, correlated_metrics_list in zip(
+            self.correlation_group_df["Group"],
+            self.correlation_group_df["Correlated Metrics"],
+        ):
             # 1. Get your sub-matrix
-            if matrix_type == 'Values':
+            if matrix_type == "Values":
                 corr_matrix = self.orthogonality_metric_corr_matrix_df.corr()
             else:
                 corr_matrix = self.orthogonality_metric_ranking_corr_matrix_df.corr()
 
             corr_matrix = corr_matrix.loc[
-                Correlated_Metrics_list, Correlated_Metrics_list]
+                correlated_metrics_list, correlated_metrics_list
+            ]
 
             # 2. Create a mask for the upper triangle
             # k=1 excludes the diagonal (the 1.0s) (this is when you want to take the diagonal)
@@ -252,10 +278,9 @@ class Redundancy:
 
             average_redundancy_list.append(f"{average_redundancy} ± {std_redundancy}")
 
-        self.correlation_group_df['Average Group Correllation'] = average_redundancy_list
+        self.correlation_group_df["Average Group Correlation"] = average_redundancy_list
 
-
-    def fill_correlation_group_classification(self):
+    def fill_correlation_group_classification(self) -> None:
         """Assign a coverage/distribution category label to each correlation group.
 
         Computes ρ coverage and ρ distribution for each group and assigns
@@ -272,19 +297,18 @@ class Redundancy:
         category_list = []
 
         for group in self.group_rho_coverage.keys():
-
             rho_coverage = self.group_rho_coverage[group]
             rho_distribution = self.group_rho_distribution[group]
 
             if rho_coverage >= 0.9 > rho_distribution:
-                category = 'Coverage-like'
+                category = "Coverage-like"
             elif rho_distribution >= 0.9 > rho_coverage:
-                category = 'Distribution-like'
+                category = "Distribution-like"
             elif rho_coverage >= 0.9 and rho_distribution >= 0.9:
-                category = 'Hybrid'
+                category = "Hybrid"
             else:
-                category = 'Other'
+                category = "Other"
 
             category_list.append(category)
 
-        self.correlation_group_df['Classification'] = category_list
+        self.correlation_group_df["Classification"] = category_list
