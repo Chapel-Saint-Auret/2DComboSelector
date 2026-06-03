@@ -606,9 +606,9 @@ class ResultsBuilder:
         """
 
         def is_highly_recommended(row):
-            top_10_suggested_rank = self.orthogonality_result_df['Final Rank'].quantile(0.1)
+            top_10_suggested_rank = self.orthogonality_result_df['Final Rank (Utility)'].quantile(0.1)
             peak_rate = row['Peak Detection Rate (%)']
-            suggested_rank = row['Final Rank']
+            suggested_rank = row['Final Rank (Utility)']
             compatibility = row['Compatibility']
             complexity = row['Complexity']
 
@@ -621,9 +621,9 @@ class ResultsBuilder:
                 return False
 
         def is_recommended(row):
-            top_30_suggested_rank = self.orthogonality_result_df['Final Rank'].quantile(0.3)
+            top_30_suggested_rank = self.orthogonality_result_df['Final Rank (Utility)'].quantile(0.3)
             peak_rate = row['Peak Detection Rate (%)']
-            suggested_rank = row['Final Rank']
+            suggested_rank = row['Final Rank (Utility)']
             compatibility = row['Compatibility']
             complexity = row['Complexity']
 
@@ -636,10 +636,10 @@ class ResultsBuilder:
                 return False
 
         def is_use_with_caution(row):
-            pct_30_suggested_rank = self.orthogonality_result_df['Final Rank'].quantile(0.3)
-            pct_70_suggested_rank = self.orthogonality_result_df['Final Rank'].quantile(0.7)
+            pct_30_suggested_rank = self.orthogonality_result_df['Final Rank (Utility)'].quantile(0.3)
+            pct_70_suggested_rank = self.orthogonality_result_df['Final Rank (Utility)'].quantile(0.7)
             peak_rate = row['Peak Detection Rate (%)']
-            suggested_rank = row['Final Rank']
+            suggested_rank = row['Final Rank (Utility)']
             compatibility = row['Compatibility']
             complexity = row['Complexity']
 
@@ -652,8 +652,8 @@ class ResultsBuilder:
                 return False
 
         def is_not_recommended(row):
-            bottom_30_suggested_rank = self.orthogonality_result_df['Final Rank'].quantile(0.7)
-            suggested_rank = row['Final Rank']
+            bottom_30_suggested_rank = self.orthogonality_result_df['Final Rank (Utility)'].quantile(0.7)
+            suggested_rank = row['Final Rank (Utility)']
             peak_rate = row['Peak Detection Rate (%)']
 
             if peak_rate < 40 or suggested_rank >= bottom_30_suggested_rank:
@@ -687,7 +687,7 @@ class ResultsBuilder:
             if is_not_recommended(row):
                 tooltip = (
                     f"<table>"
-                    f"<tr><td><b>Final Consensus Rank:</b></td><td style='color: black;'>{row['Final Rank']}</td></tr>"
+                    f"<tr><td><b>Final Consensus Rank:</b></td><td style='color: black;'>{row['Final Rank (Utility)']}</td></tr>"
                     f"<tr><td><b>Peak Detection Rate:</b></td><td style='color: bkack'>{row['Peak Detection Rate (%)']}%</td></tr>"
                     f"<tr><td><b>Complexity:</b></td><td style='color:black;'>{row['Complexity']}</td></tr>"
                     f"<tr><td><b>Compatibility:</b></td><td style='color: black;'>{row['Compatibility']}</td></tr>"
@@ -698,7 +698,7 @@ class ResultsBuilder:
             if is_highly_recommended(row):
                 tooltip = (
                     f"<table>"
-                    f"<tr><td><b>Final Consensus Rank:</b></td><td style='color: black;'>{row['Final Rank']}</td></tr>"
+                    f"<tr><td><b>Final Consensus Rank:</b></td><td style='color: black;'>{row['Final Rank (Utility)']}</td></tr>"
                     f"<tr><td><b>Peak Detection Rate:</b></td><td style='color: black;'>{row['Peak Detection Rate (%)']}%</td></tr>"
                     f"<tr><td><b>Complexity:</b></td><td style='color: black;'>{row['Complexity']}</td></tr>"
                     f"<tr><td><b>Compatibility:</b></td><td style='color: black;'>{row['Compatibility']}</td></tr>"
@@ -709,7 +709,7 @@ class ResultsBuilder:
             if is_recommended(row):
                 tooltip = (
                     f"<table>"
-                    f"<tr><td><b>Final Consensus Rank:</b></td><td style='color: black;'>{row['Final Rank']}</td></tr>"
+                    f"<tr><td><b>Final Consensus Rank:</b></td><td style='color: black;'>{row['Final Rank (Utility)']}</td></tr>"
                     f"<tr><td><b>Peak Detection Rate:</b></td><td style='color: black;'>{row['Peak Detection Rate (%)']}%</td></tr>"
                     f"<tr><td><b>Complexity:</b></td><td style='black'>{row['Complexity']}</td></tr>"
                     f"<tr><td><b>Compatibility:</b></td><td style='color: black'>{row['Compatibility']}</td></tr>"
@@ -719,7 +719,7 @@ class ResultsBuilder:
 
             if is_use_with_caution(row):
                 tooltip = (f"<table>"
-                f"<tr><td><b>Final Consensus Rank:</b></td><td style='color: black;'>{row['Final Rank']}</td></tr>"
+                f"<tr><td><b>Final Consensus Rank:</b></td><td style='color: black;'>{row['Final Rank (Utility)']}</td></tr>"
                 f"<tr><td><b>Peak Detection Rate:</b></td><td style='color:black;'>{row['Peak Detection Rate (%)']}%</td></tr>"
                 f"<tr><td><b>Complexity:</b></td><td style='color: black;'>{row['Complexity']}</td></tr>"
                 f"<tr><td><b>Compatibility:</b></td><td style='color:black;'>{row['Compatibility']}</td></tr>"

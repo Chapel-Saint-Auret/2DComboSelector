@@ -1222,7 +1222,7 @@ class PlotUtils:
         self.axe.set_box_aspect(1)
         self.set_annotation()
 
-        df = self.orthogonality_result_data.copy()
+        df = self.model.get_filtered_result_df().copy()
 
         peak_capacity = df['Hypothetical 2D Peak Capacity']
         elution_domain = df['Elution Domain']
@@ -1784,7 +1784,7 @@ class PlotUtils:
         if grouping == "Global":
             self.axe = self.fig.add_subplot(111)
 
-            df = self.orthogonality_result_data.copy()
+            df = self.model.get_filtered_result_df().copy()
 
             if df is None or df.empty:
                 self._show_missing_data()
@@ -2432,7 +2432,7 @@ class PlotUtils:
         self.fig.clear()
         self.axe = self.fig.add_subplot(111)
 
-        df = self.orthogonality_result_data.copy()
+        df = self.model.get_filtered_result_df().copy()
 
         old_rank = pd.to_numeric(df.get("Final Rank"), errors="coerce")
         new_rank = pd.to_numeric(df.get("Final Rank (Utility)"), errors="coerce")
@@ -2582,7 +2582,7 @@ class PlotUtils:
         self.fig.clear()
         self.axe = self.fig.add_subplot(111)
 
-        df = self.orthogonality_result_data.copy()
+        df = self.model.get_filtered_result_df().copy()
         old_rank = pd.to_numeric(df.get("Final Rank"), errors="coerce")
         new_rank = pd.to_numeric(df.get("Final Rank (Utility)"), errors="coerce")
 
@@ -2712,7 +2712,7 @@ class PlotUtils:
         self.fig.clear()
         self.axe = self.fig.add_subplot(111)
 
-        df = self.orthogonality_result_data.copy()
+        df = self.model.get_filtered_result_df().copy()
         required_cols = {"Final Rank", "Final Rank (Utility)"}
         if not required_cols.issubset(df.columns):
             self._show_missing_data()
