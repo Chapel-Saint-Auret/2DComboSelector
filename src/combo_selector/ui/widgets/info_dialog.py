@@ -24,80 +24,22 @@ from PySide6.QtWidgets import (
 )
 from PySide6.QtCore import Qt
 
-
-# ── Colour palette ────────────────────────────────────────────────────────────
-C_TEXT           = "#1a2a4a"   # near-navy body text
-C_BULLET         = "#3a6bc4"   # blue bullet arrows
-C_SECTION_BG     = "#eef2fb"   # tinted section header background
-C_SECTION_BORDER = "#3a6bc4"   # left border on section headers
-C_SECTION_TEXT   = "#1e3a6e"   # navy section header text
-C_BORDER         = "#d0d8ed"   # light separator lines
-
-# Periwinkle / lavender-blue — sampled from your "Compute metrics" button
-C_BTN_BG         = "#c5cce8"
-C_BTN_HOVER      = "#aab3d8"
-C_BTN_PRESSED    = "#9099c4"
-C_BTN_TEXT       = "#2a3560"
-
-
-STYLESHEET = f"""
-QDialog {{
-    background-color: #ffffff;
-}}
-
-QScrollArea {{
-    background: white;
-    border: none;
-    border-top: 1px solid {C_BORDER};
-}}
-
-QScrollBar:vertical {{
-    background: #f0f3fa;
-    width: 7px;
-    border-radius: 3px;
-    margin: 2px 1px;
-}}
-QScrollBar::handle:vertical {{
-    background: {C_BULLET};
-    border-radius: 3px;
-    min-height: 24px;
-}}
-QScrollBar::add-line:vertical,
-QScrollBar::sub-line:vertical {{ height: 0; }}
-
-QWidget#body_widget {{
-    background: white;
-}}
-
-QLabel#content_label {{
-    color: {C_TEXT};
-    font-size: 13px;
-    background: transparent;
-}}
-
-QFrame#footer_line {{
-    background-color: {C_BORDER};
-    border: none;
-    max-height: 1px;
-    min-height: 1px;
-}}
-
-QPushButton#close_btn {{
-    background-color: {C_BTN_BG};
-    color: {C_BTN_TEXT};
-    border: none;
-    border-radius: 6px;
-    padding: 7px 52px;
-    font-size: 13px;
-    font-weight: 500;
-}}
-QPushButton#close_btn:hover {{
-    background-color: {C_BTN_HOVER};
-}}
-QPushButton#close_btn:pressed {{
-    background-color: {C_BTN_PRESSED};
-}}
-"""
+from combo_selector.constants import (  # noqa: F401 – re-exported for callers
+    C_TEXT,
+    C_BULLET,
+    C_SECTION_BG,
+    C_SECTION_BORDER,
+    C_SECTION_TEXT,
+    C_BORDER,
+    C_BTN_BG,
+    C_BTN_HOVER,
+    C_BTN_PRESSED,
+    C_BTN_TEXT,
+    INFO_DIALOG_STYLESHEET as STYLESHEET,
+    HOW_IT_WORKS_TEXT,
+    BEFORE_YOU_BEGIN_TEXT,
+    USER_GUIDE_TEXT,
+)
 
 
 class InfoPopupDialog(QDialog):
@@ -457,73 +399,6 @@ class AboutDialog(QDialog):
         footer_layout.addWidget(close_btn)
         footer_layout.addStretch()
         root.addWidget(footer)
-
-
-# ── Pre-defined content strings ───────────────────────────────────────────────
-
-HOW_IT_WORKS_TEXT = """\
-This tool helps you evaluate and compare 2D separation space occupation in a streamlined, visual environment. Here are its main functions:
-
-• Imports and normalizes your 1D retention data
-• Automatically generates all possible 2D combinations from the dataset
-• Provides visual comparisons of the candidate separations
-• Evaluates orthogonality from pairs of retention data
-• Uses a multi-metric approach (12 orthogonality metrics currently implemented)
-• Calculates and integrates all metrics into a composite orthogonality score
-• Provides a balanced assessment of 2D separation space occupation
-• Ranks candidate conditions based on chromatographically relevant criteria, including orthogonality, hypothetical 2D peak capacity, and a Heinisch inspired method
-• Applies filters based on practical constraints (solvent compatibility, set-up complexity, green aspects, MS compatibility)
-• Assists in the final selection of optimal conditions for experimental validation\
-"""
-
-BEFORE_YOU_BEGIN_TEXT = """\
-Before using the tool, preliminary experimental data must be collected. The tool is designed to evaluate and compare candidate 2D combinations based on 1D scouting results, and therefore requires retention data as input.
-
-Required steps prior to using the tool:
-· Select a set of representative compounds relevant to the target application
-· Design and perform 1D scouting experiments under different chromatographic conditions (e.g., columns, mobile phase, pH, modifiers, modes)
-· Extract retention data for each compound and condition (peak widths can also be included if available, but are optional)
-· Calculate experimental peak capacities
-
-Once these data are collected and organized, they can be imported into the tool for orthogonality assessment and condition ranking.
-
-For more details on experimental design and gradient setup, please refer to the associated publication and to the documentation link in About section.\
-"""
-
-USER_GUIDE_TEXT = """\
-Step-by-step workflow:
-To use the tool, follow the steps below, which match the sections and subsections in the menu bar, one by one. For a practical example, you can also watch the tutorial video in the About section.
-
-Step 1 — Data Import and Normalization
-A — Data import
-· Upload retention times and peak capacity data from 1D scouting runs
-· Accepted formats: Excel / CSV
-· Minimum requirement: retention data (other input optional)
-
-B — Data normalization
-· Scaling of retention times to harmonize the retention space
-· Particularly important when different column geometries are used
-· Three scaling methods are available (the default option can be used if unsure)
-· Additional inputs are required when selecting the void time and wosel approaches (void time and gradient end time)
-
-Step 2 — Visual Comparison of Paired Conditions
-· Pairwise plots of conditions are available in the "Data Plotting Pairwise" section
-· Enables a quick visual assessment of separation space usage between dimensions
-
-Step 3 — Orthogonality Assessment
-· Calculation of multiple orthogonality metrics
-· Visualization of the results for each metric
-
-Step 4 — Redundancy Check (Correlation Matrix)
-· Identify metrics that provide overlapping information
-· The cross-correlation matrix highlights relationships between metrics and groups strongly correlated ones in a summary table
-
-Step 5 — Final Evaluation & Ranking
-· Calculation of a composite orthogonality score by averaging values across metric groups
-· Estimation of hypothetical practical 2D peak capacity using either the suggested score or a user-defined one
-· Ranking based on orthogonality only, hypothetical practical 2D peak capacity, or a Heinisch-inspired method
-· Identification of the most promising 2D combinations based on practical criteria\
-"""
 
 
 # ── Demo ──────────────────────────────────────────────────────────────────────

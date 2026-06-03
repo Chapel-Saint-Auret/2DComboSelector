@@ -30,8 +30,7 @@ from PySide6.QtWidgets import (
     QSizePolicy,
     QSplitter,
     QVBoxLayout,
-    QWidget,
-    QComboBox,
+    QWidget, QComboBox,
 )
 
 from combo_selector.ui.widgets.custom_toolbar import CustomToolbar
@@ -41,24 +40,7 @@ from combo_selector.ui.widgets.qcombobox_cmap import QComboBoxCmap
 from combo_selector.ui.widgets.style_table import StyledTable
 from combo_selector.ui.widgets.section_help_button import SectionHelpButton
 from combo_selector.utils import resource_path
-
-# Maps full metric names to abbreviated display names for heatmap labels
-METRIC_CORR_MAP = {
-    "Convex hull relative area": "CH Area",
-    "Bin box counting": "Bin Box",
-    "Gilar-Watson method": "Gilar-W",
-    "Modeling approach": "Mod App",
-    "Conditional entropy": "Cond Ent",
-    "Pearson Correlation": "Pearson",
-    "Spearman Correlation": "Spearman",
-    "Kendall Correlation": "Kendall",
-    "Asterisk equations": "Asterisk",
-    "NND Arithm mean": "NND-A",
-    "NND Geom mean": "NND-G",
-    "NND Harm mean": "NND-H",
-    "%FIT": "%FIT",
-    "%BIN": "%BIN",
-}
+from combo_selector.constants import METRIC_CORR_MAP
 
 # Checkbox icon paths
 checked_icon_path = resource_path("icons/checkbox_checked.svg").replace("\\", "/")
@@ -155,9 +137,7 @@ class RedundancyCheckPage(QFrame):
             self.plot_correlation_heat_map
         )
         self.show_triangle_grp.buttonClicked.connect(self.plot_correlation_heat_map)
-        self.select_correlation_matrix.currentIndexChanged.connect(
-            self.update_plot_and_redundacy_group
-        )
+        self.select_correlation_matrix.currentIndexChanged.connect(self.update_plot_and_redundacy_group)
 
     def _create_top_section(self) -> QFrame:
         """Create the top section with input panel and heatmap.
@@ -466,12 +446,8 @@ class RedundancyCheckPage(QFrame):
             markdown_path="markdown/heatmap.md",
             parent=plot_title_bar,
         )
-        plot_help_btn.setFixedSize(
-            22, 22
-        )  # ← explicit size, same as the close btn in HelpDialog
-        plot_help_btn.setIconSize(
-            QSize(16, 16)
-        )  # ← keep icon smaller than the button box
+        plot_help_btn.setFixedSize(22, 22)           # ← explicit size, same as the close btn in HelpDialog
+        plot_help_btn.setIconSize(QSize(16, 16))     # ← keep icon smaller than the button box
         plot_help_btn.setStyleSheet("""
             QToolButton {
                 border: none;
@@ -485,17 +461,15 @@ class RedundancyCheckPage(QFrame):
         """)
 
         plot_title_layout.addWidget(plot_title, 0, Qt.AlignVCenter)
-        plot_title_layout.addWidget(
-            plot_help_btn, 0, Qt.AlignVCenter
-        )  # ← per-item alignment flag
+        plot_title_layout.addWidget(plot_help_btn, 0, Qt.AlignVCenter)  # ← per-item alignment flag
         plot_title_layout.addStretch(1)
 
         self.fig = Figure(figsize=(15, 15))
-        self.fig.suptitle("Inter-metric correlation heatmap", fontsize=13)
+        self.fig.suptitle('Inter-metric correlation heatmap', fontsize=13)
         self.canvas = FigureCanvas(self.fig)
         self.toolbar = CustomToolbar(self.canvas)
 
-        self.fig.subplots_adjust(bottom=0.170, wspace=0.300)  # Space for long labels
+        self.fig.subplots_adjust(bottom=0.170,wspace=0.300)  # Space for long labels
         self._ax = self.canvas.figure.add_subplot(1, 1, 1)
         self._ax.set_box_aspect(1)
         self._ax.set_xlim(0, 1)
@@ -517,17 +491,11 @@ class RedundancyCheckPage(QFrame):
         table_frame_layout = QHBoxLayout(table_frame)
         table_frame_layout.setContentsMargins(20, 20, 20, 20)
 
-        self.styled_table = StyledTable("Grouped Metric Table", value_format=".2f")
-        self.styled_table.add_title_bar_info_button(
-            markdown_path="markdown/group_metric_table.md"
-        )
-        self.styled_table.set_header_label(
-            ["Group", "Correlated Metrics", "Average Group Correlation"]
-        )
+        self.styled_table = StyledTable("Grouped Metric Table",value_format=".2f")
+        self.styled_table.add_title_bar_info_button(markdown_path="markdown/group_metric_table.md")
+        self.styled_table.set_header_label(["Group", "Correlated Metrics","Average Group Correllation"])
         self.styled_table.set_default_row_count(10)
-        self.styled_table.add_help_button(
-            2, "Average Group Correlation", "markdown/average_group_correlation.md"
-        )
+        self.styled_table.add_help_button(2, "Average Group Correlation","markdown/average_group_correlation.md")
 
         table_frame_layout.addWidget(self.styled_table)
 
@@ -549,9 +517,7 @@ class RedundancyCheckPage(QFrame):
             - Updates correlation groups table
         """
         self.styled_table.clean_table()
-        self.styled_table.set_header_label(
-            ["Group", "Correlated Metrics", "Average Group Correlation"]
-        )
+        self.styled_table.set_header_label(["Group", "Correlated Metrics","Average Group Correllation"])
 
         if self.model.get_orthogonality_metric_corr_matrix_df().empty:
             return
@@ -578,28 +544,23 @@ class RedundancyCheckPage(QFrame):
             - Highlights threshold if enabled
         """
         self.fig.clf()
-        self.fig.suptitle("Inter-metric correlation heatmap", fontsize=13)
+        self.fig.suptitle('Inter-metric correlation heatmap', fontsize=13)
         self.fig.patch.set_facecolor("white")
         self._ax = self.fig.add_subplot()
         # self._ax = self.fig.add_subplot(121)
         # self._ax2 = self.fig.add_subplot(122)
 
-        if self.select_correlation_matrix.currentText() == "Values":
-            self.selected_correlation_matrix = (
-                self.model.get_orthogonality_metric_corr_matrix_df().corr()
-            )
-            self._ax.set_title("Value-Based", color="0.7")
 
-        if self.select_correlation_matrix.currentText() == "Rank":
-            self.selected_correlation_matrix = (
-                self.model.get_orthogonality_metric_ranking_corr_matrix_df().corr()
-            )
-            self._ax.set_title("Ranking-Based", color="0.7")
+        if self.select_correlation_matrix.currentText() == 'Values':
+            self.selected_correlation_matrix = self.model.get_orthogonality_metric_corr_matrix_df().corr()
+            self._ax.set_title('Value-Based',color='0.7')
 
-        if self.select_correlation_matrix.currentText() == "coverage vs distribution":
-            self.selected_correlation_matrix = (
-                self.model.get_coverage_distribution_matrix_df()
-            )
+        if self.select_correlation_matrix.currentText() == 'Rank':
+            self.selected_correlation_matrix = self.model.get_orthogonality_metric_ranking_corr_matrix_df().corr()
+            self._ax.set_title('Ranking-Based',color='0.7')
+
+        if self.select_correlation_matrix.currentText() == 'coverage vs distribution':
+            self.selected_correlation_matrix = self.model.get_coverage_distribution_matrix_df()
 
         if self.selected_correlation_matrix.empty:
             return
@@ -608,14 +569,11 @@ class RedundancyCheckPage(QFrame):
 
         # Map to abbreviated display names
         metric_list = [
-            METRIC_CORR_MAP[metric]
-            for metric in list(self.selected_correlation_matrix.columns)
+            METRIC_CORR_MAP[metric] for metric in list(self.selected_correlation_matrix.columns)
         ]
 
         if self.hierarchical_clustering.checkState() == Qt.Checked:
-            self.selected_correlation_matrix = self.cluster_corr(
-                self.selected_correlation_matrix
-            )
+            self.selected_correlation_matrix = self.cluster_corr(self.selected_correlation_matrix)
 
         if self.show_cbar.checkState() == Qt.Checked:
             cbar_state = True
@@ -624,17 +582,11 @@ class RedundancyCheckPage(QFrame):
 
         # Determine triangle mask
         if self.lower_triangle_matrix.checkState() == Qt.Checked:
-            self.heatmap_mask = np.triu(
-                np.ones_like(self.selected_correlation_matrix, dtype=bool)
-            )
+            self.heatmap_mask = np.triu(np.ones_like(self.selected_correlation_matrix, dtype=bool))
         elif self.upper_triangle_matrix.checkState() == Qt.Checked:
-            self.heatmap_mask = np.tril(
-                np.ones_like(self.selected_correlation_matrix, dtype=bool)
-            )
+            self.heatmap_mask = np.tril(np.ones_like(self.selected_correlation_matrix, dtype=bool))
         else:
-            self.heatmap_mask = np.zeros_like(
-                self.selected_correlation_matrix, dtype=bool
-            )
+            self.heatmap_mask = np.zeros_like(self.selected_correlation_matrix, dtype=bool)
 
         # Plot heatmap
         # g = sns.heatmap(
@@ -656,6 +608,7 @@ class RedundancyCheckPage(QFrame):
         # g.set_xticklabels(metric_list, fontsize=7)
         # g.set_yticklabels(metric_list, rotation=0, fontsize=7)
 
+
         v = sns.heatmap(
             self.selected_correlation_matrix,
             mask=self.heatmap_mask,
@@ -666,7 +619,7 @@ class RedundancyCheckPage(QFrame):
             cbar_kws={
                 "shrink": 0.6,  # shorter bar (60% of default height)
                 "fraction": 0.04,  # thinner bar width
-                "pad": 0.02,  # gap from heatmap
+                "pad": 0.02  # gap from heatmap
             },
             linewidths=0.1,
             annot=True,
@@ -722,12 +675,12 @@ class RedundancyCheckPage(QFrame):
 
             # Create mask: Ignore diagonal and highlight values above threshold
             self.highlight_heatmap_mask = (
-                self.corr_matrix.abs() >= (threshold - tolerance)
-            ) & (~np.eye(len(self.corr_matrix), dtype=bool))
+                                                  self.corr_matrix.abs() >= (threshold - tolerance)
+                                          ) & (~np.eye(len(self.corr_matrix), dtype=bool))
 
             self.highlight_heatmap_mask = (
-                ~self.heatmap_mask
-            ) & self.highlight_heatmap_mask
+                                              ~self.heatmap_mask
+                                          ) & self.highlight_heatmap_mask
 
             # Overlay red borders
             for i in range(len(self.corr_matrix)):
@@ -759,9 +712,7 @@ class RedundancyCheckPage(QFrame):
 
         matrix_type = self.select_correlation_matrix.currentText()
 
-        self.model.create_correlation_group(
-            matrix_type=matrix_type, threshold=threshold, tol=tolerance
-        )
+        self.model.create_correlation_group(matrix_type=matrix_type,threshold=threshold, tol=tolerance)
 
         # self.model.fill_correlation_group_classification()
 
@@ -782,9 +733,7 @@ class RedundancyCheckPage(QFrame):
     # Hierarchical Clustering
     # ==========================================================================
 
-    def cluster_corr(
-        self, corr_array: pd.DataFrame, inplace: bool = False
-    ) -> pd.DataFrame:
+    def cluster_corr(self, corr_array: pd.DataFrame, inplace: bool = False) -> pd.DataFrame:
         """Rearrange correlation matrix using hierarchical clustering.
 
         Groups highly correlated variables next to each other using

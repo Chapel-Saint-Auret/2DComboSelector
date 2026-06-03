@@ -13,6 +13,7 @@ This module provides:
 
 import os
 import re
+import sys
 from enum import Enum
 
 import numpy as np
@@ -25,16 +26,16 @@ from collections import Counter
 # Shared constants
 # ---------------------------------------------------------------------------
 
-CHROM_MODE = ["RPLC", "HILIC", "IEX", "SEC", "HIC", "SFC", "vs"]
+CHROM_MODE = ['RPLC', 'HILIC', 'IEX', 'SEC', 'HIC', 'SFC', 'vs']
 
-FEASIBILITY = {
-    "RPLC vs RPLC": {"Compatibility": "High", "Complexity": "Low"},
-    "RPLC vs HILIC": {"Compatibility": "Moderate", "Complexity": "Moderate"},
-    "RPLC vs SFC": {"Compatibility": "Low", "Complexity": "High"},
-    "HILIC vs HILIC": {"Compatibility": "High", "Complexity": "Low"},
-    "HILIC vs SFC": {"Compatibility": "Moderate", "Complexity": "High"},
-    "SFC vs SFC": {"Compatibility": "Moderate", "Complexity": "High"},
-}
+FEASABILITY =   {
+                    'RPLC vs RPLC': {'Compatibility':'High','Complexity':'Low'},
+                    'RPLC vs HILIC': {'Compatibility':'Moderate','Complexity':'Moderate'},
+                    'RPLC vs SFC': {'Compatibility':'Low','Complexity':'High'},
+                    'HILIC vs HILIC': {'Compatibility':'High','Complexity':'Low'},
+                    'HILIC vs SFC': {'Compatibility':'Moderate','Complexity':'High'},
+                    'SFC vs SFC': {'Compatibility':'Moderate','Complexity':'High'}
+                }
 
 
 METRIC_MAPPING = {
@@ -43,7 +44,11 @@ METRIC_MAPPING = {
         "include_in_score": True,
         "include_in_corr_mat": False,
     },
-    "title": {"table_index": 1, "include_in_score": True, "include_in_corr_mat": False},
+    "title": {
+    "table_index": 1,
+    "include_in_score": True,
+    "include_in_corr_mat": False},
+
     "nb_peaks": {
         "table_index": 2,
         "include_in_score": False,
@@ -262,30 +267,44 @@ class FuncStatus(Enum):
     COMPUTED = 1
 
 
-def get_symmetric_mode_dict(data_dict: dict, key: str) -> dict | None:
-    """Look up a chromatographic mode pair in a symmetric dictionary.
+def resource_path(relative_path: str) -> str:
+    """Get absolute path to resource, works for dev environement and for PyInstaller bundle.
 
-    Tries the key as-is first, then reverses the "A vs B" order to "B vs A"
-    so that both orderings resolve to the same entry.
+    This function resolves paths correctly whether running from source
+    or from a PyInstaller-bundled executable.
 
     Args:
-        data_dict (dict): Dictionary keyed by "Mode1 vs Mode2" strings.
-        key (str): The chromatographic mode pair to look up.
+        relative_path (str): Path relative to this file, 
+                            e.g. 'resources/icons/myicon.svg'
 
     Returns:
-        dict | None: The matching dictionary entry, or ``None`` if not found.
+        str: Absolute path .
+
+    Example:
+        >>> icon_path = resource_path('resources/icons/app.svg')
+        >>> # Returns full path whether in dev or bundled mode
     """
+    try:
+        # PyInstaller creates a temp folder and stores its path in _MEIPASS
+        base_path = sys._MEIPASS
+    except AttributeError:
+        # Use the directory where this script is located (e.g., src/combo_selector/)
+        base_path = os.path.dirname(os.path.abspath(__file__))
+
+    return os.path.join(base_path, relative_path)
+
+
+def get_symmetric_mode_dict(data_dict, key):
     if key in data_dict:
         return data_dict[key]
 
-    # Try reversing the "A vs B" order
-    parts = key.split(" vs ")
+    # Try reversing
+    parts = key.split(' vs ')
     if len(parts) == 2:
         rev_key = f"{parts[1]} vs {parts[0]}"
         return data_dict.get(rev_key)
 
-    return None
-
+    return 'Unknown'
 
 def load_simple_table(filepath: str, sheetname: str = 0) -> pd.DataFrame:
     """Load a simple 2-row or 2-column table from an Excel file.
@@ -296,7 +315,7 @@ def load_simple_table(filepath: str, sheetname: str = 0) -> pd.DataFrame:
 
     Args:
         filepath (str): Path to the Excel file.
-        sheetname (str | int, optional): Name or index of the sheet to load.
+        sheetname (str | int, optional): Name or index of the sheet to load. 
                                          Defaults to 0 (first sheet).
 
     Returns:
@@ -329,10 +348,10 @@ def load_simple_table(filepath: str, sheetname: str = 0) -> pd.DataFrame:
 
 
 def load_table_with_header_anywhere(
-    filepath: str,
-    sheetname: str | int = 0,
-    min_header_cols: int = 2,
-    auto_fix_duplicates: bool = True,
+        filepath: str,
+        sheetname: str | int = 0,
+        min_header_cols: int = 2,
+        auto_fix_duplicates: bool = True
 ) -> pd.DataFrame:
     """Load a table from Excel, automatically detecting the header row.
 
@@ -379,9 +398,7 @@ def load_table_with_header_anywhere(
 
     # Now read again, skipping to that header row, using it as header
     # Fix: Use index_col=None to prevent pandas from guessing an index column
-    df = pd.read_excel(
-        filepath, sheet_name=sheetname, header=header_row, index_col=None
-    )
+    df = pd.read_excel(filepath, sheet_name=sheetname, header=header_row, index_col=None)
     df = df.dropna(how="all")  # Drop fully empty rows
     df = df.loc[:, ~df.columns.str.contains("^Unnamed")]  # Drop unnamed columns
 
@@ -421,7 +438,8 @@ def extract_set_number(name: str) -> int | None:
 
 
 def normalize_x_y_series(
-    x_series: pd.Series, y_series: pd.Series
+        x_series: pd.Series,
+        y_series: pd.Series
 ) -> tuple[pd.Series, pd.Series]:
     """Normalize two pandas Series using min-max normalization to [0, 1] range.
 
@@ -513,7 +531,9 @@ def point_is_below_curve(x: float, y: float, curve: callable) -> bool:
 
 
 def get_list_of_point_above_curve(
-    x_series: np.ndarray | pd.Series, y_series: np.ndarray | pd.Series, curve: callable
+        x_series: np.ndarray | pd.Series,
+        y_series: np.ndarray | pd.Series,
+        curve: callable
 ) -> list[tuple[float, float]]:
     """Filter points that lie above a specified curve.
 
@@ -545,7 +565,9 @@ def get_list_of_point_above_curve(
 
 
 def get_list_of_point_below_curve(
-    x_series: np.ndarray | pd.Series, y_series: np.ndarray | pd.Series, curve: callable
+        x_series: np.ndarray | pd.Series,
+        y_series: np.ndarray | pd.Series,
+        curve: callable
 ) -> list[tuple[float, float]]:
     """Filter points that lie below a specified curve.
 
@@ -577,7 +599,9 @@ def get_list_of_point_below_curve(
 
 
 def compute_bin_box_mask_color(
-    x: np.ndarray | pd.Series, y: np.ndarray | pd.Series, nb_boxes: int
+        x: np.ndarray | pd.Series,
+        y: np.ndarray | pd.Series,
+        nb_boxes: int
 ) -> tuple[np.ma.MaskedArray, np.ndarray, np.ndarray]:
     """Compute a masked 2D histogram showing which bins contain data points.
 
@@ -590,7 +614,7 @@ def compute_bin_box_mask_color(
         nb_boxes (int): The number of bins along each axis.
 
     Returns:
-        tuple[np.ma.MaskedArray, np.ndarray, np.ndarray]:
+        tuple[np.ma.MaskedArray, np.ndarray, np.ndarray]: 
             - Masked histogram (transposed), with empty bins masked
             - x bin edges
             - y bin edges
@@ -626,7 +650,10 @@ def compute_bin_box_mask_color(
     return h_color.T, x_edges, y_edges
 
 
-def compute_percent_fit_for_set(set_key: str, set_data: dict) -> tuple[str, dict]:
+def compute_percent_fit_for_set(
+        set_key: str,
+        set_data: dict
+) -> tuple[str, dict]:
     """Compute the %FIT orthogonality metric for a single set.
 
     The %FIT metric measures how well peaks fit to quadratic regression curves.
@@ -639,7 +666,7 @@ def compute_percent_fit_for_set(set_key: str, set_data: dict) -> tuple[str, dict
                         with retention time data.
 
     Returns:
-        tuple[str, dict]:
+        tuple[str, dict]: 
             - set_key: The input set identifier
             - result: Dictionary containing:
                 - 'quadratic_reg_xy': Quadratic model for X vs Y
@@ -671,7 +698,10 @@ def compute_percent_fit_for_set(set_key: str, set_data: dict) -> tuple[str, dict
         return (x - peak[0]) ** 2 + (y - peak[1]) ** 2
 
     def compute_minimal_distances(
-        peaks: list, curve: callable, num_points: int = 50, fine_range: float = 0.01
+            peaks: list,
+            curve: callable,
+            num_points: int = 50,
+            fine_range: float = 0.01
     ) -> list[float]:
         """Compute minimal distance from each peak to curve with refinement.
 

@@ -37,14 +37,10 @@ from combo_selector.ui.widgets.style_table import StyledTable
 from combo_selector.ui.widgets.info_dialog import InfoPopupDialog
 from combo_selector.ui.widgets.searchable_combobox import SearchableComboBox
 from combo_selector.utils import resource_path
+from combo_selector.constants import TIPS
 
 # Dropdown arrow icon path
 drop_down_icon_path = resource_path("icons/drop_down_arrow.png").replace("\\", "/")
-
-TIPS = """<p><strong><span style="text-decoration: underline;">Tip 1</span>:</strong><br>
-      Click on a plot area to select it, then choose a dataset from the table to display it there.</p>
-<p><strong><span style="text-decoration: underline;">Tip 2</span>:</strong><br>
-Collapse the table section by moving the horizontal splitter down—this will open the table in a separate window.</p>"""
 
 
 class PlotPairWisePage(QFrame):

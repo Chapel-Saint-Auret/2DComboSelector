@@ -41,69 +41,7 @@ from PySide6.QtWidgets import (
 
 from combo_selector.ui.widgets.modern_side_menu import ModernSidebar
 from combo_selector.utils import resource_path
-
-
-# =============================================================================
-# Main Window Stylesheet
-# =============================================================================
-
-MAIN_WINDOW_STYLESHEET = """
-QPushButton#btn_close, QPushButton#btn_maximize, QPushButton#btn_minimize {
-    border: none;
-    background: transparent;
-    border-radius: 4px;
-}
-
-QPushButton#btn_close:hover {
-    background-color: rgba(255, 0, 0, 100);
-}
-
-QPushButton#btn_maximize:hover {
-    background-color: rgba(85, 255, 127, 100);
-}
-
-QPushButton#btn_minimize:hover {
-    background-color: rgba(255, 170, 0, 100);
-}
-
-QFrame#central_widget_frame {
-    background-color: #edf1f8;
-    border-radius: 22px;
-}
-
-QFrame#side_menu_frame {
-    background: #325372;
-    border-radius: 10px;
-}
-
-QHeaderView::section {
-    padding: 0px;
-    height: 20px;
-    border: 0.5px solid #aeadac;
-    background: #dddddd;
-}
-
-QPushButton {
-    padding: 5px;
-    background-color: #dddddd;
-    border: 0.5px solid #aeadac;
-    border-radius: 3px;
-}
-
-QPushButton:hover {
-    background-color: #d6e5fb;
-    border: 1px solid #234471;
-}
-
-QPushButton:pressed:active {
-    background-color: #5188d8;
-    border: 1px solid #7e7eff;
-}
-
-QPushButton:focus {
-    border: 1px solid #234471;
-}
-"""
+from combo_selector.constants import MAIN_WINDOW_STYLESHEET
 
 
 class CustomMainWindow(QMainWindow):

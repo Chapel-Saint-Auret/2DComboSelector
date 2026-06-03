@@ -17,70 +17,14 @@ from PySide6.QtGui import QFont
 from dataclasses import dataclass
 
 from combo_selector.ui.widgets.flat_radio_grouped_button import FlatRadioGroupedButton
+from combo_selector.constants import (  # noqa: F401 – re-exported for callers
+    PLOT_TYPES,
+    PLOT_DESCRIPTIONS,
+    CRITERIA_ITEMS,
+    RECOMMENDATION_ITEMS,
+)
 
 import sys
-
-
-# ---------------------------------------------------------------------------
-# Plot metadata
-# ---------------------------------------------------------------------------
-
-PLOT_TYPES = [
-    "Orthogonality Space",
-    "Metric Removal Impact On Orthogonality Rank",
-    "Multi-Criteria Space",
-    "Chromatographic Mode Performance",
-    "Recommendation Distribution",
-    "Feasibility Profile",
-    "Final Rank vs Recommendation",
-    "Final Rank Shift Scatter",
-    "Final Rank Shift Distribution",
-    "Rank Shift by Combination",
-    "Top Rank Overlap",
-]
-
-PLOT_DESCRIPTIONS = {
-    "Orthogonality Space":
-        "Scatter plot of chromatographic condition pairs in orthogonality space.",
-    "Metric Removal Impact On Orthogonality Rank":
-        "Shows the median orthogonality rank obtained after removing each metric from its correlation group.",
-    "Multi-Criteria Space":
-        "Scatter plot of solutions in criteria space to explore trade-offs between objectives.",
-    "Chromatographic Mode Performance":
-        "Compares chromatographic modes across selected criteria.",
-    "Recommendation Distribution":
-        "Shows the distribution of recommended condition pairs.",
-    "Feasibility Profile":
-        "Displays feasibility scores across the evaluated condition space.",
-    "Final Rank vs Recommendation":
-        "Cross-plots the final consensus rank against recommendation scores.",
-    "Final Rank Shift Scatter":
-        "",
-    "Final Rank Shift Distribution":
-        "",
-    "Rank Shift by Combination":
-        "Lollipop chart showing rank shift (New − Old) for each combination, sorted by old rank.",
-    "Top Rank Overlap":
-        "Bar chart comparing how many combinations are shared between old and new top-10, top-50, and top-100 lists.",
-}
-
-
-CRITERIA_ITEMS = [
-    "All criteria",
-    "Orthogonality",
-    "Elution Domain",
-    "Peak Capacity",
-    "Final consensus",
-    "Peak rate",
-]
-
-RECOMMENDATION_ITEMS = [
-                "All recommendation",
-                "Highly recommended",
-                "Recommended",
-                "Use with caution",
-                "Not recommended"
-]
 
 
 # ---------------------------------------------------------------------------

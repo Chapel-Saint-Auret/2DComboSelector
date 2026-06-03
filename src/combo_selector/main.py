@@ -20,9 +20,9 @@ Background workers are used for:
 
 import sys
 
-from PySide6.QtCore import QThreadPool, Qt
+from PySide6.QtCore import QThreadPool,Qt
 from PySide6.QtGui import QIcon
-from PySide6.QtWidgets import QApplication
+from PySide6.QtWidgets import QApplication,QFrame
 
 
 from combo_selector.core.orthogonality import Orthogonality
@@ -127,9 +127,7 @@ class ComboSelectorMain(CustomMainWindow):
         )
 
         self.add_side_bar_item(
-            "Multi-Criteria\nEvaluation",
-            self.results_page,
-            resource_path("icons/rank_icon.png"),
+            "Multi-Criteria\nEvaluation", self.results_page, resource_path("icons/rank_icon.png")
         )
 
         self.add_side_bar_item(
@@ -137,7 +135,7 @@ class ComboSelectorMain(CustomMainWindow):
         )
 
         self.add_side_bar_item(
-            "About", self.about_page, resource_path("icons/about.png"), has_page=False
+            "About",self.about_page, resource_path("icons/about.png"),has_page=False
         )
 
         # --- Signal connections --------------------------------------------
@@ -269,6 +267,23 @@ class ComboSelectorMain(CustomMainWindow):
         self.results_page.update_results_table()
         # self.results_page.update_figure()
         # self.plot_page.update_dataset_selector_state()
+    def _start_results_worker_after_redundancy(self) -> None:
+        """Start the results worker after redundancy analysis completes.
+
+        Private method that initiates the results computation worker.
+        This is called either after redundancy analysis finishes or
+        when peak capacity data is updated.
+
+        Side Effects:
+            - Creates and starts ResultsWorker in background thread
+            - Worker completion triggers page initialization
+        """
+
+        # self.model.create_results_table()
+        self.results_page.init_page(self._cached_metric_list)
+        self.set_status_text("Result page ready!")
+        self.export_page.init_page(self.metric_list_for_figure)
+        self.set_status_text("Export page ready!")
 
 def main():
     """Main application entry point.

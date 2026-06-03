@@ -191,10 +191,7 @@ class MetricEngine:
                 "func": self.compute_kendall,
                 "status": FuncStatus.NOT_COMPUTED,
             },
-            "CC mean": {
-                "func": self.compute_cc_mean,
-                "status": FuncStatus.NOT_COMPUTED,
-            },
+            "CC mean": {"func": self.compute_cc_mean, "status": FuncStatus.NOT_COMPUTED},
             "Asterisk equations": {
                 "func": self.compute_asterisk,
                 "status": FuncStatus.NOT_COMPUTED,
@@ -260,6 +257,13 @@ class MetricEngine:
         for metric in ["Bin box counting", "Modeling approach", "Gilar-Watson method"]:
             self.om_function_map[metric]["status"] = FuncStatus.NOT_COMPUTED
 
+    def om_using_nb_bin_computed(self) -> None:
+        """Placeholder method for future bin-dependent orthogonality metric handling.
+
+        Currently, does nothing, reserved for future functionality.
+        """
+        pass
+
     def suggested_om_score_flag(self, flag: bool) -> None:
         """Set whether to use suggested score or computed score for practical 2D peak capacity computation.
 
@@ -268,9 +272,7 @@ class MetricEngine:
         """
         self.use_suggested_score = flag
 
-    def update_metrics(
-        self, dict_key: str, metric_name: str, value, table_row_index: int = -1
-    ) -> None:
+    def update_metrics(self, dict_key: str, metric_name: str, value, table_row_index: int = -1) -> None:
         """Update orthogonality score and table data for a given metric.
 
         Args:
@@ -284,6 +286,7 @@ class MetricEngine:
         """
         # Update orthogonality score
         if METRIC_MAPPING[metric_name]["include_in_score"]:
+
             # Update a set with a new metric
             if dict_key in self.orthogonality_score:
                 self.orthogonality_score[dict_key].update({metric_name: value})
@@ -344,9 +347,9 @@ class MetricEngine:
                 set_key, "convex_hull", cvx_volume, table_row_index=set_number - 1
             )
 
-        self.om_function_map["Convex hull relative area"]["status"] = (
-            FuncStatus.COMPUTED
-        )
+        self.om_function_map["Convex hull relative area"][
+            "status"
+        ] = FuncStatus.COMPUTED
 
     def compute_bin_box(self) -> None:
         """Compute the bin box ratio orthogonality metric for each set.
@@ -399,7 +402,7 @@ class MetricEngine:
 
             set_number = extract_set_number(set_key)
             self.update_metrics(
-                set_key, "pearson_r", (1 - pearson_r**2), table_row_index=set_number - 1
+                set_key, "pearson_r", (1 - pearson_r ** 2), table_row_index=set_number - 1
             )
 
         self.om_function_map["Pearson Correlation"]["status"] = FuncStatus.COMPUTED
@@ -426,7 +429,7 @@ class MetricEngine:
             self.update_metrics(
                 set_key,
                 "spearman_rho",
-                (1 - spearman_rho**2),
+                (1 - spearman_rho ** 2),
                 table_row_index=set_number - 1,
             )
 
@@ -454,7 +457,7 @@ class MetricEngine:
             self.update_metrics(
                 set_key,
                 "kendall_tau",
-                (1 - kendall_tau**2),
+                (1 - kendall_tau ** 2),
                 table_row_index=set_number - 1,
             )
 
@@ -463,7 +466,7 @@ class MetricEngine:
     def compute_cc_mean(self) -> None:
         """Compute the mean of correlation coefficient-based orthogonality metrics.
 
-        Calculates the trimmed mean of (1 - r^2), (1 - rho^2), and (1 - tau^2).
+        Calculates the trimmed mean of (1 - r^2), (1 - rho^2), and (1 - tau^2).e
 
         Side Effects:
             - Updates cc_mean metric in table_data
@@ -483,7 +486,7 @@ class MetricEngine:
             self.update_metrics(
                 set_key,
                 "cc_mean",
-                tmean([(1 - r**2), (1 - rho**2), (1 - tau**2)]),
+                tmean([(1 - r ** 2), (1 - rho ** 2), (1 - tau ** 2)]),
                 table_row_index=set_number - 1,
             )
 
@@ -768,7 +771,8 @@ class MetricEngine:
             p_square = self.bin_number * self.bin_number
             sum_bin = h_color.count()
 
-            orthogonality = (sum_bin - self.bin_number) / (0.63 * p_square)
+            orthogonality = (sum_bin - self.bin_number) / (
+                    (0.63 * p_square))
 
             set_data["gilar-watson"]["color_mask"] = h_color
             set_data["gilar-watson"]["edges"] = [x_edges, y_edges]
@@ -817,10 +821,10 @@ class MetricEngine:
 
             # 3) Perform OLS regression of y vs. x to get R²
             regression_result = linregress(x, y)
-            r_squared = regression_result.rvalue**2
+            R2 = regression_result.rvalue ** 2
             set_data["linregress"] = regression_result
 
-            c_peaks = 1.0 - r_squared
+            c_peaks = 1.0 - R2
             set_data["linregress_rvalue"] = c_peaks
 
             # 4) Compute overall orthogonality = C_pert * C_peaks
@@ -922,20 +926,20 @@ class MetricEngine:
             D2_title = set_data["y_title"]
 
             # Build a tiny DataFrame so we can standardize easily:
-            standardized_df = pd.DataFrame({D1_title: x, D2_title: y})
+            K = pd.DataFrame({D1_title: x, D2_title: y})
 
             #  Mean‐center and scale each column
-            mu_1 = standardized_df[D1_title].mean()
-            mu_2 = standardized_df[D2_title].mean()
+            mu_1 = K[D1_title].mean()
+            mu_2 = K[D2_title].mean()
 
-            sigma_1 = standardized_df[D1_title].std(ddof=0)
-            sigma_2 = standardized_df[D2_title].std(ddof=0)
+            sigma_1 = K[D1_title].std(ddof=0)
+            sigma_2 = K[D2_title].std(ddof=0)
 
-            standardized_df[D1_title] = (standardized_df[D1_title] - mu_1) / sigma_1
-            standardized_df[D2_title] = (standardized_df[D2_title] - mu_2) / sigma_2
+            K[D1_title] = (K[D1_title] - mu_1) / sigma_1
+            K[D2_title] = (K[D2_title] - mu_2) / sigma_2
 
             # Compute Pearson correlation C12 on the standardized columns
-            C12 = standardized_df[D1_title].corr(standardized_df[D2_title])
+            C12 = K[D1_title].corr(K[D2_title])
 
             #  Compute beta = arccos(C12)  (radians)
             beta = acos(C12)

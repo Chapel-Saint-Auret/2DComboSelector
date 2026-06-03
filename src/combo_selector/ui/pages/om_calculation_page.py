@@ -42,29 +42,10 @@ from combo_selector.ui.widgets.style_table import StyledTable
 from combo_selector.ui.widgets.section_help_button import SectionHelpButton
 from combo_selector.ui.widgets.animated_toogle_button import AnimatedSegmentedToggle
 from combo_selector.utils import resource_path
+from combo_selector.constants import METRIC_PLOT_MAP
 
 # Dropdown arrow icon path
 drop_down_icon_path = resource_path("icons/drop_down_arrow.png").replace("\\", "/")
-
-# Maps metric names (from model) to plot visualization names
-METRIC_PLOT_MAP = {
-    "Convex hull relative area": "Convex Hull",
-    "Bin box counting": "Bin Box",
-    "Pearson Correlation": "Linear regression",
-    "Spearman Correlation": "Linear regression",
-    "Kendall Correlation": "Linear regression",
-    "Asterisk equations": "Asterisk",
-    "%FIT": "%FIT yx",
-    "%BIN": "%BIN",
-    "Gilar-Watson method": None,  # No visualization
-    "Modeling approach": "Modeling approach",
-    "Geometric approach": "Geometric approach",
-    "Conditional entropy": "Conditional entropy",
-    "NND Arithm mean": None,  # No visualization
-    "NND Geom mean": None,  # No visualization
-    "NND Harm mean": None,  # No visualization
-    "NND mean": None,  # No visualization
-}
 
 
 class OMCalculationPage(QFrame):

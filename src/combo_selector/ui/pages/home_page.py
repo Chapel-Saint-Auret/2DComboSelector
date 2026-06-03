@@ -5,7 +5,7 @@ buttons for the How It Works, Before You Begin, and User Guide sections.
 """
 
 import sys
-from PySide6.QtCore import QSize, Qt, Signal
+from PySide6.QtCore import Qt, Signal
 from PySide6.QtGui import QPixmap
 from PySide6.QtWidgets import (
     QApplication,
@@ -19,9 +19,13 @@ from PySide6.QtWidgets import (
 )
 
 from combo_selector.utils import resource_path
-from combo_selector.ui.widgets.info_dialog import InfoPopupDialog, HOW_IT_WORKS_TEXT,USER_GUIDE_TEXT,BEFORE_YOU_BEGIN_TEXT
-
-PLOT_SIZE = QSize(600, 400)
+from combo_selector.ui.widgets.info_dialog import InfoPopupDialog
+from combo_selector.constants import (
+    PLOT_SIZE,
+    HOW_IT_WORKS_TEXT,
+    USER_GUIDE_TEXT,
+    BEFORE_YOU_BEGIN_TEXT,
+)
 
 
 class HomePage(QFrame):

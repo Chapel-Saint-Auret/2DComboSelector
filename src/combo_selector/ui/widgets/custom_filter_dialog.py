@@ -37,8 +37,7 @@ from PySide6.QtWidgets import (
 from PySide6.QtGui import QStandardItem, QStandardItemModel
 
 from combo_selector.ui.widgets.color_picker import ColorPicker
-
-CHROM_MODE = ['RPLC', 'HILIC', 'IEX', 'SEC', 'HIC', 'SFC','vs']
+from combo_selector.constants import CHROM_MODE
 
 
 class CustomComboBox(QComboBox):

@@ -29,9 +29,7 @@ from PySide6.QtWidgets import (
 )
 
 from combo_selector.utils import get_version, resource_path
-
-# Sidebar color scheme
-SIDEBAR_BG = "#232b43"
+from combo_selector.constants import SIDEBAR_BG
 
 
 class SidebarItemDelegate(QStyledItemDelegate):

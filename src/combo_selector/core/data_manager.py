@@ -122,6 +122,9 @@ class DataManager:
         """
         return self.normalized_retention_time_df
 
+    def get_number_of_combination(self):
+        return self.nb_combination
+
     def get_number_of_condition(self) -> int:
         """Get the number of experimental conditions.
 
@@ -157,7 +160,7 @@ class DataManager:
         self.nan_policy_option1_threshold = threshold
 
     def set_nan_policy_option2_threshold(self, threshold: float) -> None:
-        """Set the threshold for handling NaN values in the data for option 2.
+        """Set the thresoption2hold for handling NaN values in the data for option 2.
 
         Args:
             threshold (float): Percentage threshold (0-100) for NaN tolerance.
@@ -169,19 +172,7 @@ class DataManager:
     # NaN policy
     # ------------------------------------------------------------------
 
-    def remove_compound(self) -> None:
-        """Remove compounds (rows) exceeding the NaN threshold for option 1.
-
-        Iterates over each compound in the retention time DataFrame and removes
-        any row where the percentage of missing values exceeds
-        ``self.nan_policy_option1_threshold``.
-
-        Side Effects:
-            - Updates ``self.removed_compound_list`` with removed compound names.
-            - Drops rows from ``self.retention_time_df``.
-            - Refreshes ``self.compound_name_list``.
-            - Fills remaining NaN values with empty strings.
-        """
+    def remove_compound(self):
         self.removed_compound_list = []
         remove_compound_index = []
 
@@ -190,55 +181,29 @@ class DataManager:
             nan_count = (peak_retention_time.isna() | (peak_retention_time == "")).sum()
 
             # nan_policy_threshold is % of total condition
-            if (
-                nan_count * 100
-            ) / self.nb_condition > self.nan_policy_option1_threshold:
+            if (nan_count * 100) / self.nb_condition > self.nan_policy_option1_threshold:
                 remove_compound_index.append(row_data[0])
                 self.removed_compound_list.append(row_data[1][1])
 
         self.retention_time_df = self.retention_time_df.drop(remove_compound_index)
-        self.compound_name_list = self.retention_time_df["Compound Name"].tolist()
+        self.compound_name_list = self.retention_time_df['Compound Name'].tolist()
         self.retention_time_df = self.retention_time_df.fillna("").infer_objects(copy=False)
 
-    def remove_condition(self) -> None:
-        """Remove conditions (columns) exceeding the NaN threshold for option 2.
-
-        Iterates over each condition column in the retention time DataFrame and
-        removes any column where the percentage of missing values exceeds
-        ``self.nan_policy_option2_threshold``.
-
-        Side Effects:
-            - Updates ``self.removed_condition_list`` with removed condition names.
-            - Drops columns from ``self.retention_time_df``.
-            - Fills remaining NaN values with empty strings.
-        """
+    def remove_condition(self):
         self.removed_condition_list = []
 
         for column_data in self.retention_time_df.T.iterrows():
             condition_retention_time = column_data[1]
-            nan_count = (
-                condition_retention_time.isna() | (condition_retention_time == "")
-            ).sum()
+            nan_count = (condition_retention_time.isna() | (condition_retention_time == "")).sum()
 
             # nan_policy_threshold is % of total condition
             if (nan_count * 100) / self.nb_peaks > self.nan_policy_option2_threshold:
                 self.removed_condition_list.append(column_data[0])
 
-        self.retention_time_df = self.retention_time_df.drop(
-            columns=self.removed_condition_list
-        )
+        self.retention_time_df = self.retention_time_df.drop(columns=self.removed_condition_list)
         self.retention_time_df = self.retention_time_df.fillna("").infer_objects(copy=False)
 
-    def clear_all_nan(self) -> None:
-        """Reset NaN-removal tracking and fill all missing values with empty strings.
-
-        Clears the lists of removed compounds and conditions, then replaces every
-        NaN cell in the retention time DataFrame with an empty string.
-
-        Side Effects:
-            - Resets ``self.removed_compound_list`` and ``self.removed_condition_list``.
-            - Fills NaN values in ``self.retention_time_df`` in place.
-        """
+    def clear_all_nan(self):
         self.removed_compound_list = []
         self.removed_condition_list = []
 
@@ -288,9 +253,9 @@ class DataManager:
                 except (TypeError, ValueError):
                     return value
 
-            self.retention_time_df[column_name] = self.retention_time_df[
-                column_name
-            ].apply(_blank_if_below_threshold)
+            self.retention_time_df[column_name] = self.retention_time_df[column_name].apply(
+                _blank_if_below_threshold
+            )
 
     def clean_nan_value(self, option_list: str) -> None:
         """Handle NaN values in retention time data according to the specified option.
@@ -305,12 +270,11 @@ class DataManager:
             - Updates orthogonality_dict with cleaned x,y series
             - Calls update_combination_df() to refresh combination DataFrame
         """
-        function_map = {
-            "option 1": self.remove_compound,
-            "option 2": self.replace_rt_below_threshold,
-            "option 3": self.remove_condition,
-            "option 4": self.clear_all_nan,
-        }
+        function_map = {"option 1": self.remove_compound,
+                        "option 2": self.replace_rt_below_threshold,
+                        "option 3": self.remove_condition,
+                        "option 4": self.clear_all_nan,
+                        }
 
         for option in option_list:
             function_map[option]()
@@ -318,14 +282,14 @@ class DataManager:
         # update column_names list after droping some of them
         self.column_names = self.retention_time_df.columns.tolist()[2:]
 
-        # minus 1 to remove the peak column
+        #minus 1 to remove the peak column
         num_columns = len(self.column_names)
 
-        # always start at 1 because index 0 is for the peak# column
+        #always start at 1 because index 0 is for the peak# column
         current_column = 0
         set_number = 1
 
-        # initial orthogonality dict and table_data
+        #initial orthogonality dict and table_data
         self.orthogonality_dict = {}
         self.table_data = []
 
@@ -360,10 +324,8 @@ class DataManager:
                 self.update_metrics(set_key, "agreement_index", 0)
                 self.update_metrics(set_key, "outlier_metric_flag", 0)
                 self.update_metrics(set_key, "orthogonality_value", 0)
-                self.update_metrics(set_key, "2d_peak_capacity", "Not available")
-                self.update_metrics(
-                    set_key, "elution_composition_space", "Not available"
-                )
+                self.update_metrics(set_key, "2d_peak_capacity", 'Not available')
+                self.update_metrics(set_key, "elution_composition_space", 'Not available')
                 self.update_metrics(set_key, "heinisch", 0)
 
                 # check if x,y pair element contains at least one empty item.
@@ -497,7 +459,7 @@ class DataManager:
         """
         data_frame_copy = self.retention_time_df.copy()
 
-        # [2:] is because first two columns are compound# and compound name
+        #[2:] is because first two columns are compound# and compound name
         for column_name in data_frame_copy.columns[2:]:
             column_value = data_frame_copy[column_name]
 
@@ -538,7 +500,7 @@ class DataManager:
         """
         data_frame_copy = self.retention_time_df.copy()
 
-        # [2:] is because first two columns are compound# and compound name
+        #[2:] is because first two columns are compound# and compound name
         for column_name in data_frame_copy.columns[2:]:
             column_value = data_frame_copy[column_name]
 
@@ -580,7 +542,7 @@ class DataManager:
         """
         data_frame_copy = self.retention_time_df.copy()
 
-        # [2:] is because first two columns are compound# and compound name
+        #[2:] is because first two columns are compound# and compound name
         for column_name in data_frame_copy.columns[2:]:
             column_value = data_frame_copy[column_name]
 
@@ -687,19 +649,19 @@ class DataManager:
                 filepath, sheetname
             )
 
-            # rename automatically the first column (which should be the "Compound Name')
+            #rename automatically the first column (which should be the "Compound Name')
             self.retention_time_df = self.retention_time_df.rename(
-                columns={self.retention_time_df.columns[0]: "Compound Name"}
+                columns={self.retention_time_df.columns[0]: 'Compound Name'}
             )
 
             # check there is nan value in data frame
-            self.has_nan_value = self.retention_time_df.iloc[:, 1:].isnull().any().any()
-            # [1:] is used because first column is compound name
+            self.has_nan_value = self.retention_time_df.iloc[:,1:].isnull().any().any()
+            #[1:] is used because first column is compound name
             self.column_names = self.retention_time_df.columns.tolist()[1:]
             self.nb_condition = num_columns = len(self.column_names)
             self.nb_peaks = len(self.retention_time_df.iloc[:, 0])
 
-            self.compound_name_list = self.retention_time_df["Compound Name"].tolist()
+            self.compound_name_list = self.retention_time_df['Compound Name'].tolist()
 
             # Initialize loop parameters
             self.retention_time_df.insert(
@@ -712,6 +674,7 @@ class DataManager:
             if self.has_nan_value:
                 self.nan_policy_dialog.exec_()
             else:
+
                 while current_column < num_columns:
                     current_column_name = self.column_names[current_column]
                     x_values = self.retention_time_df[current_column_name]
@@ -736,12 +699,8 @@ class DataManager:
                         self.update_metrics(set_key, "agreement_index", 0)
                         self.update_metrics(set_key, "outlier_metric_flag", 0)
                         self.update_metrics(set_key, "orthogonality_value", 0)
-                        self.update_metrics(
-                            set_key, "2d_peak_capacity", "Not available"
-                        )
-                        self.update_metrics(
-                            set_key, "elution_composition_space", "Not available"
-                        )
+                        self.update_metrics(set_key, "2d_peak_capacity", 'Not available')
+                        self.update_metrics(set_key, "elution_composition_space",'Not available')
                         self.update_metrics(set_key, "heinisch", 0)
 
                         # Update orthogonality dictionary
@@ -846,21 +805,16 @@ class DataManager:
             self.retention_time_df_2d_peaks = load_simple_table(filepath, sheetname)
 
             # remove condition that has already been removed with the clean data widget
-            if set(self.removed_condition_list).issubset(
-                set(self.retention_time_df_2d_peaks.columns)
-            ):
-                self.retention_time_df_2d_peaks = self.retention_time_df_2d_peaks.drop(
-                    columns=self.removed_condition_list
-                )
+            if set(self.removed_condition_list).issubset(set(self.retention_time_df_2d_peaks.columns)):
+                self.retention_time_df_2d_peaks = self.retention_time_df_2d_peaks.drop(columns=self.removed_condition_list)
 
             columns = self.retention_time_df_2d_peaks.columns.tolist()
             num_columns = len(columns)
             set_number = 1
 
             if len(self.column_names) != num_columns:
-                raise ValueError(
-                    "Number of condition does not match the number of condition in retention time data."
-                )
+                raise ValueError("Number of condition does not match the number of condition in retention time data.")
+
 
             for col1_idx, col2_idx in combinations(range(num_columns), 2):
                 set_key = f"Set {set_number}"
@@ -891,7 +845,7 @@ class DataManager:
                         set_key,
                         "set_number",
                         set_number,
-                        table_row_index=set_number - 1,
+                        table_row_index=set_number - 1
                     )
                     self.update_metrics(
                         set_key, "title", expected_title, table_row_index=set_number - 1
@@ -900,38 +854,27 @@ class DataManager:
                         set_key,
                         "2d_peak_capacity",
                         peak_capacity,
-                        table_row_index=set_number - 1,
+                        table_row_index=set_number - 1
                     )
 
                 set_number += 1
 
             combination_table = [row[3] for row in self.table_data]
 
-            self.combination_df[
-                "Hypothetical 2D Peak Capacity"
-            ] = self.orthogonality_result_df["Hypothetical 2D Peak Capacity"] = (
-                combination_table
-            )
+            self.combination_df["Hypothetical 2D Peak Capacity"] = self.orthogonality_result_df['Hypothetical 2D Peak Capacity'] \
+                = combination_table
             self.peak_capacity_status = "peak_capacity_loaded"
-            self.orthogonality_result_df["Peak Capacity Rank"] = (
-                self.combination_df["Hypothetical 2D Peak Capacity"]
-                .rank(ascending=False, method="average")
-                .astype(int)
-            )
+            self.orthogonality_result_df['Peak Capacity Rank'] = self.combination_df["Hypothetical 2D Peak Capacity"].rank(ascending=False, method='average').astype(int)
             p_min = self.combination_df["Hypothetical 2D Peak Capacity"].min()
             p_max = self.combination_df["Hypothetical 2D Peak Capacity"].max()
-            self.orthogonality_result_df["Peak Capacity Utility"] = self.combination_df[
-                "Hypothetical 2D Peak Capacity"
-            ].apply(lambda x: (x - p_min) / (p_max - p_min))
+            self.orthogonality_result_df['Peak Capacity Utility'] = self.combination_df["Hypothetical 2D Peak Capacity"].apply(lambda x:(x-p_min)/(p_max-p_min))
             self.status = "loaded"
         except Exception as e:
             print(f"Error loading 2D peaks: {str(e)}")
             self.status = "error"
             raise
 
-    def load_elution_composition_space_area_data(
-        self, filepath: str, sheetname: str
-    ) -> None:
+    def load_elution_composition_space_area_data(self, filepath: str, sheetname: str) -> None:
         """Elution composition space area data from an Excel file.
 
         Args:
@@ -952,23 +895,16 @@ class DataManager:
             self.load_elution_composition_df = load_simple_table(filepath, sheetname)
 
             # remove condition that has already been removed with the clean data widget
-            if set(self.removed_condition_list).issubset(
-                set(self.load_elution_composition_df.columns)
-            ):
-                self.load_elution_composition_df = (
-                    self.load_elution_composition_df.drop(
-                        columns=self.removed_condition_list
-                    )
-                )
+            if set(self.removed_condition_list).issubset(set(self.load_elution_composition_df.columns)):
+                self.load_elution_composition_df = self.load_elution_composition_df.drop(
+                    columns=self.removed_condition_list)
 
             columns = self.load_elution_composition_df.columns.tolist()
             num_columns = len(columns)
             set_number = 1
 
             if len(self.column_names) != num_columns:
-                raise ValueError(
-                    "Number of condition does not match the number of condition in retention time data."
-                )
+                raise ValueError("Number of condition does not match the number of condition in retention time data.")
 
             for col1_idx, col2_idx in combinations(range(num_columns), 2):
                 set_key = f"Set {set_number}"
@@ -980,26 +916,16 @@ class DataManager:
                 elution_composition_space = int((e1 * e2) / 100)
 
                 # Use helper function for updates
-                self.update_metrics(
-                    set_key,
-                    "elution_composition_space",
-                    elution_composition_space,
-                    table_row_index=set_number - 1,
-                )
+                self.update_metrics(set_key,"elution_composition_space",elution_composition_space,table_row_index=set_number - 1)
 
                 set_number += 1
 
             combination_table = [row[4] for row in self.table_data]
 
-            self.combination_df["Elution Domain"] = self.orthogonality_result_df[
-                "Elution Domain"
-            ] = combination_table
-            self.orthogonality_result_df["Elution Domain Rank"] = self.combination_df[
-                "Elution Domain"
-            ].rank(ascending=False, method="average")
-            self.orthogonality_result_df["Elution Domain Utility"] = (
-                self.combination_df["Elution Domain"].apply(lambda x: x / 100)
-            )
+            self.combination_df['Elution Domain'] = self.orthogonality_result_df['Elution Domain'] \
+                = combination_table
+            self.orthogonality_result_df['Elution Domain Rank'] = self.combination_df['Elution Domain'].rank(ascending=False, method='average')
+            self.orthogonality_result_df['Elution Domain Utility'] = self.combination_df['Elution Domain'].apply(lambda x: x/100)
             self.status = self.elution_data_status = "elution_data_loaded"
 
         except Exception as e:
