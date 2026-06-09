@@ -151,23 +151,43 @@ class OrthogonalityTableSortProxy(QSortFilterProxyModel):
 
     def filterAcceptsRow(self, source_row, source_parent):
         model = self.sourceModel()
+        total_columns = model.columnCount()  # e.g., returns 7 for Table 1, 10 for Table 2
 
         for filter_spec in self._filters_spec_list:
-            col = filter_spec["filter_column"]
-            patterns = filter_spec["patterns"]
+            col_list = filter_spec["filter_column"]
+            patterns = filter_spec.get("patterns", "")
 
-            if not patterns:  # no active pattern for this column, skip
+            if not patterns:
                 continue
-
-            index = model.index(source_row, col, source_parent)
-            cell_value = str(model.data(index) or "")
 
             python_re = re.compile(patterns)
 
-            if not python_re.search(cell_value):
-                return False  # this filter fails → row is rejected
+            # --- NEW STEP: Extract only the columns that actually exist in THIS table ---
+            valid_cols = [c for c in col_list if c < total_columns]
 
-        return True  # all filters passed → row is visible
+            # If none of the specified columns exist in this table, skip this filter entirely
+            if not valid_cols:
+                continue
+
+            # Track if at least one valid column in our list passes the regex
+            matched_any_col = False
+
+            for col in valid_cols:
+                index = model.index(source_row, col, source_parent)
+                if not index.isValid():
+                    continue
+
+                cell_value = str(model.data(index) or "")
+
+                if python_re.search(cell_value):
+                    matched_any_col = True
+                    break  # Found a match in one of our target columns, no need to check the others
+
+            # If we failed to find a match in ANY of the valid target columns, reject the row
+            if not matched_any_col:
+                return False
+
+        return True  # The row passed all specifications
 
     # def filterAcceptsRow(self, source_row: int, source_parent: QModelIndex) -> bool:
     #     # If no active regex filters exist, show the row

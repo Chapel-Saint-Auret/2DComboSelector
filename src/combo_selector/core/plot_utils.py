@@ -2778,7 +2778,7 @@ class PlotUtils:
         self.fig.clear()
         self.axe = self.fig.add_subplot(111)
 
-        df = self.orthogonality_result_data.copy()
+        df = self.model.get_filtered_result_df().copy()
         required_cols = {"Final Rank", "Final Rank (Utility)"}
         if not required_cols.issubset(df.columns):
             self._show_missing_data()

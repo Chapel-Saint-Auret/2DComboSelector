@@ -251,19 +251,24 @@ class Scoring:
             - Populates ``self.orthogonality_group_ranking_df`` with per-group ranks.
             - Adds ``"Orthogonality ranking"`` column to ``self.orthogonality_result_df``.
         """
-        self.orthogonality_group_ranking_df = pd.DataFrame()
+        # Create a local dictionary instead of assigning column-by-column to an live instance DataFrame
+        group_ranks = {}
         metric_rank_df = self.orthogonality_metric_ranking_df.copy()
 
         for group, Correlated_Metrics_list in zip(self.correlation_group_df['Group'],
                                                   self.correlation_group_df['Correlated Metrics']):
-            self.orthogonality_group_ranking_df[group] = metric_rank_df[Correlated_Metrics_list].median(axis=1)
+            group_ranks[group] = metric_rank_df[Correlated_Metrics_list].median(axis=1)
+
+        # Instantiate cleanly in one single block - this completely bypasses shape caching bugs
+        self.orthogonality_group_ranking_df = pd.DataFrame(group_ranks)
 
         consensus_orthogonality_ranking_df = self.orthogonality_group_ranking_df.sum(axis=1)
-
         consensus_orthogonality_ranking_df = consensus_orthogonality_ranking_df.rank(ascending=True, method='average')
 
         self.orthogonality_result_df['Orthogonality Rank'] = consensus_orthogonality_ranking_df
-        self.orthogonality_result_df['Orthogonality Utility'] = consensus_orthogonality_ranking_df.apply(lambda x: 1 - ((x - 1) / (self.nb_combination - 1)))
+        self.orthogonality_result_df['Orthogonality Utility'] = consensus_orthogonality_ranking_df.apply(
+            lambda x: 1 - ((x - 1) / (self.nb_combination - 1))
+        )
 
 
 

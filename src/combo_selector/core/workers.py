@@ -168,6 +168,7 @@ class UpdateTableResultsWorker(QRunnable):
         self.page = page
         self.signals = ResultsWorkerSignals()
 
+
     @Slot()
     def run(self):
         """Execute the results table update in a background thread.
@@ -189,10 +190,11 @@ class UpdateTableResultsWorker(QRunnable):
         """
         try:
             metric_list = self.page.om_list.get_checked_items()
-            # self.signals.progress.emit(30)
-            # self.page.get_model().compute_custom_orthogonality_score(metric_list)
             self.signals.progress.emit(70)
+            # self.page.get_model().compute_custom_orthogonality_score(metric_list)
             self.page.get_model().update_table_results()
+            self.signals.progress.emit(100)
+
 
             logging.debug("UpdateTableResultsWorker finished")
             self.signals.finished.emit()

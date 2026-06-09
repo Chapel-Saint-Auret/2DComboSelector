@@ -312,22 +312,6 @@ class DataManager:
                 y_values = self.retention_time_df[next_column_name]
 
                 # Initialize table data by adding a new row with None values
-                self.table_data.append([None] * len(METRIC_MAPPING))
-
-                # Update metadata columns
-                self.update_metrics(set_key, "set_number", set_number)
-                self.update_metrics(set_key, "title", set_title)
-                self.update_metrics(set_key, "orthogonality_score", 0)
-                self.update_metrics(set_key, "orthogonality_ranking", 0)
-                self.update_metrics(set_key, "coverage_score", 0)
-                self.update_metrics(set_key, "distribution_score", 0)
-                self.update_metrics(set_key, "agreement_index", 0)
-                self.update_metrics(set_key, "outlier_metric_flag", 0)
-                self.update_metrics(set_key, "orthogonality_value", 0)
-                self.update_metrics(set_key, "2d_peak_capacity", 'Not available')
-                self.update_metrics(set_key, "elution_composition_space", 'Not available')
-                self.update_metrics(set_key, "heinisch", 0)
-
                 # check if x,y pair element contains at least one empty item.
                 # if an empty item exist on an x,y pair, that pair will be deleted from the list
                 x_y_pair_list = list(zip(x_values, y_values))
@@ -336,6 +320,8 @@ class DataManager:
                 ]
 
                 if x_y_pair_list:
+
+
                     # unpack x and y list cleaned of incomplete x y pairs
 
                     x_series, y_series = zip(*x_y_pair_list)
@@ -345,7 +331,23 @@ class DataManager:
                     y_series = pd.Series(y_series)
 
                     nb_peaks = len(x_y_pair_list)
+                    # Initialize table data by adding a new row with None values
+                    self.table_data.append([None] * len(METRIC_MAPPING))
                     self.update_metrics(set_key, "nb_peaks", nb_peaks)
+
+                    # Update metadata columns
+                    self.update_metrics(set_key, "set_number", set_number)
+                    self.update_metrics(set_key, "title", set_title)
+                    self.update_metrics(set_key, "orthogonality_score", 0)
+                    self.update_metrics(set_key, "orthogonality_ranking", 0)
+                    self.update_metrics(set_key, "coverage_score", 0)
+                    self.update_metrics(set_key, "distribution_score", 0)
+                    self.update_metrics(set_key, "agreement_index", 0)
+                    self.update_metrics(set_key, "outlier_metric_flag", 0)
+                    self.update_metrics(set_key, "orthogonality_value", 0)
+                    self.update_metrics(set_key, "2d_peak_capacity", 'Not available')
+                    self.update_metrics(set_key, "elution_composition_space", 'Not available')
+                    self.update_metrics(set_key, "heinisch", 0)
 
                     # Update orthogonality dictionary
                     self.orthogonality_dict[set_key] = {
@@ -413,9 +415,6 @@ class DataManager:
                         "heinisch": 0,
                         "2d_peak_capacity": "no data loaded",
                     }
-
-                else:
-                    self.orthogonality_dict.pop(set_key)
 
                 set_number += 1
 

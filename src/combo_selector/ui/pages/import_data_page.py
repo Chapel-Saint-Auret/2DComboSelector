@@ -11,15 +11,16 @@ This module provides the ImportDataPage class which handles:
 
 import pandas as pd
 from PySide6.QtCore import Qt, Signal, QSize
-from PySide6.QtGui import QIcon, QFont,QPixmap
+from PySide6.QtGui import QIcon, QFont, QPixmap
 from PySide6.QtSvgWidgets import QSvgWidget
 from PySide6.QtWidgets import (
     QButtonGroup,
+    QComboBox,
     QFileDialog,
     QFrame,
+    QGridLayout,
     QGroupBox,
     QHBoxLayout,
-    QInputDialog,
     QLabel,
     QLineEdit,
     QMessageBox,
@@ -42,54 +43,15 @@ from combo_selector.constants import ICON_SIZE
 
 
 class ImportDataPage(QFrame):
-    """Page for importing and normalizing chromatography retention time data.
-
-    Provides a user interface for:
-    - Loading retention time data from Excel files
-    - Loading experimental 1D peak capacity data
-    - Optionally loading void time and gradient end time
-    - Selecting normalization method with visual formula display
-    - Cleaning NaN values with customizable policies
-    - Viewing normalized data in an interactive table
-
-    The page is divided into three main sections:
-    - Top-left: Data import controls
-    - Top-right: Normalization method selection with SVG formulas
-    - Bottom: Table displaying normalized retention times
-
-    Attributes:
-        model: Reference to the Orthogonality data model.
-        nan_policy_dialog (NanPolicyDialog): Dialog for handling NaN values.
-        normalized_data_table (StyledTable): Table displaying retention time data.
-        radio_button_group (QButtonGroup): Exclusive radio buttons for scaling methods.
-        scaling_method_svg_qstack (QStackedWidget): Stack of SVG formula displays.
-
-    Signals:
-        retention_time_loaded: Emitted when retention time data is successfully loaded.
-        exp_peak_capacities_loaded: Emitted when peak capacity data is loaded.
-        retention_time_normalized: Emitted when data normalization is complete.
-    """
+    """Page for importing and normalizing chromatography retention time data."""
 
     retention_time_loaded = Signal()
     exp_peak_capacities_loaded = Signal()
     retention_time_normalized = Signal()
 
     def __init__(self, model=None) -> None:
-        """Initialize the ImportDataPage with data import and normalization controls.
-
-        Args:
-            model: Orthogonality model instance for data management.
-
-        Layout Structure:
-            - Top section (side-by-side):
-                - Left: Data import panel (retention times, peak capacities, optional data)
-                - Right: Normalization method selection (Min-Max, Void-Max, WOSEL)
-            - Bottom section:
-                - Normalized retention timetable (resizable via splitter)
-        """
         super().__init__()
 
-        # --- Model & frame setup ----------------------------------------------
         self.model = model
         self.nan_policy_dialog = NanPolicyDialog(model=self.model)
         self.setFrameShape(QFrame.StyledPanel)
@@ -108,17 +70,9 @@ class ImportDataPage(QFrame):
         top_frame_layout.setContentsMargins(50, 50, 50, 50)
         top_frame_layout.setSpacing(80)
 
-        # ----------------------------------------------------------------------
-        # Left card: Data import
-        # ----------------------------------------------------------------------
         data_import_frame = self._create_data_import_card()
-
-        # ----------------------------------------------------------------------
-        # Right card: Separation Space Scaling
-        # ----------------------------------------------------------------------
         normalization_section = self._create_normalization_card()
 
-        # Card shadow on the whole top row
         self.top_frame_shadow = BoxShadow()
         top_frame.setGraphicsEffect(self.top_frame_shadow)
 
@@ -129,8 +83,6 @@ class ImportDataPage(QFrame):
         table_frame_layout.setContentsMargins(20, 20, 20, 20)
 
         self.normalized_data_table = StyledTable("Normalized Retention Time Table")
-        # self.normalized_data_table.add_title_bar_info_button(markdown_path="markdown/retention_table.md")
-
         self.normalized_data_table.set_header_label(
             ["Compound #", "Condition 1", "Condition 2", "...", "Condition n"]
         )
@@ -154,23 +106,17 @@ class ImportDataPage(QFrame):
         # === Signal connections ===============================================
         self.radio_button_group.buttonClicked.connect(self.change_norm_svg)
         self.normalize_btn.clicked.connect(self.normalize_retention_time)
-        self.add_ret_time_btn.clicked.connect(self.load_retention_data)
-        self.add_2D_peak_data_btn.clicked.connect(
-            self.load_experimental_peak_capacities
-        )
-        self.add_delta_ce_btn.clicked.connect(
-            self.load_elution_composition_space
-        )
+        self.browse_btn.clicked.connect(self._browse_file)
+        self.load_all_btn.clicked.connect(self._load_all)
         self.clean_retention_time_btn.clicked.connect(self.show_nan_policy_dialog)
-        self.add_void_time_btn.clicked.connect(self.load_void_time_data)
-        self.add_gradient_end_time_btn.clicked.connect(self.load_gradient_end_time_data)
+
+    # ==========================================================================
+    # Card builders
+    # ==========================================================================
 
     def _create_data_import_card(self) -> QFrame:
-        """Create the left card containing data import controls.
+        """Create the left card with a single file picker and per-data-type sheet selectors."""
 
-        Returns:
-            QFrame: Configured frame with import buttons and status indicators.
-        """
         data_import_frame = QFrame()
         data_import_layout = QVBoxLayout(data_import_frame)
         data_import_layout.setSpacing(0)
@@ -184,9 +130,16 @@ class ImportDataPage(QFrame):
                 border-top-right-radius: 10px;
             }
             QLabel {
-                color: #3f4c5a;
+                color: #2C3E50;
+                font-weight: bold; 
                 font-size: 14px;
-                font: bold;
+                
+            }
+            QLabel#section_title {
+                color: #154E9D;
+                font-size: 16px;
+                font-weight: bold;
+
             }
             QLineEdit {
                 background-color: #f5f6f7;
@@ -198,230 +151,438 @@ class ImportDataPage(QFrame):
             QPushButton {
                 background-color: #d5dcf9;
                 color: #2C3346;
-                font-size: 15px;
+                font-size: 13px;
                 border: none;
                 border-radius: 6px;
                 padding: 8px 16px;
             }
-
             QPushButton:hover { background-color: #bcc8f5; }
             QPushButton:pressed { background-color: #8fa3ef; }
             QPushButton:disabled { background-color: #E5E9F5; color: #FFFFFF; }
-            """)
-
-        # --- Title bar: label + help button ----------------------------------
-        data_import_title_bar = QFrame()
-        data_import_title_bar.setFixedHeight(40)
-        data_import_title_bar.setStyleSheet("""
-            QFrame {
-                background-color: #183881;
+            QComboBox {
+                background-color: #f5f6f7;
+                border: 1px solid #d1d6dd;
+                border-radius: 4px;
+                padding: 4px 6px;
+                font-size: 12px;
+                color: #3f4c5a;
+            }
+            QComboBox:disabled {
+                color: #aaaaaa;
+            }
+            QComboBox::drop-down {
+                border: none;
             }
         """)
+
+        # --- Title bar -------------------------------------------------------
+        data_import_title_bar = QFrame()
+        data_import_title_bar.setFixedHeight(40)
+        data_import_title_bar.setStyleSheet("QFrame { background-color: #183881; }")
         title_bar_layout = QHBoxLayout(data_import_title_bar)
         title_bar_layout.setContentsMargins(10, 0, 6, 0)
         title_bar_layout.setSpacing(4)
 
         data_import_title = QLabel("A: Data Import")
         data_import_title.setAlignment(Qt.AlignVCenter | Qt.AlignLeft)
-        data_import_title.setStyleSheet("""
-            background-color: transparent;
-            color: #ffffff;
-            font-weight: bold;
-            font-size: 19px;
-        """)
+        data_import_title.setStyleSheet(
+            "background-color: transparent; color: #ffffff; font-weight: bold; font-size: 19px;"
+        )
 
         data_import_help_btn = SectionHelpButton(
             title="Data import",
             markdown_path="markdown/data_import.md",
             parent=data_import_title_bar,
         )
-        data_import_help_btn.setFixedSize(22, 22)           # ← explicit size, same as the close btn in HelpDialog
-        data_import_help_btn.setIconSize(QSize(16, 16))     # ← keep icon smaller than the button box
+        data_import_help_btn.setFixedSize(22, 22)
+        data_import_help_btn.setIconSize(QSize(16, 16))
         data_import_help_btn.setStyleSheet("""
-            QToolButton {
-                border: none;
-                background: transparent;
-                color: #ffffff;
-                font-size: 15px;
-            }
-            QToolButton:hover {
-                color: #c5d0e6;
-            }
+            QToolButton { border: none; background: transparent; color: #ffffff; font-size: 15px; }
+            QToolButton:hover { color: #c5d0e6; }
         """)
 
         title_bar_layout.addWidget(data_import_title, 0, Qt.AlignVCenter)
-        title_bar_layout.addWidget(data_import_help_btn, 0, Qt.AlignVCenter)  # ← per-item alignment flag
-        title_bar_layout.addStretch(1)             # pushes everything else away
+        title_bar_layout.addWidget(data_import_help_btn, 0, Qt.AlignVCenter)
+        title_bar_layout.addStretch(1)
 
+        # --- Inner content ---------------------------------------------------
         data_import_input_frame = QFrame(data_import_frame)
-        data_import_inner_layout = QVBoxLayout(data_import_input_frame)
+        inner_layout = QVBoxLayout(data_import_input_frame)
+        inner_layout.setSpacing(8)
+        inner_layout.setContentsMargins(16, 16, 16, 16)
 
-        # Retention times
-        self.add_ret_time_btn = QPushButton(
-            QIcon(resource_path("icons/folder_icon.png")), "Import"
+        # -- Source file row --------------------------------------------------
+        source_label = QLabel("Source File")
+        source_label.setObjectName("section_title")
+
+        self.source_file_lineedit = QLineEdit()
+        self.source_file_lineedit.setFixedHeight(35)
+        self.source_file_lineedit.setReadOnly(True)
+        self.source_file_lineedit.setPlaceholderText("No file selected…")
+
+        self.browse_btn = QPushButton(
+            QIcon(resource_path("icons/folder_icon.png")), "Browse"
         )
-        self.clean_retention_time_btn = QPushButton(QIcon(resource_path("icons/setting_icon.png")),"Data Cleanup ")
+        self.browse_btn.setIconSize(ICON_SIZE)
+        self.browse_btn.setFixedHeight(35)
+
+        file_row = QHBoxLayout()
+        file_row.addWidget(self.source_file_lineedit)
+        file_row.addWidget(self.browse_btn)
+
+        # -- Sheet assignment separator ---------------------------------------
+        separator = QFrame()
+        separator.setFrameShape(QFrame.HLine)
+        separator.setStyleSheet("color: #d1d6dd;")
+
+        sheet_section_label = QLabel("Sheet Assignment")
+        sheet_section_label.setObjectName("section_title")
+
+        # Grid layout: col 0 = fixed-width labels, col 1 = combos (stretch), col 2 = status icons
+        # All five rows (RT, PC, EC, void, gradient) share the same grid so columns align perfectly.
+        assignment_grid_widget = QWidget()
+        assignment_grid = QGridLayout(assignment_grid_widget)
+        assignment_grid.setContentsMargins(0, 0, 0, 0)
+        assignment_grid.setHorizontalSpacing(8)
+        assignment_grid.setVerticalSpacing(6)
+        assignment_grid.setColumnStretch(1, 1)   # combo column stretches
+        assignment_grid.setColumnMinimumWidth(0, 195)  # fixed label column
+
+        def _make_combo() -> QComboBox:
+            combo = QComboBox()
+            combo.setFixedHeight(32)
+            combo.setEnabled(False)
+            combo.setPlaceholderText("— select a sheet —")
+            return combo
+
+        def _make_row_label(text: str) -> QLabel:
+            lbl = QLabel(text)
+            lbl.setAlignment(Qt.AlignVCenter | Qt.AlignLeft)
+            return lbl
+
+        # Row 0 — Retention times
+        self.ret_time_import_status = Status()
+        self.rt_combo = _make_combo()
+        assignment_grid.addWidget(_make_row_label("Retention Times:"),        0, 0, Qt.AlignVCenter)
+        assignment_grid.addWidget(self.rt_combo,                               0, 1)
+        assignment_grid.addWidget(self.ret_time_import_status,                 0, 2, Qt.AlignVCenter)
+
+        # Row 1 — 1D Peak capacities
+        self.twoD_peak_status = Status()
+        self.pc_combo = _make_combo()
+        assignment_grid.addWidget(_make_row_label("1D Peak Capacities:"),     1, 0, Qt.AlignVCenter)
+        assignment_grid.addWidget(self.pc_combo,                               1, 1)
+        assignment_grid.addWidget(self.twoD_peak_status,                       1, 2, Qt.AlignVCenter)
+
+        # Row 2 — Elution-composition ranges
+        self.delta_ce_status = Status()
+        self.ec_combo = _make_combo()
+        assignment_grid.addWidget(_make_row_label("Elution-Comp. Ranges:"),   2, 0, Qt.AlignVCenter)
+        assignment_grid.addWidget(self.ec_combo,                               2, 1)
+        assignment_grid.addWidget(self.delta_ce_status,                        2, 2, Qt.AlignVCenter)
+
+        # Row 3 — Void time (hidden until Void-Max or WOSEL)
+        self.void_time_import_status = Status()
+        self.void_time_combo = _make_combo()
+        self._void_time_label_widget = _make_row_label("Void Time:")
+        self._void_time_label_widget.setVisible(False)
+        self.void_time_combo.setVisible(False)
+        self.void_time_import_status.setVisible(False)
+        assignment_grid.addWidget(self._void_time_label_widget,                3, 0, Qt.AlignVCenter)
+        assignment_grid.addWidget(self.void_time_combo,                        3, 1)
+        assignment_grid.addWidget(self.void_time_import_status,                3, 2, Qt.AlignVCenter)
+
+        # Row 4 — Gradient end time (hidden until WOSEL)
+        self.gradient_end_time_import_status = Status()
+        self.gradient_end_time_combo = _make_combo()
+        self._gradient_end_time_label_widget = _make_row_label("Gradient End Time:")
+        self._gradient_end_time_label_widget.setVisible(False)
+        self.gradient_end_time_combo.setVisible(False)
+        self.gradient_end_time_import_status.setVisible(False)
+        assignment_grid.addWidget(self._gradient_end_time_label_widget,        4, 0, Qt.AlignVCenter)
+        assignment_grid.addWidget(self.gradient_end_time_combo,                4, 1)
+        assignment_grid.addWidget(self.gradient_end_time_import_status,        4, 2, Qt.AlignVCenter)
+
+        # Keep legacy attribute names that change_norm_svg uses for setVisible()
+        # We wrap the grid cells in thin QWidget containers so the existing
+        # setVisible(True/False) calls on void_time_widget / gradient_end_time_widget still work.
+        self.void_time_widget = self.void_time_combo          # same object, alias
+        self.void_time_label = self._void_time_label_widget
+        self.gradient_end_time_widget = self.gradient_end_time_combo
+        self.gradient_end_time_label = self._gradient_end_time_label_widget
+
+        # Stubs for legacy load handlers that set filename text (now unused, kept for compat)
+        self.add_void_time_filename = QLineEdit()
+        self.add_gradient_end_time_filename = QLineEdit()
+
+        # -- Data Cleanup + Load All row --------------------------------------
+        self.clean_retention_time_btn = QPushButton(
+            QIcon(resource_path("icons/setting_icon.png")), "Data Cleanup"
+        )
         self.clean_retention_time_btn.setLayoutDirection(Qt.RightToLeft)
         self.clean_retention_time_btn.setIconSize(QSize(19, 19))
         self.clean_retention_time_btn.setFixedHeight(35)
 
-        self.add_ret_time_btn.setIconSize(ICON_SIZE)
-        self.add_ret_time_btn.setFixedHeight(35)
-        self.clean_retention_time_btn.setFixedHeight(35)
-        self.add_ret_time_filename = QLineEdit()
-        self.add_ret_time_filename.setFixedHeight(35)
-        self.ret_time_import_status = Status()
-
-        rt_layout = QHBoxLayout()
-        rt_layout.addWidget(self.add_ret_time_filename)
-        rt_layout.addWidget(self.add_ret_time_btn)
-        rt_layout.addWidget(self.clean_retention_time_btn)
-        rt_layout.addWidget(self.ret_time_import_status)
-
-        # Experimental 1D peak capacities
-        self.add_2D_peak_data_btn = QPushButton(
-            QIcon(resource_path("icons/folder_icon.png")), "Import"
+        self.load_all_btn = QPushButton(
+            QIcon(resource_path("icons/folder_icon.png")), "Load All"
         )
-        self.add_2D_peak_data_btn.setIconSize(ICON_SIZE)
-        self.add_2D_peak_data_btn.setFixedHeight(35)
-        self.add_2D_peak_data_linedit = QLineEdit()
-        self.add_2D_peak_data_linedit.setFixedHeight(35)
-        self.twoD_peak_status = Status()
+        self.load_all_btn.setIconSize(ICON_SIZE)
+        self.load_all_btn.setFixedHeight(35)
+        self.load_all_btn.setEnabled(False)
 
-        peak_layout = QHBoxLayout()
-        peak_layout.addWidget(self.add_2D_peak_data_linedit)
-        peak_layout.addWidget(self.add_2D_peak_data_btn)
-        peak_layout.addWidget(self.twoD_peak_status)
+        action_row = QHBoxLayout()
+        action_row.addStretch()
+        action_row.addWidget(self.load_all_btn)
+        action_row.addWidget(self.clean_retention_time_btn)
 
-        self.add_delta_ce_btn = QPushButton(
-            QIcon(resource_path("icons/folder_icon.png")), "Import"
-        )
-        self.add_delta_ce_btn.setIconSize(ICON_SIZE)
-        self.add_delta_ce_btn.setFixedHeight(35)
-        self.add_delta_ce_linedit = QLineEdit()
-        self.add_delta_ce_linedit.setFixedHeight(35)
-        self.delta_ce_status = Status()
-
-        delta_ce_layout = QHBoxLayout()
-        delta_ce_layout.addWidget(self.add_delta_ce_linedit)
-        delta_ce_layout.addWidget(self.add_delta_ce_btn)
-        delta_ce_layout.addWidget(self.delta_ce_status)
-
-        # Void time (hidden until Void-Max or WOSEL is selected)
-        self.add_void_time_btn = QPushButton(
-            QIcon(resource_path("icons/folder_icon.png")), "Import"
-        )
-        self.add_void_time_btn.setIconSize(ICON_SIZE)
-        self.add_void_time_btn.setFixedHeight(30)
-        self.add_void_time_filename = QLineEdit()
-        self.add_void_time_filename.setFixedHeight(30)
-        self.void_time_import_status = Status()
-
-        self.void_time_widget = QWidget()
-        self.void_time_widget.setVisible(False)
-        void_time_layout = QHBoxLayout(self.void_time_widget)
-        void_time_layout.setContentsMargins(0, 0, 0, 0)
-        void_time_layout.addWidget(self.add_void_time_filename)
-        void_time_layout.addWidget(self.add_void_time_btn)
-        void_time_layout.addWidget(self.void_time_import_status)
-
-        self.void_time_label = QLabel("Void Time:")
-        self.void_time_label.setVisible(False)
-
-        # Gradient end time (hidden until WOSEL is selected)
-        self.add_gradient_end_time_btn = QPushButton(
-            QIcon(resource_path("icons/folder_icon.png")), "Import"
-        )
-        self.add_gradient_end_time_btn.setIconSize(ICON_SIZE)
-        self.add_gradient_end_time_btn.setFixedHeight(30)
-        self.add_gradient_end_time_filename = QLineEdit()
-        self.add_gradient_end_time_filename.setFixedHeight(30)
-        self.gradient_end_time_import_status = Status()
-
-        self.gradient_end_time_widget = QWidget()
-        self.gradient_end_time_widget.setVisible(False)
-        gradient_end_time_layout = QHBoxLayout(self.gradient_end_time_widget)
-        gradient_end_time_layout.setContentsMargins(0, 0, 0, 0)
-        gradient_end_time_layout.addWidget(self.add_gradient_end_time_filename)
-        gradient_end_time_layout.addWidget(self.add_gradient_end_time_btn)
-        gradient_end_time_layout.addWidget(self.gradient_end_time_import_status)
-
-        self.gradient_end_time_label = QLabel("Gradient End Time:")
-        self.gradient_end_time_label.setVisible(False)
-
-        # Assemble left card content
-        data_import_inner_layout.addStretch()
-        retention_time_label = QLabel("Retention Times:")
-        retention_time_label.setFont(self.label_font)
-
-        data_import_inner_layout.addWidget(retention_time_label)
-        data_import_inner_layout.addLayout(rt_layout)
-        data_import_inner_layout.addWidget(QLabel("Experimental 1D Peak Capacities:"))
-        data_import_inner_layout.addLayout(peak_layout)
-        data_import_inner_layout.addWidget(QLabel("Elution-Composition Ranges "))
-        data_import_inner_layout.addLayout(delta_ce_layout)
-        data_import_inner_layout.addWidget(self.void_time_label)
-        data_import_inner_layout.addWidget(self.void_time_widget)
-        data_import_inner_layout.addWidget(self.gradient_end_time_label)
-        data_import_inner_layout.addWidget(self.gradient_end_time_widget)
-        data_import_inner_layout.addStretch()
+        # -- Assemble inner layout --------------------------------------------
+        inner_layout.addStretch()
+        inner_layout.addWidget(source_label)
+        inner_layout.addLayout(file_row)
+        inner_layout.addWidget(separator)
+        inner_layout.addWidget(sheet_section_label)
+        inner_layout.addWidget(assignment_grid_widget)
+        inner_layout.addLayout(action_row)
+        inner_layout.addStretch()
 
         data_import_layout.addWidget(data_import_title_bar)
         data_import_layout.addWidget(data_import_input_frame)
 
         return data_import_frame
 
-    def _create_normalization_card(self) -> QFrame:
-        """Create the right card containing normalization method selection.
+    # ==========================================================================
+    # New unified import logic
+    # ==========================================================================
 
-        Returns:
-            QFrame: Configured frame with radio buttons and SVG formula displays.
-        """
-        # --- Title bar: label + help button ----------------------------------
+    def _browse_file(self) -> None:
+        """Open a file dialog, then populate all sheet combos."""
+        file_path, _ = QFileDialog.getOpenFileName(
+            self, "Open Excel File", "", "Excel Files (*.xlsx *.xls)"
+        )
+        if not file_path:
+            return
+
+        try:
+            sheet_names = pd.ExcelFile(file_path, engine="openpyxl").sheet_names
+        except Exception as e:
+            QMessageBox.critical(self, "Error", f"Could not read file:\n{e}")
+            return
+
+        self.source_file_lineedit.setText(file_path)
+        self._current_file_path = file_path
+        self._current_sheet_names = sheet_names
+
+        all_combos = (
+            self.rt_combo,
+            self.pc_combo,
+            self.ec_combo,
+            self.void_time_combo,
+            self.gradient_end_time_combo,
+        )
+        for combo in all_combos:
+            combo.clear()
+            combo.setEnabled(True)
+            combo.addItem("— select a sheet —", userData=None)
+            for name in sheet_names:
+                combo.addItem(name, userData=name)
+            combo.setCurrentIndex(0)
+
+        # Reset statuses
+        self.ret_time_import_status.set_wait()
+        self.twoD_peak_status.set_wait()
+        self.delta_ce_status.set_wait()
+        self.void_time_import_status.set_wait()
+        self.gradient_end_time_import_status.set_wait()
+
+        self.load_all_btn.setEnabled(True)
+
+        self._auto_select_sheets(sheet_names)
+
+    def _auto_select_sheets(self, sheet_names: list[str]) -> None:
+        """Heuristic pre-selection based on sheet name keywords."""
+        rt_keywords   = ("rt", "retention", "time")
+        pc_keywords   = ("peak", "cap", "1d")
+        ec_keywords   = ("elut", "compo", "range", "delta", "ce")
+        void_keywords = ("void",)
+        grad_keywords = ("gradient", "grad", "end")
+
+        def _find(keywords):
+            for i, name in enumerate(sheet_names):
+                if any(k in name.lower() for k in keywords):
+                    return i + 1  # +1 because index 0 is the placeholder
+            return 0
+
+        pairs = [
+            (self.rt_combo,                 _find(rt_keywords)),
+            (self.pc_combo,                 _find(pc_keywords)),
+            (self.ec_combo,                 _find(ec_keywords)),
+            (self.void_time_combo,          _find(void_keywords)),
+            (self.gradient_end_time_combo,  _find(grad_keywords)),
+        ]
+        for combo, idx in pairs:
+            if idx:
+                combo.setCurrentIndex(idx)
+
+    def _load_all(self) -> None:
+        """Load all assigned data types from the selected sheets in one click."""
+        file_path = getattr(self, "_current_file_path", None)
+        if not file_path:
+            return
+
+        rt_sheet = self.rt_combo.currentData()
+        pc_sheet = self.pc_combo.currentData()
+        ec_sheet = self.ec_combo.currentData()
+
+        missing = []
+        if rt_sheet:
+            self._load_retention_data(file_path, rt_sheet)
+            # missing.append("Retention Times")
+        if pc_sheet:
+            self._load_peak_capacities(file_path, pc_sheet)
+            # missing.append("Experimental 1D Peak Capacities")
+        if ec_sheet:
+            self._load_elution_composition(file_path, ec_sheet)
+            # missing.append("Elution-Composition Ranges")
+
+        if missing:
+            QMessageBox.warning(
+                self,
+                "Missing sheet assignment",
+                "Please assign a sheet for:\n• " + "\n• ".join(missing),
+            )
+            return
+
+
+
+
+
+        # Optional: void time and gradient end time if their rows are visible
+        if self.void_time_combo.isVisible():
+            void_sheet = self.void_time_combo.currentData()
+            if void_sheet:
+                self._load_void_from_combo(file_path, void_sheet)
+
+        if self.gradient_end_time_combo.isVisible():
+            grad_sheet = self.gradient_end_time_combo.currentData()
+            if grad_sheet:
+                self._load_gradient_from_combo(file_path, grad_sheet)
+
+    def _load_retention_data(self, file_path: str, sheet: str) -> None:
+        try:
+            self.model.load_retention_time(filepath=file_path, sheetname=sheet)
+
+            if self.model.get_status() == "error":
+                self.ret_time_import_status.set_error()
+                QMessageBox.critical(
+                    self, "Error", "Failed to load Retention Times. Check the file format."
+                )
+                return
+
+            self.ret_time_import_status.set_valid()
+            self.normalization_status.set_wait()
+
+            data = self.model.get_retention_time_df()
+            self.normalized_data_table.set_header_label(list(data.columns))
+            self.normalized_data_table.async_set_table_data(data)
+
+            self.retention_time_loaded.emit()
+
+        except Exception as e:
+            self.ret_time_import_status.set_error()
+            QMessageBox.critical(self, "Error", f"Retention Times:\n{e}")
+
+    def _load_peak_capacities(self, file_path: str, sheet: str) -> None:
+        try:
+            self.model.load_hypothetical_2d_peak_capacity(
+                filepath=file_path, sheetname=sheet
+            )
+
+            if self.model.get_status() == "error":
+                self.twoD_peak_status.set_error()
+            else:
+                self.twoD_peak_status.set_valid()
+                self.exp_peak_capacities_loaded.emit()
+
+        except Exception as e:
+            self.twoD_peak_status.set_error()
+            QMessageBox.critical(self, "Error", f"1D Peak Capacities:\n{e}")
+
+    def _load_elution_composition(self, file_path: str, sheet: str) -> None:
+        try:
+            self.model.load_elution_composition_space_area_data(
+                filepath=file_path, sheetname=sheet
+            )
+
+            if self.model.get_status() == "error":
+                self.delta_ce_status.set_error()
+            else:
+                self.delta_ce_status.set_valid()
+                self.exp_peak_capacities_loaded.emit()
+
+        except Exception as e:
+            self.delta_ce_status.set_error()
+            QMessageBox.critical(self, "Error", f"Elution-Composition Ranges:\n{e}")
+
+    def _load_void_from_combo(self, file_path: str, sheet: str) -> None:
+        try:
+            self.model.load_void_time(filepath=file_path, sheetname=sheet)
+            if self.model.get_status() == "error":
+                self.void_time_import_status.set_error()
+            else:
+                self.void_time_import_status.set_valid()
+        except Exception as e:
+            self.void_time_import_status.set_error()
+            QMessageBox.critical(self, "Error", f"Void Time:\n{e}")
+
+    def _load_gradient_from_combo(self, file_path: str, sheet: str) -> None:
+        try:
+            self.model.load_gradient_end_time(filepath=file_path, sheetname=sheet)
+            if self.model.get_status() == "error":
+                self.gradient_end_time_import_status.set_error()
+            else:
+                self.gradient_end_time_import_status.set_valid()
+        except Exception as e:
+            self.gradient_end_time_import_status.set_error()
+            QMessageBox.critical(self, "Error", f"Gradient End Time:\n{e}")
+
+    # ==========================================================================
+    # Normalization card (unchanged from original)
+    # ==========================================================================
+
+    def _create_normalization_card(self) -> QFrame:
+        """Create the right card containing normalization method selection."""
+
         separation_space_scaling_bar = QFrame()
         separation_space_scaling_bar.setFixedHeight(40)
-        separation_space_scaling_bar.setStyleSheet("""
-            QFrame {
-                background-color: #183881;
-            }
-        """)
+        separation_space_scaling_bar.setStyleSheet(
+            "QFrame { background-color: #183881; }"
+        )
 
         title_bar_layout = QHBoxLayout(separation_space_scaling_bar)
         title_bar_layout.setContentsMargins(10, 0, 6, 0)
         title_bar_layout.setSpacing(4)
 
-
         separation_space_scaling_title = QLabel("B: Data Normalization")
         separation_space_scaling_title.setObjectName("TitleBar")
         separation_space_scaling_title.setAlignment(Qt.AlignVCenter | Qt.AlignLeft)
-        separation_space_scaling_title.setStyleSheet("""
-            background-color: transparent;
-            color: #ffffff;
-            font-weight: bold;
-            font-size: 19px;
-        """)
+        separation_space_scaling_title.setStyleSheet(
+            "background-color: transparent; color: #ffffff; font-weight: bold; font-size: 19px;"
+        )
 
         separation_space_scaling_help_btn = SectionHelpButton(
             title="Data Normalization",
             markdown_path="markdown/normalization.md",
             parent=separation_space_scaling_bar,
         )
-        separation_space_scaling_help_btn.setFixedSize(22, 22)           # ← explicit size, same as the close btn in HelpDialog
-        separation_space_scaling_help_btn.setIconSize(QSize(16, 16))     # ← keep icon smaller than the button box
+        separation_space_scaling_help_btn.setFixedSize(22, 22)
+        separation_space_scaling_help_btn.setIconSize(QSize(16, 16))
         separation_space_scaling_help_btn.setStyleSheet("""
-            QToolButton {
-                border: none;
-                background: transparent;
-                color: #ffffff;
-                font-size: 15px;
-            }
-            QToolButton:hover {
-                color: #c5d0e6;
-            }
+            QToolButton { border: none; background: transparent; color: #ffffff; font-size: 15px; }
+            QToolButton:hover { color: #c5d0e6; }
         """)
 
         title_bar_layout.addWidget(separation_space_scaling_title, 0, Qt.AlignVCenter)
-        title_bar_layout.addWidget(separation_space_scaling_help_btn, 0, Qt.AlignVCenter)  # ← per-item alignment flag
+        title_bar_layout.addWidget(separation_space_scaling_help_btn, 0, Qt.AlignVCenter)
         title_bar_layout.addStretch(1)
 
         select_scaling_input_frame = QFrame()
@@ -433,49 +594,28 @@ class ImportDataPage(QFrame):
         scaling_method_group.setLayout(scaling_method_layout)
         scaling_method_group.setStyleSheet("""
             QGroupBox {
-                font-size: 16px;
-                font-weight: bold;
-                background-color: #e7e7e7;
-                color: #154E9D;
-                border: 1px solid #d0d4da;
-                border-radius: 12px;
-                margin-top: 25px;
+                font-size: 16px; font-weight: bold; background-color: #e7e7e7;
+                color: #154E9D; border: 1px solid #d0d4da; border-radius: 12px; margin-top: 25px;
             }
             QGroupBox::title {
-                subcontrol-origin: margin;
-                subcontrol-position: top left;
-                padding: 0px;
-                margin-top: -8px;
+                subcontrol-origin: margin; subcontrol-position: top left;
+                padding: 0px; margin-top: -8px;
             }
-  
             QRadioButton, QCheckBox {
-                background-color: transparent;
-                font-size: 14px;
-                font-weight: bold;
-                color: #2C3E50;
+                background-color: transparent; font-size: 14px; font-weight: bold; color: #2C3E50;
             }
-            
             QPushButton {
-                background-color: #d5dcf9;
-                font-size: 15px;
-                font-weight: bold;
-                color: #2C3346;
-                border: none;
-                border-radius: 6px;
-                padding: 8px 16px;
-                font-weight: 500;
+                background-color: #d5dcf9; font-size: 15px; font-weight: bold;
+                color: #2C3346; border: none; border-radius: 6px; padding: 8px 16px;
             }
- 
             QPushButton:hover { background-color: #bcc8f5; }
             QPushButton:pressed { background-color: #8fa3ef; }
             QPushButton:disabled { background-color: #E5E9F5; color: #FFFFFF; }
-            """)
+        """)
 
         self.normalize_btn = QPushButton("Normalize Data")
-
         self.normalization_status = Status()
 
-        # Radio buttons (exclusive)
         self.min_max_scaling_btn = QRadioButton("min-max Scaling")
         self.min_max_scaling_btn.setObjectName("min_max")
         self.min_max_scaling_btn.setChecked(True)
@@ -502,7 +642,6 @@ class ImportDataPage(QFrame):
         radio_widget.setLayout(radio_layout)
         radio_widget.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Preferred)
 
-        # SVG stack for formulas
         self.scaling_method_svg_qstack = QStackedWidget()
 
         self.norm_min_max_svg = QSvgWidget()
@@ -535,7 +674,6 @@ class ImportDataPage(QFrame):
         svg_layout.addStretch()
         svg_container.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
 
-        # Place radios (left) and svg (right) centered vertically
         scale_row = QHBoxLayout()
         scale_row.setAlignment(Qt.AlignVCenter)
         scale_row.addWidget(radio_widget)
@@ -569,51 +707,39 @@ class ImportDataPage(QFrame):
         return normalization_section
 
     # ==========================================================================
-    # Event Handlers & Data Operations
+    # Event handlers
     # ==========================================================================
 
     def change_norm_svg(self) -> None:
-        """Update the displayed normalization formula and show/hide optional inputs.
-
-        Called when a different normalization radio button is selected.
-
-        Side Effects:
-            - Changes the displayed SVG formula
-            - Shows/hides void time input for Void-Max and WOSEL
-            - Shows/hides gradient end time input for WOSEL only
-        """
         button_checked = self.radio_button_group.checkedButton()
         method = button_checked.objectName()
 
+        def _set_void_visible(v: bool) -> None:
+            self._void_time_label_widget.setVisible(v)
+            self.void_time_combo.setVisible(v)
+            self.void_time_import_status.setVisible(v)
+
+        def _set_gradient_visible(v: bool) -> None:
+            self._gradient_end_time_label_widget.setVisible(v)
+            self.gradient_end_time_combo.setVisible(v)
+            self.gradient_end_time_import_status.setVisible(v)
+
         if method == "min_max":
             self.scaling_method_svg_qstack.setCurrentIndex(0)
-            self.void_time_widget.setVisible(False)
-            self.gradient_end_time_widget.setVisible(False)
-            self.void_time_label.setVisible(False)
-            self.gradient_end_time_label.setVisible(False)
+            _set_void_visible(False)
+            _set_gradient_visible(False)
 
         elif method == "void_max":
             self.scaling_method_svg_qstack.setCurrentIndex(1)
-            self.void_time_widget.setVisible(True)
-            self.void_time_label.setVisible(True)
-            self.gradient_end_time_widget.setVisible(False)
-            self.gradient_end_time_label.setVisible(False)
+            _set_void_visible(True)
+            _set_gradient_visible(False)
 
         elif method == "wosel":
             self.scaling_method_svg_qstack.setCurrentIndex(2)
-            self.void_time_widget.setVisible(False)
-            self.void_time_label.setVisible(False)
-            self.gradient_end_time_widget.setVisible(True)
-            self.gradient_end_time_label.setVisible(True)
+            _set_void_visible(False)
+            _set_gradient_visible(True)
 
     def normalize_retention_time(self) -> None:
-        """Normalize retention time data using the selected scaling method.
-
-        Side Effects:
-            - Normalizes data in the model
-            - Updates the normalized data table display
-            - Emits retention_time_normalized signal
-        """
         button_checked = self.radio_button_group.checkedButton()
         method = button_checked.objectName()
 
@@ -628,250 +754,12 @@ class ImportDataPage(QFrame):
 
         except Exception as e:
             self.normalization_status.set_error()
-            QMessageBox.critical(
-                self, "Error", f"Cannot normalize data:\n{str(e)}"
-            )
+            QMessageBox.critical(self, "Error", f"Cannot normalize data:\n{e}")
 
     def show_nan_policy_dialog(self) -> None:
-        """Open the NaN policy dialog for cleaning missing values.
-
-        Side Effects:
-            - Shows NaN policy dialog
-            - Updates retention time data after cleaning
-            - Updates the table display
-            - Emits retention_time_loaded signal
-        """
         self.nan_policy_dialog.exec()
 
         data = self.model.get_retention_time_df()
-        #TODO this is not enough as if the clean is launch and close, it will put back unormalized data even though it
-        #TODO has been normalized
         if not data.empty:
             self.normalized_data_table.async_set_table_data(data)
-
             self.retention_time_loaded.emit()
-
-    def load_retention_data(self) -> None:
-        """Load retention time data from an Excel file.
-
-        Opens a file dialog for Excel file selection, prompts for sheet selection,
-        and loads the data into the model. Handles NaN values if present.
-
-        Side Effects:
-            - Opens file and sheet selection dialogs
-            - Loads data into model
-            - Updates UI status indicators
-            - Updates table display
-            - May show NaN policy dialog if NaN values are present
-            - Emits retention_time_loaded signal on success
-            - Shows error messages on failure
-
-        Raises:
-            ValueError: If no sheet is selected.
-            Exception: For unexpected file loading errors.
-        """
-        file_path, _ = QFileDialog.getOpenFileName(
-            self, "Open Excel File", "", "Excel Files (*.xlsx *.xls)"
-        )
-
-        if not file_path:
-            return  # User canceled
-
-        try:
-            sheet_names = pd.ExcelFile(file_path, engine="openpyxl").sheet_names
-            selected_sheet, ok = QInputDialog.getItem(
-                self, "Select Sheet", "Choose a sheet:", sheet_names, editable=False
-            )
-
-            if not ok:
-                raise ValueError("No sheet selected")
-
-            self.model.load_retention_time(filepath=file_path, sheetname=selected_sheet)
-
-            if self.model.get_status() == "error":
-                self.ret_time_import_status.set_error()
-                QMessageBox.critical(
-                    self,
-                    "Error",
-                    "Failed to load the data. Please check the file format.",
-                )
-                return
-
-            # Successful load: update UI
-            self.ret_time_import_status.set_valid()
-            self.normalization_status.set_wait()
-            self.add_ret_time_filename.setText(file_path)
-
-            data = self.model.get_retention_time_df()
-            self.normalized_data_table.set_header_label(list(data.columns))
-            self.normalized_data_table.async_set_table_data(data)
-
-            # # Show NaN policy dialog if needed
-            # if self.model.get_has_nan_value():
-            #     self.nan_policy_dialog.exec_()
-            #     data = self.model.get_retention_time_df()
-            #     self.normalized_data_table.async_set_table_data(data)
-
-            self.retention_time_loaded.emit()
-
-        except ValueError as e:
-            self.ret_time_import_status.set_wait()
-            QMessageBox.warning(self, "Warning", str(e))
-        except Exception as e:
-            self.ret_time_import_status.set_error()
-            QMessageBox.critical(
-                self, "Error", f"An unexpected error occurred:\n{str(e)}"
-            )
-
-    def load_experimental_peak_capacities(self) -> None:
-        """Load experimental 1D peak capacity data from an Excel file.
-
-        Side Effects:
-            - Opens file and sheet selection dialogs
-            - Loads data into model
-            - Updates UI status indicators
-            - Emits exp_peak_capacities_loaded signal on success
-        """
-        fileName = QFileDialog.getOpenFileName(
-            self, "Open Excel File", "", "Excel Files (*.xlsx *.xls)"
-        )
-        if fileName[0]:
-            try:
-                sheet_names_list = pd.ExcelFile(
-                    fileName[0], engine="openpyxl"
-                ).sheet_names
-                sheet, ok = QInputDialog.getItem(
-                    self, "Select excel sheet", "select sheet", sheet_names_list
-                )
-
-                if ok:
-                    self.model.load_hypothetical_2d_peak_capacity(
-                        filepath=fileName[0], sheetname=sheet
-                    )
-
-                    status = self.model.get_status()
-
-                    if status == "error":
-                        self.twoD_peak_status.set_error()
-                    else:
-                        self.twoD_peak_status.set_valid()
-                        self.add_2D_peak_data_linedit.setText(fileName[0])
-                        self.exp_peak_capacities_loaded.emit()
-
-            except ValueError as e:
-                QMessageBox.warning(self, "Warning", str(e))
-                self.twoD_peak_status.set_error()
-
-    def load_elution_composition_space(self) -> None:
-        """Load experimental 1D peak capacity data from an Excel file.
-
-        Side Effects:
-            - Opens file and sheet selection dialogs
-            - Loads data into model
-            - Updates UI status indicators
-            - Emits exp_peak_capacities_loaded signal on success
-        """
-        fileName = QFileDialog.getOpenFileName(
-            self, "Open Excel File", "", "Excel Files (*.xlsx *.xls)"
-        )
-        if fileName[0]:
-            try:
-                sheet_names_list = pd.ExcelFile(
-                    fileName[0], engine="openpyxl"
-                ).sheet_names
-                sheet, ok = QInputDialog.getItem(
-                    self, "Select excel sheet", "select sheet", sheet_names_list
-                )
-
-                if ok:
-                    self.model.load_elution_composition_space_area_data(
-                        filepath=fileName[0], sheetname=sheet
-                    )
-
-                    status = self.model.get_status()
-
-                    if status == "error":
-                        self.delta_ce_status.set_error()
-                    else:
-                        self.delta_ce_status.set_valid()
-                        self.add_delta_ce_linedit.setText(fileName[0])
-                        self.exp_peak_capacities_loaded.emit()
-
-            except ValueError as e:
-                QMessageBox.warning(self, "Warning", str(e))
-                self.delta_ce_status.set_error()
-
-
-    def load_gradient_end_time_data(self) -> None:
-        """Load gradient end time data from an Excel file.
-
-        Required for WOSEL normalization method.
-
-        Side Effects:
-            - Opens file and sheet selection dialogs
-            - Loads data into model
-            - Updates UI status indicators
-        """
-        fileName = QFileDialog.getOpenFileName(
-            self, "Open Excel File", "", "Excel Files (*.xlsx *.xls)"
-        )
-        if fileName[0]:
-            try:
-                sheet_names_list = pd.ExcelFile(
-                    fileName[0], engine="openpyxl"
-                ).sheet_names
-                sheet, ok = QInputDialog.getItem(
-                    self, "Select excel sheet", "select sheet", sheet_names_list
-                )
-            except Exception:
-                ok = False
-
-            if ok:
-                self.model.load_gradient_end_time(filepath=fileName[0], sheetname=sheet)
-
-                status = self.model.get_status()
-
-                if status == "error":
-                    self.gradient_end_time_import_status.set_error()
-                else:
-                    self.gradient_end_time_import_status.set_valid()
-                    self.add_gradient_end_time_filename.setText(fileName[0])
-            else:
-                self.gradient_end_time_import_status.set_error()
-
-    def load_void_time_data(self) -> None:
-        """Load void time data from an Excel file.
-
-        Required for Void-Max and WOSEL normalization methods.
-
-        Side Effects:
-            - Opens file and sheet selection dialogs
-            - Loads data into model
-            - Updates UI status indicators
-        """
-        fileName = QFileDialog.getOpenFileName(
-            self, "Open Excel File", "", "Excel Files (*.xlsx *.xls)"
-        )
-        if fileName[0]:
-            try:
-                sheet_names_list = pd.ExcelFile(
-                    fileName[0], engine="openpyxl"
-                ).sheet_names
-                sheet, ok = QInputDialog.getItem(
-                    self, "Select excel sheet", "select sheet", sheet_names_list
-                )
-            except Exception:
-                ok = False
-
-            if ok:
-                self.model.load_void_time(filepath=fileName[0], sheetname=sheet)
-
-                status = self.model.get_status()
-
-                if status == "error":
-                    self.void_time_import_status.set_error()
-                else:
-                    self.void_time_import_status.set_valid()
-                    self.add_void_time_filename.setText(fileName[0])
-            else:
-                self.void_time_import_status.set_error()

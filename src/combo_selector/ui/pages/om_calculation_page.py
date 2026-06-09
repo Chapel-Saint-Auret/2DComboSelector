@@ -173,6 +173,9 @@ class OMCalculationPage(QFrame):
         self.base_layout.setContentsMargins(0, 0, 0, 0)
         self.base_layout.addLayout(self.stack)
 
+        self.progress_overlay.setGeometry(self.stack.geometry())
+        self.progress_overlay.raise_()
+
         # --- Signal wiring ------------------------------------------------
         self.compare_number.currentTextChanged.connect(self.update_om_selector_state)
         for index, data in self.om_selector_map.items():

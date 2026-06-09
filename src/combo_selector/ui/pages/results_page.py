@@ -117,6 +117,8 @@ class ResultsPage(QFrame):
         """
         super().__init__()
 
+        self.not_filled = True
+
         # --- State & threading ---------------------------------------------
         self.threadpool = QThreadPool()
         self.selected_score = None
@@ -159,6 +161,13 @@ class ResultsPage(QFrame):
 
         self.progress_overlay.setGeometry(self.stack.geometry())
         self.progress_overlay.raise_()
+
+        # Timer for animating progress during intensive computations
+        self._progress_animation_timer = QTimer(self)
+        self._progress_animation_timer.timeout.connect(self._animate_progress)
+        self._current_metric = ""
+        self._current_progress = 0
+        self._animation_counter = 0
 
         # --- Signal connections --------------------------------------------
         # self.chrom_mode_filter_dialog.filter_regexp_changed.connect(self.filter_table)
@@ -540,11 +549,11 @@ class ResultsPage(QFrame):
 
         self.orthogonality_table = self.styled_table.get_table_from_sheet(sheet_name='Orthogonality')
 
-        self.chrom_mode_filter_dialog = CustomFilterDialog(parent=self,filter_name='Chromatographic Mode', filter_column=2)
-        self.peak_detection_status_filter_dialog = CustomFilterDialog(parent=self,filter_name="Peak Detection Rate Status", filter_column=6)
-        self.complexity_filter_dialog = CustomFilterDialog(parent=self,filter_name='Complexity', filter_column=3)
-        self.compatibility_filter_dialog = CustomFilterDialog(parent=self,filter_name='Compatibility', filter_column=4)
-        self.final_recommendation_filter_dialog = CustomFilterDialog(parent=self,filter_name='Final Recommendation', filter_column=8)
+        self.chrom_mode_filter_dialog = CustomFilterDialog(parent=self,filter_name='Chromatographic Mode', filter_column=[2])
+        self.peak_detection_status_filter_dialog = CustomFilterDialog(parent=self,filter_name="Peak Detection Rate Status", filter_column=[6,9])
+        self.complexity_filter_dialog = CustomFilterDialog(parent=self,filter_name='Complexity', filter_column=[3])
+        self.compatibility_filter_dialog = CustomFilterDialog(parent=self,filter_name='Compatibility', filter_column=[4])
+        self.final_recommendation_filter_dialog = CustomFilterDialog(parent=self,filter_name='Final Recommendation', filter_column=[8])
 
         self.orthogonality_table.add_header_button(
             column=2, tooltip="Custom filter", widget_to_show=self.chrom_mode_filter_dialog
@@ -617,7 +626,8 @@ class ResultsPage(QFrame):
         self.final_recommendation_table.add_header_button(column=8, tooltip="Final Recommendation filter", widget_to_show=self.final_recommendation_filter_dialog)
         self.final_recommendation_table.add_help_button(column=8, title="Final Recommendation",
                                                           markdown_path="markdown/final_recommendation.md")
-        self.final_recommendation_table.add_help_button(column=9, title="Criterion Highlight",
+        self.final_recommendation_table.add_header_button(column=9, tooltip="Peak Detection Status filter", widget_to_show=self.peak_detection_status_filter_dialog)
+        self.final_recommendation_table.add_help_button(column=10, title="Criterion Highlight",
                                                           markdown_path="markdown/criterion_highlight.md")
 
         self.final_recommendation_table.set_header_label(
@@ -631,7 +641,8 @@ class ResultsPage(QFrame):
                 "Final Consensus Rank",
                 "Final Rank (Utility)",
                 "Final Recommendation",
-                "Criterion Highlight",
+                "Peak Detection Rate Status",
+                "Criterion Highlight"
             ])
 
         # self.styled_table.get_header().setSectionResizeMode(0, QHeaderView.Fixed)
@@ -647,23 +658,37 @@ class ResultsPage(QFrame):
         return table_frame
 
     def _create_progress_overlay(self) -> QWidget:
-        """Create the progress bar overlay widget.
+        """Create the modal progress bar overlay widget with status label.
 
         Returns:
-            QWidget: Transparent overlay with circular progress bar.
+            QWidget: Modal semi-transparent overlay with circular progress bar and status.
         """
         self.progress_bar = RoundProgressBar()
         self.progress_bar.rpb_setBarStyle("Pizza")
 
+        # Add status label
+        self.progress_status_label = QLabel("")
+        self.progress_status_label.setStyleSheet("""
+            QLabel {
+                color: #183881;
+                font-size: 16px;
+                font-weight: bold;
+                background-color: transparent;
+            }
+        """)
+        self.progress_status_label.setAlignment(Qt.AlignCenter)
+
         progress_overlay = QWidget(self)
-        progress_overlay.setAttribute(Qt.WA_TransparentForMouseEvents)
-        progress_overlay.setStyleSheet("background-color: transparent;")
-        progress_overlay.hide()
+        # Modal - blocks user interaction (do not set WA_TransparentForMouseEvents)
+        progress_overlay.setStyleSheet("background-color: rgba(247, 249, 252, 230);")
+        progress_overlay.hide()  # Start hidden
 
         overlay_layout = QVBoxLayout(progress_overlay)
         overlay_layout.setContentsMargins(0, 0, 0, 0)
         overlay_layout.addStretch()
         overlay_layout.addWidget(self.progress_bar, alignment=Qt.AlignCenter)
+        overlay_layout.addSpacing(20)
+        overlay_layout.addWidget(self.progress_status_label, alignment=Qt.AlignCenter)
         overlay_layout.addStretch()
 
         return progress_overlay
@@ -850,18 +875,53 @@ class ResultsPage(QFrame):
             - Updates progress bar value
             - Forces UI repaint
         """
-        if value == 0:
-            self.progress_overlay.hide()
-        else:
-            self.stack.setCurrentWidget(self.progress_overlay)
-            self.progress_overlay.show()
+        # Update status message
+        if value < 100:
+
+            # Ensure overlay is visible during progress updates
+            if not self.progress_overlay.isVisible():
+                self.progress_overlay.setGeometry(self.rect())
+                self.progress_overlay.raise_()
+                self.progress_overlay.show()
+
+            self._current_progress = value
             self.progress_bar.rpb_setValue(value)
-            self.progress_bar.repaint()
 
-        if value == 100:
-            self.progress_bar.repaint()
+            # Update status message
+            # Start animation timer (updates every 500ms)
+            if not self._progress_animation_timer.isActive():
+                self._animation_counter = 0
+                self._progress_animation_timer.start(500)  # Update every 500ms
 
+            self._update_loading_message()
+
+        else:
+            # Stop animation when complete
+            self._progress_animation_timer.stop()
+
+        self.progress_bar.repaint()
         QApplication.processEvents()
+
+    def _animate_progress(self) -> None:
+        """Called by timer to animate progress message for intensive computations."""
+        self._animation_counter += 1
+        self._update_loading_message()
+
+    def _update_loading_message(self) -> None:
+        """Update the %FIT progress message with animation."""
+        messages = [
+            "Updating tables ",
+        ]
+
+        # Animated dots
+        dots = "." * (self._animation_counter % 4)
+
+        # Rotating message
+        msg_index = (self._animation_counter // 21) % len(messages)  # Change message every 1.5 seconds
+
+        self.progress_status_label.setText(
+            f"{messages[msg_index]}{dots}"
+        )
 
     def handle_finished(self) -> None:
         """Handle computation completion.
@@ -1060,12 +1120,14 @@ class ResultsPage(QFrame):
 
         # self.styled_table.async_set_table_data(data)
         # self.styled_table.set_table_proxy()
-        unique_mode = self.model.get_chromatographic_mode_list()
-        self.chrom_mode_filter_dialog.build_filter_list(unique_mode)
-        self.peak_detection_status_filter_dialog.build_filter_list(PEAK_RATE_STATUS)
-        self.complexity_filter_dialog.build_filter_list(FEASABILITY)
-        self.compatibility_filter_dialog.build_filter_list(FEASABILITY)
-        self.final_recommendation_filter_dialog.build_filter_list(FINAL_RECOMMENDATION)
+        if self.not_filled:
+            unique_mode = self.model.get_chromatographic_mode_list()
+            self.chrom_mode_filter_dialog.build_filter_list(unique_mode)
+            self.peak_detection_status_filter_dialog.build_filter_list(PEAK_RATE_STATUS)
+            self.complexity_filter_dialog.build_filter_list(FEASABILITY)
+            self.compatibility_filter_dialog.build_filter_list(FEASABILITY)
+            self.final_recommendation_filter_dialog.build_filter_list(FINAL_RECOMMENDATION)
+            self.not_filled = False
 
     def filter_table_changed(self, filter_spec_list:list = None ) -> None:
 
@@ -1141,13 +1203,6 @@ class ResultsPage(QFrame):
                 y = subset['2d_peak_capacity']
 
                 scatter = self.selected_axe.scatter(x, y, s=20, color=facecolor, edgecolor="black", linewidths=0.9)
-
-
-
-
-
-
-
 
         self.fig.canvas.draw()
         self.fig.canvas.flush_events()

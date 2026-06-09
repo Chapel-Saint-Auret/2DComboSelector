@@ -13,11 +13,12 @@ import sys
 
 import pandas as pd
 from PySide6.QtCore import Qt
-from PySide6.QtGui import QFont
+from PySide6.QtGui import QFont, QColor
 from PySide6.QtWidgets import (
     QApplication,
     QSizePolicy,
     QButtonGroup,
+    QCheckBox,
     QDialog,
     QDialogButtonBox,
     QFileDialog,
@@ -139,37 +140,42 @@ class NanPolicyDialog(QDialog):
         summary.setWordWrap(True)
 
         # Option 1: Remove peaks above threshold
-        self.option_remove_compound = QRadioButton(
+        self.option_remove_compound = QCheckBox(
             "Remove compounds with missing values in more than"
         )
         # self.option_remove_compound.setChecked(True)
         self.option_remove_compound.setObjectName("option 1")
 
         # Option 2: Keep all peaks
-        self.option_remove_condition = QRadioButton(
+        self.option_remove_condition = QCheckBox(
             'Remove conditions with more than'
         )
         self.option_remove_condition.setObjectName("option 3")
 
-        self.option_replace = QRadioButton(
+        self.option_replace = QCheckBox(
             'Keep all compounds and leave missing values empty'
         )
         self.option_replace.setChecked(True)
 
         self.option_replace.setObjectName("option 4")
 
-        self.option_replace_below_threshold = QRadioButton(
+        self.option_replace_below_threshold = QCheckBox(
             "Replace retention times below condition-specific thresholds with blank"
         )
         self.option_replace_below_threshold.setObjectName("option 2")
 
-        # Radio button group
-        self.option_button_grp = QButtonGroup()
-        self.option_button_grp.addButton(self.option_remove_compound)
-        self.option_button_grp.addButton(self.option_remove_condition)
-        self.option_button_grp.addButton(self.option_replace)
-        self.option_button_grp.addButton(self.option_replace_below_threshold)
-        self.option_button_grp.setExclusive(False)
+        self.button_list = [self.option_replace,
+                            self.option_replace_below_threshold,
+                            self.option_remove_condition,
+                            self.option_remove_compound]
+
+        # # Radio button group
+        # self.option_button_grp = QButtonGroup()
+        # self.option_button_grp.addButton(self.option_remove_compound)
+        # self.option_button_grp.addButton(self.option_remove_condition)
+        # self.option_button_grp.addButton(self.option_replace)
+        # self.option_button_grp.addButton(self.option_replace_below_threshold)
+        # self.option_button_grp.setExclusive(False)
 
         self.update_button_state()
 
@@ -226,11 +232,11 @@ class NanPolicyDialog(QDialog):
 
         # Assemble layout
         groupbox_layout.addWidget(summary)
-        groupbox_layout.addWidget(self.option_replace)
-        groupbox_layout.addWidget(LineWidget())
         groupbox_layout.addWidget(self.option_replace_below_threshold)
         groupbox_layout.addLayout(row4_file)
         groupbox_layout.addWidget(self.rt_threshold_note)
+        groupbox_layout.addWidget(LineWidget())
+        groupbox_layout.addWidget(self.option_replace)
         groupbox_layout.addWidget(LineWidget())
         groupbox_layout.addLayout(row1)
         groupbox_layout.addSpacing(4)
@@ -243,20 +249,38 @@ class NanPolicyDialog(QDialog):
         self.buttonBox.rejected.connect(self.reject)
         self.threshold1_spin.valueChanged.connect(self.set_threshold1)
         self.threshold2_spin.valueChanged.connect(self.set_threshold2)
-        self.option_button_grp.buttonClicked.connect(self.update_button_state)
+        # self.option_button_grp.buttonClicked.connect(self.update_button_state)
+        self.option_replace.toggled.connect(self.update_button_state)
+        self.option_remove_compound.toggled.connect(self.update_button_state)
+        self.option_remove_condition.toggled.connect(self.update_button_state)
+        self.option_replace_below_threshold.toggled.connect(self.update_button_state)
 
     def update_button_state(self):
+        sender = self.sender()
 
-        if self.option_replace.isChecked():
-            self.option_button_grp.setExclusive(True)
-            self.option_remove_compound.setChecked(False)
-            self.option_remove_condition.setChecked(False)
-            self.option_replace_below_threshold.setChecked(False)
+        remove_ops_checked = (
+                self.option_remove_compound.isChecked()
+                or self.option_remove_condition.isChecked()
+        )
 
-        if (self.option_remove_compound.isChecked() or
-                self.option_remove_condition.isChecked() or
-                self.option_replace_below_threshold.isChecked()):
-            self.option_button_grp.setExclusive(False)
+        # If option_replace was just turned ON while remove options are active, uncheck removes.
+        if sender is self.option_replace and self.option_replace.isChecked():
+            if remove_ops_checked:
+                self._set_checked_silent(self.option_remove_compound, False)
+                self._set_checked_silent(self.option_remove_condition, False)
+
+        # If either remove option was just turned ON while option_replace is active, uncheck it.
+        elif sender in (self.option_remove_compound, self.option_remove_condition):
+            if remove_ops_checked and self.option_replace.isChecked():
+                self._set_checked_silent(self.option_replace, False)
+
+        # option_replace_below_threshold is free to combine with either group — no action needed.
+
+    def _set_checked_silent(self, button: QCheckBox, state: bool):
+        """Change checked state without re-triggering update_button_state."""
+        button.blockSignals(True)
+        button.setChecked(state)
+        button.blockSignals(False)
 
     def _load_rt_threshold_file(self):
         file_path, _ = QFileDialog.getOpenFileName(
@@ -310,7 +334,7 @@ class NanPolicyDialog(QDialog):
         """
         if self.model:
 
-            checked_button =[button.objectName() for button in self.option_button_grp.buttons() if button.isChecked()]
+            checked_button =[button.objectName() for button in self.button_list if button.isChecked()]
             self.model.clean_nan_value(option_list=checked_button)
 
         compound_list = self.model.get_removed_compound_list()

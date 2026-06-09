@@ -29,6 +29,7 @@ from combo_selector.core.orthogonality import Orthogonality
 from combo_selector.core.workers import RedundancyWorker
 from combo_selector.ui.pages.export_page import ExportPage
 from combo_selector.ui.pages.home_page import HomePage
+# from combo_selector.ui.pages.import_data_page import ImportDataPage
 from combo_selector.ui.pages.import_data_page import ImportDataPage
 from combo_selector.ui.pages.om_calculation_page import OMCalculationPage
 from combo_selector.ui.pages.plot_pairwise_page import PlotPairWisePage

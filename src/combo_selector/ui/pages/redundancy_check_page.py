@@ -660,7 +660,7 @@ class RedundancyCheckPage(QFrame):
             - Adds/removes red rectangles around correlated cells
             - Redraws canvas
         """
-        if self.corr_matrix is None:
+        if self.selected_correlation_matrix is None:
             return
 
         if self.highlight_threshold.checkState() == Qt.Unchecked:
@@ -675,7 +675,7 @@ class RedundancyCheckPage(QFrame):
 
             # Create mask: Ignore diagonal and highlight values above threshold
             self.highlight_heatmap_mask = (
-                                                  self.corr_matrix.abs() >= (threshold - tolerance)
+                                                  self.selected_correlation_matrix.abs() >= (threshold - tolerance)
                                           ) & (~np.eye(len(self.corr_matrix), dtype=bool))
 
             self.highlight_heatmap_mask = (
@@ -683,8 +683,8 @@ class RedundancyCheckPage(QFrame):
                                           ) & self.highlight_heatmap_mask
 
             # Overlay red borders
-            for i in range(len(self.corr_matrix)):
-                for j in range(len(self.corr_matrix)):
+            for i in range(len(self.selected_correlation_matrix)):
+                for j in range(len(self.selected_correlation_matrix)):
                     if self.highlight_heatmap_mask.iloc[i, j]:
                         self._ax.add_patch(
                             Rectangle((j, i), 1, 1, fill=False, edgecolor="red", lw=1)

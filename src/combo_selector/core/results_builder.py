@@ -338,6 +338,7 @@ class ResultsBuilder:
             "Final Rank",
             "Final Rank (Utility)",
             "Final Recommendation",
+            "Peak Detection Rate Status",
             "Criterion Highlight",
         ]
 
@@ -606,7 +607,7 @@ class ResultsBuilder:
         """
 
         def is_highly_recommended(row):
-            top_10_suggested_rank = self.orthogonality_result_df["Final Rank (Utility)"].quantile(
+            top_10_suggested_rank = self.orthogonality_result_df["Final Rank (Utility)"].quantile(0.1)
             peak_rate = row['Peak Detection Rate (%)']
             suggested_rank = row["Final Rank (Utility)"]
             compatibility = row['Compatibility']
@@ -621,7 +622,7 @@ class ResultsBuilder:
                 return False
 
         def is_recommended(row):
-            top_30_suggested_rank = self.orthogonality_result_df["Final Rank"].quantile(
+            top_30_suggested_rank = self.orthogonality_result_df["Final Rank (Utility)"].quantile(0.3)
             peak_rate = row['Peak Detection Rate (%)']
             suggested_rank = row["Final Rank (Utility)"]
             compatibility = row['Compatibility']
@@ -636,8 +637,8 @@ class ResultsBuilder:
                 return False
 
         def is_use_with_caution(row):
-            pct_30_suggested_rank = self.orthogonality_result_df["Final Rank (Utility)"].quantile(
-            pct_70_suggested_rank = self.orthogonality_result_df["Final Rank (Utility)"].quantile(
+            pct_30_suggested_rank = self.orthogonality_result_df["Final Rank (Utility)"].quantile(0.3)
+            pct_70_suggested_rank = self.orthogonality_result_df["Final Rank (Utility)"].quantile(0.7)
             peak_rate = row['Peak Detection Rate (%)']
             suggested_rank = row["Final Rank (Utility)"]
             compatibility = row['Compatibility']
@@ -652,7 +653,7 @@ class ResultsBuilder:
                 return False
 
         def is_not_recommended(row):
-            bottom_30_suggested_rank = self.orthogonality_result_df[
+            bottom_30_suggested_rank = self.orthogonality_result_df['Final Rank (Utility)'].quantile(0.7)
             suggested_rank = row["Final Rank (Utility)"]
             peak_rate = row['Peak Detection Rate (%)']
 

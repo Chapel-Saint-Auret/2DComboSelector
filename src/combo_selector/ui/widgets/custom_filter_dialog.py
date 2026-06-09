@@ -93,7 +93,7 @@ class CustomFilterDialog(QDialog):
     filter_regexp_changed = Signal(str,int,object)
     state_changed = Signal()
 
-    def __init__(self,filter_name='',filter_column='',parent=None):
+    def __init__(self,filter_name='',filter_column=[],parent=None):
         """Initialize the filter dialog.
 
         Args:

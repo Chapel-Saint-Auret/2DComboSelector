@@ -431,6 +431,10 @@ COLOR_CONFIG_FINAL_EVALUATION = {
         "Highly recommended": "#1a7a2e", "Recommended": "#6abf4b",
         "Use with caution": "#f5a623", "Not recommended": "#d94f3d"
     },
+    9: {
+        "Insufficient ": "#d94f3d", "Cautionary": "#f5a623",
+        "Acceptable": "#1a7a2e", "Suitable": "#6abf4b"
+    }
 }
 
 # Named colour palettes used by the colour-picker widget
