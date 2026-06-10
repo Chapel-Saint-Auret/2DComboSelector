@@ -209,11 +209,17 @@ METRIC_MAPPING = {
         "include_in_score": True,
         "include_in_corr_mat": True,
     },
+    "schure": {
+        "table_index": 34,
+        "include_in_score": True,
+        "include_in_corr_mat": True,
+    }
 }
 
 UI_TO_MODEL_MAPPING = {
     "Convex hull relative area": "convex_hull",
     "Bin box counting": "bin_box_ratio",
+    "Schure": "schure",
     "Pearson Correlation": "pearson_r",
     "Spearman Correlation": "spearman_rho",
     "Kendall Correlation": "kendall_tau",
@@ -238,6 +244,7 @@ UI_TO_MODEL_MAPPING = {
 METRIC_CATEGORY = {
     "Convex hull relative area": "Coverage",
     "Bin box counting": "Coverage",
+    "Schure": "Coverage",
     "Gilar-Watson method": "Coverage",
     "Modeling approach": "NC",
     "Conditional entropy": "Distribution",

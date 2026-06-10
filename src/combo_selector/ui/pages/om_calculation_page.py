@@ -136,6 +136,7 @@ class OMCalculationPage(QFrame):
             "%BIN": partial(self.plot_utils.plot_percent_bin),
             "Modeling approach": partial(self.plot_utils.plot_modeling_approach),
             "Conditional entropy": partial(self.plot_utils.plot_conditional_entropy),
+            "Schure": partial(self.plot_utils.plot_schure),
         }
 
         # --- Base frame & main container ----------------------------------
@@ -350,6 +351,7 @@ class OMCalculationPage(QFrame):
         metric_list = [
             "Convex hull relative area",
             "Bin box counting",
+            "Schure",
             "Gilar-Watson method",
             "Modeling approach",
             "Conditional entropy",
@@ -935,6 +937,7 @@ class OMCalculationPage(QFrame):
         """
         self.selected_metric_list = self.om_tree_list.get_checked_items()
 
+
         # First, ensure overlay is hidden and reset (cleanup from previous run)
         self.progress_overlay.hide()
         QApplication.processEvents()
@@ -949,6 +952,7 @@ class OMCalculationPage(QFrame):
         QApplication.processEvents()
 
         self.start_om_computation(self.selected_metric_list)
+
 
         # Convert to plot names
         self.selected_metric_list = [

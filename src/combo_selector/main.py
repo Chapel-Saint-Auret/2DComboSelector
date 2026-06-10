@@ -151,6 +151,7 @@ class ComboSelectorMain(CustomMainWindow):
         self.redundancy_page.correlation_group_ready.connect(
             self.results_page.compute_custom_orthogonality_metric_score
         )
+        self.results_page.filter_changed.connect(self.export_page.update_figure_set)
 
     def init_pages(self) -> None:
         """Initialize pages after retention time data is loaded.

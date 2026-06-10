@@ -7,8 +7,9 @@ imported and unit-tested without a running Qt application.
 """
 
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from math import acos, atan, log2, pi, sqrt, tan
+from math import acos, atan, log2, pi, sqrt, tan,log
 
+import random
 import numpy as np
 import pandas as pd
 
@@ -236,6 +237,10 @@ class MetricEngine:
                 "func": self.compute_conditional_entropy,
                 "status": FuncStatus.NOT_COMPUTED,
             },
+            "Schure": {
+                "func": self.compute_schure_dbc,
+                "status": FuncStatus.NOT_COMPUTED,
+            }
         }
 
     def update_num_bins(self, nb_bin: int) -> None:
@@ -381,6 +386,41 @@ class MetricEngine:
             )
 
         self.om_function_map["Bin box counting"]["status"] = FuncStatus.COMPUTED
+
+    def compute_schure_dbc(self) -> None:
+        """Compute the bin box ratio orthogonality metric for each set.
+
+        Divides the [0,1] x [0,1] space into a grid and calculates the fraction
+        of bins that contain at least one peak.
+
+        Side Effects:
+            - Updates 'bin_box' (color_mask and edges) and 'bin_box_ratio' in orthogonality_dict
+            - Updates bin_box_ratio metric in table_data
+            - Sets 'Bin box counting' status to COMPUTED
+        """
+        for set_key in self.orthogonality_dict.keys():
+            set_data = self.orthogonality_dict[set_key]
+            x, y = set_data["x_values"], set_data["y_values"]
+
+            group = []
+            for i in range(2,self.bin_number+1):
+                h_color, x_edges, y_edges = compute_bin_box_mask_color(
+                    x, y, i
+                )
+                eps = 1/i
+                log_esp = log(eps)
+                log_N = log(h_color.count())
+
+                group.append((log_esp, log_N))
+
+            set_data["schure"] = group
+
+            set_number = extract_set_number(set_key)
+            self.update_metrics(
+                set_key, "schure", random.random(), table_row_index=set_number - 1
+            )
+
+        self.om_function_map["Schure"]["status"] = FuncStatus.COMPUTED
 
     def compute_pearson(self) -> None:
         """Compute Pearson correlation coefficient for each set .

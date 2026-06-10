@@ -206,6 +206,7 @@ METRIC_MAPPING = {
 UI_TO_MODEL_MAPPING = {
     "Convex hull relative area": "convex_hull",
     "Bin box counting": "bin_box_ratio",
+    "Schure": "schure",
     "Pearson Correlation": "pearson_r",
     "Spearman Correlation": "spearman_rho",
     "Kendall Correlation": "kendall_tau",
@@ -267,6 +268,7 @@ FINAL_RECOMMENDATION = [
 METRIC_PLOT_MAP = {
     "Convex hull relative area": "Convex Hull",
     "Bin box counting": "Bin Box",
+    "Schure": "Schure",
     "Pearson Correlation": "Linear regression",
     "Spearman Correlation": "Linear regression",
     "Kendall Correlation": "Linear regression",
@@ -287,6 +289,7 @@ METRIC_PLOT_MAP = {
 METRIC_CORR_MAP = {
     "Convex hull relative area": "CH Area",
     "Bin box counting": "Bin Box",
+    "Schure": "Schure",
     "Gilar-Watson method": "Gilar-W",
     "Modeling approach": "Mod App",
     "Conditional entropy": "Cond Ent",

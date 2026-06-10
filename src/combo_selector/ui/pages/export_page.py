@@ -37,10 +37,17 @@ from combo_selector.ui.widgets.line_widget import LineWidget
 from combo_selector.ui.widgets.neumorphism import BoxShadow
 from combo_selector.ui.widgets.style_table import StyledTable
 from combo_selector.utils import resource_path
+from ui.widgets.flat_radio_grouped_button import FlatRadioGroupedButton
 
 # Get icon path for dropdown arrow
 drop_down_icon_path = resource_path("icons/drop_down_arrow.png").replace("\\", "/")
 
+SUBSET_THRESHOLDS = {
+    "All": 100,
+    "Top 50%": 50,
+    "Top 20%": 20,
+    "Top 10%": 10,
+}
 
 class ExportPage(QFrame):
     """Page for exporting figures and tables from orthogonality analysis.
@@ -97,6 +104,7 @@ class ExportPage(QFrame):
 
         # Map plot type names to rendering functions
         self.plot_functions_map = {
+            "Scatter": partial(self.plot_scatter),
             "Convex Hull": partial(self.plot_convex_hull),
             "Bin Box": partial(self.plot_bin_box),
             "Linear regression": partial(self.plot_linear_reg),
@@ -150,20 +158,20 @@ class ExportPage(QFrame):
         """)
 
         user_input_scroll_area = QScrollArea()
-        user_input_scroll_area.setFixedWidth(290)
+        user_input_scroll_area.setFixedWidth(445)
         user_input_scroll_area.setWidgetResizable(True)
         user_input_scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
         user_input_scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
 
         user_input_frame = QFrame()
-        user_input_frame.setFixedWidth(290)
+        user_input_frame.setFixedWidth(445)
 
         user_input_frame_layout = QVBoxLayout(user_input_frame)
         user_input_frame_layout.setContentsMargins(20, 20, 20, 20)
         user_input_scroll_area.setWidget(user_input_frame)
 
         input_section = QFrame()
-        input_section.setFixedWidth(290)
+        input_section.setFixedWidth(445)
         input_layout = QVBoxLayout(input_section)
         input_layout.setSpacing(0)
         input_layout.setContentsMargins(0, 0, 0, 0)
@@ -244,8 +252,14 @@ class ExportPage(QFrame):
         form_layout.addWidget(QLabel("Figure type:"))
         form_layout.addWidget(self.figure_type_chklist)
 
+        # Subset panel (Orthogonality + Multi-Criteria)
+        self._percentile_panel = FlatRadioGroupedButton(title='',
+            items=["All","Top 10%"]
+        )
+
         self.figure_list_chklist = CheckableComboList()
         form_layout.addWidget(QLabel("Figure list:"))
+        form_layout.addWidget(self._percentile_panel)
         form_layout.addWidget(self.figure_list_chklist)
 
         self.save_figure_btn = QPushButton("Save figure(s)")
@@ -404,6 +418,8 @@ class ExportPage(QFrame):
         self.save_figure_btn.clicked.connect(self.save_figure_list)
         self.export_table_btn.clicked.connect(self.export_tables)
 
+        self._percentile_panel.buttonClicked.connect(self.update_figure_list_check_list)
+
     def init_page(self, om_list: list) -> None:
         """Initialize the page with available orthogonality metrics and data sets.
 
@@ -422,7 +438,37 @@ class ExportPage(QFrame):
         self.figure_list_chklist.add_items(data_sets_list)
 
         self.figure_type_chklist.clear()
-        self.figure_type_chklist.add_items(om_list)
+        self.figure_type_chklist.add_items(["Scatter"]+om_list)
+
+    def update_figure_set(self):
+        self.figure_list_chklist.clear()
+
+        set_list = list(self.model.get_filtered_result_df()["Combination #"].apply(lambda x: f"Set {x}"))
+
+        self.figure_list_chklist.add_items(set_list)
+
+    def update_figure_list_check_list(self):
+        # ------------------------------------------------------------------
+        # Subset filter — same logic as plot_multi_criteria_space
+        # ------------------------------------------------------------------
+
+        subset = self._percentile_panel.currentText()
+        threshold = SUBSET_THRESHOLDS.get(subset, 0)
+
+        df = self.model.get_filtered_result_df()[["Combination #","Final Rank (Utility)"]].sort_values("Final Rank (Utility)")
+
+        # Calculate how many rows equal 10% of the DataFrame
+        top_10_percent_count = int(len(df) * 0.10)
+
+        # Get the top 10% based on the 'Score' column
+        top_10_percent_df = df.nsmallest(top_10_percent_count, "Final Rank (Utility)")
+
+        set_list = list(top_10_percent_df.apply(lambda x: f"Set {x}"))
+
+        self.figure_list_chklist.set_checked_items(set_list)
+
+
+
 
     def create_figure_directory(self) -> None:
         """Open directory selection dialog for figure export location.
@@ -535,7 +581,7 @@ class ExportPage(QFrame):
         self.plot_utils.clean_figure()
 
         # Render base scatter plot if data is loaded
-        if self.model.get_status() in ["loaded", "peak_capacity_loaded"]:
+        if self.model.get_status() not in ["error"]:
             self.plot_utils.plot_scatter(set_number=set_nb, dirname="")
 
         # Overlay the specific plot type
@@ -551,6 +597,14 @@ class ExportPage(QFrame):
     # =========================================================================
     # Plot wrapper methods - delegate to plot_utils
     # =========================================================================
+
+    def plot_scatter(self, set_number: str) -> None:
+        """Render convex hull plot for the specified set.
+
+        Args:
+            set_number (str): Set identifier (e.g., "Set 1").
+        """
+        self.plot_utils.plot_scatter(set_number=set_number)
 
     def plot_convex_hull(self, set_number: str) -> None:
         """Render convex hull plot for the specified set.

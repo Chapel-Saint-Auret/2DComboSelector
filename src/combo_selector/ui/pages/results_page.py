@@ -14,7 +14,7 @@ import logging
 import pandas as pd
 from matplotlib.backends.backend_qtagg import FigureCanvas
 from matplotlib.figure import Figure
-from PySide6.QtCore import QThreadPool, QTimer, Qt
+from PySide6.QtCore import QThreadPool, QTimer, Qt, Signal
 from PySide6.QtGui import QColor
 from PySide6.QtWidgets import (
     QApplication,
@@ -99,6 +99,7 @@ class ResultsPage(QFrame):
         selected_axe: Currently selected matplotlib axes.
         progress_overlay (QWidget): Transparent overlay showing progress bar.
     """
+    filter_changed = Signal()
 
     def __init__(self, model=None):
         """Initialize the Results Page with controls and visualizations.
@@ -115,7 +116,9 @@ class ResultsPage(QFrame):
             - Overlay:
                 - Circular progress bar during computations
         """
+
         super().__init__()
+
 
         self.not_filled = True
 
@@ -1134,6 +1137,8 @@ class ResultsPage(QFrame):
         self.model.apply_multi_column_filter(filter_spec_list)
 
         self.vizualation_settings_group._emit_state()
+        self.filter_changed.emit()
+
 
     def build_filtered_point(self, combination: dict) -> None:
         """Build filter subsets from a combination of regexp/color filters.

@@ -43,7 +43,7 @@ CRITERIA_COLUMN_MAP = {
     "Orthogonality":   ("Orthogonality Rank",       "Orthogonality"),
     "Elution Domain":  ("Elution Domain Rank",       "Elution Domain"),
     "Peak Capacity":   ("Peak Capacity Rank",        "Peak Capacity"),
-    "Final consensus": ("Final Rank",                "Final Consensus Rank"),
+    "Final consensus": ("Final Rank (Utility)",                "Final Consensus Rank"),
     "Peak rate":       ("Peak Detection Rate (%)",   "Peak rate (%)"),
 }
 
@@ -478,6 +478,51 @@ class PlotUtils:
 
         if draw:
             self.__draw_figure()
+
+    def plot_schure(self, set_number: str = "", erase_previous: bool = True, draw: bool = True
+    ) -> None:
+        """Draw linear regression line with correlation statistics.
+
+        Plots the fitted regression line and displays correlation coefficients:
+        - Pearson r (linear correlation)
+        - Spearman ρ (rank correlation)
+        - Kendall τ (ordinal correlation)
+        - Regression equation
+
+        Args:
+            set_number (str, optional): Set identifier to plot. Defaults to "".
+
+        Side Effects:
+            - Clears old lines from axes
+            - Plots red regression line
+            - Adds legend with correlation statistics
+            - Redraws figure
+        """
+        if not self.orthogonality_data:
+            return
+
+        if set_number == "":
+            set_nb = self.set_number
+        else:
+            set_nb = set_number
+
+        data = self.orthogonality_data[set_nb]
+        coordinates = data["schure"]
+
+        # Unzip into x and y
+        x, y = zip(*coordinates)
+
+        self.clean_axe()
+        # reset axes & clear old lines
+        # self.axe.set_xlim(0, 1)
+        # self.axe.set_ylim(0, 1)
+
+
+        # plot fitted line
+        self.axe.scatter(x,y)
+
+
+        self.__draw_figure()
 
     def plot_conditional_entropy(
             self, set_number: str = "", erase_previous: bool = True, draw: bool = True
@@ -1698,7 +1743,7 @@ class PlotUtils:
             if col_name_value is None:
                 metrics = [
                     ("Orthogonality Rank", "Orthogonality"),
-                    ("Final Rank", "Final Consensus Rank"),
+                    ("Final Rank (Utility)", "Final Consensus Rank"),
                     ("Peak Detection Rate (%)", "Peak rate (%)"),
                 ]
                 if elution_domain_available:
@@ -1791,9 +1836,9 @@ class PlotUtils:
                 return
 
             rank_col = (
-                "Final Rank"
-                if "Final Rank" in df.columns
-                   and pd.to_numeric(df["Final Rank"], errors="coerce").notna().any()
+                "Final Rank (Utility)"
+                if "Final Rank (Utility)" in df.columns
+                   and pd.to_numeric(df["Final Rank (Utility)"], errors="coerce").notna().any()
                 else "Orthogonality Rank"
             )
 
@@ -1931,7 +1976,7 @@ class PlotUtils:
                         if subset.empty:
                             continue
                         self.axe.scatter(
-                            subset["Final Rank"].astype(float),
+                            subset["Final Rank (Utility)"].astype(float),
                             subset["Peak Detection Rate (%)"].astype(float),
                             s=15, c=color, marker=marker,
                             edgecolors="black", linewidths=0.3, alpha=0.85, picker=5
@@ -1989,7 +2034,7 @@ class PlotUtils:
                     if not chrom_mode_df[chrom_mode_df["Final Recommendation"] == recommendation].any().any():
                         continue
                     self.axe.scatter(
-                        subset["Final Rank"].astype(float),
+                        subset["Final Rank (Utility)"].astype(float),
                         subset["Peak Detection Rate (%)"].astype(float),
                         s=15, c=color, marker=marker,
                         edgecolors="black", linewidths=0.3, alpha=0.85, picker=5
@@ -2212,7 +2257,7 @@ class PlotUtils:
 
         if recommendation == 'All recommendation':
             values = [
-                available_groups[label]["Final Rank"].dropna().astype(float).to_numpy()
+                available_groups[label]["Final Rank (Utility)"].dropna().astype(float).to_numpy()
                 for label in plot_labels
             ]
             positions = np.arange(1, len(plot_labels) + 1)
@@ -2262,7 +2307,7 @@ class PlotUtils:
                             seen_modes.append(mode)
 
                         marker = mode_to_marker.get(mode, "o")
-                        y = mode_group["Final Rank"].dropna().astype(float).to_numpy()
+                        y = mode_group["Final Rank (Utility)"].dropna().astype(float).to_numpy()
                         if len(y) == 0:
                             continue
 
@@ -2273,7 +2318,7 @@ class PlotUtils:
                             alpha=0.95, zorder=3, picker=5
                         )
                 else:
-                    y = group["Final Rank"].dropna().astype(float).to_numpy()
+                    y = group["Final Rank (Utility)"].dropna().astype(float).to_numpy()
                     if len(y) > 0:
                         self.axe.scatter(
                             np.random.normal(loc=xpos, scale=0.06, size=len(y)), y,
@@ -2301,7 +2346,7 @@ class PlotUtils:
                 self._show_missing_data()
                 return
 
-            value = available_groups[recommendation]["Final Rank"].dropna().astype(float).to_numpy()
+            value = available_groups[recommendation]["Final Rank (Utility)"].dropna().astype(float).to_numpy()
 
             position = [1]
             # ------------------------------------------------------------------
@@ -2347,7 +2392,7 @@ class PlotUtils:
                         seen_modes.append(mode)
 
                     marker = mode_to_marker.get(mode, "o")
-                    y = mode_group["Final Rank"].dropna().astype(float).to_numpy()
+                    y = mode_group["Final Rank (Utility)"].dropna().astype(float).to_numpy()
                     if len(y) == 0:
                         continue
 
@@ -2358,7 +2403,7 @@ class PlotUtils:
                         alpha=0.95, zorder=3, picker=5
                     )
             else:
-                y = group["Final Rank"].dropna().astype(float).to_numpy()
+                y = group["Final Rank (Utility)"].dropna().astype(float).to_numpy()
                 if len(y) > 0:
                     self.axe.scatter(
                         np.random.normal(loc=position, scale=0.06, size=len(y)), y,

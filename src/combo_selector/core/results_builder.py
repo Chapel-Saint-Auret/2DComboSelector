@@ -27,6 +27,7 @@ class ResultsBuilder:
     # ------------------------------------------------------------------
     # Accessors
     # ------------------------------------------------------------------
+
     def get_chromatographic_mode_list(self):
         return self.list_of_chrom_mode
 
@@ -350,7 +351,7 @@ class ResultsBuilder:
             "Orthogonality Rank",
             "Elution Domain Rank",
             "Peak Capacity Rank",
-            "Final Rank",
+            "Final Rank (Utility)",
             "Peak Detection Rate (%)",
         ]
 
@@ -367,7 +368,7 @@ class ResultsBuilder:
         column_name = [
             "Orthogonality Rank",
             "Final Recommendation",
-            "Final Rank",
+            "Final Rank (Utility)",
             "Elution Domain Rank",
             "Peak Capacity Rank",
             "Peak Detection Rate (%)",
@@ -383,7 +384,7 @@ class ResultsBuilder:
 
     def create_rank_score_based_on_recommendation_class(self):
         column_name = [
-            "Final Rank",
+            "Final Rank (Utility)",
             "Chromatographic Mode",
         ]
 
@@ -400,7 +401,7 @@ class ResultsBuilder:
             "Orthogonality Rank",
             "Elution Domain Rank",
             "Peak Capacity Rank",
-            "Final Rank",
+            "Final Rank (Utility)",
             "Peak Detection Rate (%)",
         ]
 
@@ -483,14 +484,19 @@ class ResultsBuilder:
                 self.orthogonality_result_df['Final Rank'].rank(ascending=True, method='average')
             )
 
-            self.orthogonality_result_df['Final Rank (Utility)'] = pd.concat(
+            p_o = self.orthogonality_result_df['Orthogonality Utility'].apply(lambda x: 1 if x>=0.4 else x/0.4)
+            p_d = self.orthogonality_result_df['Elution Domain Utility'].apply(lambda x: 1 if x>=0.25 else x/0.25)
+
+            self.orthogonality_result_df['S_raw'] = pd.concat(
                 [self.orthogonality_result_df['Elution Domain Utility'],
                     self.orthogonality_result_df['Orthogonality Utility']],
                 axis=1,
             ).mean(axis=1)
 
+            self.orthogonality_result_df['Uf'] = p_o*p_d*self.orthogonality_result_df['S_raw']
+
             self.orthogonality_result_df['Final Rank (Utility)'] = (
-                self.orthogonality_result_df['Final Rank (Utility)'].rank(ascending=False, method='average')
+                self.orthogonality_result_df['Uf'].rank(ascending=False, method='average')
             )
 
         elif 'Orthogonality Rank' in self.orthogonality_result_df.columns:
