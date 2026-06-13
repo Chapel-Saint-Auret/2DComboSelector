@@ -134,7 +134,7 @@ class NanPolicyDialog(QDialog):
         font = QFont()
         font.setBold(True)
         summary = QLabel(
-            "Select one or more cleanup operations to apply:"
+            "Empty values have bee detected. Select one or more cleanup operations to apply:"
         )
         summary.setFont(font)
         summary.setWordWrap(True)
@@ -153,7 +153,7 @@ class NanPolicyDialog(QDialog):
         self.option_remove_condition.setObjectName("option 3")
 
         self.option_replace = QCheckBox(
-            'Keep all compounds and leave missing values empty'
+            'Keep missing values as blank cells'
         )
         self.option_replace.setChecked(True)
 
@@ -386,7 +386,7 @@ if __name__ == "__main__":
             if option == "option 1":
                 print(f"✓ Removing peaks with >{self.threshold}% NaN retention times")
             else:
-                print("✓ Keeping all peaks, leaving NaN values blank")
+                print("✓ Keep missing values as blank cells")
 
 
     app = QApplication(sys.argv)

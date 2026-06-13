@@ -608,13 +608,13 @@ class FilteredListView(QWidget):
     input to narrow down the list. Supports regex mode.
 
     Signals:
-        filterChanged(list): Emitted when checked items change.
+        filterChanged(dict): Emitted when checked items change.
 
     Attributes:
         filters (list): List of currently checked item texts.
     """
 
-    filterChanged = Signal(list)
+    filterChanged = Signal(dict)
 
     def __init__(self, parent=None):
         """Initialize the filtered list view."""
@@ -719,7 +719,7 @@ class FilteredListView(QWidget):
             item = QStandardItem(d)
             item.setCheckable(True)
 
-            self.model.setItem(row, 0, item)
+            self.model.setItem(row,item)
 
             #TODO uncomment this part to add color picker for filtered data
             # self.model.setItem(row, 1, QStandardItem())

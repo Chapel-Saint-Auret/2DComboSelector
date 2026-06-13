@@ -705,7 +705,7 @@ class PlotPairWisePage(QFrame):
         Side Effects:
             - Plots scatter if data is available
         """
-        if self.model.get_status() in ["loaded", "peak_capacity_loaded","normalized"]:
+        if self.model.get_status() in ["loaded", "peak_capacity_loaded","normalized","elution_data_loaded"]:
             self.plot_scatter()
 
     def plot_scatter(self, set_nb: str = None, dirname: str = "") -> None:

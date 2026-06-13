@@ -351,7 +351,6 @@ class OMCalculationPage(QFrame):
         metric_list = [
             "Convex hull relative area",
             "Bin box counting",
-            "Schure",
             "Gilar-Watson method",
             "Modeling approach",
             "Conditional entropy",
@@ -1121,7 +1120,7 @@ class OMCalculationPage(QFrame):
 
         self.plot_utils.clean_figure()
 
-        if self.model.get_status() in ["loaded", "peak_capacity_loaded","normalized"]:
+        if self.model.get_status() in ["loaded", "peak_capacity_loaded","normalized","elution_data_loaded"]:
             self.plot_utils.plot_scatter()
         else:
             return
