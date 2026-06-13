@@ -254,7 +254,7 @@ class ExportPage(QFrame):
 
         # Subset panel (Orthogonality + Multi-Criteria)
         self._percentile_panel = FlatRadioGroupedButton(title='',
-            items=["All","Top 10%"]
+            items=["Select Top 10%"]
         )
 
         self.figure_list_chklist = CheckableComboList()
@@ -443,7 +443,10 @@ class ExportPage(QFrame):
     def update_figure_set(self):
         self.figure_list_chklist.clear()
 
-        set_list = list(self.model.get_filtered_result_df()["Combination #"].apply(lambda x: f"Set {x}"))
+        df = self.model.get_filtered_result_df()[["Combination #", "Final Rank (Utility)"]].sort_values(
+            "Final Rank (Utility)")
+
+        set_list = list(df["Combination #"].apply(lambda x: f"Set {x}"))
 
         self.figure_list_chklist.add_items(set_list)
 
@@ -451,9 +454,6 @@ class ExportPage(QFrame):
         # ------------------------------------------------------------------
         # Subset filter — same logic as plot_multi_criteria_space
         # ------------------------------------------------------------------
-
-        subset = self._percentile_panel.currentText()
-        threshold = SUBSET_THRESHOLDS.get(subset, 0)
 
         df = self.model.get_filtered_result_df()[["Combination #","Final Rank (Utility)"]].sort_values("Final Rank (Utility)")
 
@@ -463,7 +463,7 @@ class ExportPage(QFrame):
         # Get the top 10% based on the 'Score' column
         top_10_percent_df = df.nsmallest(top_10_percent_count, "Final Rank (Utility)")
 
-        set_list = list(top_10_percent_df.apply(lambda x: f"Set {x}"))
+        set_list = list(top_10_percent_df["Combination #"].apply(lambda x: f"Set {x}"))
 
         self.figure_list_chklist.set_checked_items(set_list)
 

@@ -189,6 +189,7 @@ class ResultsPage(QFrame):
         self.practical_feasibility_table.filter_changed.connect(self.filter_table_changed)
         self.seperational_potential_table.filter_changed.connect(self.filter_table_changed)
         self.final_recommendation_table.filter_changed.connect(self.filter_table_changed)
+        self.old_approach_table.filter_changed.connect(self.filter_table_changed)
 
         # We use a lambda wrapper here because Matplotlib's 'mpl_connect' expects a function
         # reference that takes exactly one argument (the 'event' object).
@@ -199,6 +200,12 @@ class ResultsPage(QFrame):
         self.cid = self.fig.canvas.mpl_connect(
             'pick_event',
             lambda event: self.plot_utils.on_pick(event, subset=self.vizualation_settings_group.get_subset())
+        )
+
+        # Connexion
+        self.cid = self.fig.canvas.mpl_connect(
+            'motion_notify_event',
+            lambda event: self.plot_utils.on_motion(event, subset=self.vizualation_settings_group.get_subset())
         )
 
         # self.plot_tile_selector.plot_selected.connect(self.update_figure)
@@ -549,6 +556,10 @@ class ResultsPage(QFrame):
                                     sheet_name='Final Evaluation',
                                     enable_decoration = True,
                                     has_tooltip = True)
+        self.styled_table.add_sheet(value_format=".3f",
+                                    sheet_name='Old Approach',
+                                    enable_decoration = False,
+                                    has_tooltip = False)
 
         self.orthogonality_table = self.styled_table.get_table_from_sheet(sheet_name='Orthogonality')
 
@@ -564,7 +575,7 @@ class ResultsPage(QFrame):
 
         self.orthogonality_table.add_help_button(column=3,title="Coverage Score",markdown_path="markdown/coverage_score.md")
         self.orthogonality_table.add_help_button(column=4,title="Distribution Score",markdown_path="markdown/distribution_score.md")
-        self.orthogonality_table.add_help_button(column=5,title="Orthogonality Rank",markdown_path="markdown/orthogonality_rank.md")
+        self.orthogonality_table.add_help_button(column=5,title="Orthogonality Utility",markdown_path="markdown/orthogonality_utility.md")
         self.orthogonality_table.add_help_button(column=6,title="Agreement Indicator",markdown_path="markdown/agreement_indicator.md")
         # self.orthogonality_table.add_help_button(column=7,title="Outlier Flag",markdown_path="markdown/outlier_flag.md")
         self.orthogonality_table.set_header_label(
@@ -574,7 +585,7 @@ class ResultsPage(QFrame):
                 "Chromatographic Mode",
                 "Coverage Score",
                 "Distribution Score",
-                "Orthogonality Rank",
+                "Orthogonality Utility",
                 "Agreement Indicator"
             ])
 
@@ -602,7 +613,7 @@ class ResultsPage(QFrame):
         self.seperational_potential_table.add_header_button(column=2, tooltip="Custom filter",
                                                            widget_to_show=self.chrom_mode_filter_dialog)
         self.seperational_potential_table.add_help_button(column=3, title="Hypothetical 2D Peak Capacity",markdown_path="markdown/hypothetical_peak_capacity.md")
-        self.seperational_potential_table.add_help_button(column=4, title="Elution Domain",markdown_path="markdown/elution_domain.md")
+        self.seperational_potential_table.add_help_button(column=4, title="Elution Domain (%)",markdown_path="markdown/elution_domain.md")
         self.seperational_potential_table.set_header_label(
             [
                 "Combination #",
@@ -615,19 +626,21 @@ class ResultsPage(QFrame):
         self.final_recommendation_table = self.styled_table.get_table_from_sheet(sheet_name='Final Evaluation')
         self.final_recommendation_table.add_header_button(column=2, tooltip="Custom filter",
                                                            widget_to_show=self.chrom_mode_filter_dialog)
-        self.final_recommendation_table.add_help_button(column=3, title="Orthogonality Rank",
-                                                          markdown_path="markdown/orthogonality_rank.md")
-        self.final_recommendation_table.add_help_button(column=4, title="Peak Capacity Rank",
-                                                          markdown_path="markdown/peak_capacity_rank.md")
-        self.final_recommendation_table.add_help_button(column=5, title="Elution Domain Rank",
-                                                          markdown_path="markdown/elution_domain_rank.md")
-        self.final_recommendation_table.add_help_button(column=6, title="Final Consensus Rank",
+        self.final_recommendation_table.add_help_button(column=3, title="Orthogonality Utility",
+                                                          markdown_path="markdown/orthogonality_utility.md")
+        self.final_recommendation_table.add_help_button(column=4, title="Peak Capacity Utility",
+                                                          markdown_path="markdown/peak_capacity_utility.md")
+        self.final_recommendation_table.add_help_button(column=5, title="Elution Domain Utility",
+                                                          markdown_path="markdown/elution_domain_utility.md")
+        self.final_recommendation_table.add_help_button(column=6, title="Final Consensus Score",
+                                                          markdown_path="markdown/final_consensus_score.md")
+        self.final_recommendation_table.add_help_button(column=7, title="Final Consensus Rank",
                                                           markdown_path="markdown/final_consensus_rank.md")
-        self.final_recommendation_table.add_help_button(column=7, title="Final Rank (Utility)",
+        self.final_recommendation_table.add_help_button(column=8, title="Final Rank (Utility)",
                                                           markdown_path="markdown/final_rank_utility.md")
 
-        self.final_recommendation_table.add_header_button(column=8, tooltip="Final Recommendation filter", widget_to_show=self.final_recommendation_filter_dialog)
-        self.final_recommendation_table.add_help_button(column=8, title="Final Recommendation",
+        self.final_recommendation_table.add_header_button(column=9, tooltip="Final Recommendation filter", widget_to_show=self.final_recommendation_filter_dialog)
+        self.final_recommendation_table.add_help_button(column=9, title="Final Recommendation",
                                                           markdown_path="markdown/final_recommendation.md")
         self.final_recommendation_table.add_header_button(column=9, tooltip="Peak Detection Status filter", widget_to_show=self.peak_detection_status_filter_dialog)
         self.final_recommendation_table.add_help_button(column=10, title="Criterion Highlight",
@@ -638,19 +651,30 @@ class ResultsPage(QFrame):
                 "Combination #",
                 "2D Combination",
                 "Chromatographic Mode",
-                "Orthogonality Rank",
-                "Peak Capacity Rank",
-                "Elution Domain Rank",
+                "Orthogonality Utility",
+                "Peak Capacity Utility",
+                "Elution Domain Utility",
+                "Final Consensus Score",
                 "Final Consensus Rank",
-                "Final Rank (Utility)",
                 "Final Recommendation",
-                "Peak Detection Rate Status",
-                "Criterion Highlight"
+                "Peak Detection Status",
+                "FLAG"
             ])
 
-        # self.styled_table.get_header().setSectionResizeMode(0, QHeaderView.Fixed)
-        # self.styled_table.get_header().setSectionResizeMode(1, QHeaderView.Stretch)
-        # self.styled_table.get_header().setSectionResizeMode(5, QHeaderView.Fixed)
+        self.old_approach_table = self.styled_table.get_table_from_sheet(sheet_name='Old Approach')
+        self.old_approach_table.add_header_button(column=2, tooltip="Custom filter",
+                                                           widget_to_show=self.chrom_mode_filter_dialog)
+
+        self.old_approach_table.set_header_label(
+            [
+                "Combination #",
+                "2D Combination",
+                "Chromatographic Mode",
+                "Suggested Orthogonality Score",
+                "Suggested Orthogonality Rank",
+                "Practical Peak Capacity",
+                "Practical Peak Capacity Rank",
+            ])
 
 
         table_frame_layout.addWidget(self.styled_table)
@@ -796,6 +820,9 @@ class ResultsPage(QFrame):
         logging.debug("Running ResultsPage: update_results_table")
         self.update_results_table()
 
+        # initialization of the flag used to populate filter dialog item
+        self.not_filled = True
+        self.plot_utils.set_orthogonality_data(self.model.get_orthogonality_dict())
         data = self.model.get_orthogonality_result_df()
 
         if not data.empty:
@@ -1121,8 +1148,11 @@ class ResultsPage(QFrame):
             tooltip = result_df['Final Recommendation tooltip']
             self.final_recommendation_table.set_tooltip_config({8: tooltip})
 
-        # self.styled_table.async_set_table_data(data)
-        # self.styled_table.set_table_proxy()
+        data = self.model.get_old_approach_table()
+        if not data.empty:
+            self.old_approach_table.async_set_table_data(data)
+            self.old_approach_table.set_table_proxy()
+
         if self.not_filled:
             unique_mode = self.model.get_chromatographic_mode_list()
             self.chrom_mode_filter_dialog.build_filter_list(unique_mode)

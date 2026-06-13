@@ -74,6 +74,15 @@ class ResultsBuilder:
         """
         return self.final_recommendation_table_df
 
+    def get_old_approach_table(self):
+        """Get the old approach sub-table.
+
+        Returns:
+            pd.DataFrame: Old approach table.
+        """
+        return self.old_approach_table_df
+
+
     def get_median_rank_score_table(self):
         """Get the median_rank_score sub-table.
 
@@ -165,8 +174,10 @@ class ResultsBuilder:
 
         self.orthogonality_result_df["Hypothetical 2D Peak Capacity"] = self.combination_df["Hypothetical 2D Peak Capacity"].copy()
         self.orthogonality_result_df["Peak Capacity Rank"] = self.combination_df["Hypothetical 2D Peak Capacity"].copy()
+        self.orthogonality_result_df["Peak Capacity Utility"] = self.combination_df["Hypothetical 2D Peak Capacity"].copy()
         self.orthogonality_result_df["Elution Domain"] = self.combination_df["Elution Domain"].copy()
         self.orthogonality_result_df["Elution Domain Rank"] = self.combination_df["Elution Domain"].copy()
+        self.orthogonality_result_df["Elution Domain Utility"] = self.combination_df["Elution Domain"].copy()
 
     # def apply_chromatographic_mode_filter(self,filter_name: str = "Chromatographic Mode", combine_pattern: str = ".*") -> None:
     #
@@ -204,6 +215,7 @@ class ResultsBuilder:
         self.create_practical_feasibility_table()
         self.create_separational_potential_table()
         self.create_final_recommendation_table()
+        self.create_old_approach_table()
 
         self.create_median_rank_score_based_on_chromatographic_group()
         self.create_rank_score_based_on_chromatographic_group()
@@ -226,6 +238,8 @@ class ResultsBuilder:
         self.compute_consensus_orthogonality_score()
         self.compute_consensus_orthogonality_ranking()
         self.assess_metric_removal_impact_on_orthogonality_rank()
+        self.compute_suggested_score()
+        self.compute_practical_2d_peak_capacity()
         self.compute_coverage_score()
         self.compute_distribution_score()
         self.compute_agreement_index()
@@ -283,7 +297,7 @@ class ResultsBuilder:
             "Chromatographic Mode",
             "Coverage Score",
             "Distribution Score",
-            "Orthogonality Rank",
+            "Orthogonality Utility",
             "Agreement Indicator"
         ]
 
@@ -333,10 +347,10 @@ class ResultsBuilder:
             "Combination #",
             "2D Combination",
             "Chromatographic Mode",
-            "Orthogonality Rank",
-            "Peak Capacity Rank",
-            "Elution Domain Rank",
-            "Final Rank",
+            "Orthogonality Utility",
+            "Peak Capacity Utility",
+            "Elution Domain Utility",
+            "Final Score (Utility)",
             "Final Rank (Utility)",
             "Final Recommendation",
             "Peak Detection Rate Status",
@@ -345,19 +359,37 @@ class ResultsBuilder:
 
         self.final_recommendation_table_df = self.filtered_result_df[column_name].copy()
 
+    def create_old_approach_table(self):
+        """Build the final recommendation sub-table from the results DataFrame.
+
+        Side Effects:
+            - Creates ``self.final_recommendation_table_df``.
+        """
+        column_name = [
+            "Combination #",
+            "2D Combination",
+            "Chromatographic Mode",
+            "Suggested Orthogonality Score",
+            "Suggested Orthogonality Rank",
+            "Practical Peak Capacity",
+            "Practical Peak Capacity Rank"
+        ]
+
+        self.old_approach_table_df = self.filtered_result_df[column_name].copy()
+
     def create_median_rank_score_based_on_chromatographic_group(self):
 
         column_name = [
-            "Orthogonality Rank",
-            "Elution Domain Rank",
-            "Peak Capacity Rank",
+            "Orthogonality Utility",
+            "Elution Domain Utility",
+            "Peak Capacity Utility",
             "Final Rank (Utility)",
             "Peak Detection Rate (%)",
         ]
 
         for col in [
-            "Elution Domain Rank",
-            "Peak Capacity Rank",
+            "Elution Domain Utility",
+            "Peak Capacity Utility",
         ]:
             self.filtered_result_df[col] = pd.to_numeric(self.filtered_result_df[col], errors="coerce").fillna(0)
 
@@ -366,17 +398,17 @@ class ResultsBuilder:
     def create_rank_score_based_on_chromatographic_group(self):
 
         column_name = [
-            "Orthogonality Rank",
+            "Orthogonality Utility",
             "Final Recommendation",
             "Final Rank (Utility)",
-            "Elution Domain Rank",
-            "Peak Capacity Rank",
+            "Elution Domain Utility",
+            "Peak Capacity Utility",
             "Peak Detection Rate (%)",
         ]
 
         for col in [
-            "Elution Domain Rank",
-            "Peak Capacity Rank",
+            "Elution Domain Utility",
+            "Peak Capacity Utility",
         ]:
             self.filtered_result_df[col] = pd.to_numeric(self.filtered_result_df[col], errors="coerce").fillna(0)
 
@@ -389,8 +421,8 @@ class ResultsBuilder:
         ]
 
         for col in [
-            "Elution Domain Rank",
-            "Peak Capacity Rank",
+            "Elution Domain Utility",
+            "Peak Capacity Utility",
         ]:
             self.filtered_result_df[col] = pd.to_numeric(self.filtered_result_df[col], errors="coerce").fillna(0)
         self.rank_score_grouped_by_final_recommendation_df = self.filtered_result_df.groupby("Final Recommendation")[column_name]
@@ -398,16 +430,16 @@ class ResultsBuilder:
     def create_recommendation_distribution_group(self):
 
         column_name = [
-            "Orthogonality Rank",
-            "Elution Domain Rank",
-            "Peak Capacity Rank",
+            "Orthogonality Utility",
+            "Elution Domain Utility",
+            "Peak Capacity Utility",
             "Final Rank (Utility)",
             "Peak Detection Rate (%)",
         ]
 
         for col in [
-            "Elution Domain Rank",
-            "Peak Capacity Rank",
+            "Elution Domain Utility",
+            "Peak Capacity Utility",
         ]:
             self.filtered_result_df[col] = pd.to_numeric(self.filtered_result_df[col], errors="coerce").fillna(0)
 
@@ -438,7 +470,7 @@ class ResultsBuilder:
                 self.orthogonality_result_df['Final Rank'].rank(ascending=True, method='average')
             )
 
-            self.orthogonality_result_df['Final Rank (Utility)'] = pd.concat(
+            self.orthogonality_result_df['Final Score (Utility)'] = pd.concat(
                 [self.orthogonality_result_df['Peak Capacity Utility'],
                  self.orthogonality_result_df['Elution Domain Utility'],
                  self.orthogonality_result_df['Orthogonality Utility']],
@@ -446,7 +478,7 @@ class ResultsBuilder:
             ).mean(axis=1)
 
             self.orthogonality_result_df['Final Rank (Utility)'] = (
-                self.orthogonality_result_df['Final Rank (Utility)'].rank(ascending=False, method='average')
+                self.orthogonality_result_df['Final Score (Utility)'].rank(ascending=False, method='average')
             )
         elif (self.peak_capacity_status in ["peak_capacity_loaded"] and
                 'Orthogonality Rank' in self.orthogonality_result_df.columns):
@@ -461,14 +493,14 @@ class ResultsBuilder:
                 self.orthogonality_result_df['Final Rank'].rank(ascending=True, method='average')
             )
 
-            self.orthogonality_result_df['Final Rank (Utility)'] = pd.concat(
+            self.orthogonality_result_df['Final Score (Utility)'] = pd.concat(
                 [self.orthogonality_result_df['Peak Capacity Utility']
                     ,self.orthogonality_result_df['Orthogonality Utility']],
                 axis=1,
             ).mean(axis=1)
 
             self.orthogonality_result_df['Final Rank (Utility)'] = (
-                self.orthogonality_result_df['Final Rank (Utility)'].rank(ascending=False, method='average')
+                self.orthogonality_result_df['Final Score (Utility)'].rank(ascending=False, method='average')
             )
 
         elif (self.elution_data_status in ["elution_data_loaded"] and
@@ -484,7 +516,7 @@ class ResultsBuilder:
                 self.orthogonality_result_df['Final Rank'].rank(ascending=True, method='average')
             )
 
-            p_o = self.orthogonality_result_df['Orthogonality Utility'].apply(lambda x: 1 if x>=0.4 else x/0.4)
+            p_o = self.orthogonality_result_df['Orthogonality Utility'].apply(lambda x: 1 if x>=0.7 else x/0.7)
             p_d = self.orthogonality_result_df['Elution Domain Utility'].apply(lambda x: 1 if x>=0.25 else x/0.25)
 
             self.orthogonality_result_df['S_raw'] = pd.concat(
@@ -493,10 +525,13 @@ class ResultsBuilder:
                 axis=1,
             ).mean(axis=1)
 
-            self.orthogonality_result_df['Uf'] = p_o*p_d*self.orthogonality_result_df['S_raw']
+            self.orthogonality_result_df['p_o'] = p_o
+            self.orthogonality_result_df['p_d'] = p_d
+
+            self.orthogonality_result_df['Final Score (Utility)'] = p_o*p_d*self.orthogonality_result_df['S_raw']
 
             self.orthogonality_result_df['Final Rank (Utility)'] = (
-                self.orthogonality_result_df['Uf'].rank(ascending=False, method='average')
+                self.orthogonality_result_df['Final Score (Utility)'].rank(ascending=False, method='average')
             )
 
         elif 'Orthogonality Rank' in self.orthogonality_result_df.columns:
@@ -513,6 +548,7 @@ class ResultsBuilder:
             )
         else:
             self.orthogonality_result_df['Final Rank'] = 'Not available'
+            self.orthogonality_result_df['Final Score (Utility)'] = 'Not available'
             self.orthogonality_result_df['Final Rank (Utility)'] = 'Not available'
 
     def compute_criterion_highlight(self):
@@ -593,9 +629,17 @@ class ResultsBuilder:
         else:
             hypothetical_2d_peak_capacity_ranking = ''
 
+        if 'Agreement Indicator' in self.orthogonality_result_df.columns:
+            low_orthogonality_agreement = (self.orthogonality_result_df['Agreement Indicator'].
+                                                     apply(lambda x: 'Low Orthogonality Agreement' if x <0.8 else ''))
+        else:
+            low_orthogonality_agreement = ''
+
+
         self.orthogonality_result_df["Criterion Highlight"] =(orthogonality_consensus_ranking + ' ' +
                                                              elution_composition_space_area_ranking + ' ' +
-                                                             hypothetical_2d_peak_capacity_ranking)
+                                                             hypothetical_2d_peak_capacity_ranking + ' ' +
+                                                             low_orthogonality_agreement)
 
         self.orthogonality_result_df["Criterion Highlight"] = (self.orthogonality_result_df["Criterion Highlight"]
                                                               .apply(lambda x: x.strip() if x.strip() else '---'))

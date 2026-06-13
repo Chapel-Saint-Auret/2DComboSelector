@@ -192,7 +192,7 @@ class Scoring:
                 table_row_index=set_number - 1,
             )
 
-    def compute_suggested_score_not_used(self) -> None:
+    def compute_suggested_score(self) -> None:
         """Compute suggested orthogonality scores based on correlation groups.
 
         The suggested score is calculated as the mean of group means, where each group
@@ -230,12 +230,26 @@ class Scoring:
             self.update_metrics(
                 data_set, "suggested_score", om_score, table_row_index=set_number - 1
             )
-            self.update_metrics(
-                data_set,
-                "orthogonality_value",
-                om_score,
-                table_row_index=set_number - 1,
-            )
+
+            self.orthogonality_result_df['Suggested Orthogonality Score'] = [row[26] for row in self.table_data]
+            self.orthogonality_result_df['Suggested Orthogonality Rank']=self.orthogonality_result_df['Suggested Orthogonality Score'].rank(ascending=False, method='average')
+
+    def compute_practical_2d_peak_capacity(self):
+        if self.peak_capacity_status not in ['peak_capacity_loaded']:
+            return
+
+        # Iterate through each set in the orthogonality dictionary
+        for index, data_set in enumerate(self.orthogonality_dict):
+
+            practical_2d_peak_capacity = (self.orthogonality_score[data_set]['suggested_score'] *
+                                         self.orthogonality_score[data_set]['2d_peak_capacity'])
+
+            set_number = extract_set_number(data_set)
+            self.update_metrics(data_set, 'practical_2d_peak_capacity', practical_2d_peak_capacity,
+                                table_row_index=set_number-1)
+
+            self.orthogonality_result_df['Practical Peak Capacity'] = [row[24] for row in self.table_data]
+            self.orthogonality_result_df['Practical Peak Capacity Rank']= self.orthogonality_result_df['Practical Peak Capacity'].rank(ascending=False, method='average')
 
     # ------------------------------------------------------------------
     # Consensus scoring
@@ -375,7 +389,8 @@ class Scoring:
                                                   self.correlation_group_df['Correlated Metrics']):
             self.consensus_orthogonality_score_df[group] = metric_df[Correlated_Metrics_list].median(axis=1)
 
-        self.consensus_orthogonality_score_df = self.consensus_orthogonality_score_df.median(axis=1)
+        if isinstance(self.consensus_orthogonality_score_df, pd.DataFrame):
+            self.consensus_orthogonality_score_df = self.consensus_orthogonality_score_df.median(axis=1)
 
         self.orthogonality_result_df['Consensus Score'] = self.consensus_orthogonality_score_df
 

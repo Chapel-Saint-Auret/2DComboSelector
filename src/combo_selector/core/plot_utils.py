@@ -16,7 +16,9 @@ import warnings
 
 import numpy as np
 import pandas as pd
-from matplotlib.backends.backend_qtagg import FigureCanvas
+from PySide6.QtCore import QPoint
+from matplotlib.backend_bases import PickEvent
+from matplotlib.backends.backend_qtagg import FigureCanvas, FigureCanvasQTAgg
 from matplotlib.figure import Figure
 from PySide6.QtWidgets import QDialog,QVBoxLayout
 from matplotlib import collections, patches, ticker
@@ -84,6 +86,7 @@ class PlotUtils:
         """
         super().__init__()
 
+        self.pop_up_fig = None
         self.model = model
         self.orthogonality_data = None
         self.fig = fig
@@ -1069,7 +1072,7 @@ class PlotUtils:
         df = self.model.get_filtered_result_df().copy()
         n = self.model.get_number_of_combination()
 
-        final_rank = pd.to_numeric(df['Final Rank'], errors='coerce')
+        final_rank = pd.to_numeric(df['Final Rank (Utility)'], errors='coerce')
         orthogonality_rank = pd.to_numeric(df['Orthogonality Rank'], errors='coerce')
 
         final_rank_pct = (final_rank / n) * 100          # controls which points are shown
@@ -1172,7 +1175,7 @@ class PlotUtils:
                       fontsize=11, style='italic', color='0.45')
 
         self.fig.legend(handles=legend_elements,
-                        title='Orthogonality rank\npercentile',
+                        title='Orthogonality Rank\npercentile',
                         loc='center right',
                         bbox_to_anchor=(1.0, 0.5),
                         fontsize=10, title_fontsize=10,
@@ -1285,8 +1288,9 @@ class PlotUtils:
         # ------------------------------------------------------------------
         # Shared: rank-based subset filtering + coloring
         # ------------------------------------------------------------------
-        final_rank = pd.to_numeric(df['Final Rank'], errors='coerce')
-        orthogonality_rank = pd.to_numeric(df['Orthogonality Rank'], errors='coerce')
+        final_rank = pd.to_numeric(df['Final Rank (Utility)'], errors='coerce')
+        orthogonality_rank = pd.to_numeric(df['Orthogonality Utility'], errors='coerce')
+        orthogonality_rank = orthogonality_rank.rank(ascending=False, method='average')
         n = len(df)
 
         final_rank_pct = (final_rank / n) * 100
@@ -1742,14 +1746,14 @@ class PlotUtils:
             # ------------------------------------------------------------------
             if col_name_value is None:
                 metrics = [
-                    ("Orthogonality Rank", "Orthogonality"),
+                    ("Orthogonality Utility", "Orthogonality"),
                     ("Final Rank (Utility)", "Final Consensus Rank"),
                     ("Peak Detection Rate (%)", "Peak rate (%)"),
                 ]
                 if elution_domain_available:
-                    metrics.insert(1, ("Elution Domain Rank", "Elution Domain"))
+                    metrics.insert(1, ("Elution Domain Utility", "Elution Domain Utility"))
                 if peak_capacity_available:
-                    metrics.insert(2, ("Peak Capacity Rank", "Peak Capacity"))
+                    metrics.insert(2, ("Peak Capacity Utility", "Peak Capacity Utility"))
 
                 n = len(metrics)
                 ncols = min(3, n)
@@ -2956,7 +2960,7 @@ class PlotUtils:
 
         df_filtered = self.model.get_filtered_result_df()
         n = self.model.get_number_of_combination()
-        final_rank = pd.to_numeric(df_filtered['Final Rank'], errors='coerce')
+        final_rank = pd.to_numeric(df_filtered['Final Rank (Utility)'], errors='coerce')
 
         final_rank_pct = (final_rank / n) * 100
 
@@ -2978,8 +2982,182 @@ class PlotUtils:
         self.annotation.set_text(f"Combination # {combination_number}\n{combination}\n(x, y) = ({x:.2f}, {y:.2f})")
         self.annotation.set_visible(True)
 
+        fig = self.plot_combination_popup(set_number=f"Set {combination_number}")
+        self.show_popup_at(fig, event)
+
         self.fig.canvas.draw_idle()
         self.fig.canvas.flush_events()
+
+    def on_motion(self, event, subset=None):
+        if event.inaxes is None:
+            self._hovered_ind = None
+            self.hide_popup()
+            return
+
+        axe = event.inaxes
+
+        # Guard: no collections yet
+        if not axe.collections:
+            return
+
+        xy_data = axe.collections[0].get_offsets()
+        if len(xy_data) == 0:
+            return
+
+        extracted_x = xy_data[:, 0]
+        extracted_y = xy_data[:, 1]
+
+        df_filtered = self.model.get_filtered_result_df()
+        n = self.model.get_number_of_combination()
+        final_rank = pd.to_numeric(df_filtered['Final Rank (Utility)'], errors='coerce')
+        final_rank_pct = (final_rank / n) * 100
+
+        if subset:
+            threshold = SUBSET_THRESHOLDS.get(subset, 0)
+            mask = final_rank_pct <= threshold
+            df_filtered = df_filtered[mask]
+
+        pts_data = np.column_stack([extracted_x, extracted_y])
+        pts_px = axe.transData.transform(pts_data)
+        mouse_px = np.array([event.x, event.y])
+        dists = np.linalg.norm(pts_px - mouse_px, axis=1)
+        nearest = int(np.argmin(dists))
+
+        if dists[nearest] <= 8:
+            if self._hovered_ind != nearest:
+                self._hovered_ind = nearest
+                combination_number = list(df_filtered['Combination #'])[nearest]
+                # Ferme l'ancien dialog proprement avant d'en créer un nouveau
+                self._destroy_popup()
+                self.pop_up_fig = self.plot_combination_popup(set_number=f"Set {combination_number}")
+                self.show_popup_at(event)
+        else:
+            if self._hovered_ind is not None:
+                self._hovered_ind = None
+                self.hide_popup()
+
+    def _destroy_popup(self):
+        if hasattr(self, 'pop_up_fig'):
+            if hasattr(self.pop_up_fig, '_popup_dialog') and self.pop_up_fig._popup_dialog:
+                self.pop_up_fig._popup_dialog.hide()
+                self.pop_up_fig._popup_dialog.deleteLater()
+                self.pop_up_fig._popup_dialog = None
+            del self.pop_up_fig
+
+    def hide_popup(self):
+        if hasattr(self, 'pop_up_fig') and hasattr(self.pop_up_fig, '_popup_dialog') and self.pop_up_fig._popup_dialog:
+            self.pop_up_fig._popup_dialog.hide()
+
+    def show_popup_at(self, event, parent=None):
+        """
+        Display the popup figure next to the hovered/picked point.
+
+        Creates a fresh QDialog (meant to be called after _destroy_popup has
+        cleaned up the previous one) and positions its top-left corner just to
+        the right of the cursor so the hovered point stays visible.
+
+        Args:
+            event: A matplotlib PickEvent or MouseEvent fired on the main figure.
+            parent: Optional QWidget parent for the QDialog.
+        """
+        from matplotlib.backend_bases import PickEvent, MouseEvent
+
+        # --- 1. Extract the underlying MouseEvent ---
+        # PickEvent wraps a MouseEvent; for a plain MouseEvent we use it directly.
+        if isinstance(event, PickEvent):
+            mouse = event.mouseevent
+        elif isinstance(event, MouseEvent):
+            mouse = event
+        else:
+            return  # Unknown event type – nothing to do
+
+        # --- 2. Build a fresh QDialog containing the popup figure ---
+        dialog = QDialog(parent)
+        dialog.setWindowTitle("Popup")
+
+        layout = QVBoxLayout(dialog)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(0)
+
+        # Embed the matplotlib figure into the dialog as a Qt canvas
+        canvas = FigureCanvasQTAgg(self.pop_up_fig)
+        layout.addWidget(canvas)
+
+        # Store the dialog on the figure so hide_popup/_destroy_popup can reach it
+        self.pop_up_fig._popup_dialog = dialog
+
+        # --- 3. Resize the dialog to exactly match the figure dimensions ---
+        self.pop_up_fig.tight_layout(pad=1.0)  # fit content before measuring
+        w = int(self.pop_up_fig.get_figwidth() * self.pop_up_fig.dpi)
+        h = int(self.pop_up_fig.get_figheight() * self.pop_up_fig.dpi)
+        dialog.resize(w, h)
+
+        # --- 4. Convert matplotlib canvas coords → screen (Qt) coords ---
+        # matplotlib reports mouse.y = 0 at the BOTTOM of the canvas,
+        # but Qt expects y = 0 at the TOP → flip with: qt_y = height - mpl_y
+        src_canvas = self.fig.canvas  # FigureCanvasQTAgg of the main figure (is a QWidget)
+        qt_x = int(mouse.x)
+        qt_y = int(src_canvas.height() - mouse.y)  # Y-axis flip
+        gp = src_canvas.mapToGlobal(QPoint(qt_x, qt_y))
+
+        # --- 5. Position the dialog relative to the cursor ---
+        # OFFSET_X > 0 : push the popup to the right of the cursor
+        # OFFSET_Y < 0 : shift the popup slightly above the cursor
+        # Together they ensure the hovered point is never hidden behind the popup.
+        OFFSET_X = 20
+        OFFSET_Y = -20
+        dialog.move(gp.x() + OFFSET_X, gp.y() + OFFSET_Y)
+
+        # --- 6. Render and display ---
+        self.pop_up_fig.canvas.draw_idle()
+        dialog.show()
+        dialog.raise_()
+
+    def plot_combination_popup(
+            self,
+            set_number: str = "",
+    ) -> Figure:
+        """Create or update a scatter plot of retention time data.
+
+        Plots normalized retention times as a scatter plot with x and y values
+        from the specified set's chromatography data.
+
+        Args:
+            set_number (str, optional): Set identifier to plot. If empty, uses
+                                       self.set_number. Defaults to "".
+            title (str, optional): Custom title for the plot. If None, uses set_number.
+                                  Defaults to None.
+            draw (bool, optional): Whether to redraw the figure. Defaults to True.
+            dirname (str, optional): Directory path for saving (currently unused).
+                                    Defaults to "".
+
+        Side Effects:
+            - Updates or creates scatter plot on self.axe
+            - Sets axis title and labels
+            - Updates self.scatter_collection
+            - Redraws figure if draw=True
+
+        Note:
+            The scatter plot uses black circles (marker='o') with 50% transparency.
+        """
+
+        fig = Figure(figsize=(4, 3))
+        ax = fig.add_subplot(111)
+
+        data = self.orthogonality_data[set_number]
+        x, y = data["x_values"], data["y_values"]
+        x_title, y_title = data["x_title"], data["y_title"]
+
+        # 1) Update title and labels
+        ax.set_title(set_number, fontdict={"fontsize": 10}, pad=13)
+        ax.set_xlabel(x_title, fontsize=11)
+        ax.set_ylabel(y_title, fontsize=11)
+
+        # 2) Create or update scatter
+        self.scatter_collection = ax.scatter(x, y, s=20, c="k", marker="o", alpha=0.5)
+
+        return fig
+
 
     def open_in_window(self):
         self._plot_dialog = QDialog()
