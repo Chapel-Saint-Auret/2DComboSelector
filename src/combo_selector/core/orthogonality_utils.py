@@ -169,7 +169,7 @@ METRIC_MAPPING = {
         "include_in_score": True,
         "include_in_corr_mat": False,
     },
-    "orthogonality_value": {
+    "suggested_score": {
         "table_index": 26,
         "include_in_score": True,
         "include_in_corr_mat": False,

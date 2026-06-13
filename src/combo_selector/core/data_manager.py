@@ -55,6 +55,7 @@ class DataManager:
         self.orthogonality_metric_df = pd.DataFrame()
         self.orthogonality_table_df = pd.DataFrame()
         self.filtered_result_df = pd.DataFrame()
+        self.old_approach_table_df = pd.DataFrame()
         self.practical_feasibility_table_df = pd.DataFrame()
         self.separational_potential_table_df = pd.DataFrame()
         self.final_recommendation_table_df = pd.DataFrame()
@@ -337,6 +338,7 @@ class DataManager:
 
                     # Update metadata columns
                     self.update_metrics(set_key, "set_number", set_number)
+                    self.update_metrics(set_key, "set_number", set_number)
                     self.update_metrics(set_key, "title", set_title)
                     self.update_metrics(set_key, "orthogonality_score", 0)
                     self.update_metrics(set_key, "orthogonality_ranking", 0)
@@ -344,7 +346,7 @@ class DataManager:
                     self.update_metrics(set_key, "distribution_score", 0)
                     self.update_metrics(set_key, "agreement_index", 0)
                     self.update_metrics(set_key, "outlier_metric_flag", 0)
-                    self.update_metrics(set_key, "orthogonality_value", 0)
+                    self.update_metrics(set_key, "suggested_score", 0)
                     self.update_metrics(set_key, "2d_peak_capacity", 'Not available')
                     self.update_metrics(set_key, "elution_composition_space", 'Not available')
                     self.update_metrics(set_key, "heinisch", 0)
@@ -359,14 +361,14 @@ class DataManager:
                         "nb_peaks": nb_peaks,
                         "hull_subset": 0,
                         "convex_hull": 0,
-                        "bin_box": {"color_mask": 0, "edges": [0, 0]},
-                        "schure": [],
-                        "gilar-watson": {"color_mask": 0, "edges": [0, 0]},
-                        "modeling_approach": {"color_mask": 0, "edges": [0, 0]},
+                        "bin_box": 0,
+                        "schure": 0,
+                        "gilar-watson": 0,
+                        "modeling_approach": 0,
                         "geometric_approach": 0,
                         "conditional_entropy": {
                             "histogram": 0,
-                            "edges": [0, 0],
+                            "edges": 0,
                             "value": 0,
                         },
                         "bin_box_ratio": 0,
@@ -698,7 +700,7 @@ class DataManager:
                         self.update_metrics(set_key, "distribution_score", 0)
                         self.update_metrics(set_key, "agreement_index", 0)
                         self.update_metrics(set_key, "outlier_metric_flag", 0)
-                        self.update_metrics(set_key, "orthogonality_value", 0)
+                        self.update_metrics(set_key, "suggested_score", 0)
                         self.update_metrics(set_key, "2d_peak_capacity", 'Not available')
                         self.update_metrics(set_key, "elution_composition_space",'Not available')
                         self.update_metrics(set_key, "heinisch", 0)
@@ -713,16 +715,12 @@ class DataManager:
                             "nb_peaks": self.nb_peaks,
                             "hull_subset": 0,
                             "convex_hull": 0,
-                            "bin_box": {"color_mask": 0, "edges": [0, 0]},
-                            "schure": [],
-                            "gilar-watson": {"color_mask": 0, "edges": [0, 0]},
-                            "modeling_approach": {"color_mask": 0, "edges": [0, 0]},
+                            "bin_box": 0,
+                            "schure": 0,
+                            "gilar-watson": 0,
+                            "modeling_approach": 0,
                             "geometric_approach": 0,
-                            "conditional_entropy": {
-                                "histogram": 0,
-                                "edges": [0, 0],
-                                "value": 0,
-                            },
+                            "conditional_entropy": 0,
                             "bin_box_ratio": 0,
                             "linregress": 0,
                             "linregress_rvalue": 0,
@@ -731,34 +729,12 @@ class DataManager:
                             "pearson_r": 0,
                             "spearman_rho": 0,
                             "kendall_tau": 0,
-                            "asterisk_metrics": {
-                                "a0": 0,
-                                "z_minus": 0,
-                                "z_plus": 0,
-                                "z1": 0,
-                                "z2": 0,
-                                "sigma_sz_minus": 0,
-                                "sigma_sz_plus": 0,
-                                "sigma_sz1": 0,
-                                "sigma_sz2": 0,
-                            },
+                            "asterisk_metrics": 0,
                             "a_mean": 0,
                             "g_mean": 0,
                             "h_mean": 0,
-                            "percent_fit": {
-                                "delta_xy_avg": 0,
-                                "delta_xy_sd": 0,
-                                "delta_yx_avg": 0,
-                                "delta_yx_sd": 0,
-                                "value": 0,
-                            },
-                            "percent_bin": {
-                                "value": 0,
-                                "mask": 0,
-                                "sad_dev": 0,
-                                "sad_dev_ns": 0,
-                                "sad_dev_fs": 0,
-                            },
+                            "percent_fit": 0,
+                            "percent_bin": 0,
                             "orthogonality_score": 0,
                             "orthogonality_ranking": 0,
                             "coverage_score": 0,

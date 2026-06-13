@@ -116,11 +116,11 @@ class MetricEngine:
             "nb_peaks": 0,
             "hull_subset": 0,
             "convex_hull": 0,
-            "bin_box": {"color_mask": 0, "edges": [0, 0]},
-            "gilar-watson": {"color_mask": 0, "edges": [0, 0]},
-            "modeling_approach": {"color_mask": 0, "edges": [0, 0]},
+            "bin_box": 0,  # {"color_mask": 0, "edges": [0, 0]}
+            "gilar-watson": 0,  # {"color_mask": 0, "edges": [0, 0]}
+            "modeling_approach": 0,  # {"color_mask": 0, "edges": [0, 0]}
             "geometric_approach": 0,
-            "conditional_entropy": {"histogram": 0, "edges": [0, 0], "value": 0},
+            "conditional_entropy": 0,  # {"histogram": 0, "edges": [0, 0], "value": 0}
             "bin_box_ratio": 0,
             "linregress": 0,
             "linregress_rvalue": 0,
@@ -129,34 +129,12 @@ class MetricEngine:
             "pearson_r": 0,
             "spearman_rho": 0,
             "kendall_tau": 0,
-            "asterisk_metrics": {
-                "a0": 0,
-                "z_minus": 0,
-                "z_plus": 0,
-                "z1": 0,
-                "z2": 0,
-                "sigma_sz_minus": 0,
-                "sigma_sz_plus": 0,
-                "sigma_sz1": 0,
-                "sigma_sz2": 0,
-            },
+            "asterisk_metrics": 0,  # {"a0": 0, "z_minus": 0, ...}
             "a_mean": 0,
             "g_mean": 0,
             "h_mean": 0,
-            "percent_fit": {
-                "delta_xy_avg": 0,
-                "delta_xy_sd": 0,
-                "delta_yx_avg": 0,
-                "delta_yx_sd": 0,
-                "value": 0,
-            },
-            "percent_bin": {
-                "value": 0,
-                "mask": 0,
-                "sad_dev": 0,
-                "sad_dev_ns": 0,
-                "sad_dev_fs": 0,
-            },
+            "percent_fit": 0,  # {"delta_xy_avg": 0, ...}
+            "percent_bin": 0,  # {"value": 0, "mask": 0, ...}
             "computed_score": 0,
             "orthogonality_factor": 0,
             "orthogonality_value": 0,
@@ -376,9 +354,8 @@ class MetricEngine:
             )
 
             bin_box_ratio = h_color.count() / (self.bin_number * self.bin_number)
-            set_data["bin_box"]["color_mask"] = h_color
-            set_data["bin_box"]["edges"] = [x_edges, y_edges]
             set_data["bin_box_ratio"] = bin_box_ratio
+            set_data["bin_box_ratio"] = {"color_mask": h_color, "edges": [x_edges, y_edges]}
 
             set_number = extract_set_number(set_key)
             self.update_metrics(
@@ -814,8 +791,7 @@ class MetricEngine:
             orthogonality = (sum_bin - self.bin_number) / (
                     (0.63 * p_square))
 
-            set_data["gilar-watson"]["color_mask"] = h_color
-            set_data["gilar-watson"]["edges"] = [x_edges, y_edges]
+            set_data["gilar-watson"] = {"color_mask": h_color, "edges": [x_edges, y_edges]}
 
             set_number = extract_set_number(set_key)
             self.update_metrics(
@@ -851,8 +827,7 @@ class MetricEngine:
                 x, y, self.bin_number
             )
 
-            set_data["modeling_approach"]["color_mask"] = h_color
-            set_data["modeling_approach"]["edges"] = [x_edges, y_edges]
+            set_data["modeling_approach"] = {"color_mask": h_color, "edges": [x_edges, y_edges]}
 
             # 2) Calculate bin-coverage term C_pert
             p_square = self.bin_number * self.bin_number
@@ -927,9 +902,9 @@ class MetricEngine:
             H_y_given_x = H_xy - H_x
             conditional_entropy = H_y_given_x / H_y
 
-            set_data["conditional_entropy"]["value"] = conditional_entropy
-            set_data["conditional_entropy"]["histogram"] = count_xy
-            set_data["conditional_entropy"]["edges"] = [x_edges, y_edges]
+            set_data["conditional_entropy"] = {"value": conditional_entropy,
+                                               "histogram": count_xy,
+                                               "edges": [x_edges, y_edges]}
 
             set_number = extract_set_number(set_key)
             self.update_metrics(
