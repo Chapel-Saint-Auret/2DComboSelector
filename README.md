@@ -1,8 +1,7 @@
 
 # 2DComboSelector
 
-
-
+<img width="982" height="615" alt="image" src="https://github.com/user-attachments/assets/5be01176-c9e8-4be7-9e4d-0594dbade9ed" />
 
 # 🛠️ Installation
 Welcome! This guide will help you install, update, and launch **2dcomboselector**. No prior experience with Python or command line tools is required.
