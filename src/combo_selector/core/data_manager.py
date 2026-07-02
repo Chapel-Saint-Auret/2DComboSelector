@@ -41,35 +41,66 @@ class DataManager:
         This method creates empty DataFrames and data structures for storing
         retention times, metrics, scores, and results.
         """
-        self.table_data = []
+        # Lists
+        self.column_names = []
         self.compound_name_list = []
         self.norm_ret_time_table = []
+        self.removed_compound_list = []
+        self.removed_condition_list = []
+        self.computed_score_metric_list = []
+        self.table_data = []
+
+        # Dictionaries
+        self.orthogonality_corr_mat = {}
         self.orthogonality_dict = {}
         self.orthogonality_score = {}
-        self.orthogonality_corr_mat = {}
-        self.orthogonality_metric_corr_matrix_df = pd.DataFrame()
-        self.retention_time_df = pd.DataFrame()
-        self.normalized_retention_time_df = pd.DataFrame()
-        self.orthogonality_result_df = pd.DataFrame()
+
+        # Pandas DataFrames
+        self.combination_df = pd.DataFrame()
         self.correlation_group_df = pd.DataFrame()
-        self.orthogonality_metric_df = pd.DataFrame()
-        self.orthogonality_table_df = pd.DataFrame()
-        self.filtered_result_df = pd.DataFrame()
-        self.old_approach_table_df = pd.DataFrame()
-        self.practical_feasibility_table_df = pd.DataFrame()
-        self.separational_potential_table_df = pd.DataFrame()
-        self.final_recommendation_table_df = pd.DataFrame()
-        self.orthogonality_group_ranking_df = pd.DataFrame()
-        self.orthogonality_metric_ranking_df = pd.DataFrame()
-        self.orthogonality_metric_ranking_corr_matrix_df = pd.DataFrame()
         self.coverage_distribution_df = pd.DataFrame()
         self.coverage_score_df = pd.DataFrame()
+        self.filtered_result_df = pd.DataFrame()
+        self.final_recommendation_table_df = pd.DataFrame()
         self.gradient_end_time_df = pd.DataFrame()
-        self.void_time_df = pd.DataFrame()
-        self.rt_below_threshold_df = None
-        self.combination_df = pd.DataFrame()
-        self.retention_time_df = pd.DataFrame()
         self.normalized_retention_time_df = pd.DataFrame()
+        self.old_approach_table_df = pd.DataFrame()
+        self.orthogonality_group_ranking_df = pd.DataFrame()
+        self.orthogonality_metric_corr_matrix_df = pd.DataFrame()
+        self.orthogonality_metric_df = pd.DataFrame()
+        self.orthogonality_metric_ranking_corr_matrix_df = pd.DataFrame()
+        self.orthogonality_metric_ranking_df = pd.DataFrame()
+        self.orthogonality_result_df = pd.DataFrame()
+        self.orthogonality_table_df = pd.DataFrame()
+        self.practical_feasibility_table_df = pd.DataFrame()
+        self.retention_time_df = pd.DataFrame()
+        self.separational_potential_table_df = pd.DataFrame()
+        self.void_time_df = pd.DataFrame()
+
+        # Configuration / Scalar Values
+        self.bin_number = 14
+        self.has_nan_value = False
+        self.nan_policy_option1_threshold = 50
+        self.nan_policy_option2_threshold = 50
+        self.nb_combination = 0
+        self.nb_condition = 0
+        self.use_suggested_score = True
+
+        # Status Indicators
+        self.elution_data_status = "no_data"
+        self.peak_capacity_status = "no_data"
+        self.status = "no_data"
+
+        # Placeholders (None)
+        self.group_rho_coverage = None
+        self.group_rho_distribution = None
+        self.load_elution_composition_df = None
+        self.metric_rho_coverage = None
+        self.metric_rho_distribution = None
+        self.nb_peaks = None
+        self.om_function_map = None
+        self.retention_time_df_2d_peaks = None
+        self.rt_below_threshold_df = None
 
     # ------------------------------------------------------------------
     # Accessors
