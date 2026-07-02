@@ -125,10 +125,10 @@ class RedundancyCheckPage(QFrame):
             self.update_correlation_matrix_cmap
         )
         self.correlation_threshold.editingFinished.connect(
-            self.update_correlation_group_table
+            self.update_plot_and_redundacy_group
         )
         self.correlation_threshold_tolerance.editingFinished.connect(
-            self.update_correlation_group_table
+            self.update_plot_and_redundacy_group
         )
         self.highlight_threshold.stateChanged.connect(
             self.highlight_correlation_threshold
@@ -552,11 +552,11 @@ class RedundancyCheckPage(QFrame):
 
 
         if self.select_correlation_matrix.currentText() == 'Values':
-            self.selected_correlation_matrix = self.model.get_orthogonality_metric_corr_matrix_df().corr()
+            self.selected_correlation_matrix = self.model.get_orthogonality_metric_corr_matrix_df().corr(method='spearman')
             self._ax.set_title('Value-Based',color='0.7')
 
         if self.select_correlation_matrix.currentText() == 'Rank':
-            self.selected_correlation_matrix = self.model.get_orthogonality_metric_ranking_corr_matrix_df().corr()
+            self.selected_correlation_matrix = self.model.get_orthogonality_metric_ranking_corr_matrix_df().corr(method='pearson')
             self._ax.set_title('Ranking-Based',color='0.7')
 
         if self.select_correlation_matrix.currentText() == 'coverage vs distribution':

@@ -341,6 +341,7 @@ COLORS = {
 PLOT_TYPES = [
     "Orthogonality Space",
     "Metric Removal Impact On Orthogonality Rank",
+    "Metric Removal Impact On Practical Peak Capacity Rank",
     "Multi-Criteria Space",
     "Chromatographic Mode Performance",
     "Recommendation Distribution",
@@ -350,6 +351,7 @@ PLOT_TYPES = [
     "Final Rank Shift Distribution",
     "Rank Shift by Combination",
     "Top Rank Overlap",
+    "Hypothetical Peak Capacity vs Orthogonality Score (old)"
 ]
 
 PLOT_DESCRIPTIONS = {
@@ -357,6 +359,8 @@ PLOT_DESCRIPTIONS = {
         "Scatter plot of chromatographic condition pairs in orthogonality space.",
     "Metric Removal Impact On Orthogonality Rank":
         "Shows the median orthogonality rank obtained after removing each metric from its correlation group.",
+    "Metric Removal Impact On Practical Peak Capacity Rank":
+        "Shows the median practical peak capacity obtained after removing each metric from its correlation group.",
     "Multi-Criteria Space":
         "Scatter plot of solutions in criteria space to explore trade-offs between objectives.",
     "Chromatographic Mode Performance":
@@ -375,6 +379,8 @@ PLOT_DESCRIPTIONS = {
         "Lollipop chart showing rank shift (New − Old) for each combination, sorted by old rank.",
     "Top Rank Overlap":
         "Bar chart comparing how many combinations are shared between old and new top-10, top-50, and top-100 lists.",
+    "Hypothetical Peak Capacity vs Orthogonality Score (old)":
+        ""
 }
 
 CRITERIA_ITEMS = [
@@ -412,7 +418,7 @@ COLOR_CONFIG_TABLE_FEASIBILITY = {
     },
     6: {
         "Insufficient ": "#d94f3d", "Cautionary": "#f5a623",
-        "Acceptable": "#1a7a2e", "Suitable": "#6abf4b"
+        "Acceptable": "#6abf4b", "Suitable": "#1a7a2e"
     },
 }
 
@@ -436,9 +442,10 @@ COLOR_CONFIG_FINAL_EVALUATION = {
     },
     9: {
         "Insufficient ": "#d94f3d", "Cautionary": "#f5a623",
-        "Acceptable": "#1a7a2e", "Suitable": "#6abf4b"
+        "Acceptable": "#6abf4b", "Suitable": "#1a7a2e"
     }
 }
+
 
 # Named colour palettes used by the colour-picker widget
 PALETTES = {

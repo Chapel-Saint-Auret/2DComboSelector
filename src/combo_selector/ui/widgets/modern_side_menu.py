@@ -75,12 +75,12 @@ class SidebarItemDelegate(QStyledItemDelegate):
             if selected:
                 painter.setBrush(QColor("#4e5d78"))
                 painter.setPen(Qt.NoPen)
-                painter.drawRoundedRect(rect.adjusted(6, 4, -6, -4), 10, 10)
+                painter.drawRoundedRect(rect.adjusted(6, 1, -6, -1), 10, 10)
 
             # Draw icon
             icon = index.data(Qt.DecorationRole)
             icon_size = 24
-            icon_padding = 10
+            icon_padding = 20
             text_x = rect.left() + icon_padding + icon_size + 14
 
             if icon:
@@ -94,7 +94,7 @@ class SidebarItemDelegate(QStyledItemDelegate):
 
             # Draw text
             painter.setPen(QColor("#fff") if selected else QColor("#bfc8e2"))
-            font = QFont("Segoe UI", 10, QFont.Bold if selected else QFont.Normal)
+            font = QFont("Segoe UI", 12.5, QFont.Bold if selected else QFont.Normal)
             painter.setFont(font)
             painter.drawText(
                 QRect(text_x, rect.top(), rect.width() - text_x, rect.height()),
@@ -278,7 +278,7 @@ class ModernSidebar(QFrame):
 
         # Create sidebar frame
         side_bar_frame = QFrame()
-        side_bar_frame.setFixedWidth(200)
+        side_bar_frame.setFixedWidth(210)
         side_bar_frame.setStyleSheet(f"""
             background: {SIDEBAR_BG};
             border-top-left-radius: 20px;

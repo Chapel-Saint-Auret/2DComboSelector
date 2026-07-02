@@ -32,7 +32,9 @@ from combo_selector.core.orthogonality_utils import (
     UI_TO_MODEL_MAPPING,
     compute_bin_box_mask_color,
     compute_percent_fit_for_set,
-    extract_set_number,
+    build_box_count_curve,
+    find_best_schure_segment,
+    extract_set_number
 )
 
 
@@ -365,7 +367,10 @@ class MetricEngine:
         self.om_function_map["Bin box counting"]["status"] = FuncStatus.COMPUTED
 
     def compute_schure_dbc(self) -> None:
-        """Compute the bin box ratio orthogonality metric for each set.
+        """
+          Full DBC workflow for 2D data.
+            Returns a dictionary containing:
+                D, slope, intercept, r2, selected range, curve
 
         Divides the [0,1] x [0,1] space into a grid and calculates the fraction
         of bins that contain at least one peak.
@@ -375,22 +380,59 @@ class MetricEngine:
             - Updates bin_box_ratio metric in table_data
             - Sets 'Bin box counting' status to COMPUTED
         """
+
         for set_key in self.orthogonality_dict.keys():
             set_data = self.orthogonality_dict[set_key]
             x, y = set_data["x_values"], set_data["y_values"]
 
-            group = []
-            for i in range(2,self.bin_number+1):
-                h_color, x_edges, y_edges = compute_bin_box_mask_color(
-                    x, y, i
-                )
-                eps = 1/i
-                log_esp = log(eps)
-                log_N = log(h_color.count())
 
-                group.append((log_esp, log_N))
+            curve = build_box_count_curve(x, y, i_min=2, i_max=30, i_step=1)
 
-            set_data["schure"] = group
+            best = find_best_schure_segment(
+                curve,
+                min_points=6,
+                max_points=12,
+                min_x_range=0.35,
+                min_abs_slope=0.25,
+                max_abs_slope=2.0,
+                min_r2=0.97,
+                prefer_middle=True,
+            )
+
+            if best is not None:
+                D = -best["slope"]
+
+                set_data["schure"] = {
+                    "D": D,
+                    "slope": best["slope"],
+                    "intercept": best["intercept"],
+                    "r2": best["r2"],
+                    "range_start_index": best["start"],
+                    "range_end_index": best["end"],
+                    "selected_curve_segment": curve[best["start"]:best["end"]],
+                    "full_curve": curve,
+                    "segment_score": best["score"],
+                    "segment_n_points": best["n_points"],
+                    "segment_x_range": best["x_range"],
+                    "segment_max_abs_residual": best["max_abs_residual"],
+                    "segment_mean_abs_residual": best["mean_abs_residual"],
+                }
+            else:
+                set_data["schure"] = {
+                    "D": None,
+                    "slope": None,
+                    "intercept": None,
+                    "r2": None,
+                    "range_start_index": None,
+                    "range_end_index": None,
+                    "selected_curve_segment": [],
+                    "full_curve": curve,
+                    "segment_score": None,
+                    "segment_n_points": None,
+                    "segment_x_range": None,
+                    "segment_max_abs_residual": None,
+                    "segment_mean_abs_residual": None,
+                }
 
             set_number = extract_set_number(set_key)
             self.update_metrics(

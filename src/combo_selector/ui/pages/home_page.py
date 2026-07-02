@@ -165,7 +165,7 @@ class HomePage(QFrame):
         screen = QApplication.primaryScreen()
         dpr = screen.devicePixelRatio() if screen else 1.0
         scaled_pixmap = pixmap.scaled(
-            int(900 * dpr), int(400 * dpr),
+            int(1000 * dpr), int(500 * dpr),
             Qt.KeepAspectRatio,
             Qt.SmoothTransformation,
         )

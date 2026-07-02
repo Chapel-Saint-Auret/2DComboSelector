@@ -149,7 +149,7 @@ class ComboSelectorMain(CustomMainWindow):
             self.orthogonality_metric_computed
         )
         self.redundancy_page.correlation_group_ready.connect(
-            self.results_page.compute_custom_orthogonality_metric_score
+            self.results_page.compute_score
         )
         self.results_page.filter_changed.connect(self.export_page.update_figure_set)
 
@@ -240,7 +240,7 @@ class ComboSelectorMain(CustomMainWindow):
         # 5. Now that the results page is fully initialized, start the
         #    background score computation.  When it finishes it will call
         #    results_page.update_results_table() to refresh the display.
-        self.results_page.compute_custom_orthogonality_metric_score()
+        self.results_page.compute_score()
 
         # 3. Initialize the results page — correlation groups are now in the
         #    model, so init_page() can use them safely.

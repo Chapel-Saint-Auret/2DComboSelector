@@ -351,6 +351,7 @@ class OMCalculationPage(QFrame):
         metric_list = [
             "Convex hull relative area",
             "Bin box counting",
+            "Schure",
             "Gilar-Watson method",
             "Modeling approach",
             "Conditional entropy",

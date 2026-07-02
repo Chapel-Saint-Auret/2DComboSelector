@@ -41,6 +41,9 @@ from combo_selector.ui.widgets.section_help_button import SectionHelpButton
 from combo_selector.utils import resource_path
 from combo_selector.constants import ICON_SIZE
 
+# Checkbox icon paths
+checked_icon_path = resource_path("icons/radio_checked.svg").replace("\\", "/")
+unchecked_icon_path = resource_path("icons/radio_unchecked.svg").replace("\\", "/")
 
 class ImportDataPage(QFrame):
     """Page for importing and normalizing chromatography retention time data."""
@@ -263,21 +266,21 @@ class ImportDataPage(QFrame):
         # Row 0 — Retention times
         self.ret_time_import_status = Status()
         self.rt_combo = _make_combo()
-        assignment_grid.addWidget(_make_row_label("Retention Times:"),        0, 0, Qt.AlignVCenter)
+        assignment_grid.addWidget(_make_row_label("Retentions Times:"),        0, 0, Qt.AlignVCenter)
         assignment_grid.addWidget(self.rt_combo,                               0, 1)
         assignment_grid.addWidget(self.ret_time_import_status,                 0, 2, Qt.AlignVCenter)
 
         # Row 1 — 1D Peak capacities
         self.twoD_peak_status = Status()
         self.pc_combo = _make_combo()
-        assignment_grid.addWidget(_make_row_label("1D Peak Capacities:"),     1, 0, Qt.AlignVCenter)
+        assignment_grid.addWidget(_make_row_label("Peak Capacities:"),     1, 0, Qt.AlignVCenter)
         assignment_grid.addWidget(self.pc_combo,                               1, 1)
         assignment_grid.addWidget(self.twoD_peak_status,                       1, 2, Qt.AlignVCenter)
 
         # Row 2 — Elution-composition ranges
         self.delta_ce_status = Status()
         self.ec_combo = _make_combo()
-        assignment_grid.addWidget(_make_row_label("Elution-Comp. Ranges:"),   2, 0, Qt.AlignVCenter)
+        assignment_grid.addWidget(_make_row_label("Elution Ranges:"),   2, 0, Qt.AlignVCenter)
         assignment_grid.addWidget(self.ec_combo,                               2, 1)
         assignment_grid.addWidget(self.delta_ce_status,                        2, 2, Qt.AlignVCenter)
 
@@ -489,7 +492,7 @@ class ImportDataPage(QFrame):
 
         except Exception as e:
             self.ret_time_import_status.set_error()
-            QMessageBox.critical(self, "Error", f"Retention Times:\n{e}")
+            QMessageBox.critical(self, "Error", f"Retentions Times:\n{e}")
 
     def _load_peak_capacities(self, file_path: str, sheet: str) -> None:
         try:
@@ -505,7 +508,7 @@ class ImportDataPage(QFrame):
 
         except Exception as e:
             self.twoD_peak_status.set_error()
-            QMessageBox.critical(self, "Error", f"1D Peak Capacities:\n{e}")
+            QMessageBox.critical(self, "Error", f"Peak Capacities:\n{e}")
 
     def _load_elution_composition(self, file_path: str, sheet: str) -> None:
         try:
@@ -521,7 +524,7 @@ class ImportDataPage(QFrame):
 
         except Exception as e:
             self.delta_ce_status.set_error()
-            QMessageBox.critical(self, "Error", f"Elution-Composition Ranges:\n{e}")
+            QMessageBox.critical(self, "Error", f"Elution Ranges:\n{e}")
 
     def _load_void_from_combo(self, file_path: str, sheet: str) -> None:
         try:
@@ -592,25 +595,33 @@ class ImportDataPage(QFrame):
         scaling_method_group = QGroupBox("Select Scaling Method")
         scaling_method_layout = QVBoxLayout()
         scaling_method_group.setLayout(scaling_method_layout)
-        scaling_method_group.setStyleSheet("""
-            QGroupBox {
+        scaling_method_group.setStyleSheet(f"""
+            QGroupBox {{
                 font-size: 16px; font-weight: bold; background-color: #e7e7e7;
                 color: #154E9D; border: 1px solid #d0d4da; border-radius: 12px; margin-top: 25px;
-            }
-            QGroupBox::title {
+            }}
+            QGroupBox::title {{
                 subcontrol-origin: margin; subcontrol-position: top left;
                 padding: 0px; margin-top: -8px;
-            }
-            QRadioButton, QCheckBox {
+            }}
+            QRadioButton, QCheckBox {{
                 background-color: transparent; font-size: 14px; font-weight: bold; color: #2C3E50;
-            }
-            QPushButton {
+            }}
+            
+            QRadioButton::indicator:unchecked {{
+                image: url("{unchecked_icon_path}");
+            }}
+            QRadioButton::indicator:checked {{
+                image: url("{checked_icon_path}");
+            }}
+            
+            QPushButton {{
                 background-color: #d5dcf9; font-size: 15px; font-weight: bold;
                 color: #2C3346; border: none; border-radius: 6px; padding: 8px 16px;
-            }
-            QPushButton:hover { background-color: #bcc8f5; }
-            QPushButton:pressed { background-color: #8fa3ef; }
-            QPushButton:disabled { background-color: #E5E9F5; color: #FFFFFF; }
+            }}
+            QPushButton:hover {{ background-color: #bcc8f5; }}
+            QPushButton:pressed {{ background-color: #8fa3ef; }}
+            QPushButton:disabled {{ background-color: #E5E9F5; color: #FFFFFF; }}
         """)
 
         self.normalize_btn = QPushButton("Normalize Data")

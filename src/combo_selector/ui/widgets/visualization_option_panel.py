@@ -273,7 +273,7 @@ class VisualizationOptionsPanel(QGroupBox):
         plot = self._plot_combo.currentText()
 
         show_subset = plot in ("Orthogonality Space", "Multi-Criteria Space","Rank Shift by Combination")
-        show_axis = plot in ("Multi-Criteria Space", "Feasibility Profile")
+        show_axis = plot in ("Feasibility Profile")
         show_view = plot == "Chromatographic Mode Performance"
         show_grouping = plot in ("Recommendation Distribution", "Feasibility Profile")
         is_boxplot = show_view and self._view_panel.currentText() == "Boxplot"
@@ -359,9 +359,6 @@ class VisualizationOptionsPanel(QGroupBox):
 
     def _percentile_toggled(self, button, checked):
         button.text()
-
-
-
 
 # ---------------------------------------------------------------------------
 # Standalone test

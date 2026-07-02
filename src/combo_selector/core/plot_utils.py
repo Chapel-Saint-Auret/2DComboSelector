@@ -482,50 +482,194 @@ class PlotUtils:
         if draw:
             self.__draw_figure()
 
-    def plot_schure(self, set_number: str = "", erase_previous: bool = True, draw: bool = True
+    def plot_schure(
+            self,
+            set_number: str = "",
+            erase_previous: bool = True,
+            draw: bool = True
     ) -> None:
-        """Draw linear regression line with correlation statistics.
+        """Draw Schure log-log curve and selected linear segment."""
 
-        Plots the fitted regression line and displays correlation coefficients:
-        - Pearson r (linear correlation)
-        - Spearman ρ (rank correlation)
-        - Kendall τ (ordinal correlation)
-        - Regression equation
+        import numpy as np
 
-        Args:
-            set_number (str, optional): Set identifier to plot. Defaults to "".
-
-        Side Effects:
-            - Clears old lines from axes
-            - Plots red regression line
-            - Adds legend with correlation statistics
-            - Redraws figure
-        """
         if not self.orthogonality_data:
             return
 
-        if set_number == "":
-            set_nb = self.set_number
-        else:
-            set_nb = set_number
+        set_nb = self.set_number if set_number == "" else set_number
+
+        if set_nb not in self.orthogonality_data:
+            return
 
         data = self.orthogonality_data[set_nb]
-        coordinates = data["schure"]
 
-        # Unzip into x and y
-        x, y = zip(*coordinates)
+        if "schure" not in data:
+            return
 
-        self.clean_axe()
-        # reset axes & clear old lines
-        # self.axe.set_xlim(0, 1)
-        # self.axe.set_ylim(0, 1)
+        schure_data = data["schure"]
 
+        full_curve = schure_data.get("full_curve", [])
+        selected_segment = schure_data.get("selected_curve_segment", [])
 
-        # plot fitted line
-        self.axe.scatter(x,y)
+        if not full_curve:
+            return
 
+        D = schure_data.get("D")
+        slope = schure_data.get("slope")
+        intercept = schure_data.get("intercept")
+        r2 = schure_data.get("r2")
 
-        self.__draw_figure()
+        segment_score = schure_data.get("segment_score")
+        segment_n_points = schure_data.get("segment_n_points")
+        segment_x_range = schure_data.get("segment_x_range")
+        segment_max_abs_residual = schure_data.get("segment_max_abs_residual")
+        segment_mean_abs_residual = schure_data.get("segment_mean_abs_residual")
+
+        if erase_previous:
+            self.clean_axe()
+
+        # --------------------------------------------------
+        # Extract full curve
+        # --------------------------------------------------
+        try:
+            x_full = np.array(
+                [point["log_epsilon"] for point in full_curve],
+                dtype=float
+            )
+            y_full = np.array(
+                [point["log_N"] for point in full_curve],
+                dtype=float
+            )
+        except KeyError:
+            return
+
+        # Sort full curve for visual connection
+        order_full = np.argsort(x_full)
+        x_full_sorted = x_full[order_full]
+        y_full_sorted = y_full[order_full]
+
+        # Full Schure curve
+        self.axe.scatter(
+            x_full_sorted,
+            y_full_sorted,
+            label="Full Schure curve",
+            alpha=0.45
+        )
+
+        self.axe.plot(
+            x_full_sorted,
+            y_full_sorted,
+            alpha=0.25,
+            linewidth=1
+        )
+
+        # --------------------------------------------------
+        # Selected segment
+        # --------------------------------------------------
+        if selected_segment:
+            try:
+                x_seg = np.array(
+                    [point["log_epsilon"] for point in selected_segment],
+                    dtype=float
+                )
+                y_seg = np.array(
+                    [point["log_N"] for point in selected_segment],
+                    dtype=float
+                )
+            except KeyError:
+                return
+
+            order_seg = np.argsort(x_seg)
+            x_seg_sorted = x_seg[order_seg]
+            y_seg_sorted = y_seg[order_seg]
+
+            self.axe.scatter(
+                x_seg_sorted,
+                y_seg_sorted,
+                label="Selected linear segment",
+                alpha=0.95,
+                zorder=3
+            )
+
+            # --------------------------------------------------
+            # Regression line
+            # --------------------------------------------------
+            if slope is not None and intercept is not None:
+
+                x_fit = np.linspace(
+                    np.min(x_seg_sorted),
+                    np.max(x_seg_sorted),
+                    100
+                )
+                y_fit = slope * x_fit + intercept
+
+                fit_label = f"Fit: y = {slope:.3f}x + {intercept:.3f}"
+
+                if r2 is not None:
+                    fit_label += f"\n$R^2$ = {r2:.3f}"
+
+                self.axe.plot(
+                    x_fit,
+                    y_fit,
+                    linewidth=2,
+                    label=fit_label,
+                    zorder=4
+                )
+
+        # --------------------------------------------------
+        # Title
+        # --------------------------------------------------
+        if D is not None:
+            self.axe.set_title(f"Schure method — D = {D:.3f}")
+        else:
+            self.axe.set_title("Schure method — D not available")
+
+        self.axe.set_xlabel("log(epsilon)")
+        self.axe.set_ylabel("log(N)")
+
+        # --------------------------------------------------
+        # Diagnostic box
+        # --------------------------------------------------
+        diagnostic_lines = []
+
+        if segment_n_points is not None:
+            diagnostic_lines.append(f"points = {segment_n_points}")
+
+        if segment_x_range is not None:
+            diagnostic_lines.append(f"x-range = {segment_x_range:.3f}")
+
+        if segment_score is not None:
+            diagnostic_lines.append(f"score = {segment_score:.3f}")
+
+        if segment_mean_abs_residual is not None:
+            diagnostic_lines.append(
+                f"mean |res| = {segment_mean_abs_residual:.3f}"
+            )
+
+        if segment_max_abs_residual is not None:
+            diagnostic_lines.append(
+                f"max |res| = {segment_max_abs_residual:.3f}"
+            )
+
+        if diagnostic_lines:
+            self.axe.text(
+                0.98,
+                0.02,
+                "\n".join(diagnostic_lines),
+                transform=self.axe.transAxes,
+                ha="right",
+                va="bottom",
+                fontsize=9,
+                bbox=dict(
+                    boxstyle="round",
+                    facecolor="white",
+                    alpha=0.75
+                )
+            )
+
+        self.axe.legend()
+
+        if draw:
+            self.__draw_figure()
 
     def plot_conditional_entropy(
             self, set_number: str = "", erase_previous: bool = True, draw: bool = True
@@ -1011,24 +1155,32 @@ class PlotUtils:
         self.fig.canvas.draw()
         self.fig.canvas.flush_events()
 
-    def plot_peak_capacity_vs_consensus_score(self):
+    def plot_peak_capacity_vs_old_orthogonality_score(self):
 
-        x = self.orthogonality_result_data['Practical 2D Peak Capacity']
-        y = self.orthogonality_result_data['Consensus Score']
+        self.fig.clear()
+        self.axe = self.fig.add_subplot(111)
+        self.axe.set_box_aspect(1)
+        self.set_annotation()
 
-        self.axe.set_xlabel('Practical 2D Peak Capacity', fontsize=12)
-        self.axe.set_ylabel('Consensus Score', fontsize=12)
+        df = self.model.get_filtered_result_df().copy()
+
+        x = df['Hypothetical 2D Peak Capacity']
+        y = df['Suggested Orthogonality Score']
+
+        peak_capacity_available = pd.to_numeric(x, errors='coerce').notna().any()
+
+        if not peak_capacity_available:
+            self._show_missing_data()
+            return
+
+        self.axe.set_xlabel('Hypothetical 2D Peak Capacity', fontsize=12)
+        self.axe.set_ylabel('Orthogonality score (old approach)', fontsize=12)
 
         # 2) Create or update scatter
 
-        self.scatter_collection = self.axe.scatter(
-                x, y, s=20, c="k", marker="o", alpha=0.5
-            )
-
-        # 3) Hide legend if present
-        leg = self.axe.get_legend()
-        if leg:
-            leg.set_visible(False)
+        self.axe.scatter(x, y, s=15,
+                         edgecolors='k', alpha=0.85,
+                         linewidths=0.3, picker=5)
 
         self.fig.canvas.draw()
         self.fig.canvas.flush_events()
@@ -1263,6 +1415,84 @@ class PlotUtils:
         self.fig.canvas.draw()
         self.fig.canvas.flush_events()
 
+    def plot_metric_removal_impact_old(self):
+        """Plot the impact of removing each metric on orthogonality rank.
+
+        Displays a horizontal bar chart where each bar corresponds to one removed
+        metric and its associated median orthogonality rank.
+
+        Expected data columns:
+            - "Metric Removed"
+            - "Median Orthogonality Rank"
+        """
+        self.fig.clear()
+        self.axe = self.fig.add_subplot(111)
+
+        impact_df = self.model.get_metric_removal_impact_on_orthogonality_rank_old_approach_df()
+
+        if impact_df is None or impact_df.empty:
+            self._show_missing_data()
+            return
+
+        plot_df = impact_df.copy()
+
+        if "Metric Removed" not in plot_df.columns or "Median Orthogonality Rank Difference" not in plot_df.columns:
+            self._show_missing_data()
+            return
+
+        plot_df["Median Orthogonality Rank Difference"] = pd.to_numeric(
+            plot_df["Median Orthogonality Rank Difference"], errors="coerce"
+        )
+        plot_df = plot_df.dropna(subset=["Median Orthogonality Rank Difference"])
+
+        if plot_df.empty:
+            self._show_missing_data()
+            return
+
+        plot_df = plot_df.sort_values("Median Orthogonality Rank Difference", ascending=True)
+
+        y = plot_df["Metric Removed"]
+        x = plot_df["Median Orthogonality Rank Difference"].round(1)
+
+        bars = self.axe.barh(y, x, color="#4C78A8", edgecolor="#2F4B6E", alpha=0.9)
+
+        for bar, value in zip(bars, x):
+            self.axe.text(
+                value + (x.max() * 0.01 if x.max() > 0 else 0.1),
+                bar.get_y() + bar.get_height() / 2,
+                f"{value:.2f}",
+                va="center",
+                ha="left",
+                fontsize=8,
+                color="#333333",
+            )
+
+        self.axe.set_xlabel("Median Rank Shift (% of total combinations)", fontsize=10)
+        self.axe.set_ylabel("Metric Removed", fontsize=10)
+        self.axe.tick_params(axis="both", labelsize=8)
+        self.axe.grid(True, axis="x", linestyle="--", linewidth=0.4, alpha=0.5)
+        self.axe.set_axisbelow(True)
+        self.axe.spines[["top", "right"]].set_visible(False)
+
+        self.axe.text(
+            0.5, 1.08,
+            "Metric Removal Impact",
+            transform=self.axe.transAxes,
+            ha="center", va="bottom",
+            fontsize=16, fontweight="bold"
+        )
+        self.axe.text(
+            0.5, 1.02,
+            "Median orthogonality rank (old approach)  difference after removing each metric",
+            transform=self.axe.transAxes,
+            ha="center", va="bottom",
+            fontsize=9, style="italic", color="dimgray"
+        )
+
+        self.fig.subplots_adjust(left=0.34, right=0.95, top=0.84, bottom=0.12)
+        self.fig.canvas.draw()
+        self.fig.canvas.flush_events()
+
     def plot_multi_criteria_space(self, subset: str = "All", axis_scale: str = "Auto"):
 
         self.fig.clear()
@@ -1289,8 +1519,7 @@ class PlotUtils:
         # Shared: rank-based subset filtering + coloring
         # ------------------------------------------------------------------
         final_rank = pd.to_numeric(df['Final Rank (Utility)'], errors='coerce')
-        orthogonality_rank = pd.to_numeric(df['Orthogonality Utility'], errors='coerce')
-        orthogonality_rank = orthogonality_rank.rank(ascending=False, method='average')
+        orthogonality_rank = pd.to_numeric(df['Orthogonality Rank'], errors='coerce')
         n = len(df)
 
         final_rank_pct = (final_rank / n) * 100
@@ -1300,7 +1529,6 @@ class PlotUtils:
         mask = final_rank_pct <= threshold
 
         df = df[mask]
-        final_rank_pct = final_rank_pct[mask]
         orthogonality_rank_pct = orthogonality_rank_pct[mask]
 
         if df.empty:
@@ -1374,8 +1602,8 @@ class PlotUtils:
         jitter_applied = False   # default; only relevant in reduced criteria
 
         if full_criteria:
-            x = pd.to_numeric(df['Hypothetical 2D Peak Capacity'], errors='coerce')
-            y = pd.to_numeric(df['Elution Domain'], errors='coerce')
+            x = pd.to_numeric(df['Peak Capacity Utility'], errors='coerce')
+            y = pd.to_numeric(df['Elution Domain Utility'], errors='coerce')
 
             valid = x.notna() & y.notna()
             x, y, colors_plot = x[valid], y[valid], colors[valid.values]
@@ -1385,7 +1613,7 @@ class PlotUtils:
                              edgecolors='k', alpha=0.85,
                              linewidths=0.3, picker=5)
 
-            apply_scale(self.axe, subset, axis_scale)
+            # apply_scale(self.axe, subset, axis_scale)
             self.axe.tick_params(axis='y', labelsize=8)
 
             if x.notna().any():
@@ -1393,24 +1621,24 @@ class PlotUtils:
             if y.notna().any():
                 self.axe.set_ylim(y.min() * 0.8, y.max() * 1.2)
 
-            self.axe.set_xlabel('Hypothetical 2D Peak Capacity', fontsize=10)
-            self.axe.set_ylabel('Elution Domain (%)', fontsize=10)
+            self.axe.set_xlabel('Peak Capacity Utility', fontsize=10)
+            self.axe.set_ylabel('Elution Domain Utility', fontsize=10)
 
             plot_title = 'Multi-Criteria Space'
-            plot_subtitle = f'Hypothetical peak capacity vs elution domain · {subset}'
+            plot_subtitle = f'Peak Capacity Utility vs Elution Domain Utility· {subset}'
 
         # ------------------------------------------------------------------
         # Reduced Criteria — only one of the two columns available
         # ------------------------------------------------------------------
         elif reduced_criteria:
             if elution_domain_available:
-                x = pd.to_numeric(df['Elution Domain'], errors='coerce')
-                x_label = 'Elution Domain'
+                x = pd.to_numeric(df['Elution Domain Utility'], errors='coerce')
+                x_label = 'Elution Domain Utility'
             else:
-                x = pd.to_numeric(df['Hypothetical 2D Peak Capacity'], errors='coerce')
-                x_label = 'Hypothetical 2D Peak Capacity'
+                x = pd.to_numeric(df['Peak Capacity Utility'], errors='coerce')
+                x_label = 'Peak Capacity Utility'
 
-            y_raw = pd.to_numeric(df['Peak Detection Rate (%)'], errors='coerce')
+            y_raw = pd.to_numeric(df['Orthogonality Utility'], errors='coerce')
 
             valid = x.notna() & y_raw.notna()
             x = x[valid]
@@ -1424,12 +1652,11 @@ class PlotUtils:
             else:
                 y_display = y_raw.copy()
             y = y_display
-            self.axe.scatter(x, y_display,
-                             c=colors_plot, s=15,
+            self.axe.scatter(x, y_display, s=15,
                              edgecolors='k', alpha=0.85,
                              linewidths=0.3, picker=5)
 
-            apply_scale(self.axe,subset , axis_scale)
+            # apply_scale(self.axe,subset , axis_scale)
             self.axe.tick_params(axis='y', labelsize=8)
 
             if x.notna().any():
@@ -1445,20 +1672,20 @@ class PlotUtils:
                 self.axe.set_ylim(y_raw.min() * 0.8, y_raw.max() * 1.2)
 
             self.axe.set_xlabel(x_label, fontsize=10)
-            self.axe.set_ylabel('Peak Detection Rate (%)', fontsize=10)
+            self.axe.set_ylabel('Orthogonality Utility', fontsize=10)
 
             plot_title = 'Multi-Criteria Space — Reduced Criteria'
 
             if elution_domain_available:
-                self.axe.set_xlim(0,100)
-                self.axe.set_ylim(0,100)
+                self.axe.set_xlim(0,1)
+                self.axe.set_ylim(0,1)
             # ← Subtitle warns about jitter when applied
             if jitter_applied:
                 plot_subtitle = (
                     'Vertical jitter added for visibility; peak rate values are near-identical.'
                 )
             else:
-                plot_subtitle = f'{x_label} vs peak detection rate · {subset}'
+                plot_subtitle = f'{x_label} vs orthogonality utility · {subset}'
 
         # ------------------------------------------------------------------
         # Shared: grid, titles, legend
@@ -1599,7 +1826,7 @@ class PlotUtils:
             for r in range(n_rows):
                 for c in range(n_rank_cols):
                     val = rank_df.iloc[r, c]
-                    ax_main.text(c, r, f"{val:.0f}", ha="center", va="center",
+                    ax_main.text(c, r, f"{val:.1f}", ha="center", va="center",
                                  fontsize=10, color='black')
 
             if peak_df is not None:
@@ -2982,8 +3209,9 @@ class PlotUtils:
         self.annotation.set_text(f"Combination # {combination_number}\n{combination}\n(x, y) = ({x:.2f}, {y:.2f})")
         self.annotation.set_visible(True)
 
-        fig = self.plot_combination_popup(set_number=f"Set {combination_number}")
-        self.show_popup_at(fig, event)
+        self._destroy_popup()
+        self.pop_up_fig = self.plot_combination_popup(set_number=f"Set {combination_number}")
+        self.show_popup_at(event)
 
         self.fig.canvas.draw_idle()
         self.fig.canvas.flush_events()
@@ -3048,7 +3276,7 @@ class PlotUtils:
         if hasattr(self, 'pop_up_fig') and hasattr(self.pop_up_fig, '_popup_dialog') and self.pop_up_fig._popup_dialog:
             self.pop_up_fig._popup_dialog.hide()
 
-    def show_popup_at(self, event, parent=None):
+    def show_popup_at(self, event=None, parent=None):
         """
         Display the popup figure next to the hovered/picked point.
 
@@ -3068,8 +3296,7 @@ class PlotUtils:
             mouse = event.mouseevent
         elif isinstance(event, MouseEvent):
             mouse = event
-        else:
-            return  # Unknown event type – nothing to do
+
 
         # --- 2. Build a fresh QDialog containing the popup figure ---
         dialog = QDialog(parent)
@@ -3092,26 +3319,65 @@ class PlotUtils:
         h = int(self.pop_up_fig.get_figheight() * self.pop_up_fig.dpi)
         dialog.resize(w, h)
 
-        # --- 4. Convert matplotlib canvas coords → screen (Qt) coords ---
-        # matplotlib reports mouse.y = 0 at the BOTTOM of the canvas,
-        # but Qt expects y = 0 at the TOP → flip with: qt_y = height - mpl_y
-        src_canvas = self.fig.canvas  # FigureCanvasQTAgg of the main figure (is a QWidget)
-        qt_x = int(mouse.x)
-        qt_y = int(src_canvas.height() - mouse.y)  # Y-axis flip
-        gp = src_canvas.mapToGlobal(QPoint(qt_x, qt_y))
+        if event is not None:
+            # --- 4. Convert matplotlib canvas coords → screen (Qt) coords ---
+            # matplotlib reports mouse.y = 0 at the BOTTOM of the canvas,
+            # but Qt expects y = 0 at the TOP → flip with: qt_y = height - mpl_y
+            src_canvas = self.fig.canvas  # FigureCanvasQTAgg of the main figure (is a QWidget)
+            qt_x = int(mouse.x)
+            qt_y = int(src_canvas.height() - mouse.y)  # Y-axis flip
+            gp = src_canvas.mapToGlobal(QPoint(qt_x, qt_y))
 
-        # --- 5. Position the dialog relative to the cursor ---
-        # OFFSET_X > 0 : push the popup to the right of the cursor
-        # OFFSET_Y < 0 : shift the popup slightly above the cursor
-        # Together they ensure the hovered point is never hidden behind the popup.
-        OFFSET_X = 20
-        OFFSET_Y = -20
-        dialog.move(gp.x() + OFFSET_X, gp.y() + OFFSET_Y)
+            # --- 5. Position the dialog relative to the cursor ---
+            # OFFSET_X > 0 : push the popup to the right of the cursor
+            # OFFSET_Y < 0 : shift the popup slightly above the cursor
+            # Together they ensure the hovered point is never hidden behind the popup.
+            OFFSET_X = 20
+            OFFSET_Y = -20
+            dialog.move(gp.x() + OFFSET_X, gp.y() + OFFSET_Y)
 
         # --- 6. Render and display ---
         self.pop_up_fig.canvas.draw_idle()
         dialog.show()
         dialog.raise_()
+
+    def show_combination_plot_dialog(self,subset,number):
+        xy_data = self.axe.collections[0].get_offsets()
+
+        extracted_x = xy_data[:, 0]
+        extracted_y = xy_data[:, 1]
+
+        df_filtered = self.model.get_filtered_result_df()
+        n = self.model.get_number_of_combination()
+        final_rank = pd.to_numeric(df_filtered['Final Rank (Utility)'], errors='coerce')
+
+        final_rank_pct = (final_rank / n) * 100
+
+        if subset:
+            threshold = SUBSET_THRESHOLDS.get(subset, 0)
+            mask = final_rank_pct <= threshold
+
+            df_filtered = df_filtered[mask]
+
+        # convert panda series into list to reset the serie index which has been held even after filtering the data
+        # when filtering panda dataframe or series, the index stays unchanged
+        combination = list(df_filtered['2D Combination'])
+        combination_number = list(df_filtered['Combination #'])
+        ind = combination_number.index(int(number))
+
+        x = extracted_x[ind]
+        y = extracted_y[ind]
+
+        self.annotation.xy = (extracted_x[ind], extracted_y[ind])
+        self.annotation.set_text(f"Combination # {number}\n{combination[ind]}\n(x, y) = ({x:.2f}, {y:.2f})")
+        self.annotation.set_visible(True)
+
+        self._destroy_popup()
+        self.pop_up_fig = self.plot_combination_popup(set_number=f"Set {number}")
+        self.show_popup_at()
+
+        self.fig.canvas.draw_idle()
+        self.fig.canvas.flush_events()
 
     def plot_combination_popup(
             self,

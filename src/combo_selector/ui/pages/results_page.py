@@ -15,7 +15,6 @@ import pandas as pd
 from matplotlib.backends.backend_qtagg import FigureCanvas
 from matplotlib.figure import Figure
 from PySide6.QtCore import QThreadPool, QTimer, Qt, Signal
-from PySide6.QtGui import QColor
 from PySide6.QtWidgets import (
     QApplication,
     QButtonGroup,
@@ -23,7 +22,6 @@ from PySide6.QtWidgets import (
     QFrame,
     QGroupBox,
     QHBoxLayout,
-    QHeaderView,
     QLabel,
     QPushButton,
     QRadioButton,
@@ -52,6 +50,9 @@ from combo_selector.utils import resource_path
 
 # Dropdown arrow icon path
 drop_down_icon_path = resource_path("icons/drop_down_arrow.png").replace("\\", "/")
+# Checkbox icon paths
+checked_icon_path = resource_path("icons/radio_checked.svg").replace("\\", "/")
+unchecked_icon_path = resource_path("icons/radio_unchecked.svg").replace("\\", "/")
 
 # Maps UI metric names to model data frame column names
 UI_TO_MODEL_MAPPING = {
@@ -203,10 +204,10 @@ class ResultsPage(QFrame):
         )
 
         # Connexion
-        self.cid = self.fig.canvas.mpl_connect(
-            'motion_notify_event',
-            lambda event: self.plot_utils.on_motion(event, subset=self.vizualation_settings_group.get_subset())
-        )
+        # self.cid = self.fig.canvas.mpl_connect(
+        #     'motion_notify_event',
+        #     lambda event: self.plot_utils.on_motion(event, subset=self.vizualation_settings_group.get_subset())
+        # )
 
         # self.plot_tile_selector.plot_selected.connect(self.update_figure)
         # self.compare_number.currentTextChanged.connect(self.update_om_selector_state)
@@ -353,9 +354,11 @@ class ResultsPage(QFrame):
         self.om_list.setFixedHeight(175)
         self.compute_score_btn = QPushButton("Compute Score")
 
-        self.use_suggested_btn = QRadioButton("Use  Default Method")
+        self.use_suggested_btn = QRadioButton("Default")
+        self.use_suggested_btn.setObjectName('Default')
         self.use_suggested_btn.setChecked(True)
-        self.use_computed_btn = QRadioButton("Use  Custom Method")
+        self.use_computed_btn = QRadioButton("Custom")
+        self.use_computed_btn.setObjectName('Custom')
 
         self.radio_button_group = QButtonGroup()
         self.radio_button_group.addButton(self.use_suggested_btn)
@@ -363,12 +366,14 @@ class ResultsPage(QFrame):
         self.radio_button_group.setExclusive(True)
 
         self.use_mean = QRadioButton("Metric Mean")
+        self.use_mean.setObjectName('Mean')
         self.use_mean.setChecked(True)
-        self.use_mediane = QRadioButton("Metric  Mediane")
+        self.use_median = QRadioButton("Metric  Median")
+        self.use_median.setObjectName('Mean')
 
         self.mean_median_button_group = QButtonGroup()
         self.mean_median_button_group.addButton(self.use_mean)
-        self.mean_median_button_group.addButton(self.use_mediane)
+        self.mean_median_button_group.addButton(self.use_median)
         self.mean_median_button_group.setExclusive(True)
 
         self.compute_customized_frame = QFrame()
@@ -379,7 +384,7 @@ class ResultsPage(QFrame):
         compute_customized_layout.addWidget(self.om_list)
         compute_customized_layout.addWidget(QLabel("Aggregation Method:"))
         compute_customized_layout.addWidget(self.use_mean)
-        compute_customized_layout.addWidget(self.use_mediane)
+        compute_customized_layout.addWidget(self.use_median)
         compute_customized_layout.addWidget(self.compute_score_btn)
 
         orthogonality_score_layout.addWidget(self.use_suggested_btn)
@@ -397,7 +402,7 @@ class ResultsPage(QFrame):
         Returns:
             QGroupBox: Group box with plot tile selector.
         """
-        vizualation_settings_group = QGroupBox("Visualization options")
+        vizualation_settings_group = QGroupBox("Visualization Options")
         vizualation_settings_group.setStyleSheet(self._get_group_stylesheet())
         vizualation_settings_layout = QVBoxLayout()
 
@@ -454,7 +459,7 @@ class ResultsPage(QFrame):
         plot_frame_layout = QVBoxLayout(plot_frame)
         plot_frame_layout.setContentsMargins(0, 0, 0, 0)
 
-        plot_title = QLabel("Result visualization")
+        plot_title = QLabel("Result Visualization")
         plot_title.setFixedHeight(40)
         plot_title.setObjectName("TitleBar")
         plot_title.setAlignment(Qt.AlignVCenter | Qt.AlignLeft)
@@ -481,6 +486,10 @@ class ResultsPage(QFrame):
             ),
             "Metric Removal Impact On Orthogonality Rank": (
                 self.plot_utils.plot_metric_removal_impact,
+                lambda s: {}
+            ),
+            "Metric Removal Impact On Practical Peak Capacity Rank": (
+                self.plot_utils.plot_metric_removal_impact_old,
                 lambda s: {}
             ),
             "Multi-Criteria Space": (
@@ -522,7 +531,14 @@ class ResultsPage(QFrame):
             "Top Rank Overlap": (
                 self.plot_utils.plot_top_rank_overlap,
                 lambda s: {}
+            ),
+
+            "Hypothetical Peak Capacity vs Orthogonality Score (old)": (
+                self.plot_utils.plot_peak_capacity_vs_old_orthogonality_score,
+                lambda s: {}
             )
+
+
         }
 
         plot_frame_layout.addWidget(plot_title)
@@ -542,6 +558,9 @@ class ResultsPage(QFrame):
         table_frame_layout.setContentsMargins(20, 20, 20, 20)
 
         self.styled_table = StyledTable(title="Evaluation Results",has_tab=True,enable_decoration=True)
+        self.styled_table.selectionChanged.connect(lambda: print(f"Styled Table Selected {len(self.styled_table.get_selected_rows())} row(s)"))
+
+
         self.styled_table.add_title_bar_info_button(markdown_path="markdown/evaluation_results_table.md")
         self.styled_table.add_sheet(sheet_name='Orthogonality',value_format=".2f")
         self.styled_table.add_sheet(value_format=".2f",
@@ -550,18 +569,19 @@ class ResultsPage(QFrame):
                                     sheet_name='Practical Feasibility',
                                     enable_decoration = True)
         self.styled_table.add_sheet(sheet_name='Separation Potential',value_format=".2f")
-        self.styled_table.add_sheet(value_format=".1f",
+        self.styled_table.add_sheet(value_format={3:".2f",4:".2f",5:".2f",6:".2f",7:".1f"},
                                     color_config=COLOR_CONFIG_FINAL_EVALUATION,
-                                    bold_columns=[8],
+                                    bold_columns=[8,9],
                                     sheet_name='Final Evaluation',
                                     enable_decoration = True,
                                     has_tooltip = True)
-        self.styled_table.add_sheet(value_format=".3f",
+        self.styled_table.add_sheet(value_format={3:".2f",4:".1f",5:".2f",6:".1f"},
                                     sheet_name='Old Approach',
                                     enable_decoration = False,
                                     has_tooltip = False)
 
         self.orthogonality_table = self.styled_table.get_table_from_sheet(sheet_name='Orthogonality')
+        self.orthogonality_table.selectionChanged.connect(self.show_combination_plot_pop_up)
 
         self.chrom_mode_filter_dialog = CustomFilterDialog(parent=self,filter_name='Chromatographic Mode', filter_column=[2])
         self.peak_detection_status_filter_dialog = CustomFilterDialog(parent=self,filter_name="Peak Detection Rate Status", filter_column=[6,9])
@@ -634,16 +654,16 @@ class ResultsPage(QFrame):
                                                           markdown_path="markdown/elution_domain_utility.md")
         self.final_recommendation_table.add_help_button(column=6, title="Final Consensus Score",
                                                           markdown_path="markdown/final_consensus_score.md")
+
         self.final_recommendation_table.add_help_button(column=7, title="Final Consensus Rank",
-                                                          markdown_path="markdown/final_consensus_rank.md")
-        self.final_recommendation_table.add_help_button(column=8, title="Final Rank (Utility)",
                                                           markdown_path="markdown/final_rank_utility.md")
 
-        self.final_recommendation_table.add_header_button(column=9, tooltip="Final Recommendation filter", widget_to_show=self.final_recommendation_filter_dialog)
-        self.final_recommendation_table.add_help_button(column=9, title="Final Recommendation",
+
+        self.final_recommendation_table.add_header_button(column=8, tooltip="Final Recommendation filter", widget_to_show=self.final_recommendation_filter_dialog)
+        self.final_recommendation_table.add_help_button(column=8, title="Final Recommendation",
                                                           markdown_path="markdown/final_recommendation.md")
-        self.final_recommendation_table.add_header_button(column=9, tooltip="Peak Detection Status filter", widget_to_show=self.peak_detection_status_filter_dialog)
-        self.final_recommendation_table.add_help_button(column=10, title="Criterion Highlight",
+
+        self.final_recommendation_table.add_help_button(column=9, title="Criterion Highlight",
                                                           markdown_path="markdown/criterion_highlight.md")
 
         self.final_recommendation_table.set_header_label(
@@ -657,7 +677,6 @@ class ResultsPage(QFrame):
                 "Final Consensus Score",
                 "Final Consensus Rank",
                 "Final Recommendation",
-                "Peak Detection Status",
                 "FLAG"
             ])
 
@@ -768,6 +787,12 @@ class ResultsPage(QFrame):
                 font-family: "Segoe UI";
                 font-weight: bold;
             }}
+            QRadioButton::indicator:unchecked {{
+                image: url("{unchecked_icon_path}");
+            }}
+            QRadioButton::indicator:checked {{
+                image: url("{checked_icon_path}");
+            }}
             QComboBox:hover {{ border: 1px solid #a6b2c0; }}
             QComboBox::drop-down {{ border:none; }}
             QComboBox::down-arrow {{ image: url("{drop_down_icon_path}"); }}
@@ -866,7 +891,6 @@ class ResultsPage(QFrame):
     # ==========================================================================
     # Score Computation
     # ==========================================================================
-
     def start_om_computation(self) -> None:
         """Start custom orthogonality score computation in background thread.
 
@@ -876,12 +900,21 @@ class ResultsPage(QFrame):
             - Starts computation in thread pool
             - Updates results when complete
         """
+        computed_score_dic = {'metric_list':self.om_list.get_checked_items(),
+                              'aggregation_method':self.mean_median_button_group.checkedButton().objectName(),
+                              'score_used': self.radio_button_group.checkedButton().objectName()
+
+
+        }
+
+        self.model.set_computed_score_dict(computed_score_dic)
+
         worker = UpdateTableResultsWorker(self)
         worker.signals.progress.connect(self.handle_progress_update)
         worker.signals.finished.connect(self.handle_finished)
         self.threadpool.start(worker)
 
-    def compute_custom_orthogonality_metric_score(self) -> None:
+    def compute_score(self) -> None:
         """Compute custom score from checked metrics.
 
         Delegates to the background worker so the heavy computation does not
@@ -1079,6 +1112,13 @@ class ResultsPage(QFrame):
         plot_fn = self.plot_functions_map.get(plot_key)
         if plot_fn is not None:
             plot_fn()
+
+    def show_combination_plot_pop_up(self):
+        data = self.orthogonality_table.get_selected_rows()[0].data()
+
+        subset = self.vizualation_settings_group.get_subset()
+
+        self.plot_utils.show_combination_plot_dialog(number=data,subset=subset)
 
     # ==========================================================================
     # Ranking & Filtering

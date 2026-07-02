@@ -364,7 +364,7 @@ class ExportPage(QFrame):
         plot_frame_layout = QVBoxLayout(plot_frame)
         plot_frame_layout.setContentsMargins(0, 0, 0, 0)
 
-        plot_title = QLabel("Figure visualization")
+        plot_title = QLabel("Figure Visualization")
         plot_title.setFixedHeight(30)
         plot_title.setObjectName("TitleBar")
         plot_title.setAlignment(Qt.AlignVCenter | Qt.AlignLeft)
