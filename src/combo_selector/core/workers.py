@@ -189,9 +189,7 @@ class UpdateTableResultsWorker(QRunnable):
             - Logs exceptions if errors occur
         """
         try:
-            metric_list = self.page.om_list.get_checked_items()
             self.signals.progress.emit(70)
-            # self.page.get_model().compute_custom_orthogonality_score(metric_list)
             self.page.get_model().update_table_results()
             self.signals.progress.emit(100)
 
@@ -475,8 +473,11 @@ class TableDataWorker(QRunnable):
                 if isinstance(val, float):
                     if math.isnan(val):
                         return "NA"
+                    elif isinstance(self.value_format, dict) and col_idx in self.value_format.keys():
+                        return f"{val:{self.value_format[col_idx]}}"
                     else:
                         return f"{val:{self.value_format}}"
+
                 else:
                     return str(val)
             return str(val)
