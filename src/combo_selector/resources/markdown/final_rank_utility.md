@@ -1,4 +1,4 @@
-## Final Rank (Utility)
+## Final Consensus Rank
 
 Overall rank obtained after combining the normalized utilities of the main ranking criteria:
 	- Orthogonality utility 

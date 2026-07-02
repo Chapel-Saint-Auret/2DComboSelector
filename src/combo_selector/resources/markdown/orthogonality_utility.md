@@ -1,4 +1,4 @@
-## Orthogonality Rank
+## Orthogonality Utility
 
 Normalized utility derived from the Orthogonality Rank and used in the final score calculation.
 
