@@ -15,7 +15,7 @@ from PySide6.QtWidgets import QApplication, QWidget, QVBoxLayout
 class AnimatedSegmentedToggle(QWidget):
     """Two-segment animated toggle button with a sliding thumb and an optional title.
 
-    Displays a centred title label above two labeled segments inside a rounded
+    Displays a title label to the left of two labeled segments inside a rounded
     pill shape.  Clicking a segment or using arrow keys moves the thumb to that
     segment with a smooth animation.
 
@@ -41,7 +41,7 @@ class AnimatedSegmentedToggle(QWidget):
         """Initialize the animated segmented toggle.
 
         Args:
-            title (str): Text displayed centred above the toggle pill.
+            title (str): Text displayed to the left of the toggle pill.
                 Defaults to ``"toggle title"``.
             labels (tuple[str, str]): Display text for the left and right
                 segments. Defaults to ``("Show metrics", "Show ranking")``.
@@ -83,8 +83,8 @@ class AnimatedSegmentedToggle(QWidget):
         self._title_font.setBold(True)
         self._title_font.setPointSize(11)
 
-        # ---- Gap between title text and the pill
-        self._title_gap = 4
+        # ---- Gap between title text and the pill (horizontal)
+        self._title_gap = 8
 
         self.setCursor(Qt.PointingHandCursor)
         self.setFocusPolicy(Qt.StrongFocus)
@@ -103,14 +103,14 @@ class AnimatedSegmentedToggle(QWidget):
         """Recompute and set the fixed widget size based on label text widths and title.
 
         Measures each label using the current font and adds padding so both
-        segments share the same width.  Adds room for the title above the pill.
-        Updates ``_segment_width``, ``_title_height``, and calls ``setFixedSize``.
+        segments share the same width.  Adds room for the title to the left of the pill.
+        Updates ``_segment_width``, ``_title_width``, and calls ``setFixedSize``.
         """
         fm = QFontMetrics(self._font)
         title_fm = QFontMetrics(self._title_font)
 
-        # Height reserved for the title line + gap beneath it
-        self._title_height = title_fm.height() + self._title_gap
+        # Width reserved for the title text + gap to the right of it
+        self._title_width = title_fm.horizontalAdvance(self._title) + self._title_gap
 
         # Width of each label text
         text_widths = [fm.horizontalAdvance(t) for t in self.labels]
@@ -123,8 +123,8 @@ class AnimatedSegmentedToggle(QWidget):
         # Make both segments the same width for visual balance
         self._segment_width = max(seg_widths)
 
-        total_width = int(2 * self._segment_width + 2 * self._inner_margin)
-        total_height = self._title_height + self._height
+        total_width = int(self._title_width + 2 * self._segment_width + 2 * self._inner_margin)
+        total_height = self._height
         self.setFixedSize(total_width, total_height)
 
     # ---------- animated property ----------
@@ -198,12 +198,13 @@ class AnimatedSegmentedToggle(QWidget):
 
     # ---------- geometry ----------
     def _pill_rect(self):
-        """Return the rectangle occupied by the pill (below the title area).
+        """Return the rectangle occupied by the pill (to the right of the title).
 
         Returns:
             QRect: Bounding rect of the full pill.
         """
-        return QRect(0, self._title_height, self.width(), self._height)
+        pill_width = int(2 * self._segment_width + 2 * self._inner_margin)
+        return QRect(self._title_width, 0, pill_width, self._height)
 
     def _content_rect(self):
         """Return the inner rectangle of the pill after applying the inner margin.
@@ -326,16 +327,19 @@ class AnimatedSegmentedToggle(QWidget):
         self.update()
 
     def setTitle(self, title: str):
-        """Update the title text displayed above the toggle pill.
+        """Update the title text displayed to the left of the toggle pill.
 
         Args:
             title (str): New title string.
 
         Side Effects:
             - Updates ``_title``.
+            - Recomputes widget size (title width may change).
             - Repaints the widget.
         """
         self._title = title
+        self._recompute_size()
+        self._thumb_x = self._target_x_for_index(self._index)
         self.update()
 
     # ---------- painting ----------
@@ -348,11 +352,11 @@ class AnimatedSegmentedToggle(QWidget):
         p = QPainter(self)
         p.setRenderHint(QPainter.Antialiasing)
 
-        # ---- Title (centred horizontally above the pill)
-        title_rect = QRect(0, 0, self.width(), self._title_height - self._title_gap)
+        # ---- Title (vertically centred, to the left of the pill)
+        title_rect = QRect(0, 0, self._title_width - self._title_gap, self._height)
         p.setFont(self._title_font)
         p.setPen(self._title_color)
-        p.drawText(title_rect, Qt.AlignHCenter | Qt.AlignVCenter, self._title)
+        p.drawText(title_rect, Qt.AlignVCenter | Qt.AlignLeft, self._title)
 
         p.setPen(Qt.NoPen)
 
@@ -391,6 +395,6 @@ if __name__ == "__main__":
 
     layout.addWidget(toggle, alignment=Qt.AlignLeft)
 
-    w.resize(420, 120)
+    w.resize(500, 80)
     w.show()
     sys.exit(app.exec())
