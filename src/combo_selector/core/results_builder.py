@@ -688,15 +688,19 @@ class ResultsBuilder:
             self.orthogonality_result_df["Final Recommendation tooltip"] = ""
             return
 
+        rank_col = self.orthogonality_result_df["Final Rank (Utility)"]
+        top_10_threshold = rank_col.quantile(0.1)
+        top_30_threshold = rank_col.quantile(0.3)
+        bottom_30_threshold = rank_col.quantile(0.7)
+
         def is_highly_recommended(row):
-            top_10_suggested_rank = self.orthogonality_result_df["Final Rank (Utility)"].quantile(0.1)
             peak_rate = row['Peak Detection Rate (%)']
             suggested_rank = row["Final Rank (Utility)"]
             compatibility = row['Compatibility']
             complexity = row['Complexity']
 
             if (peak_rate > 80
-                    and suggested_rank <= top_10_suggested_rank
+                    and suggested_rank <= top_10_threshold
                     and compatibility in ['High', 'Moderate']
                     and complexity in ['Low', 'Moderate']):
                 return True
@@ -704,14 +708,13 @@ class ResultsBuilder:
                 return False
 
         def is_recommended(row):
-            top_30_suggested_rank = self.orthogonality_result_df["Final Rank (Utility)"].quantile(0.3)
             peak_rate = row['Peak Detection Rate (%)']
             suggested_rank = row["Final Rank (Utility)"]
             compatibility = row['Compatibility']
             complexity = row['Complexity']
 
             if (peak_rate > 60
-                    and suggested_rank <= top_30_suggested_rank
+                    and suggested_rank <= top_30_threshold
                     and compatibility not in ['Low']
                     and complexity not in ['High']):
                 return True
@@ -719,15 +722,13 @@ class ResultsBuilder:
                 return False
 
         def is_use_with_caution(row):
-            pct_30_suggested_rank = self.orthogonality_result_df["Final Rank (Utility)"].quantile(0.3)
-            pct_70_suggested_rank = self.orthogonality_result_df["Final Rank (Utility)"].quantile(0.7)
             peak_rate = row['Peak Detection Rate (%)']
             suggested_rank = row["Final Rank (Utility)"]
             compatibility = row['Compatibility']
             complexity = row['Complexity']
 
             if (40 <= peak_rate <= 60
-                    or pct_30_suggested_rank < suggested_rank < pct_70_suggested_rank
+                    or top_30_threshold < suggested_rank < bottom_30_threshold
                     or compatibility in ['Low']
                     or complexity in ['High']):
                 return True
@@ -735,11 +736,10 @@ class ResultsBuilder:
                 return False
 
         def is_not_recommended(row):
-            bottom_30_suggested_rank = self.orthogonality_result_df['Final Rank (Utility)'].quantile(0.7)
             suggested_rank = row["Final Rank (Utility)"]
             peak_rate = row['Peak Detection Rate (%)']
 
-            if peak_rate < 40 or suggested_rank >= bottom_30_suggested_rank:
+            if peak_rate < 40 or suggested_rank >= bottom_30_threshold:
                 return True
             else:
                 return False
@@ -812,11 +812,6 @@ class ResultsBuilder:
 
             return '---'
 
-        if self.orthogonality_result_df["Final Rank (Utility)"].dtype == object:
-            self.orthogonality_result_df["Final Recommendation"] = "Not available"
-            self.orthogonality_result_df["Final Recommendation tooltip"] = ""
-            return
-        
         self.orthogonality_result_df["Final Recommendation"] = (
             self.orthogonality_result_df.apply(lambda row: set_final_recommendation(row), axis=1)
         )
