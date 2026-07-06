@@ -237,19 +237,23 @@ class ComboSelectorMain(CustomMainWindow):
         self.redundancy_page.update_correlation_group_table()
         self.redundancy_page.blockSignals(False)
 
-        # 5. Now that the results page is fully initialized, start the
-        #    background score computation.  When it finishes it will call
-        #    results_page.update_results_table() to refresh the display.
-        self.results_page.compute_score()
-
         # 3. Initialize the results page — correlation groups are now in the
-        #    model, so init_page() can use them safely.
+        #    model, so init_page() can use them safely.  This calls
+        #    update_table_results() synchronously (including compute_final_rank
+        #    and compute_final_recommendation_factor) before any background
+        #    worker can interfere with self.orthogonality_result_df.
         self.results_page.init_page(self._cached_metric_list)
         self.set_status_text("Result page ready!")
 
         # 4. Initialize the export page
         self.export_page.init_page(self.metric_list_for_figure)
         self.set_status_text("Export page ready!")
+
+        # 5. Now that the results page is fully initialized and om_list is
+        #    populated, start the background score computation with the correct
+        #    metric selection.  When it finishes it will call
+        #    results_page.update_results_table() to refresh the display.
+        self.results_page.compute_score()
 
 
 
