@@ -691,7 +691,7 @@ class ResultsBuilder:
         rank_col = self.orthogonality_result_df["Final Rank (Utility)"]
         top_10_threshold = rank_col.quantile(0.1)
         top_30_threshold = rank_col.quantile(0.3)
-        pct_70_threshold = rank_col.quantile(0.7)
+        top_70_threshold = rank_col.quantile(0.7)
 
         def is_highly_recommended(row):
             peak_rate = row['Peak Detection Rate (%)']
@@ -728,7 +728,7 @@ class ResultsBuilder:
             complexity = row['Complexity']
 
             if (40 <= peak_rate <= 60
-                    or top_30_threshold < suggested_rank < pct_70_threshold
+                    or top_30_threshold < suggested_rank < top_70_threshold
                     or compatibility in ['Low']
                     or complexity in ['High']):
                 return True
@@ -739,7 +739,7 @@ class ResultsBuilder:
             suggested_rank = row["Final Rank (Utility)"]
             peak_rate = row['Peak Detection Rate (%)']
 
-            if peak_rate < 40 or suggested_rank >= pct_70_threshold:
+            if peak_rate < 40 or suggested_rank >= top_70_threshold:
                 return True
             else:
                 return False
