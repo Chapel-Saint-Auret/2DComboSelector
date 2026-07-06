@@ -18,8 +18,9 @@ from enum import Enum
 
 import numpy as np
 import pandas as pd
+from math import log
 from scipy.optimize import minimize_scalar
-from scipy.stats import tmean, tstd
+from scipy.stats import tmean, tstd,linregress
 from collections import Counter
 
 # ---------------------------------------------------------------------------
@@ -169,7 +170,7 @@ METRIC_MAPPING = {
         "include_in_score": True,
         "include_in_corr_mat": False,
     },
-    "orthogonality_value": {
+    "suggested_score": {
         "table_index": 26,
         "include_in_score": True,
         "include_in_corr_mat": False,
@@ -209,11 +210,17 @@ METRIC_MAPPING = {
         "include_in_score": True,
         "include_in_corr_mat": True,
     },
+    "schure": {
+        "table_index": 34,
+        "include_in_score": True,
+        "include_in_corr_mat": True,
+    }
 }
 
 UI_TO_MODEL_MAPPING = {
     "Convex hull relative area": "convex_hull",
     "Bin box counting": "bin_box_ratio",
+    "Schure": "schure",
     "Pearson Correlation": "pearson_r",
     "Spearman Correlation": "spearman_rho",
     "Kendall Correlation": "kendall_tau",
@@ -238,6 +245,7 @@ UI_TO_MODEL_MAPPING = {
 METRIC_CATEGORY = {
     "Convex hull relative area": "Coverage",
     "Bin box counting": "Coverage",
+    "Schure": "Coverage",
     "Gilar-Watson method": "Coverage",
     "Modeling approach": "NC",
     "Conditional entropy": "Distribution",
@@ -804,6 +812,224 @@ def compute_percent_fit_for_set(
     }
     return set_key, result
 
+
+def build_box_count_curve(x, y, i_min=2, i_max=30, i_step=1):
+    """
+    Build the log-log data used for DBC.
+    Following Schure, epsilon_i = 1 / i.
+    Returns a list of dicts with:
+        i, epsilon, occupied_boxes, log_epsilon, log_N
+    """
+    if len(x) != len(y):
+        raise ValueError("x and y must have the same length.")
+    if len(x) == 0:
+        raise ValueError("Empty dataset.")
+
+    curve = []
+
+    for i in range(i_min, i_max + 1, i_step):
+        epsilon = 1.0 / i
+
+        h_color, x_edges, y_edges = compute_bin_box_mask_color(
+            x, y, i
+        )
+
+        N = h_color.count()
+
+        # Keep only meaningful points for log-log plot
+        if N > 0:
+            curve.append({
+                "i": i,
+                "epsilon": epsilon,
+                "occupied_boxes": N,
+                "log_epsilon": log(epsilon),
+                "log_N": log(N),
+            })
+
+    return curve
+
+def linear_regression(x, y):
+    """
+    Simple least-squares linear regression.
+    Returns slope, intercept, R^2.
+    """
+    n = len(x)
+    if n < 2:
+        raise ValueError("Need at least 2 points for regression.")
+
+    x_mean = tmean(x)
+    y_mean = tmean(y)
+
+    ss_xx = sum((xi - x_mean) ** 2 for xi in x)
+    ss_xy = sum((xi - x_mean) * (yi - y_mean) for xi, yi in zip(x, y))
+    ss_yy = sum((yi - y_mean) ** 2 for yi in y)
+
+    if ss_xx == 0:
+        raise ValueError("Cannot regress: all x values are identical.")
+
+    slope = ss_xy / ss_xx
+    intercept = y_mean - slope * x_mean
+
+    # R^2
+    if ss_yy == 0:
+        r2 = 1.0
+    else:
+        y_pred = [intercept + slope * xi for xi in x]
+        ss_res = sum((yi - yhat) ** 2 for yi, yhat in zip(y, y_pred))
+        r2 = 1 - ss_res / ss_yy
+
+    return slope, intercept, r2
+
+def find_best_schure_segment(
+    curve,
+    min_points: int = 6,
+    max_points: int = 12,
+    min_x_range: float = 0.35,
+    min_abs_slope: float = 0.25,
+    max_abs_slope: float = 2.0,
+    min_r2: float = 0.97,
+    prefer_middle: bool = True,
+):
+    """
+    Find a meaningful linear scaling region for the Schure log-log curve.
+
+    The curve must be a list of dictionaries containing:
+        - "log_epsilon"
+        - "log_N"
+
+    Returns
+    -------
+    dict or None
+        Dictionary containing:
+        - slope
+        - intercept
+        - r2
+        - start
+        - end
+        - score
+        - n_points
+        - x_range
+        - max_abs_residual
+        - mean_abs_residual
+    """
+
+    if curve is None or len(curve) < min_points:
+        return None
+
+    n = len(curve)
+
+    x_all = np.array([p["log_epsilon"] for p in curve], dtype=float)
+    y_all = np.array([p["log_N"] for p in curve], dtype=float)
+
+    total_x_range = np.max(x_all) - np.min(x_all)
+
+    if total_x_range <= 0:
+        return None
+
+    best = None
+
+    # Avoid absurd max_points if the curve is short
+    max_points = min(max_points, n)
+
+    for start in range(0, n - min_points + 1):
+
+        for end in range(start + min_points, min(start + max_points, n) + 1):
+
+            segment = curve[start:end]
+
+            x = np.array([p["log_epsilon"] for p in segment], dtype=float)
+            y = np.array([p["log_N"] for p in segment], dtype=float)
+
+            n_points = len(segment)
+            x_range = np.max(x) - np.min(x)
+
+            if x_range < min_x_range:
+                continue
+
+            regression = linregress(x, y)
+
+            slope = regression.slope
+            intercept = regression.intercept
+            r2 = regression.rvalue ** 2
+
+            # In your representation, the Schure slope should be negative
+            if slope >= 0:
+                continue
+
+            abs_slope = abs(slope)
+
+            # Reject plateau-like regions
+            if abs_slope < min_abs_slope:
+                continue
+
+            # Reject unrealistic local slopes
+            if abs_slope > max_abs_slope:
+                continue
+
+            # Reject insufficiently linear segments
+            if r2 < min_r2:
+                continue
+
+            # Residual diagnostics
+            y_pred = slope * x + intercept
+            residuals = y - y_pred
+
+            max_abs_residual = float(np.max(np.abs(residuals)))
+            mean_abs_residual = float(np.mean(np.abs(residuals)))
+
+            # Reject visibly curved segments
+            # These thresholds are empirical, but useful for your plots.
+            if max_abs_residual > 0.18:
+                continue
+
+            if mean_abs_residual > 0.08:
+                continue
+
+            # --------------------------------------------------
+            # Scoring logic
+            # --------------------------------------------------
+            # We want:
+            # - high R²
+            # - enough x-range
+            # - enough points
+            # - small residuals
+            # - not necessarily the longest possible segment
+            # --------------------------------------------------
+
+            range_factor = np.sqrt(x_range / total_x_range)
+
+            # Gentle reward for more points, but capped.
+            # This avoids selecting the whole curve just because it is longer.
+            point_factor = np.sqrt(n_points / max_points)
+
+            residual_factor = 1.0 / (1.0 + 10.0 * mean_abs_residual)
+
+            score = r2 * range_factor * point_factor * residual_factor
+
+            if prefer_middle:
+                segment_center = (start + end - 1) / 2
+                normalized_center = segment_center / (n - 1)
+
+                # Penalize extreme beginning and extreme end,
+                # but not too aggressively.
+                middle_factor = 1.0 - 0.35 * abs(normalized_center - 0.5) / 0.5
+                score *= middle_factor
+
+            if best is None or score > best["score"]:
+                best = {
+                    "slope": slope,
+                    "intercept": intercept,
+                    "r2": r2,
+                    "start": start,
+                    "end": end,
+                    "score": score,
+                    "n_points": n_points,
+                    "x_range": x_range,
+                    "max_abs_residual": max_abs_residual,
+                    "mean_abs_residual": mean_abs_residual,
+                }
+
+    return best
 
 def cluster_and_fuse(data: list[tuple]) -> tuple[list[list[tuple]], list[list]]:
     """Cluster tuples that share common items and fuse them into groups.

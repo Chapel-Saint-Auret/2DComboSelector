@@ -37,8 +37,7 @@ from PySide6.QtWidgets import (
 from PySide6.QtGui import QStandardItem, QStandardItemModel
 
 from combo_selector.ui.widgets.color_picker import ColorPicker
-
-CHROM_MODE = ['RPLC', 'HILIC', 'IEX', 'SEC', 'HIC', 'SFC','vs']
+from combo_selector.constants import CHROM_MODE
 
 
 class CustomComboBox(QComboBox):
@@ -94,7 +93,7 @@ class CustomFilterDialog(QDialog):
     filter_regexp_changed = Signal(str,int,object)
     state_changed = Signal()
 
-    def __init__(self,filter_name='',filter_column='',parent=None):
+    def __init__(self,filter_name='',filter_column=[],parent=None):
         """Initialize the filter dialog.
 
         Args:
@@ -609,13 +608,13 @@ class FilteredListView(QWidget):
     input to narrow down the list. Supports regex mode.
 
     Signals:
-        filterChanged(list): Emitted when checked items change.
+        filterChanged(dict): Emitted when checked items change.
 
     Attributes:
         filters (list): List of currently checked item texts.
     """
 
-    filterChanged = Signal(list)
+    filterChanged = Signal(dict)
 
     def __init__(self, parent=None):
         """Initialize the filtered list view."""
@@ -720,7 +719,7 @@ class FilteredListView(QWidget):
             item = QStandardItem(d)
             item.setCheckable(True)
 
-            self.model.setItem(row, 0, item)
+            self.model.setItem(row,item)
 
             #TODO uncomment this part to add color picker for filtered data
             # self.model.setItem(row, 1, QStandardItem())

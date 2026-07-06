@@ -7,8 +7,9 @@ imported and unit-tested without a running Qt application.
 """
 
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from math import acos, atan, log2, pi, sqrt, tan
+from math import acos, atan, log2, pi, sqrt, tan,log
 
+import random
 import numpy as np
 import pandas as pd
 
@@ -31,7 +32,9 @@ from combo_selector.core.orthogonality_utils import (
     UI_TO_MODEL_MAPPING,
     compute_bin_box_mask_color,
     compute_percent_fit_for_set,
-    extract_set_number,
+    build_box_count_curve,
+    find_best_schure_segment,
+    extract_set_number
 )
 
 
@@ -115,11 +118,11 @@ class MetricEngine:
             "nb_peaks": 0,
             "hull_subset": 0,
             "convex_hull": 0,
-            "bin_box": {"color_mask": 0, "edges": [0, 0]},
-            "gilar-watson": {"color_mask": 0, "edges": [0, 0]},
-            "modeling_approach": {"color_mask": 0, "edges": [0, 0]},
+            "bin_box": 0,  # {"color_mask": 0, "edges": [0, 0]}
+            "gilar-watson": 0,  # {"color_mask": 0, "edges": [0, 0]}
+            "modeling_approach": 0,  # {"color_mask": 0, "edges": [0, 0]}
             "geometric_approach": 0,
-            "conditional_entropy": {"histogram": 0, "edges": [0, 0], "value": 0},
+            "conditional_entropy": 0,  # {"histogram": 0, "edges": [0, 0], "value": 0}
             "bin_box_ratio": 0,
             "linregress": 0,
             "linregress_rvalue": 0,
@@ -128,34 +131,12 @@ class MetricEngine:
             "pearson_r": 0,
             "spearman_rho": 0,
             "kendall_tau": 0,
-            "asterisk_metrics": {
-                "a0": 0,
-                "z_minus": 0,
-                "z_plus": 0,
-                "z1": 0,
-                "z2": 0,
-                "sigma_sz_minus": 0,
-                "sigma_sz_plus": 0,
-                "sigma_sz1": 0,
-                "sigma_sz2": 0,
-            },
+            "asterisk_metrics": 0,  # {"a0": 0, "z_minus": 0, ...}
             "a_mean": 0,
             "g_mean": 0,
             "h_mean": 0,
-            "percent_fit": {
-                "delta_xy_avg": 0,
-                "delta_xy_sd": 0,
-                "delta_yx_avg": 0,
-                "delta_yx_sd": 0,
-                "value": 0,
-            },
-            "percent_bin": {
-                "value": 0,
-                "mask": 0,
-                "sad_dev": 0,
-                "sad_dev_ns": 0,
-                "sad_dev_fs": 0,
-            },
+            "percent_fit": 0,  # {"delta_xy_avg": 0, ...}
+            "percent_bin": 0,  # {"value": 0, "mask": 0, ...}
             "computed_score": 0,
             "orthogonality_factor": 0,
             "orthogonality_value": 0,
@@ -236,6 +217,10 @@ class MetricEngine:
                 "func": self.compute_conditional_entropy,
                 "status": FuncStatus.NOT_COMPUTED,
             },
+            "Schure": {
+                "func": self.compute_schure_dbc,
+                "status": FuncStatus.NOT_COMPUTED,
+            }
         }
 
     def update_num_bins(self, nb_bin: int) -> None:
@@ -371,9 +356,8 @@ class MetricEngine:
             )
 
             bin_box_ratio = h_color.count() / (self.bin_number * self.bin_number)
-            set_data["bin_box"]["color_mask"] = h_color
-            set_data["bin_box"]["edges"] = [x_edges, y_edges]
             set_data["bin_box_ratio"] = bin_box_ratio
+            set_data["bin_box_ratio"] = {"color_mask": h_color, "edges": [x_edges, y_edges]}
 
             set_number = extract_set_number(set_key)
             self.update_metrics(
@@ -381,6 +365,81 @@ class MetricEngine:
             )
 
         self.om_function_map["Bin box counting"]["status"] = FuncStatus.COMPUTED
+
+    def compute_schure_dbc(self) -> None:
+        """
+          Full DBC workflow for 2D data.
+            Returns a dictionary containing:
+                D, slope, intercept, r2, selected range, curve
+
+        Divides the [0,1] x [0,1] space into a grid and calculates the fraction
+        of bins that contain at least one peak.
+
+        Side Effects:
+            - Updates 'bin_box' (color_mask and edges) and 'bin_box_ratio' in orthogonality_dict
+            - Updates bin_box_ratio metric in table_data
+            - Sets 'Bin box counting' status to COMPUTED
+        """
+
+        for set_key in self.orthogonality_dict.keys():
+            set_data = self.orthogonality_dict[set_key]
+            x, y = set_data["x_values"], set_data["y_values"]
+
+
+            curve = build_box_count_curve(x, y, i_min=2, i_max=30, i_step=1)
+
+            best = find_best_schure_segment(
+                curve,
+                min_points=6,
+                max_points=12,
+                min_x_range=0.35,
+                min_abs_slope=0.25,
+                max_abs_slope=2.0,
+                min_r2=0.97,
+                prefer_middle=True,
+            )
+
+            if best is not None:
+                D = -best["slope"]
+
+                set_data["schure"] = {
+                    "D": D,
+                    "slope": best["slope"],
+                    "intercept": best["intercept"],
+                    "r2": best["r2"],
+                    "range_start_index": best["start"],
+                    "range_end_index": best["end"],
+                    "selected_curve_segment": curve[best["start"]:best["end"]],
+                    "full_curve": curve,
+                    "segment_score": best["score"],
+                    "segment_n_points": best["n_points"],
+                    "segment_x_range": best["x_range"],
+                    "segment_max_abs_residual": best["max_abs_residual"],
+                    "segment_mean_abs_residual": best["mean_abs_residual"],
+                }
+            else:
+                set_data["schure"] = {
+                    "D": None,
+                    "slope": None,
+                    "intercept": None,
+                    "r2": None,
+                    "range_start_index": None,
+                    "range_end_index": None,
+                    "selected_curve_segment": [],
+                    "full_curve": curve,
+                    "segment_score": None,
+                    "segment_n_points": None,
+                    "segment_x_range": None,
+                    "segment_max_abs_residual": None,
+                    "segment_mean_abs_residual": None,
+                }
+
+            set_number = extract_set_number(set_key)
+            self.update_metrics(
+                set_key, "schure", random.random(), table_row_index=set_number - 1
+            )
+
+        self.om_function_map["Schure"]["status"] = FuncStatus.COMPUTED
 
     def compute_pearson(self) -> None:
         """Compute Pearson correlation coefficient for each set .
@@ -774,8 +833,7 @@ class MetricEngine:
             orthogonality = (sum_bin - self.bin_number) / (
                     (0.63 * p_square))
 
-            set_data["gilar-watson"]["color_mask"] = h_color
-            set_data["gilar-watson"]["edges"] = [x_edges, y_edges]
+            set_data["gilar-watson"] = {"color_mask": h_color, "edges": [x_edges, y_edges]}
 
             set_number = extract_set_number(set_key)
             self.update_metrics(
@@ -811,8 +869,7 @@ class MetricEngine:
                 x, y, self.bin_number
             )
 
-            set_data["modeling_approach"]["color_mask"] = h_color
-            set_data["modeling_approach"]["edges"] = [x_edges, y_edges]
+            set_data["modeling_approach"] = {"color_mask": h_color, "edges": [x_edges, y_edges]}
 
             # 2) Calculate bin-coverage term C_pert
             p_square = self.bin_number * self.bin_number
@@ -887,9 +944,9 @@ class MetricEngine:
             H_y_given_x = H_xy - H_x
             conditional_entropy = H_y_given_x / H_y
 
-            set_data["conditional_entropy"]["value"] = conditional_entropy
-            set_data["conditional_entropy"]["histogram"] = count_xy
-            set_data["conditional_entropy"]["edges"] = [x_edges, y_edges]
+            set_data["conditional_entropy"] = {"value": conditional_entropy,
+                                               "histogram": count_xy,
+                                               "edges": [x_edges, y_edges]}
 
             set_number = extract_set_number(set_key)
             self.update_metrics(

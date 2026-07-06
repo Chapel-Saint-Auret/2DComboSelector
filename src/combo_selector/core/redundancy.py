@@ -11,6 +11,8 @@ import pandas as pd
 import numpy as np
 from scipy.stats import spearmanr, tmean
 
+from itertools import combinations
+
 from combo_selector.core.orthogonality_utils import cluster_and_fuse
 
 
@@ -72,12 +74,12 @@ class Redundancy:
             if self.orthogonality_metric_corr_matrix_df.empty:
                 return pd.DataFrame()
 
-            corr_matrix = self.orthogonality_metric_corr_matrix_df.corr()
+            corr_matrix = self.orthogonality_metric_corr_matrix_df.corr(method='spearman')
         else:
             if self.orthogonality_metric_ranking_corr_matrix_df.empty:
                 return pd.DataFrame()
 
-            corr_matrix = self.orthogonality_metric_ranking_corr_matrix_df.corr()
+            corr_matrix = self.orthogonality_metric_ranking_corr_matrix_df.corr(method='pearson')
 
 
         Correlated_Metrics = set()
@@ -121,6 +123,40 @@ class Redundancy:
         ]
 
         return self.correlation_group_df
+
+    def compute_top_overlap(self):
+
+        """[('A', 'B'), ('A', 'C'), ('A', 'D'), ('B', 'C'), ('B', 'D'), ('C', 'D')]"""
+
+        result_dict = {}
+        top_10_count = int(self.nb_combination * 0.10)
+
+        for group, Correlated_Metrics_list in zip(self.correlation_group_df['Group'],
+                                                  self.correlation_group_df['Correlated Metrics']):
+
+            # The '2' specifies the size of the groups (pairs)
+            unique_pairs_metric = list(combinations(Correlated_Metrics_list, 2))
+
+            result_dict[group] = {}
+            for metric_pair in unique_pairs_metric:
+
+                metric_A = self.orthogonality_metric_ranking_df[metric_pair[0]]
+                metric_B = self.orthogonality_metric_ranking_df[metric_pair[1]]
+
+                metric_A_top_10 = metric_A.nsmallest(n=top_10_count, keep='first')
+                metric_B_top_10 = metric_B.nsmallest(n=top_10_count, keep='first')
+
+                top_1O_metric_A_combination = self.orthogonality_metric_ranking_df["2D Combination"].iloc[metric_A_top_10.index]
+                top_1O_metric_B_combination = self.orthogonality_metric_ranking_df["2D Combination"].iloc[metric_B_top_10.index]
+
+                top_1O_metric_A_combination = set(top_1O_metric_A_combination)
+                top_1O_metric_B_combination = set(top_1O_metric_B_combination)
+
+                overlap = len(top_1O_metric_A_combination.intersection(top_1O_metric_B_combination)) / top_10_count
+
+                result_dict[group][str(metric_pair)] = overlap
+
+        result_dict = pd.DataFrame(result_dict)
 
     def compute_rho_coverage(self):
         """Compute Spearman correlation (ρ) between each metric and the coverage anchor.
@@ -229,9 +265,9 @@ class Redundancy:
 
             # 1. Get your sub-matrix
             if matrix_type == 'Values':
-                corr_matrix = self.orthogonality_metric_corr_matrix_df.corr()
+                corr_matrix = self.orthogonality_metric_corr_matrix_df.corr(method='spearman')
             else:
-                corr_matrix = self.orthogonality_metric_ranking_corr_matrix_df.corr()
+                corr_matrix = self.orthogonality_metric_ranking_corr_matrix_df.corr(method='pearson')
 
             corr_matrix = corr_matrix.loc[
                 Correlated_Metrics_list, Correlated_Metrics_list]

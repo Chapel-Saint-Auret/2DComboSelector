@@ -14,8 +14,7 @@ import logging
 import pandas as pd
 from matplotlib.backends.backend_qtagg import FigureCanvas
 from matplotlib.figure import Figure
-from PySide6.QtCore import QThreadPool, QTimer, Qt
-from PySide6.QtGui import QColor
+from PySide6.QtCore import QThreadPool, QTimer, Qt, Signal
 from PySide6.QtWidgets import (
     QApplication,
     QButtonGroup,
@@ -23,7 +22,6 @@ from PySide6.QtWidgets import (
     QFrame,
     QGroupBox,
     QHBoxLayout,
-    QHeaderView,
     QLabel,
     QPushButton,
     QRadioButton,
@@ -52,6 +50,9 @@ from combo_selector.utils import resource_path
 
 # Dropdown arrow icon path
 drop_down_icon_path = resource_path("icons/drop_down_arrow.png").replace("\\", "/")
+# Checkbox icon paths
+checked_icon_path = resource_path("icons/radio_checked.svg").replace("\\", "/")
+unchecked_icon_path = resource_path("icons/radio_unchecked.svg").replace("\\", "/")
 
 # Maps UI metric names to model data frame column names
 UI_TO_MODEL_MAPPING = {
@@ -99,6 +100,7 @@ class ResultsPage(QFrame):
         selected_axe: Currently selected matplotlib axes.
         progress_overlay (QWidget): Transparent overlay showing progress bar.
     """
+    filter_changed = Signal()
 
     def __init__(self, model=None):
         """Initialize the Results Page with controls and visualizations.
@@ -115,7 +117,11 @@ class ResultsPage(QFrame):
             - Overlay:
                 - Circular progress bar during computations
         """
+
         super().__init__()
+
+
+        self.not_filled = True
 
         # --- State & threading ---------------------------------------------
         self.threadpool = QThreadPool()
@@ -160,6 +166,13 @@ class ResultsPage(QFrame):
         self.progress_overlay.setGeometry(self.stack.geometry())
         self.progress_overlay.raise_()
 
+        # Timer for animating progress during intensive computations
+        self._progress_animation_timer = QTimer(self)
+        self._progress_animation_timer.timeout.connect(self._animate_progress)
+        self._current_metric = ""
+        self._current_progress = 0
+        self._animation_counter = 0
+
         # --- Signal connections --------------------------------------------
         # self.chrom_mode_filter_dialog.filter_regexp_changed.connect(self.filter_table)
         # self.peak_detection_status_filter_dialog.filter_regexp_changed.connect(self.filter_table)
@@ -177,6 +190,7 @@ class ResultsPage(QFrame):
         self.practical_feasibility_table.filter_changed.connect(self.filter_table_changed)
         self.seperational_potential_table.filter_changed.connect(self.filter_table_changed)
         self.final_recommendation_table.filter_changed.connect(self.filter_table_changed)
+        self.old_approach_table.filter_changed.connect(self.filter_table_changed)
 
         # We use a lambda wrapper here because Matplotlib's 'mpl_connect' expects a function
         # reference that takes exactly one argument (the 'event' object).
@@ -188,6 +202,12 @@ class ResultsPage(QFrame):
             'pick_event',
             lambda event: self.plot_utils.on_pick(event, subset=self.vizualation_settings_group.get_subset())
         )
+
+        # Connexion
+        # self.cid = self.fig.canvas.mpl_connect(
+        #     'motion_notify_event',
+        #     lambda event: self.plot_utils.on_motion(event, subset=self.vizualation_settings_group.get_subset())
+        # )
 
         # self.plot_tile_selector.plot_selected.connect(self.update_figure)
         # self.compare_number.currentTextChanged.connect(self.update_om_selector_state)
@@ -334,9 +354,11 @@ class ResultsPage(QFrame):
         self.om_list.setFixedHeight(175)
         self.compute_score_btn = QPushButton("Compute Score")
 
-        self.use_suggested_btn = QRadioButton("Use  Default Method")
+        self.use_suggested_btn = QRadioButton("Default")
+        self.use_suggested_btn.setObjectName('Default')
         self.use_suggested_btn.setChecked(True)
-        self.use_computed_btn = QRadioButton("Use  Custom Method")
+        self.use_computed_btn = QRadioButton("Custom")
+        self.use_computed_btn.setObjectName('Custom')
 
         self.radio_button_group = QButtonGroup()
         self.radio_button_group.addButton(self.use_suggested_btn)
@@ -344,12 +366,14 @@ class ResultsPage(QFrame):
         self.radio_button_group.setExclusive(True)
 
         self.use_mean = QRadioButton("Metric Mean")
+        self.use_mean.setObjectName('Mean')
         self.use_mean.setChecked(True)
-        self.use_mediane = QRadioButton("Metric  Mediane")
+        self.use_median = QRadioButton("Metric  Median")
+        self.use_median.setObjectName('Mean')
 
         self.mean_median_button_group = QButtonGroup()
         self.mean_median_button_group.addButton(self.use_mean)
-        self.mean_median_button_group.addButton(self.use_mediane)
+        self.mean_median_button_group.addButton(self.use_median)
         self.mean_median_button_group.setExclusive(True)
 
         self.compute_customized_frame = QFrame()
@@ -360,12 +384,13 @@ class ResultsPage(QFrame):
         compute_customized_layout.addWidget(self.om_list)
         compute_customized_layout.addWidget(QLabel("Aggregation Method:"))
         compute_customized_layout.addWidget(self.use_mean)
-        compute_customized_layout.addWidget(self.use_mediane)
-        compute_customized_layout.addWidget(self.compute_score_btn)
+        compute_customized_layout.addWidget(self.use_median)
+        # compute_customized_layout.addWidget(self.compute_score_btn)
 
         orthogonality_score_layout.addWidget(self.use_suggested_btn)
         orthogonality_score_layout.addWidget(self.use_computed_btn)
         orthogonality_score_layout.addWidget(self.compute_customized_frame)
+        orthogonality_score_layout.addWidget(self.compute_score_btn)
 
         orthogonality_score_group.setLayout(orthogonality_score_layout)
 
@@ -378,7 +403,7 @@ class ResultsPage(QFrame):
         Returns:
             QGroupBox: Group box with plot tile selector.
         """
-        vizualation_settings_group = QGroupBox("Visualization options")
+        vizualation_settings_group = QGroupBox("Visualization Options")
         vizualation_settings_group.setStyleSheet(self._get_group_stylesheet())
         vizualation_settings_layout = QVBoxLayout()
 
@@ -435,7 +460,7 @@ class ResultsPage(QFrame):
         plot_frame_layout = QVBoxLayout(plot_frame)
         plot_frame_layout.setContentsMargins(0, 0, 0, 0)
 
-        plot_title = QLabel("Result visualization")
+        plot_title = QLabel("Result Visualization")
         plot_title.setFixedHeight(40)
         plot_title.setObjectName("TitleBar")
         plot_title.setAlignment(Qt.AlignVCenter | Qt.AlignLeft)
@@ -462,6 +487,10 @@ class ResultsPage(QFrame):
             ),
             "Metric Removal Impact On Orthogonality Rank": (
                 self.plot_utils.plot_metric_removal_impact,
+                lambda s: {}
+            ),
+            "Metric Removal Impact On Practical Peak Capacity Rank": (
+                self.plot_utils.plot_metric_removal_impact_old,
                 lambda s: {}
             ),
             "Multi-Criteria Space": (
@@ -503,7 +532,14 @@ class ResultsPage(QFrame):
             "Top Rank Overlap": (
                 self.plot_utils.plot_top_rank_overlap,
                 lambda s: {}
+            ),
+
+            "Hypothetical Peak Capacity vs Orthogonality Score (old)": (
+                self.plot_utils.plot_peak_capacity_vs_old_orthogonality_score,
+                lambda s: {}
             )
+
+
         }
 
         plot_frame_layout.addWidget(plot_title)
@@ -523,6 +559,9 @@ class ResultsPage(QFrame):
         table_frame_layout.setContentsMargins(20, 20, 20, 20)
 
         self.styled_table = StyledTable(title="Evaluation Results",has_tab=True,enable_decoration=True)
+        self.styled_table.selectionChanged.connect(lambda: print(f"Styled Table Selected {len(self.styled_table.get_selected_rows())} row(s)"))
+
+
         self.styled_table.add_title_bar_info_button(markdown_path="markdown/evaluation_results_table.md")
         self.styled_table.add_sheet(sheet_name='Orthogonality',value_format=".2f")
         self.styled_table.add_sheet(value_format=".2f",
@@ -531,20 +570,25 @@ class ResultsPage(QFrame):
                                     sheet_name='Practical Feasibility',
                                     enable_decoration = True)
         self.styled_table.add_sheet(sheet_name='Separation Potential',value_format=".2f")
-        self.styled_table.add_sheet(value_format=".1f",
+        self.styled_table.add_sheet(value_format={3:".2f",4:".2f",5:".2f",6:".2f",7:".1f"},
                                     color_config=COLOR_CONFIG_FINAL_EVALUATION,
-                                    bold_columns=[8],
+                                    bold_columns=[8,9],
                                     sheet_name='Final Evaluation',
                                     enable_decoration = True,
                                     has_tooltip = True)
+        self.styled_table.add_sheet(value_format={3:".2f",4:".1f",5:".2f",6:".1f"},
+                                    sheet_name='Old Approach',
+                                    enable_decoration = False,
+                                    has_tooltip = False)
 
         self.orthogonality_table = self.styled_table.get_table_from_sheet(sheet_name='Orthogonality')
+        self.orthogonality_table.selectionChanged.connect(self.show_combination_plot_pop_up)
 
-        self.chrom_mode_filter_dialog = CustomFilterDialog(parent=self,filter_name='Chromatographic Mode', filter_column=2)
-        self.peak_detection_status_filter_dialog = CustomFilterDialog(parent=self,filter_name="Peak Detection Rate Status", filter_column=6)
-        self.complexity_filter_dialog = CustomFilterDialog(parent=self,filter_name='Complexity', filter_column=3)
-        self.compatibility_filter_dialog = CustomFilterDialog(parent=self,filter_name='Compatibility', filter_column=4)
-        self.final_recommendation_filter_dialog = CustomFilterDialog(parent=self,filter_name='Final Recommendation', filter_column=8)
+        self.chrom_mode_filter_dialog = CustomFilterDialog(parent=self,filter_name='Chromatographic Mode', filter_column=[2])
+        self.peak_detection_status_filter_dialog = CustomFilterDialog(parent=self,filter_name="Peak Detection Rate Status", filter_column=[6,9])
+        self.complexity_filter_dialog = CustomFilterDialog(parent=self,filter_name='Complexity', filter_column=[3])
+        self.compatibility_filter_dialog = CustomFilterDialog(parent=self,filter_name='Compatibility', filter_column=[4])
+        self.final_recommendation_filter_dialog = CustomFilterDialog(parent=self,filter_name='Final Recommendation', filter_column=[8])
 
         self.orthogonality_table.add_header_button(
             column=2, tooltip="Custom filter", widget_to_show=self.chrom_mode_filter_dialog
@@ -552,7 +596,7 @@ class ResultsPage(QFrame):
 
         self.orthogonality_table.add_help_button(column=3,title="Coverage Score",markdown_path="markdown/coverage_score.md")
         self.orthogonality_table.add_help_button(column=4,title="Distribution Score",markdown_path="markdown/distribution_score.md")
-        self.orthogonality_table.add_help_button(column=5,title="Orthogonality Rank",markdown_path="markdown/orthogonality_rank.md")
+        self.orthogonality_table.add_help_button(column=5,title="Orthogonality Utility",markdown_path="markdown/orthogonality_utility.md")
         self.orthogonality_table.add_help_button(column=6,title="Agreement Indicator",markdown_path="markdown/agreement_indicator.md")
         # self.orthogonality_table.add_help_button(column=7,title="Outlier Flag",markdown_path="markdown/outlier_flag.md")
         self.orthogonality_table.set_header_label(
@@ -562,7 +606,7 @@ class ResultsPage(QFrame):
                 "Chromatographic Mode",
                 "Coverage Score",
                 "Distribution Score",
-                "Orthogonality Rank",
+                "Orthogonality Utility",
                 "Agreement Indicator"
             ])
 
@@ -590,7 +634,7 @@ class ResultsPage(QFrame):
         self.seperational_potential_table.add_header_button(column=2, tooltip="Custom filter",
                                                            widget_to_show=self.chrom_mode_filter_dialog)
         self.seperational_potential_table.add_help_button(column=3, title="Hypothetical 2D Peak Capacity",markdown_path="markdown/hypothetical_peak_capacity.md")
-        self.seperational_potential_table.add_help_button(column=4, title="Elution Domain",markdown_path="markdown/elution_domain.md")
+        self.seperational_potential_table.add_help_button(column=4, title="Elution Domain (%)",markdown_path="markdown/elution_domain.md")
         self.seperational_potential_table.set_header_label(
             [
                 "Combination #",
@@ -603,20 +647,23 @@ class ResultsPage(QFrame):
         self.final_recommendation_table = self.styled_table.get_table_from_sheet(sheet_name='Final Evaluation')
         self.final_recommendation_table.add_header_button(column=2, tooltip="Custom filter",
                                                            widget_to_show=self.chrom_mode_filter_dialog)
-        self.final_recommendation_table.add_help_button(column=3, title="Orthogonality Rank",
-                                                          markdown_path="markdown/orthogonality_rank.md")
-        self.final_recommendation_table.add_help_button(column=4, title="Peak Capacity Rank",
-                                                          markdown_path="markdown/peak_capacity_rank.md")
-        self.final_recommendation_table.add_help_button(column=5, title="Elution Domain Rank",
-                                                          markdown_path="markdown/elution_domain_rank.md")
-        self.final_recommendation_table.add_help_button(column=6, title="Final Consensus Rank",
-                                                          markdown_path="markdown/final_consensus_rank.md")
-        self.final_recommendation_table.add_help_button(column=7, title="Final Rank (Utility)",
+        self.final_recommendation_table.add_help_button(column=3, title="Orthogonality Utility",
+                                                          markdown_path="markdown/orthogonality_utility.md")
+        self.final_recommendation_table.add_help_button(column=4, title="Peak Capacity Utility",
+                                                          markdown_path="markdown/peak_capacity_utility.md")
+        self.final_recommendation_table.add_help_button(column=5, title="Elution Domain Utility",
+                                                          markdown_path="markdown/elution_domain_utility.md")
+        self.final_recommendation_table.add_help_button(column=6, title="Final Consensus Score",
+                                                          markdown_path="markdown/final_consensus_score.md")
+
+        self.final_recommendation_table.add_help_button(column=7, title="Final Consensus Rank",
                                                           markdown_path="markdown/final_rank_utility.md")
+
 
         self.final_recommendation_table.add_header_button(column=8, tooltip="Final Recommendation filter", widget_to_show=self.final_recommendation_filter_dialog)
         self.final_recommendation_table.add_help_button(column=8, title="Final Recommendation",
                                                           markdown_path="markdown/final_recommendation.md")
+
         self.final_recommendation_table.add_help_button(column=9, title="Criterion Highlight",
                                                           markdown_path="markdown/criterion_highlight.md")
 
@@ -625,18 +672,29 @@ class ResultsPage(QFrame):
                 "Combination #",
                 "2D Combination",
                 "Chromatographic Mode",
-                "Orthogonality Rank",
-                "Peak Capacity Rank",
-                "Elution Domain Rank",
+                "Orthogonality Utility",
+                "Peak Capacity Utility",
+                "Elution Domain Utility",
+                "Final Consensus Score",
                 "Final Consensus Rank",
-                "Final Rank (Utility)",
                 "Final Recommendation",
-                "Criterion Highlight",
+                "FLAG"
             ])
 
-        # self.styled_table.get_header().setSectionResizeMode(0, QHeaderView.Fixed)
-        # self.styled_table.get_header().setSectionResizeMode(1, QHeaderView.Stretch)
-        # self.styled_table.get_header().setSectionResizeMode(5, QHeaderView.Fixed)
+        self.old_approach_table = self.styled_table.get_table_from_sheet(sheet_name='Old Approach')
+        self.old_approach_table.add_header_button(column=2, tooltip="Custom filter",
+                                                           widget_to_show=self.chrom_mode_filter_dialog)
+
+        self.old_approach_table.set_header_label(
+            [
+                "Combination #",
+                "2D Combination",
+                "Chromatographic Mode",
+                "Suggested Orthogonality Score",
+                "Suggested Orthogonality Rank",
+                "Practical Peak Capacity",
+                "Practical Peak Capacity Rank",
+            ])
 
 
         table_frame_layout.addWidget(self.styled_table)
@@ -647,23 +705,37 @@ class ResultsPage(QFrame):
         return table_frame
 
     def _create_progress_overlay(self) -> QWidget:
-        """Create the progress bar overlay widget.
+        """Create the modal progress bar overlay widget with status label.
 
         Returns:
-            QWidget: Transparent overlay with circular progress bar.
+            QWidget: Modal semi-transparent overlay with circular progress bar and status.
         """
         self.progress_bar = RoundProgressBar()
         self.progress_bar.rpb_setBarStyle("Pizza")
 
+        # Add status label
+        self.progress_status_label = QLabel("")
+        self.progress_status_label.setStyleSheet("""
+            QLabel {
+                color: #183881;
+                font-size: 16px;
+                font-weight: bold;
+                background-color: transparent;
+            }
+        """)
+        self.progress_status_label.setAlignment(Qt.AlignCenter)
+
         progress_overlay = QWidget(self)
-        progress_overlay.setAttribute(Qt.WA_TransparentForMouseEvents)
-        progress_overlay.setStyleSheet("background-color: transparent;")
-        progress_overlay.hide()
+        # Modal - blocks user interaction (do not set WA_TransparentForMouseEvents)
+        progress_overlay.setStyleSheet("background-color: rgba(247, 249, 252, 230);")
+        progress_overlay.hide()  # Start hidden
 
         overlay_layout = QVBoxLayout(progress_overlay)
         overlay_layout.setContentsMargins(0, 0, 0, 0)
         overlay_layout.addStretch()
         overlay_layout.addWidget(self.progress_bar, alignment=Qt.AlignCenter)
+        overlay_layout.addSpacing(20)
+        overlay_layout.addWidget(self.progress_status_label, alignment=Qt.AlignCenter)
         overlay_layout.addStretch()
 
         return progress_overlay
@@ -715,6 +787,12 @@ class ResultsPage(QFrame):
                 color: #2C3E50;
                 font-family: "Segoe UI";
                 font-weight: bold;
+            }}
+            QRadioButton::indicator:unchecked {{
+                image: url("{unchecked_icon_path}");
+            }}
+            QRadioButton::indicator:checked {{
+                image: url("{checked_icon_path}");
             }}
             QComboBox:hover {{ border: 1px solid #a6b2c0; }}
             QComboBox::drop-down {{ border:none; }}
@@ -768,6 +846,9 @@ class ResultsPage(QFrame):
         logging.debug("Running ResultsPage: update_results_table")
         self.update_results_table()
 
+        # initialization of the flag used to populate filter dialog item
+        self.not_filled = True
+        self.plot_utils.set_orthogonality_data(self.model.get_orthogonality_dict())
         data = self.model.get_orthogonality_result_df()
 
         if not data.empty:
@@ -811,7 +892,6 @@ class ResultsPage(QFrame):
     # ==========================================================================
     # Score Computation
     # ==========================================================================
-
     def start_om_computation(self) -> None:
         """Start custom orthogonality score computation in background thread.
 
@@ -821,12 +901,21 @@ class ResultsPage(QFrame):
             - Starts computation in thread pool
             - Updates results when complete
         """
+        computed_score_dic = {'metric_list':self.om_list.get_checked_items(),
+                              'aggregation_method':self.mean_median_button_group.checkedButton().objectName(),
+                              'score_used': self.radio_button_group.checkedButton().objectName()
+
+
+        }
+
+        self.model.set_computed_score_dict(computed_score_dic)
+
         worker = UpdateTableResultsWorker(self)
         worker.signals.progress.connect(self.handle_progress_update)
         worker.signals.finished.connect(self.handle_finished)
         self.threadpool.start(worker)
 
-    def compute_custom_orthogonality_metric_score(self) -> None:
+    def compute_score(self) -> None:
         """Compute custom score from checked metrics.
 
         Delegates to the background worker so the heavy computation does not
@@ -850,18 +939,53 @@ class ResultsPage(QFrame):
             - Updates progress bar value
             - Forces UI repaint
         """
-        if value == 0:
-            self.progress_overlay.hide()
-        else:
-            self.stack.setCurrentWidget(self.progress_overlay)
-            self.progress_overlay.show()
+        # Update status message
+        if value < 100:
+
+            # Ensure overlay is visible during progress updates
+            if not self.progress_overlay.isVisible():
+                self.progress_overlay.setGeometry(self.rect())
+                self.progress_overlay.raise_()
+                self.progress_overlay.show()
+
+            self._current_progress = value
             self.progress_bar.rpb_setValue(value)
-            self.progress_bar.repaint()
 
-        if value == 100:
-            self.progress_bar.repaint()
+            # Update status message
+            # Start animation timer (updates every 500ms)
+            if not self._progress_animation_timer.isActive():
+                self._animation_counter = 0
+                self._progress_animation_timer.start(500)  # Update every 500ms
 
+            self._update_loading_message()
+
+        else:
+            # Stop animation when complete
+            self._progress_animation_timer.stop()
+
+        self.progress_bar.repaint()
         QApplication.processEvents()
+
+    def _animate_progress(self) -> None:
+        """Called by timer to animate progress message for intensive computations."""
+        self._animation_counter += 1
+        self._update_loading_message()
+
+    def _update_loading_message(self) -> None:
+        """Update the %FIT progress message with animation."""
+        messages = [
+            "Updating tables ",
+        ]
+
+        # Animated dots
+        dots = "." * (self._animation_counter % 4)
+
+        # Rotating message
+        msg_index = (self._animation_counter // 21) % len(messages)  # Change message every 1.5 seconds
+
+        self.progress_status_label.setText(
+            f"{messages[msg_index]}{dots}"
+        )
 
     def handle_finished(self) -> None:
         """Handle computation completion.
@@ -990,6 +1114,13 @@ class ResultsPage(QFrame):
         if plot_fn is not None:
             plot_fn()
 
+    def show_combination_plot_pop_up(self):
+        data = self.orthogonality_table.get_selected_rows()[0].data()
+
+        subset = self.vizualation_settings_group.get_subset()
+
+        self.plot_utils.show_combination_plot_dialog(number=data,subset=subset)
+
     # ==========================================================================
     # Ranking & Filtering
     # ==========================================================================
@@ -1058,20 +1189,27 @@ class ResultsPage(QFrame):
             tooltip = result_df['Final Recommendation tooltip']
             self.final_recommendation_table.set_tooltip_config({8: tooltip})
 
-        # self.styled_table.async_set_table_data(data)
-        # self.styled_table.set_table_proxy()
-        unique_mode = self.model.get_chromatographic_mode_list()
-        self.chrom_mode_filter_dialog.build_filter_list(unique_mode)
-        self.peak_detection_status_filter_dialog.build_filter_list(PEAK_RATE_STATUS)
-        self.complexity_filter_dialog.build_filter_list(FEASABILITY)
-        self.compatibility_filter_dialog.build_filter_list(FEASABILITY)
-        self.final_recommendation_filter_dialog.build_filter_list(FINAL_RECOMMENDATION)
+        data = self.model.get_old_approach_table()
+        if not data.empty:
+            self.old_approach_table.async_set_table_data(data)
+            self.old_approach_table.set_table_proxy()
+
+        if self.not_filled:
+            unique_mode = self.model.get_chromatographic_mode_list()
+            self.chrom_mode_filter_dialog.build_filter_list(unique_mode)
+            self.peak_detection_status_filter_dialog.build_filter_list(PEAK_RATE_STATUS)
+            self.complexity_filter_dialog.build_filter_list(FEASABILITY)
+            self.compatibility_filter_dialog.build_filter_list(FEASABILITY)
+            self.final_recommendation_filter_dialog.build_filter_list(FINAL_RECOMMENDATION)
+            self.not_filled = False
 
     def filter_table_changed(self, filter_spec_list:list = None ) -> None:
 
         self.model.apply_multi_column_filter(filter_spec_list)
 
         self.vizualation_settings_group._emit_state()
+        self.filter_changed.emit()
+
 
     def build_filtered_point(self, combination: dict) -> None:
         """Build filter subsets from a combination of regexp/color filters.

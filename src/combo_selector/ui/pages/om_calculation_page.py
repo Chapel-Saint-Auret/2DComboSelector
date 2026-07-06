@@ -42,29 +42,10 @@ from combo_selector.ui.widgets.style_table import StyledTable
 from combo_selector.ui.widgets.section_help_button import SectionHelpButton
 from combo_selector.ui.widgets.animated_toogle_button import AnimatedSegmentedToggle
 from combo_selector.utils import resource_path
+from combo_selector.constants import METRIC_PLOT_MAP
 
 # Dropdown arrow icon path
 drop_down_icon_path = resource_path("icons/drop_down_arrow.png").replace("\\", "/")
-
-# Maps metric names (from model) to plot visualization names
-METRIC_PLOT_MAP = {
-    "Convex hull relative area": "Convex Hull",
-    "Bin box counting": "Bin Box",
-    "Pearson Correlation": "Linear regression",
-    "Spearman Correlation": "Linear regression",
-    "Kendall Correlation": "Linear regression",
-    "Asterisk equations": "Asterisk",
-    "%FIT": "%FIT yx",
-    "%BIN": "%BIN",
-    "Gilar-Watson method": None,  # No visualization
-    "Modeling approach": "Modeling approach",
-    "Geometric approach": "Geometric approach",
-    "Conditional entropy": "Conditional entropy",
-    "NND Arithm mean": None,  # No visualization
-    "NND Geom mean": None,  # No visualization
-    "NND Harm mean": None,  # No visualization
-    "NND mean": None,  # No visualization
-}
 
 
 class OMCalculationPage(QFrame):
@@ -155,6 +136,7 @@ class OMCalculationPage(QFrame):
             "%BIN": partial(self.plot_utils.plot_percent_bin),
             "Modeling approach": partial(self.plot_utils.plot_modeling_approach),
             "Conditional entropy": partial(self.plot_utils.plot_conditional_entropy),
+            "Schure": partial(self.plot_utils.plot_schure),
         }
 
         # --- Base frame & main container ----------------------------------
@@ -191,6 +173,9 @@ class OMCalculationPage(QFrame):
         self.base_layout = QVBoxLayout(self)
         self.base_layout.setContentsMargins(0, 0, 0, 0)
         self.base_layout.addLayout(self.stack)
+
+        self.progress_overlay.setGeometry(self.stack.geometry())
+        self.progress_overlay.raise_()
 
         # --- Signal wiring ------------------------------------------------
         self.compare_number.currentTextChanged.connect(self.update_om_selector_state)
@@ -366,6 +351,7 @@ class OMCalculationPage(QFrame):
         metric_list = [
             "Convex hull relative area",
             "Bin box counting",
+            "Schure",
             "Gilar-Watson method",
             "Modeling approach",
             "Conditional entropy",
@@ -951,6 +937,7 @@ class OMCalculationPage(QFrame):
         """
         self.selected_metric_list = self.om_tree_list.get_checked_items()
 
+
         # First, ensure overlay is hidden and reset (cleanup from previous run)
         self.progress_overlay.hide()
         QApplication.processEvents()
@@ -965,6 +952,7 @@ class OMCalculationPage(QFrame):
         QApplication.processEvents()
 
         self.start_om_computation(self.selected_metric_list)
+
 
         # Convert to plot names
         self.selected_metric_list = [
@@ -1133,7 +1121,7 @@ class OMCalculationPage(QFrame):
 
         self.plot_utils.clean_figure()
 
-        if self.model.get_status() in ["loaded", "peak_capacity_loaded","normalized"]:
+        if self.model.get_status() in ["loaded", "peak_capacity_loaded","normalized","elution_data_loaded"]:
             self.plot_utils.plot_scatter()
         else:
             return

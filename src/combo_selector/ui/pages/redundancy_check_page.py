@@ -40,24 +40,7 @@ from combo_selector.ui.widgets.qcombobox_cmap import QComboBoxCmap
 from combo_selector.ui.widgets.style_table import StyledTable
 from combo_selector.ui.widgets.section_help_button import SectionHelpButton
 from combo_selector.utils import resource_path
-
-# Maps full metric names to abbreviated display names for heatmap labels
-METRIC_CORR_MAP = {
-    "Convex hull relative area": "CH Area",
-    "Bin box counting": "Bin Box",
-    "Gilar-Watson method": "Gilar-W",
-    "Modeling approach": "Mod App",
-    "Conditional entropy": "Cond Ent",
-    "Pearson Correlation": "Pearson",
-    "Spearman Correlation": "Spearman",
-    "Kendall Correlation": "Kendall",
-    "Asterisk equations": "Asterisk",
-    "NND Arithm mean": "NND-A",
-    "NND Geom mean": "NND-G",
-    "NND Harm mean": "NND-H",
-    "%FIT": "%FIT",
-    "%BIN": "%BIN",
-}
+from combo_selector.constants import METRIC_CORR_MAP
 
 # Checkbox icon paths
 checked_icon_path = resource_path("icons/checkbox_checked.svg").replace("\\", "/")
@@ -142,10 +125,10 @@ class RedundancyCheckPage(QFrame):
             self.update_correlation_matrix_cmap
         )
         self.correlation_threshold.editingFinished.connect(
-            self.update_correlation_group_table
+            self.update_plot_and_redundacy_group
         )
         self.correlation_threshold_tolerance.editingFinished.connect(
-            self.update_correlation_group_table
+            self.update_plot_and_redundacy_group
         )
         self.highlight_threshold.stateChanged.connect(
             self.highlight_correlation_threshold
@@ -275,8 +258,7 @@ class RedundancyCheckPage(QFrame):
         form_layout = QFormLayout()
 
         self.select_correlation_matrix = QComboBox()
-        self.select_correlation_matrix.addItems(["Values",
-                                                 "Rank"])
+        self.select_correlation_matrix.addItems(["Values", "Rank"])
 
         matrix_type_info_btn = SectionHelpButton(
             title="Matrix Type",
@@ -546,7 +528,6 @@ class RedundancyCheckPage(QFrame):
         self.plot_correlation_heat_map()
         self.update_correlation_group_table()
 
-
     # ==========================================================================
     # Heatmap Visualization
     # ==========================================================================
@@ -571,11 +552,11 @@ class RedundancyCheckPage(QFrame):
 
 
         if self.select_correlation_matrix.currentText() == 'Values':
-            self.selected_correlation_matrix = self.model.get_orthogonality_metric_corr_matrix_df().corr()
+            self.selected_correlation_matrix = self.model.get_orthogonality_metric_corr_matrix_df().corr(method='spearman')
             self._ax.set_title('Value-Based',color='0.7')
 
         if self.select_correlation_matrix.currentText() == 'Rank':
-            self.selected_correlation_matrix = self.model.get_orthogonality_metric_ranking_corr_matrix_df().corr()
+            self.selected_correlation_matrix = self.model.get_orthogonality_metric_ranking_corr_matrix_df().corr(method='pearson')
             self._ax.set_title('Ranking-Based',color='0.7')
 
         if self.select_correlation_matrix.currentText() == 'coverage vs distribution':
@@ -679,7 +660,7 @@ class RedundancyCheckPage(QFrame):
             - Adds/removes red rectangles around correlated cells
             - Redraws canvas
         """
-        if self.corr_matrix is None:
+        if self.selected_correlation_matrix is None:
             return
 
         if self.highlight_threshold.checkState() == Qt.Unchecked:
@@ -694,7 +675,7 @@ class RedundancyCheckPage(QFrame):
 
             # Create mask: Ignore diagonal and highlight values above threshold
             self.highlight_heatmap_mask = (
-                                                  self.corr_matrix.abs() >= (threshold - tolerance)
+                                                  self.selected_correlation_matrix.abs() >= (threshold - tolerance)
                                           ) & (~np.eye(len(self.corr_matrix), dtype=bool))
 
             self.highlight_heatmap_mask = (
@@ -702,8 +683,8 @@ class RedundancyCheckPage(QFrame):
                                           ) & self.highlight_heatmap_mask
 
             # Overlay red borders
-            for i in range(len(self.corr_matrix)):
-                for j in range(len(self.corr_matrix)):
+            for i in range(len(self.selected_correlation_matrix)):
+                for j in range(len(self.selected_correlation_matrix)):
                     if self.highlight_heatmap_mask.iloc[i, j]:
                         self._ax.add_patch(
                             Rectangle((j, i), 1, 1, fill=False, edgecolor="red", lw=1)

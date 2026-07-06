@@ -29,6 +29,7 @@ from combo_selector.core.orthogonality import Orthogonality
 from combo_selector.core.workers import RedundancyWorker
 from combo_selector.ui.pages.export_page import ExportPage
 from combo_selector.ui.pages.home_page import HomePage
+# from combo_selector.ui.pages.import_data_page import ImportDataPage
 from combo_selector.ui.pages.import_data_page import ImportDataPage
 from combo_selector.ui.pages.om_calculation_page import OMCalculationPage
 from combo_selector.ui.pages.plot_pairwise_page import PlotPairWisePage
@@ -148,8 +149,9 @@ class ComboSelectorMain(CustomMainWindow):
             self.orthogonality_metric_computed
         )
         self.redundancy_page.correlation_group_ready.connect(
-            self.results_page.compute_custom_orthogonality_metric_score
+            self.results_page.compute_score
         )
+        self.results_page.filter_changed.connect(self.export_page.update_figure_set)
 
     def init_pages(self) -> None:
         """Initialize pages after retention time data is loaded.
@@ -238,7 +240,7 @@ class ComboSelectorMain(CustomMainWindow):
         # 5. Now that the results page is fully initialized, start the
         #    background score computation.  When it finishes it will call
         #    results_page.update_results_table() to refresh the display.
-        self.results_page.compute_custom_orthogonality_metric_score()
+        self.results_page.compute_score()
 
         # 3. Initialize the results page — correlation groups are now in the
         #    model, so init_page() can use them safely.
@@ -267,6 +269,23 @@ class ComboSelectorMain(CustomMainWindow):
         self.results_page.update_results_table()
         # self.results_page.update_figure()
         # self.plot_page.update_dataset_selector_state()
+    def _start_results_worker_after_redundancy(self) -> None:
+        """Start the results worker after redundancy analysis completes.
+
+        Private method that initiates the results computation worker.
+        This is called either after redundancy analysis finishes or
+        when peak capacity data is updated.
+
+        Side Effects:
+            - Creates and starts ResultsWorker in background thread
+            - Worker completion triggers page initialization
+        """
+
+        # self.model.create_results_table()
+        self.results_page.init_page(self._cached_metric_list)
+        self.set_status_text("Result page ready!")
+        self.export_page.init_page(self.metric_list_for_figure)
+        self.set_status_text("Export page ready!")
 
 def main():
     """Main application entry point.

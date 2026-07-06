@@ -41,34 +41,69 @@ class DataManager:
         This method creates empty DataFrames and data structures for storing
         retention times, metrics, scores, and results.
         """
-        self.table_data = []
+        # Lists
+        self.column_names = []
         self.compound_name_list = []
         self.norm_ret_time_table = []
+        self.removed_compound_list = []
+        self.removed_condition_list = []
+        self.table_data = []
+
+        # Dictionaries
+        self.score_computed_method_info = {'metric_list':[],
+                              'aggregation_method':'Mean',
+                              'score_used': 'Default'}
+
+        self.orthogonality_corr_mat = {}
         self.orthogonality_dict = {}
         self.orthogonality_score = {}
-        self.orthogonality_corr_mat = {}
-        self.orthogonality_metric_corr_matrix_df = pd.DataFrame()
-        self.retention_time_df = pd.DataFrame()
-        self.normalized_retention_time_df = pd.DataFrame()
-        self.orthogonality_result_df = pd.DataFrame()
+
+        # Pandas DataFrames
+        self.combination_df = pd.DataFrame()
         self.correlation_group_df = pd.DataFrame()
-        self.orthogonality_metric_df = pd.DataFrame()
-        self.orthogonality_table_df = pd.DataFrame()
-        self.filtered_result_df = pd.DataFrame()
-        self.practical_feasibility_table_df = pd.DataFrame()
-        self.separational_potential_table_df = pd.DataFrame()
-        self.final_recommendation_table_df = pd.DataFrame()
-        self.orthogonality_group_ranking_df = pd.DataFrame()
-        self.orthogonality_metric_ranking_df = pd.DataFrame()
-        self.orthogonality_metric_ranking_corr_matrix_df = pd.DataFrame()
         self.coverage_distribution_df = pd.DataFrame()
         self.coverage_score_df = pd.DataFrame()
+        self.filtered_result_df = pd.DataFrame()
+        self.final_recommendation_table_df = pd.DataFrame()
         self.gradient_end_time_df = pd.DataFrame()
-        self.void_time_df = pd.DataFrame()
-        self.rt_below_threshold_df = None
-        self.combination_df = pd.DataFrame()
-        self.retention_time_df = pd.DataFrame()
         self.normalized_retention_time_df = pd.DataFrame()
+        self.old_approach_table_df = pd.DataFrame()
+        self.orthogonality_group_ranking_df = pd.DataFrame()
+        self.orthogonality_metric_corr_matrix_df = pd.DataFrame()
+        self.orthogonality_metric_df = pd.DataFrame()
+        self.orthogonality_metric_ranking_corr_matrix_df = pd.DataFrame()
+        self.orthogonality_metric_ranking_df = pd.DataFrame()
+        self.orthogonality_result_df = pd.DataFrame()
+        self.orthogonality_table_df = pd.DataFrame()
+        self.practical_feasibility_table_df = pd.DataFrame()
+        self.retention_time_df = pd.DataFrame()
+        self.separational_potential_table_df = pd.DataFrame()
+        self.void_time_df = pd.DataFrame()
+
+        # Configuration / Scalar Values
+        self.bin_number = 14
+        self.has_nan_value = False
+        self.nan_policy_option1_threshold = 50
+        self.nan_policy_option2_threshold = 50
+        self.nb_combination = 0
+        self.nb_condition = 0
+        self.use_suggested_score = True
+
+        # Status Indicators
+        self.elution_data_status = "no_data"
+        self.peak_capacity_status = "no_data"
+        self.status = "no_data"
+
+        # Placeholders (None)
+        self.group_rho_coverage = None
+        self.group_rho_distribution = None
+        self.load_elution_composition_df = None
+        self.metric_rho_coverage = None
+        self.metric_rho_distribution = None
+        self.nb_peaks = None
+        self.om_function_map = None
+        self.retention_time_df_2d_peaks = None
+        self.rt_below_threshold_df = None
 
     # ------------------------------------------------------------------
     # Accessors
@@ -312,22 +347,6 @@ class DataManager:
                 y_values = self.retention_time_df[next_column_name]
 
                 # Initialize table data by adding a new row with None values
-                self.table_data.append([None] * len(METRIC_MAPPING))
-
-                # Update metadata columns
-                self.update_metrics(set_key, "set_number", set_number)
-                self.update_metrics(set_key, "title", set_title)
-                self.update_metrics(set_key, "orthogonality_score", 0)
-                self.update_metrics(set_key, "orthogonality_ranking", 0)
-                self.update_metrics(set_key, "coverage_score", 0)
-                self.update_metrics(set_key, "distribution_score", 0)
-                self.update_metrics(set_key, "agreement_index", 0)
-                self.update_metrics(set_key, "outlier_metric_flag", 0)
-                self.update_metrics(set_key, "orthogonality_value", 0)
-                self.update_metrics(set_key, "2d_peak_capacity", 'Not available')
-                self.update_metrics(set_key, "elution_composition_space", 'Not available')
-                self.update_metrics(set_key, "heinisch", 0)
-
                 # check if x,y pair element contains at least one empty item.
                 # if an empty item exist on an x,y pair, that pair will be deleted from the list
                 x_y_pair_list = list(zip(x_values, y_values))
@@ -336,6 +355,8 @@ class DataManager:
                 ]
 
                 if x_y_pair_list:
+
+
                     # unpack x and y list cleaned of incomplete x y pairs
 
                     x_series, y_series = zip(*x_y_pair_list)
@@ -345,7 +366,24 @@ class DataManager:
                     y_series = pd.Series(y_series)
 
                     nb_peaks = len(x_y_pair_list)
+                    # Initialize table data by adding a new row with None values
+                    self.table_data.append([None] * len(METRIC_MAPPING))
                     self.update_metrics(set_key, "nb_peaks", nb_peaks)
+
+                    # Update metadata columns
+                    self.update_metrics(set_key, "set_number", set_number)
+                    self.update_metrics(set_key, "set_number", set_number)
+                    self.update_metrics(set_key, "title", set_title)
+                    self.update_metrics(set_key, "orthogonality_score", 0)
+                    self.update_metrics(set_key, "orthogonality_ranking", 0)
+                    self.update_metrics(set_key, "coverage_score", 0)
+                    self.update_metrics(set_key, "distribution_score", 0)
+                    self.update_metrics(set_key, "agreement_index", 0)
+                    self.update_metrics(set_key, "outlier_metric_flag", 0)
+                    self.update_metrics(set_key, "suggested_score", 0)
+                    self.update_metrics(set_key, "2d_peak_capacity", 'Not available')
+                    self.update_metrics(set_key, "elution_composition_space", 'Not available')
+                    self.update_metrics(set_key, "heinisch", 0)
 
                     # Update orthogonality dictionary
                     self.orthogonality_dict[set_key] = {
@@ -357,13 +395,14 @@ class DataManager:
                         "nb_peaks": nb_peaks,
                         "hull_subset": 0,
                         "convex_hull": 0,
-                        "bin_box": {"color_mask": 0, "edges": [0, 0]},
-                        "gilar-watson": {"color_mask": 0, "edges": [0, 0]},
-                        "modeling_approach": {"color_mask": 0, "edges": [0, 0]},
+                        "bin_box": 0,
+                        "schure": 0,
+                        "gilar-watson": 0,
+                        "modeling_approach": 0,
                         "geometric_approach": 0,
                         "conditional_entropy": {
                             "histogram": 0,
-                            "edges": [0, 0],
+                            "edges": 0,
                             "value": 0,
                         },
                         "bin_box_ratio": 0,
@@ -413,9 +452,6 @@ class DataManager:
                         "heinisch": 0,
                         "2d_peak_capacity": "no data loaded",
                     }
-
-                else:
-                    self.orthogonality_dict.pop(set_key)
 
                 set_number += 1
 
@@ -698,7 +734,7 @@ class DataManager:
                         self.update_metrics(set_key, "distribution_score", 0)
                         self.update_metrics(set_key, "agreement_index", 0)
                         self.update_metrics(set_key, "outlier_metric_flag", 0)
-                        self.update_metrics(set_key, "orthogonality_value", 0)
+                        self.update_metrics(set_key, "suggested_score", 0)
                         self.update_metrics(set_key, "2d_peak_capacity", 'Not available')
                         self.update_metrics(set_key, "elution_composition_space",'Not available')
                         self.update_metrics(set_key, "heinisch", 0)
@@ -713,15 +749,12 @@ class DataManager:
                             "nb_peaks": self.nb_peaks,
                             "hull_subset": 0,
                             "convex_hull": 0,
-                            "bin_box": {"color_mask": 0, "edges": [0, 0]},
-                            "gilar-watson": {"color_mask": 0, "edges": [0, 0]},
-                            "modeling_approach": {"color_mask": 0, "edges": [0, 0]},
+                            "bin_box": 0,
+                            "schure": 0,
+                            "gilar-watson": 0,
+                            "modeling_approach": 0,
                             "geometric_approach": 0,
-                            "conditional_entropy": {
-                                "histogram": 0,
-                                "edges": [0, 0],
-                                "value": 0,
-                            },
+                            "conditional_entropy": 0,
                             "bin_box_ratio": 0,
                             "linregress": 0,
                             "linregress_rvalue": 0,
@@ -730,34 +763,12 @@ class DataManager:
                             "pearson_r": 0,
                             "spearman_rho": 0,
                             "kendall_tau": 0,
-                            "asterisk_metrics": {
-                                "a0": 0,
-                                "z_minus": 0,
-                                "z_plus": 0,
-                                "z1": 0,
-                                "z2": 0,
-                                "sigma_sz_minus": 0,
-                                "sigma_sz_plus": 0,
-                                "sigma_sz1": 0,
-                                "sigma_sz2": 0,
-                            },
+                            "asterisk_metrics": 0,
                             "a_mean": 0,
                             "g_mean": 0,
                             "h_mean": 0,
-                            "percent_fit": {
-                                "delta_xy_avg": 0,
-                                "delta_xy_sd": 0,
-                                "delta_yx_avg": 0,
-                                "delta_yx_sd": 0,
-                                "value": 0,
-                            },
-                            "percent_bin": {
-                                "value": 0,
-                                "mask": 0,
-                                "sad_dev": 0,
-                                "sad_dev_ns": 0,
-                                "sad_dev_fs": 0,
-                            },
+                            "percent_fit": 0,
+                            "percent_bin": 0,
                             "orthogonality_score": 0,
                             "orthogonality_ranking": 0,
                             "coverage_score": 0,
