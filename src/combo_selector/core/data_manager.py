@@ -47,10 +47,13 @@ class DataManager:
         self.norm_ret_time_table = []
         self.removed_compound_list = []
         self.removed_condition_list = []
-        self.computed_score_metric_list = []
         self.table_data = []
 
         # Dictionaries
+        self.score_computed_method_info = {'metric_list':[],
+                              'aggregation_method':'Mean',
+                              'score_used': 'Default'}
+
         self.orthogonality_corr_mat = {}
         self.orthogonality_dict = {}
         self.orthogonality_score = {}

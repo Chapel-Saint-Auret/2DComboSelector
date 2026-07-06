@@ -385,11 +385,12 @@ class ResultsPage(QFrame):
         compute_customized_layout.addWidget(QLabel("Aggregation Method:"))
         compute_customized_layout.addWidget(self.use_mean)
         compute_customized_layout.addWidget(self.use_median)
-        compute_customized_layout.addWidget(self.compute_score_btn)
+        # compute_customized_layout.addWidget(self.compute_score_btn)
 
         orthogonality_score_layout.addWidget(self.use_suggested_btn)
         orthogonality_score_layout.addWidget(self.use_computed_btn)
         orthogonality_score_layout.addWidget(self.compute_customized_frame)
+        orthogonality_score_layout.addWidget(self.compute_score_btn)
 
         orthogonality_score_group.setLayout(orthogonality_score_layout)
 
