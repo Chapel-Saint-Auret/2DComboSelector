@@ -828,20 +828,20 @@ class ResultsPage(QFrame):
     def init_page(self, om_list: list) -> None:
         """Initialize the page with computed metrics.
 
+        Only performs UI setup (populates the metric checklist).  Score
+        computation must be started explicitly by the caller (e.g. via
+        ``compute_score()``) after this method returns, so that exactly one
+        background worker is launched and there is no race condition on
+        ``orthogonality_result_df``.
+
         Args:
             om_list (list): List of computed orthogonality metric names.
 
         Side Effects:
             - Updates metric list in checklist
-            - Populates score selectors
-            - Updates plot layout
-            - Loads results table
-            - Triggers initial plots
         """
         logging.debug("Running ResultsPage: update_orthogonality_metric_list")
         self.update_orthogonality_metric_list(om_list)
-
-        self.start_om_computation()
 
         # initialization of the flag used to populate filter dialog item
         self.not_filled = True

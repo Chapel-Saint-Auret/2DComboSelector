@@ -237,11 +237,10 @@ class ComboSelectorMain(CustomMainWindow):
         self.redundancy_page.update_correlation_group_table()
         self.redundancy_page.blockSignals(False)
 
-        # 3. Initialize the results page — correlation groups are now in the
-        #    model, so init_page() can use them safely.  This calls
-        #    update_table_results() synchronously (including compute_final_rank
-        #    and compute_final_recommendation_factor) before any background
-        #    worker can interfere with self.orthogonality_result_df.
+        # 3. Initialize the results page UI — correlation groups are now in the
+        #    model, so init_page() can use them safely.  init_page() only
+        #    performs UI setup; it does NOT start computation so that a single
+        #    worker is launched in step 5.
         self.results_page.init_page(self._cached_metric_list)
         self.set_status_text("Result page ready!")
 
