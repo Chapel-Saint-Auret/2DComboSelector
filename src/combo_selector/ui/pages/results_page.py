@@ -841,21 +841,10 @@ class ResultsPage(QFrame):
         logging.debug("Running ResultsPage: update_orthogonality_metric_list")
         self.update_orthogonality_metric_list(om_list)
 
-        self.model.update_table_results()
-
-        logging.debug("Running ResultsPage: update_results_table")
-        self.update_results_table()
+        self.start_om_computation()
 
         # initialization of the flag used to populate filter dialog item
         self.not_filled = True
-        self.plot_utils.set_orthogonality_data(self.model.get_orthogonality_dict())
-        data = self.model.get_orthogonality_result_df()
-
-        if not data.empty:
-            self.plot_utils.set_orthogonality_result_data(data)
-
-        self.vizualation_settings_group.set_chrom_mode_item(["All mode"]+self.model.get_chromatographic_mode_list())
-        self.plot_visualization_state_changed()
 
     def update_orthogonality_metric_list(self, om_list: list) -> None:
         """Update the metric checklist with available metrics.
@@ -1000,7 +989,16 @@ class ResultsPage(QFrame):
         self.progress_bar.repaint()
         QTimer.singleShot(800, self.hide_progress_overlay)
 
-        self.update_results_table()
+        self.update_results_table_view()
+
+        self.plot_utils.set_orthogonality_data(self.model.get_orthogonality_dict())
+        data = self.model.get_orthogonality_result_df()
+
+        if not data.empty:
+            self.plot_utils.set_orthogonality_result_data(data)
+
+        self.vizualation_settings_group.set_chrom_mode_item(["All mode"]+self.model.get_chromatographic_mode_list())
+        self.plot_visualization_state_changed()
 
     def hide_progress_overlay(self) -> None:
         """Hide the progress overlay and return to main view."""
@@ -1134,7 +1132,7 @@ class ResultsPage(QFrame):
         """
         ranking_argument = self.select_ranking_type.currentText()
         self.model.set_orthogonality_ranking_argument(ranking_argument)
-        self.update_results_table()
+        self.update_results_table_view()
 
     def set_use_suggested_om_score_flag(self) -> None:
         """Toggle between suggested and computed score.
@@ -1156,7 +1154,7 @@ class ResultsPage(QFrame):
         # self.model.update_table_results()
         # self.update_results_table()
 
-    def update_results_table(self) -> None:
+    def update_results_table_view(self) -> None:
         """Update the results table with latest data.
 
         Side Effects:
