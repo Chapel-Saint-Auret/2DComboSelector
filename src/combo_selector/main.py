@@ -248,12 +248,6 @@ class ComboSelectorMain(CustomMainWindow):
         self.export_page.init_page(self.metric_list_for_figure)
         self.set_status_text("Export page ready!")
 
-        # 5. Now that the results page is fully initialized and om_list is
-        #    populated, start the background score computation with the correct
-        #    metric selection.  When it finishes it will call
-        #    results_page.update_results_table_view() to refresh the display.
-        self.results_page.compute_score()
-
 
 
     def update_results_with_new_exp_peak_capacities(self) -> None:
