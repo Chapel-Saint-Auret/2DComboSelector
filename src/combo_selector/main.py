@@ -251,7 +251,7 @@ class ComboSelectorMain(CustomMainWindow):
         # 5. Now that the results page is fully initialized and om_list is
         #    populated, start the background score computation with the correct
         #    metric selection.  When it finishes it will call
-        #    results_page.update_results_table() to refresh the display.
+        #    results_page.update_results_table_view() to refresh the display.
         self.results_page.compute_score()
 
 
