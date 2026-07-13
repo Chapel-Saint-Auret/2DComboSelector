@@ -399,6 +399,8 @@ class MetricEngine:
                 prefer_middle=True,
             )
 
+            set_number = extract_set_number(set_key)
+
             if best is not None:
                 D = -best["slope"]
 
@@ -417,6 +419,11 @@ class MetricEngine:
                     "segment_max_abs_residual": best["max_abs_residual"],
                     "segment_mean_abs_residual": best["mean_abs_residual"],
                 }
+
+                self.update_metrics(
+                    set_key, "schure", -best["slope"], table_row_index=set_number - 1
+                )
+
             else:
                 set_data["schure"] = {
                     "D": None,
@@ -433,11 +440,9 @@ class MetricEngine:
                     "segment_max_abs_residual": None,
                     "segment_mean_abs_residual": None,
                 }
-
-            set_number = extract_set_number(set_key)
-            self.update_metrics(
-                set_key, "schure", random.random(), table_row_index=set_number - 1
-            )
+                self.update_metrics(
+                    set_key, "schure", 0, table_row_index=set_number - 1
+                )
 
         self.om_function_map["Schure"]["status"] = FuncStatus.COMPUTED
 
