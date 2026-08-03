@@ -351,7 +351,7 @@ class OMCalculationPage(QFrame):
         metric_list = [
             "Convex hull relative area",
             "Bin box counting",
-            "Schure",
+            # "Schure",
             "Gilar-Watson method",
             "Modeling approach",
             "Conditional entropy",
@@ -1085,13 +1085,19 @@ class OMCalculationPage(QFrame):
             - Triggers figure update
         """
         selector = self.om_selector_map[index]["selector"]
+        axe = self.om_selector_map[index]["axe"]
+        scatter_collection = self.om_selector_map[index]["scatter_collection"]
+        annotation = self.om_selector_map[index]["annotation"]
+
+        # IMPORTANT: ensure update_figure always works on the intended subplot
+        self.selected_axe = axe
         self.selected_metric = selector.currentText()
-        self.plot_utils.set_axe(self.om_selector_map[index]["axe"])
-        self.plot_utils.set_scatter_collection(
-            self.om_selector_map[index]["scatter_collection"]
-        )
-        self.plot_utils.set_annotation(self.om_selector_map[index]["annotation"])
-        self.selected_annotation = self.om_selector_map[index]["annotation"]
+
+        self.plot_utils.set_axe(axe)
+        self.plot_utils.set_scatter_collection(scatter_collection)
+        self.plot_utils.set_annotation(annotation)
+        self.selected_annotation = annotation
+
         self.update_figure()
 
     def refresh_displayed_plot(self) -> None:
@@ -1101,36 +1107,57 @@ class OMCalculationPage(QFrame):
             - Calls on_selector_changed for each active selector
         """
         number_of_selectors = int(self.compare_number.currentText())
-        [self.on_selector_changed(str(i)) for i in range(number_of_selectors)]
-
-    def draw_figure(self) -> None:
-        """Redraw the matplotlib figure canvas."""
-        self.fig.canvas.draw()
-        self.fig.canvas.flush_events()
+        for i in range(number_of_selectors):
+            self.on_selector_changed(str(i))
 
     def update_figure(self) -> None:
         """Update the figure with scatter plot and selected metric overlay.
 
         Side Effects:
-            - Cleans current axes
+            - Cleans current axes only
             - Plots base scatter
             - Overlays selected metric visualization
         """
         if self.selected_axe is None:
             return
 
+        # Re-bind plot_utils to the active axis every call (safety)
+        idx = None
+        for k, v in self.om_selector_map.items():
+            if v["axe"] is self.selected_axe:
+                idx = k
+                break
+
+        if idx is not None:
+            self.plot_utils.set_axe(self.om_selector_map[idx]["axe"])
+            self.plot_utils.set_scatter_collection(
+                self.om_selector_map[idx]["scatter_collection"]
+            )
+            self.plot_utils.set_annotation(self.om_selector_map[idx]["annotation"])
+
+        # Clear only current axis content (do not clear the whole figure)
         self.plot_utils.clean_figure()
 
-        if self.model.get_status() in ["loaded", "peak_capacity_loaded","normalized","elution_data_loaded"]:
+        if self.model.get_status() in ["loaded", "peak_capacity_loaded", "normalized", "elution_data_loaded"]:
             self.plot_utils.plot_scatter()
         else:
             return
 
-        if self.selected_metric is None:
+        if not self.selected_metric:
+            self.draw_figure()
             return
 
-        if self.selected_metric in self.plot_functions_map:
-            self.plot_functions_map[self.selected_metric]()
+        plot_func = self.plot_functions_map.get(self.selected_metric)
+        if plot_func is not None:
+            plot_func()
+
+        # Ensure stale artists are flushed visually
+        self.draw_figure()
+
+    def draw_figure(self) -> None:
+        """Redraw the matplotlib figure canvas."""
+        self.fig.canvas.draw()
+        self.fig.canvas.flush_events()
 
     # ==========================================================================
     # Dataset Selection Handlers

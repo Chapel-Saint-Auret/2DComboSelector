@@ -357,7 +357,7 @@ class MetricEngine:
 
             bin_box_ratio = h_color.count() / (self.bin_number * self.bin_number)
             set_data["bin_box_ratio"] = bin_box_ratio
-            set_data["bin_box_ratio"] = {"color_mask": h_color, "edges": [x_edges, y_edges]}
+            set_data["bin_box"] = {"color_mask": h_color, "edges": [x_edges, y_edges]}
 
             set_number = extract_set_number(set_key)
             self.update_metrics(
@@ -368,41 +368,67 @@ class MetricEngine:
 
     def compute_schure_dbc(self) -> None:
         """
-          Full DBC workflow for 2D data.
-            Returns a dictionary containing:
-                D, slope, intercept, r2, selected range, curve
+        Compute Schure D (dimension estimate) from box-counting curve for each set.
 
-        Divides the [0,1] x [0,1] space into a grid and calculates the fraction
-        of bins that contain at least one peak.
+        Workflow:
+          1) Build full log(N) vs log(epsilon) curve from box-counting.
+          2) Try strict linear-segment selection.
+          3) If strict fails, try relaxed selection (best-effort).
+          4) Store diagnostics + quality flags for UI and debugging.
 
-        Side Effects:
-            - Updates 'bin_box' (color_mask and edges) and 'bin_box_ratio' in orthogonality_dict
-            - Updates bin_box_ratio metric in table_data
-            - Sets 'Bin box counting' status to COMPUTED
+        Notes:
+          - D is defined as D = -slope of the selected linear segment.
+          - When no valid segment is found, metric is set to 0 and D remains unavailable.
         """
+
+        # Strict criteria (default high-confidence mode)
+        strict_cfg = {
+            "min_points": 5,
+            "max_points": 12,
+            "min_x_range": 0.30,
+            "min_abs_slope": 0.20,
+            "max_abs_slope": 2.20,
+            "min_r2": 0.95,
+            "prefer_middle": False,
+        }
+
+        # Relaxed criteria (fallback mode to reduce "no selection" cases)
+        relaxed_cfg = {
+            "min_points": 5,
+            "max_points": 14,
+            "min_x_range": 0.22,
+            "min_abs_slope": 0.12,
+            "max_abs_slope": 2.50,
+            "min_r2": 0.93,
+            "prefer_middle": False,
+        }
 
         for set_key in self.orthogonality_dict.keys():
             set_data = self.orthogonality_dict[set_key]
             x, y = set_data["x_values"], set_data["y_values"]
-
-
-            curve = build_box_count_curve(x, y, i_min=2, i_max=30, i_step=1)
-
-            best = find_best_schure_segment(
-                curve,
-                min_points=6,
-                max_points=12,
-                min_x_range=0.35,
-                min_abs_slope=0.25,
-                max_abs_slope=2.0,
-                min_r2=0.97,
-                prefer_middle=True,
-            )
-
             set_number = extract_set_number(set_key)
+
+            curve = build_box_count_curve(x, y, i_min=2, i_max=20, i_step=1)
+
+            # 1) strict pass
+            best = find_best_schure_segment(curve, **strict_cfg)
+            selection_mode = "strict"
+
+            # 2) relaxed pass
+            if best is None:
+                best = find_best_schure_segment(curve, **relaxed_cfg)
+                if best is not None:
+                    selection_mode = "relaxed"
 
             if best is not None:
                 D = -best["slope"]
+
+                quality_flag = "ok" if selection_mode == "strict" else "low_confidence"
+                reason = (
+                    None
+                    if selection_mode == "strict"
+                    else "No segment matched strict criteria; relaxed criteria selected this segment."
+                )
 
                 set_data["schure"] = {
                     "D": D,
@@ -413,18 +439,28 @@ class MetricEngine:
                     "range_end_index": best["end"],
                     "selected_curve_segment": curve[best["start"]:best["end"]],
                     "full_curve": curve,
-                    "segment_score": best["score"],
-                    "segment_n_points": best["n_points"],
-                    "segment_x_range": best["x_range"],
-                    "segment_max_abs_residual": best["max_abs_residual"],
-                    "segment_mean_abs_residual": best["mean_abs_residual"],
+                    "segment_score": best.get("score"),
+                    "segment_n_points": best.get("n_points"),
+                    "segment_x_range": best.get("x_range"),
+                    "segment_max_abs_residual": best.get("max_abs_residual"),
+                    "segment_mean_abs_residual": best.get("mean_abs_residual"),
+                    "selection_mode": selection_mode,
+                    "quality_flag": quality_flag,
+                    "strict_criteria": strict_cfg.copy(),
+                    "relaxed_criteria": relaxed_cfg.copy(),
+                    "diagnostics": {
+                        "strict_failed": selection_mode != "strict",
+                        "relaxed_used": selection_mode == "relaxed",
+                        "reason": reason,
+                    },
                 }
 
                 self.update_metrics(
-                    set_key, "schure", -best["slope"], table_row_index=set_number - 1
+                    set_key, "schure", D, table_row_index=set_number - 1
                 )
 
             else:
+                # No valid segment found in either strict or relaxed mode
                 set_data["schure"] = {
                     "D": None,
                     "slope": None,
@@ -439,7 +475,17 @@ class MetricEngine:
                     "segment_x_range": None,
                     "segment_max_abs_residual": None,
                     "segment_mean_abs_residual": None,
+                    "selection_mode": "none",
+                    "quality_flag": "unavailable",
+                    "strict_criteria": strict_cfg.copy(),
+                    "relaxed_criteria": relaxed_cfg.copy(),
+                    "diagnostics": {
+                        "strict_failed": True,
+                        "relaxed_failed": True,
+                        "reason": "No candidate segment satisfied strict or relaxed criteria.",
+                    },
                 }
+
                 self.update_metrics(
                     set_key, "schure", 0, table_row_index=set_number - 1
                 )

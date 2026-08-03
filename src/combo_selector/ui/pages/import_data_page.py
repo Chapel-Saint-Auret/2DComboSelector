@@ -627,11 +627,11 @@ class ImportDataPage(QFrame):
         self.normalize_btn = QPushButton("Normalize Data")
         self.normalization_status = Status()
 
-        self.min_max_scaling_btn = QRadioButton("min-max Scaling")
+        self.min_max_scaling_btn = QRadioButton("Min-Max Scaling")
         self.min_max_scaling_btn.setObjectName("min_max")
         self.min_max_scaling_btn.setChecked(True)
 
-        self.void_max_scaling_btn = QRadioButton("void–max Scaling")
+        self.void_max_scaling_btn = QRadioButton("Void–Max Scaling")
         self.void_max_scaling_btn.setObjectName("void_max")
 
         self.wosel_btn = QRadioButton("WOSEL Scaling")

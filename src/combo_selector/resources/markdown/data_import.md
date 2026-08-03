@@ -28,7 +28,7 @@ where:
 - **nc**: 1D peak capacity 
 - **tr,max**: retention time of the latest eluting compound 
 - **tr,min**: retention time of the earliest eluting compound 
-- **ω4σ**: representative peak width measured at 4σ, in minutes
+- **ω4σ**: representative peak width at 4σ, in minutes
 
 
 ## Elution-composition range data

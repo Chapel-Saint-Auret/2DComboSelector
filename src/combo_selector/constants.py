@@ -627,18 +627,18 @@ TIPS = """<p><strong><span style="text-decoration: underline;">Tip 1</span>:</st
 Collapse the table section by moving the horizontal splitter down—this will open the table in a separate window.</p>"""
 
 HOW_IT_WORKS_TEXT = """\
-This tool helps you evaluate and compare 2D separation space occupation in a streamlined, visual environment. Here are its main functions:
+This tool supports the systematic comparison and selection of candidate 2D separation conditions in a streamlined, visual environment. Its main functions are to:
 
-• Imports and normalizes your 1D retention data
-• Automatically generates all possible 2D combinations from the dataset
-• Provides visual comparisons of the candidate separations
-• Evaluates orthogonality from pairs of retention data
-• Uses a multi-metric approach (12 orthogonality metrics currently implemented)
-• Calculates and integrates all metrics into a composite orthogonality score
-• Provides a balanced assessment of 2D separation space occupation
-• Ranks candidate conditions based on chromatographically relevant criteria, including orthogonality, hypothetical 2D peak capacity, and a Heinisch inspired method
-• Applies filters based on practical constraints (solvent compatibility, set-up complexity, green aspects, MS compatibility)
-• Assists in the final selection of optimal conditions for experimental validation\
+•Import, preprocess, and normalize 1D retention data 
+•Automatically generate all possible 2D combinations 
+•Provide visual comparisons of candidate separation spaces 
+•Evaluate orthogonality using multiple complementary metrics 
+•Analyse correlations between metrics and group those showing similar behaviour 
+•Generate a consensus Orthogonality Rank using a Borda-based approach, or a user-defined aggregation in custom mode 
+•Evaluate complementary chromatographic criteria, including elution domain and hypothetical 2D peak capacity 
+•Convert the main criteria into comparable utilities and calculate a final multi-criteria score and ranking 
+•Consider practical factors such as solvent compatibility, setup complexity, and peak detection 
+•Provide final recommendations to support the selection of conditions for experimental validation\
 """
 
 BEFORE_YOU_BEGIN_TEXT = """\
@@ -657,35 +657,45 @@ For more details on experimental design and gradient setup, please refer to the 
 
 USER_GUIDE_TEXT = """\
 Step-by-step workflow:
-To use the tool, follow the steps below, which match the sections and subsections in the menu bar, one by one. For a practical example, you can also watch the tutorial video in the About section.
+Follow the sections and subsections of the menu bar in order. A practical example is also available in the tutorial video provided in the About section.
 
 Step 1 — Data Import and Normalization
 A — Data import
-· Upload retention times and peak capacity data from 1D scouting runs
-· Accepted formats: Excel / CSV
-· Minimum requirement: retention data (other input optional)
+•Upload retention-time data obtained from 1D scouting runs 
+•Optional files can also be provided for experimental 1D peak capacity and elution-composition ranges 
+•Accepted formats: Excel and CSV 
+•Minimum requirement: a retention-time dataset 
 
 B — Data normalization
-· Scaling of retention times to harmonize the retention space
-· Particularly important when different column geometries are used
-· Three scaling methods are available (the default option can be used if unsure)
-· Additional inputs are required when selecting the void time and wosel approaches (void time and gradient end time)
+•Scale retention times to obtain comparable coordinates across conditions 
+•This is particularly important when different column geometries or gradient conditions are used 
+•Three normalization methods are available; the default method can be used when no specific approach is required 
+•Additional inputs, such as void time or gradient end time, are requested when required by the selected method 
 
-Step 2 — Visual Comparison of Paired Conditions
-· Pairwise plots of conditions are available in the "Data Plotting Pairwise" section
-· Enables a quick visual assessment of separation space usage between dimensions
+Step 2 — Generation and Visual Comparison of 2D Combinations
+•Automatically generate all possible pairwise combinations from the imported conditions 
+•View the candidate combinations in the Pairwise Plotting section 
+•Use the plots for an initial visual assessment of separation-space occupation and analyte distribution 
 
 Step 3 — Orthogonality Assessment
-· Calculation of multiple orthogonality metrics
-· Visualization of the results for each metric
+•Calculate multiple complementary orthogonality metrics for each combination 
+•Examine the metric-specific values, ranks, and visual results 
 
-Step 4 — Redundancy Check (Correlation Matrix)
-· Identify metrics that provide overlapping information
-· The cross-correlation matrix highlights relationships between metrics and groups strongly correlated ones in a summary table
+Step 4 — Metric Correlation and Grouping
+•Analyse similarities between orthogonality metrics using the correlation matrix 
+•Identify metrics that provide overlapping information 
+•Group strongly correlated metrics to reduce redundancy and prevent similar metrics from having excessive influence
 
-Step 5 — Final Evaluation & Ranking
-· Calculation of a composite orthogonality score by averaging values across metric groups
-· Estimation of hypothetical practical 2D peak capacity using either the suggested score or a user-defined one
-· Ranking based on orthogonality only, hypothetical practical 2D peak capacity, or a Heinisch-inspired method
-· Identification of the most promising 2D combinations based on practical criteria\
+Step 5 — Final Orthogonality Assessment
+•Choose between the recommended default mode and a custom assessment
+•In default mode, aggregate the ranks from the different metric groups using a Borda-based consensus 
+•In custom mode, combine the selected metric results using the chosen mean or median aggregation 
+•Generate an Orthogonality Rank and convert it into an Orthogonality Utility for the final multi-criteria evaluation
+ 
+Step 6— Final Evaluation and Ranking
+•Integrate orthogonality with complementary chromatographic criteria, including Elution Domain and hypothetical 2D peak capacity when available 
+•Convert the main criteria into comparable utilities 
+•Calculate the Final Consensus Score and rank the candidate combinations 
+•Review practical criteria such as compatibility, setup complexity, and peak detection, 
+•Identify the most promising combinations for experimental validation\
 """

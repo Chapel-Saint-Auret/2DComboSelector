@@ -286,6 +286,9 @@ class Redundancy:
             average_redundancy = round(float(unique_pairs.mean()), 2)
             std_redundancy = round(float(unique_pairs.std()), 2)
 
+            average_redundancy =  1.00 if pd.isna(average_redundancy) else average_redundancy
+            std_redundancy =  0.00 if pd.isna(std_redundancy) else std_redundancy
+
             average_redundancy_list.append(f"{average_redundancy} ± {std_redundancy}")
 
         self.correlation_group_df['Average Group Correllation'] = average_redundancy_list

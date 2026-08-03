@@ -174,6 +174,7 @@ class PlotUtils:
             - Resets background to white
         """
         # Remove texts and lines
+
         if self.axe:
             [text.remove() for text in self.axe.texts if text not in [self.annotation]]
             [line.remove() for line in self.axe.get_lines()]
@@ -308,6 +309,10 @@ class PlotUtils:
         sad_dev_ns = data["sad_dev_ns"]
         xedges, yedges = data["edges"]
 
+        # reset axes limits
+        self.axe.set_xlim(0, 1)
+        self.axe.set_ylim(0, 1)
+
         # define a 5×5 grid
         self.axe.pcolormesh(
             xedges,
@@ -381,6 +386,11 @@ class PlotUtils:
         H_color = data["modeling_approach"]["color_mask"]
         xedges, yedges = data["modeling_approach"]["edges"]
         slope, intercept, r, p, se = data["linregress"]
+
+        # reset axes limits
+        self.axe.set_xlim(0, 1)
+        self.axe.set_ylim(0, 1)
+
 
         self.axe.pcolormesh(
             xedges,
@@ -463,6 +473,10 @@ class PlotUtils:
             for mesh in self.axe.findobj(QuadMesh):
                 mesh.remove()
 
+        # reset axes limits
+        self.axe.set_xlim(0, 1)
+        self.axe.set_ylim(0, 1)
+
         H_color = data["bin_box"]["color_mask"]
         xedges, yedges = data["bin_box"]["edges"]
         self.axe.pcolormesh(
@@ -485,7 +499,7 @@ class PlotUtils:
     def plot_schure(
             self,
             set_number: str = "",
-            erase_previous: bool = True,
+            erase_previous: bool = False,
             draw: bool = True
     ) -> None:
         """Draw Schure log-log curve and selected linear segment."""
@@ -548,12 +562,13 @@ class PlotUtils:
         y_full_sorted = y_full[order_full]
 
         # Full Schure curve
-        self.axe.scatter(
+        self.scatter_collection = self.axe.scatter(
             x_full_sorted,
             y_full_sorted,
             label="Full Schure curve",
             alpha=0.45
         )
+
 
         self.axe.plot(
             x_full_sorted,
@@ -582,13 +597,13 @@ class PlotUtils:
             x_seg_sorted = x_seg[order_seg]
             y_seg_sorted = y_seg[order_seg]
 
-            self.axe.scatter(
-                x_seg_sorted,
-                y_seg_sorted,
-                label="Selected linear segment",
-                alpha=0.95,
-                zorder=3
-            )
+            # self.scatter_collection = self.axe.scatter(
+            #     x_seg_sorted,
+            #     y_seg_sorted,
+            #     label="Selected linear segment",
+            #     alpha=0.95,
+            #     zorder=3
+            # )
 
             # --------------------------------------------------
             # Regression line
@@ -711,6 +726,11 @@ class PlotUtils:
 
         histogram = data["conditional_entropy"]["histogram"]
         xedges, yedges = data["conditional_entropy"]["edges"]
+
+        # reset axes limits
+        self.axe.set_xlim(0, 1)
+        self.axe.set_ylim(0, 1)
+
         colormesh = self.axe.pcolormesh(
             xedges,
             yedges,
@@ -914,6 +934,7 @@ class PlotUtils:
         # reset axes & clear old lines
         self.axe.set_xlim(0, 1)
         self.axe.set_ylim(0, 1)
+
         for line in self.axe.get_lines():
             line.remove()
 
@@ -1122,6 +1143,10 @@ class PlotUtils:
 
         hull = self.orthogonality_data[set_nb]["convex_hull"]
         subset = self.orthogonality_data[set_nb]["hull_subset"]
+
+        # reset axes limits
+        self.axe.set_xlim(0, 1)
+        self.axe.set_ylim(0, 1)
 
         # draw each simplex
         if hull:
@@ -2710,8 +2735,8 @@ class PlotUtils:
 
         df = self.model.get_filtered_result_df().copy()
 
-        old_rank = pd.to_numeric(df.get("Final Rank"), errors="coerce")
-        new_rank = pd.to_numeric(df.get("Final Rank (Utility)"), errors="coerce")
+        old_rank = pd.to_numeric(df.get("Orthogonality Utility"), errors="coerce")
+        new_rank = pd.to_numeric(df.get("Suggested Orthogonality Rank"), errors="coerce")
 
         valid = old_rank.notna() & new_rank.notna()
         if not valid.any():

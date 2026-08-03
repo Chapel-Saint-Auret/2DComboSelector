@@ -344,7 +344,7 @@ class ResultsPage(QFrame):
         SectionHelpButton.for_group(
             orthogonality_score_group,
             title="Final Orthogonality assessment",
-            markdown_path="",  # intentionally missing
+            markdown_path="markdown/final_assessment.md",  # intentionally missing
         )
 
         orthogonality_score_layout = QVBoxLayout()

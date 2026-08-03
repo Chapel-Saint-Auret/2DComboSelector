@@ -349,8 +349,8 @@ class AboutDialog(QDialog):
 
         # ── Resources ─────────────────────────────────────────────────────────
         layout.addWidget(self._section("Resources"))
-        layout.addWidget(self._link_row("📄  Documentation:", self.URLS["documentation"], "2DComboSelector documentation"))
-        layout.addWidget(self._link_row("🎬  Tutorial video:", self.URLS["tutorial"],      "Watch tutorial"))
+        layout.addWidget(self._link_row("📄  Documentation:", self.URLS["documentation"], "2DComboSelector documentation (Coming soon)"))
+        layout.addWidget(self._link_row("🎬  Tutorial video:", self.URLS["tutorial"],      "Watch tutorial (Coming soon)"))
         layout.addWidget(self._link_row("📖  Publication:",   self.URLS["publication"],    "https://doi.org/10.1016/j.chroma.2025.465861"))
         layout.addSpacing(2)
         layout.addWidget(self._body(

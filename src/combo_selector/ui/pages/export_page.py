@@ -123,10 +123,10 @@ class ExportPage(QFrame):
             "Metric Ranking Table": self.model.get_orthogonality_metric_ranking_df,
             "Grouped Metric Table": self.model.get_correlation_group_df,
             "Orthogonality Table": self.model.get_orthogonality_table,
-            "Practical Feasability Table": self.model.get_practical_feasibility_table,
-            "Seperational Potential Table": self.model.get_separational_potential_table,
+            "Practical Feasibility Table": self.model.get_practical_feasibility_table,
+            "Separetional Potential Table": self.model.get_separational_potential_table,
             "Final Evaluation Table": self.model.get_final_recommendation_table,
-            "Overal Results Table": self.model.get_orthogonality_result_df,
+            "Overall Results Table": self.model.get_orthogonality_result_df,
         }
 
         # --- Page frame & outer layout ----------------------------------------
@@ -179,7 +179,7 @@ class ExportPage(QFrame):
         input_layout.addWidget(user_input_scroll_area)
 
         # Export figure group
-        export_figure_grp = QGroupBox("Export data set figure")
+        export_figure_grp = QGroupBox("Export Data Set Figure(s)")
         export_figure_grp.setStyleSheet(f"""
              QGroupBox {{
                 font-size: 14px;
@@ -244,11 +244,12 @@ class ExportPage(QFrame):
 
         # Folder name
         self.figure_folder_name_lineEdit = QLineEdit("Figure")
-        form_layout.addWidget(QLabel("Folder name:"))
-        form_layout.addWidget(self.figure_folder_name_lineEdit)
+        # form_layout.addWidget(QLabel("Folder name:"))
+        # form_layout.addWidget(self.figure_folder_name_lineEdit)
 
         # Figure type + list
-        self.figure_type_chklist = CheckableComboList()
+        self.figure_type_chklist = CheckableTreeList()
+        self.figure_type_chklist.setFixedHeight(175)
         form_layout.addWidget(QLabel("Figure type:"))
         form_layout.addWidget(self.figure_type_chklist)
 
@@ -257,9 +258,10 @@ class ExportPage(QFrame):
             items=["Select Top 10%"]
         )
 
-        self.figure_list_chklist = CheckableComboList()
+        self.figure_list_chklist = CheckableTreeList()
+        self.figure_list_chklist.setFixedHeight(175)
         form_layout.addWidget(QLabel("Figure list:"))
-        form_layout.addWidget(self._percentile_panel)
+        # form_layout.addWidget(self._percentile_panel)
         form_layout.addWidget(self.figure_list_chklist)
 
         self.save_figure_btn = QPushButton("Save figure(s)")
@@ -318,10 +320,10 @@ class ExportPage(QFrame):
             "Metric Ranking Table",
             "Grouped Metric Table",
             "Orthogonality Table",
-            "Practical Feasability Table",
+            "Practical Feasibility Table",
             "Seperational Potential Table",
             "Final Evaluation Table",
-            "Overal Results Table",
+            "Overall Results Table",
         ]
         self.table_selection = CheckableTreeList(table_list)
         self.table_selection.setFixedHeight(175)
@@ -539,7 +541,8 @@ class ExportPage(QFrame):
         """
         chosen_directory = self.figure_export_directory_lineEdit.text()
         chosen_folder_name = (
-            f"{chosen_directory}/{self.figure_folder_name_lineEdit.text()}"
+            # f"{chosen_directory}/{self.figure_folder_name_lineEdit.text()}"
+            f"{chosen_directory}/Figure"
         )
         figure_type_list = self.figure_type_chklist.get_checked_item()
         figure_list_chklist = self.figure_list_chklist.get_checked_item()
