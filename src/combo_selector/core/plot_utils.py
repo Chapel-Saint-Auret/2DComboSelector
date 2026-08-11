@@ -41,12 +41,21 @@ SUBSET_THRESHOLDS = {
 }
 
 CRITERIA_COLUMN_MAP = {
+    "Rank":{
     "All criteria":    None,
     "Orthogonality":   ("Orthogonality Rank",       "Orthogonality"),
-    "Elution Domain":  ("Elution Domain Rank",       "Elution Domain"),
-    "Peak Capacity":   ("Peak Capacity Rank",        "Peak Capacity"),
-    "Final consensus": ("Final Rank (Utility)",                "Final Consensus Rank"),
-    "Peak rate":       ("Peak Detection Rate (%)",   "Peak rate (%)"),
+    "Elution Domain":  ("Elution Domain Rank",      "Elution Domain"),
+    "Peak Capacity":   ("Peak Capacity Rank",       "Peak Capacity"),
+    "Final consensus": ("Final Rank (Utility)",              "Final Consensus Rank"),
+    "Peak rate":       ("Peak Detection Rate (%)",  "Peak rate (%)")},
+
+    "Utility":{
+    "All criteria":    None,
+    "Orthogonality":   ("Orthogonality Utility",    "Orthogonality"),
+    "Elution Domain":  ("Elution Domain Utility",   "Elution Domain"),
+    "Peak Capacity":   ("Peak Capacity Utility",    "Peak Capacity"),
+    "Final consensus": ("Final Score (Utility)",     "Final Consensus Rank"),
+    "Peak rate":       ("Peak Detection Rate (%)",  "Peak rate (%)")}
 }
 
 
@@ -1747,7 +1756,7 @@ class PlotUtils:
         self.fig.canvas.draw()
         self.fig.canvas.flush_events()
 
-    def plot_chroma_mode_performance(self, view: str = "Heatmap", criteria: str = None):
+    def plot_chroma_mode_performance(self, type: str = "Heatmap",view: str = "Rank", criteria: str = None):
         self.fig.clear()
 
         # ------------------------------------------------------------------
@@ -1764,15 +1773,24 @@ class PlotUtils:
         # ------------------------------------------------------------------
         # HEATMAP
         # ------------------------------------------------------------------
-        if view == "Heatmap":
-            median_df = self.model.get_median_rank_score_table()
+        if type == "Heatmap":
+
+            if view == "Rank":
+                median_df = self.model.get_median_rank_score_table()
+                elution_domain_title = "Elution Domain Rank"
+                peak_capcity_title = "Peak Capacity Rank"
+
+            if view == "Utility":
+                median_df = self.model.get_median_utility_score_table()
+                elution_domain_title = "Elution Domain Utility"
+                peak_capcity_title = "Peak Capacity Utility"
 
             # Drop unavailable rank columns
             cols_to_drop = []
-            if not elution_domain_available and "Elution Domain Rank" in median_df.columns:
-                cols_to_drop.append("Elution Domain Rank")
-            if not peak_capacity_available and "Peak Capacity Rank" in median_df.columns:
-                cols_to_drop.append("Peak Capacity Rank")
+            if not elution_domain_available and elution_domain_title in median_df.columns:
+                cols_to_drop.append(elution_domain_title)
+            if not peak_capacity_available and peak_capcity_title in median_df.columns:
+                cols_to_drop.append(peak_capcity_title)
             median_df = median_df.drop(columns=cols_to_drop)
 
             peak_col = "Peak Detection Rate (%)"
@@ -1887,13 +1905,18 @@ class PlotUtils:
         # BOXPLOT
         # ------------------------------------------------------------------
         else:
-            grouped_df = list(self.model.get_rank_score_grouped_by_chrom_mode_table())
+
+            if view == "Rank":
+                grouped_df = list(self.model.get_rank_score_grouped_by_chrom_mode_table())
+
+            if view == "Utility":
+                grouped_df = list(self.model.get_utility_score_grouped_by_chrom_mode_table())
 
             if not grouped_df:
                 self._show_missing_data()
                 return
 
-            if criteria not in CRITERIA_COLUMN_MAP:
+            if criteria not in CRITERIA_COLUMN_MAP[view]:
                 self._show_missing_data()
                 return
 
@@ -1991,21 +2014,33 @@ class PlotUtils:
                 ax.grid(True, axis="y", linestyle="--", linewidth=0.4, alpha=0.5)
                 ax.set_axisbelow(True)
 
-            col_name_value = CRITERIA_COLUMN_MAP[criteria]
+            col_name_value = CRITERIA_COLUMN_MAP[view][criteria]
 
             # ------------------------------------------------------------------
             # All criteria — multi-panel
             # ------------------------------------------------------------------
             if col_name_value is None:
-                metrics = [
-                    ("Orthogonality Utility", "Orthogonality"),
-                    ("Final Rank (Utility)", "Final Consensus Rank"),
-                    ("Peak Detection Rate (%)", "Peak rate (%)"),
-                ]
-                if elution_domain_available:
-                    metrics.insert(1, ("Elution Domain Utility", "Elution Domain Utility"))
-                if peak_capacity_available:
-                    metrics.insert(2, ("Peak Capacity Utility", "Peak Capacity Utility"))
+                if view == "Rank":
+                    metrics = [
+                        ("Orthogonality Rank", "Orthogonality Rank"),
+                        ("Final Rank (Utility)", "Final Consensus Rank"),
+                        ("Peak Detection Rate (%)", "Peak rate (%)"),
+                    ]
+                    if elution_domain_available:
+                        metrics.insert(1, ("Elution Domain Rank", "Elution Domain Rank"))
+                    if peak_capacity_available:
+                        metrics.insert(2, ("Peak Capacity Rank", "Peak Capacity Rank"))
+
+                else:
+                    metrics = [
+                        ("Orthogonality Utility", "Orthogonality Utility"),
+                        ("Final Score (Utility)", "Final Consensus Score"),
+                        ("Peak Detection Rate (%)", "Peak rate (%)"),
+                    ]
+                    if elution_domain_available:
+                        metrics.insert(1, ("Elution Domain Utility", "Elution Domain Utility"))
+                    if peak_capacity_available:
+                        metrics.insert(2, ("Peak Capacity Utility", "Peak Capacity Utility"))
 
                 n = len(metrics)
                 ncols = min(3, n)

@@ -91,13 +91,29 @@ class ResultsBuilder:
         """
         return self.median_rank_score_df
 
-    def get_rank_score_grouped_by_chrom_mode_table(self):
-        """Get the median_rank_score sub-table.
+    def get_median_utility_score_table(self):
+        """Get the median_utility_score sub-table.
 
         Returns:
-            pd.DataFrame: median_rank_score table.
+            pd.DataFrame: median_utility_score table.
+        """
+        return self.median_utility_score_df
+
+    def get_rank_score_grouped_by_chrom_mode_table(self):
+        """Get the rank_score_grouped_by_chrom_mode sub-table.
+
+        Returns:
+            pd.DataFrame: rank_score_grouped_by_chrom_mode table.
         """
         return self.rank_score_grouped_by_chrom_mode_df
+
+    def get_utility_score_grouped_by_chrom_mode_table(self):
+        """Get the utility_score_grouped_by_chrom_mode sub-table.
+
+        Returns:
+            pd.DataFrame: utility_score_grouped_by_chrom_mode table.
+        """
+        return self.utility_score_grouped_by_chrom_mode_df
 
     def get_rank_score_grouped_by_recommendation_table(self):
         """Get the rank_score_grouped_by_final_recommendation_df sub-table.
@@ -220,7 +236,9 @@ class ResultsBuilder:
         self.create_old_approach_table()
 
         self.create_median_rank_score_based_on_chromatographic_group()
+        self.create_median_utility_score_based_on_chromatographic_group()
         self.create_rank_score_based_on_chromatographic_group()
+        self.create_utility_score_based_on_chromatographic_group()
         self.create_rank_score_based_on_recommendation_class()
         self.create_recommendation_distribution_group()
 
@@ -352,7 +370,7 @@ class ResultsBuilder:
         """Build the final recommendation sub-table from the results DataFrame.
 
         Side Effects:
-            - Creates ``self.final_recommendation_table_df``.
+            - Creates ``self.final_recommendaFinal Rank (Utility)tion_table_df``.
         """
         column_name = [
             "Combination #",
@@ -393,7 +411,7 @@ class ResultsBuilder:
             "Orthogonality Rank",
             "Elution Domain Rank",
             "Peak Capacity Rank",
-            "Final Rank",
+            "Final Rank (Utility)",
             "Peak Detection Rate (%)",
         ]
 
@@ -405,12 +423,30 @@ class ResultsBuilder:
 
         self.median_rank_score_df = (self.filtered_result_df.groupby("Chromatographic Mode")[column_name].median())
 
-    def create_rank_score_based_on_chromatographic_group(self):
+    def create_median_utility_score_based_on_chromatographic_group(self):
+
+        column_name = [
+            "Orthogonality Utility",
+            "Elution Domain Utility",
+            "Peak Capacity Utility",
+            "Final Score (Utility)",
+            "Peak Detection Rate (%)",
+        ]
+
+        for col in [
+            "Elution Domain Utility",
+            "Peak Capacity Utility",
+        ]:
+            self.filtered_result_df[col] = pd.to_numeric(self.filtered_result_df[col], errors="coerce").fillna(0)
+
+        self.median_utility_score_df = (self.filtered_result_df.groupby("Chromatographic Mode")[column_name].median())
+
+    def create_utility_score_based_on_chromatographic_group(self):
 
         column_name = [
             "Orthogonality Utility",
             "Final Recommendation",
-            "Final Rank (Utility)",
+            "Final Score (Utility)",
             "Elution Domain Utility",
             "Peak Capacity Utility",
             "Peak Detection Rate (%)",
@@ -419,6 +455,25 @@ class ResultsBuilder:
         for col in [
             "Elution Domain Utility",
             "Peak Capacity Utility",
+        ]:
+            self.filtered_result_df[col] = pd.to_numeric(self.filtered_result_df[col], errors="coerce").fillna(0)
+
+        self.utility_score_grouped_by_chrom_mode_df = self.filtered_result_df.groupby("Chromatographic Mode")[column_name]
+
+    def create_rank_score_based_on_chromatographic_group(self):
+
+        column_name = [
+            "Orthogonality Rank",
+            "Final Recommendation",
+            "Final Rank (Utility)",
+            "Elution Domain Rank",
+            "Peak Capacity Rank",
+            "Peak Detection Rate (%)",
+        ]
+
+        for col in [
+            "Elution Domain Rank",
+            "Peak Capacity Rank",
         ]:
             self.filtered_result_df[col] = pd.to_numeric(self.filtered_result_df[col], errors="coerce").fillna(0)
 

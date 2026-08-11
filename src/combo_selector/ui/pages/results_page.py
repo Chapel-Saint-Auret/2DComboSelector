@@ -499,7 +499,7 @@ class ResultsPage(QFrame):
             ),
             "Chromatographic Mode Performance": (
                 self.plot_utils.plot_chroma_mode_performance,
-                lambda s: {"view": s.view, "criteria": s.criteria}
+                lambda s: {"type": s.type, "view": s.view, "criteria": s.criteria}
             ),
             "Recommendation Distribution": (
                 self.plot_utils.plot_recommendation_distribution,
@@ -1099,7 +1099,7 @@ class ResultsPage(QFrame):
         self.fig.canvas.flush_events()
 
     def plot_visualization_state_changed(self, state = PlotState()):
-        fn, get_kwargs = self.plot_dispatch[state.plot_type]
+        fn, get_kwargs = self.plot_dispatch[state.plot]
         fn(**get_kwargs(state))
 
     def update_figure(self, plot_key: str = 'Multi Criteria Space') -> None:
