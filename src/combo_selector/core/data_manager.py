@@ -64,6 +64,7 @@ class DataManager:
         self.coverage_distribution_df = pd.DataFrame()
         self.coverage_score_df = pd.DataFrame()
         self.filtered_result_df = pd.DataFrame()
+        self.active_multi_column_filters = {}
         self.final_recommendation_table_df = pd.DataFrame()
         self.gradient_end_time_df = pd.DataFrame()
         self.normalized_retention_time_df = pd.DataFrame()

@@ -231,17 +231,35 @@ class ResultsBuilder:
     #     self.create_recommendation_distribution_group()
 
     def apply_multi_column_filter(self, filter_spec_list:list = None) -> None:
-        mask = pd.Series([True] * len(self.orthogonality_result_df))
-
-        if filter_spec_list:
+        if filter_spec_list is None:
+            active_filters = list(self.active_multi_column_filters.values())
+        elif not filter_spec_list:
+            self.active_multi_column_filters = {}
+            active_filters = []
+        else:
             for filter_spec in filter_spec_list:
-                col = filter_spec['filter_column']
-                col_name = filter_spec['filter_name']
-                patern = filter_spec['patterns']
+                filter_name = filter_spec.get("filter_name")
+                if not filter_name:
+                    continue
+                self.active_multi_column_filters[filter_name] = filter_spec.copy()
 
-                mask &= self.orthogonality_result_df[col_name].str.contains(
-                    patern, na=False, regex=True
-                )
+            active_filters = list(self.active_multi_column_filters.values())
+
+        mask = pd.Series(True, index=self.orthogonality_result_df.index)
+
+        for filter_spec in active_filters:
+            col_name = filter_spec.get("filter_name")
+            pattern = filter_spec.get("patterns", "")
+
+            if not col_name or col_name not in self.orthogonality_result_df.columns:
+                continue
+
+            if not pattern:
+                continue
+
+            mask &= self.orthogonality_result_df[col_name].astype(str).str.contains(
+                pattern, na=False, regex=True
+            )
 
         self.filtered_result_df = self.orthogonality_result_df[mask].copy()
 
