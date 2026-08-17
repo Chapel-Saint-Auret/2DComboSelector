@@ -636,16 +636,18 @@ def compute_bin_box_mask_color(
     # Compute the 2D histogram edges based on the range [0, 1]
     h, x_edges, y_edges = np.histogram2d([0, 1], [0, 1], bins=(nb_boxes, nb_boxes))
 
-    # Find the indices of the bins to which each data point belongs
-    idx_x = np.digitize(x, x_edges, right=True)
-    idx_y = np.digitize(y, y_edges, right=True)
+    # Map each coordinate to its bin index (0 to nb_boxes-1) by digitizing
+    # against the inner bin edges only, so values across the full [0, 1]
+    # range -- including exactly 0 or 1 -- land in a valid bin
+    idx_x = np.digitize(x, x_edges[1:-1])
+    idx_y = np.digitize(y, y_edges[1:-1])
 
-    # Filter indices to ensure they are within the valid range
-    idx = np.logical_and(idx_x > 0, idx_x <= nb_boxes)
-    idx = np.logical_and(idx, idx_y > 0)
-    idx = np.logical_and(idx, idx_y <= nb_boxes)
-    idx_x = idx_x[idx] - 1  # Convert to 0-based indexing
-    idx_y = idx_y[idx] - 1  # Convert to 0-based indexing
+    # Keep only points whose bin indices fall within the valid grid range
+    idx = np.logical_and(idx_x >= 0, idx_x < nb_boxes)
+    idx = np.logical_and(idx, idx_y >= 0)
+    idx = np.logical_and(idx, idx_y < nb_boxes)
+    idx_x = idx_x[idx]
+    idx_y = idx_y[idx]
 
     # Create a mask for bins with no data points
     mask = np.ones_like(h)
@@ -738,7 +740,10 @@ def compute_percent_fit_for_set(
             res = minimize_scalar(
                 objective, method="bounded", bounds=(left, right), args=(peak, curve)
             )
-            return res.x
+
+            # Minimal Euclidean distance between the peak and the fitted curve,
+            # evaluated at the optimal point found by minimize_scalar
+            return np.sqrt(objective(res.x, peak, curve))
 
         from concurrent.futures import ThreadPoolExecutor
 
@@ -747,8 +752,11 @@ def compute_percent_fit_for_set(
         return results
 
     x, y = set_data["x_values"], set_data["y_values"]
+
+    # Degree-2 polynomial fitted to the xy data (y as a function of x)
     quadratic_model_xy = np.poly1d(np.polyfit(x, y, 2))
-    quadratic_model_yx = np.poly1d(np.polyfit(x, y, 2))
+    # Degree-2 polynomial fitted to the yx data (x as a function of y)
+    quadratic_model_yx = np.poly1d(np.polyfit(y, x, 2))
 
     # Separate peaks above and below curves
     peak_above_xy = get_list_of_point_above_curve(x, y, quadratic_model_xy)
@@ -807,7 +815,7 @@ def compute_percent_fit_for_set(
             "delta_xy_sd": delta_xy_sd,
             "delta_yx_avg": delta_yx_avg,
             "delta_yx_sd": delta_yx_sd,
-            "value": abs(percent_fit),
+            "value": percent_fit,
         },
     }
     return set_key, result

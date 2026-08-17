@@ -132,6 +132,21 @@ class ResultsBuilder:
         """
         return self.recommendation_distribution_df
 
+    def get_detected_compounds_grouped_by_mode_table(self):
+        """Get the recommendation_distribution_df sub-table.
+
+        Returns:
+            pd.DataFrame: recommendation_distribution_df table.
+        """
+        return self.detected_compounds_grouped_by_mode
+
+    def get_detected_compounds_grouped_by_combination_mode_table(self):
+        """Get the recommendation_distribution_df sub-table.
+
+        Returns:
+            pd.DataFrame: recommendation_distribution_df table.
+        """
+        return self.detected_compounds_grouped_by_combination_mode
 
     def set_orthogonality_ranking_argument(self, argument: str) -> None:
         """Set the ranking criterion for the results table.
@@ -188,6 +203,7 @@ class ResultsBuilder:
 
         self.list_of_chrom_mode = list(self.orthogonality_result_df.groupby("Chromatographic Mode").groups)
 
+        self.orthogonality_result_df["Number of peaks"] = self.combination_df["Number of peaks"]
         self.orthogonality_result_df["Hypothetical 2D Peak Capacity"] = self.combination_df["Hypothetical 2D Peak Capacity"].copy()
         self.orthogonality_result_df["Peak Capacity Rank"] = self.combination_df["Hypothetical 2D Peak Capacity"].copy()
         self.orthogonality_result_df["Peak Capacity Utility"] = self.combination_df["Hypothetical 2D Peak Capacity"].copy()
@@ -241,6 +257,8 @@ class ResultsBuilder:
         self.create_utility_score_based_on_chromatographic_group()
         self.create_rank_score_based_on_recommendation_class()
         self.create_recommendation_distribution_group()
+        self.create_detected_compounds_grouped_by_mode()
+        self.create_detected_compounds_grouped_by_combination_mode()
 
     def update_table_results(self) -> None:
         """Recompute all result columns and update the results table.
@@ -255,7 +273,7 @@ class ResultsBuilder:
         Side Effects:
             - Updates ``self.orthogonality_result_df`` with all result columns.
         """
-        self.compute_consensus_orthogonality_score()
+        # self._old_compute_consensus_orthogonality_score()
         self.compute_consensus_orthogonality_ranking()
         self.compute_custom_orthogonality_score()
         self.assess_metric_removal_impact_on_orthogonality_rank()
@@ -509,6 +527,57 @@ class ResultsBuilder:
             self.filtered_result_df[col] = pd.to_numeric(self.filtered_result_df[col], errors="coerce").fillna(0)
 
         self.recommendation_distribution_df = self.filtered_result_df.groupby("Chromatographic Mode")['Final Recommendation']
+
+    def create_detected_compounds_grouped_by_mode(self):
+
+        def get_mode(col_name):
+            # Loop through the known chromatography modes
+            # and return the first mode found as a substring of the column name
+            for mode in CHROM_MODE:
+                if mode in col_name:
+                    return mode
+            return None  # no mode found in the column name
+
+        # Copy the source DataFrame so we don't modify the original
+        raw_df = self.normalized_retention_time_df.copy()
+
+        # Replace empty strings '' with actual NaN (pd.NA),
+        # otherwise .notna() would not detect them as "missing"
+        # .notna() returns a DataFrame of booleans (True = non-empty cell)
+        # .sum() adds up the True values per column (True counts as 1)
+        # -> result: a Series with index = column names, values = count of non-empty cells
+        non_empty_counts = raw_df.replace('', pd.NA).notna().sum()
+
+        # Drop columns that are not measurement columns
+        # (identifiers, not chromatographic data)
+        non_empty_counts = non_empty_counts.drop(['Peak #', 'Compound Name'])
+
+        # Build a dictionary {column_name: mode} for every column in the source DataFrame
+        # get_mode() is called once per column name
+        col_to_mode = {col: get_mode(col) for col in self.normalized_retention_time_df.columns}
+
+        # Convert the Series into a DataFrame: the index (column names) becomes a regular column
+        long_df = non_empty_counts.reset_index()
+
+        # Rename the two resulting columns for clarity
+        long_df.columns = ['column_name', 'count']
+
+        # For each value in column_name, look up the matching mode in col_to_mode
+        # and create a new 'mode' column with the result
+        long_df['mode'] = long_df['column_name'].map(col_to_mode)
+
+        # Sort rows by mode so columns belonging to the same mode appear together
+        long_df = long_df.sort_values('mode')
+
+        # Group rows by mode: returns a DataFrameGroupBy object (not a plain DataFrame)
+        # This object is "lazy": it computes nothing until you call
+        # a method on it (.sum(), .apply(), or loop with for mode, group in ...)
+        self.detected_compounds_grouped_by_mode = long_df.groupby('mode')
+
+    def create_detected_compounds_grouped_by_combination_mode(self):
+
+        self.detected_compounds_grouped_by_combination_mode = self.filtered_result_df.groupby("Chromatographic Mode")["Number of peaks"]
+
     # ------------------------------------------------------------------
     # Ranking / recommendation helpers
     # ------------------------------------------------------------------

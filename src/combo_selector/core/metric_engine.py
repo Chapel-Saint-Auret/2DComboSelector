@@ -115,6 +115,7 @@ class MetricEngine:
             "x_title": "",
             "y_title": "",
             "y_values": [],
+            "compound_list": [],
             "nb_peaks": 0,
             "hull_subset": 0,
             "convex_hull": 0,

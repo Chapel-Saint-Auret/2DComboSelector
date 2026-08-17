@@ -351,7 +351,9 @@ PLOT_TYPES = [
     "Final Rank Shift Distribution",
     "Rank Shift by Combination",
     "Top Rank Overlap",
-    "Hypothetical Peak Capacity vs Orthogonality Score (old)"
+    "Practical Peak Capacity Rank vs Final Consensus Rank",
+    "Detected Compound Mode Distribution",
+    "Detected Compound Combination Mode Distribution"
 ]
 
 PLOT_DESCRIPTIONS = {
@@ -379,7 +381,11 @@ PLOT_DESCRIPTIONS = {
         "Lollipop chart showing rank shift (New − Old) for each combination, sorted by old rank.",
     "Top Rank Overlap":
         "Bar chart comparing how many combinations are shared between old and new top-10, top-50, and top-100 lists.",
-    "Hypothetical Peak Capacity vs Orthogonality Score (old)":
+    "Practical Peak Capacity Rank vs Final Consensus Rank":
+        "",
+    "Detected Compound Mode Distribution":
+        "",
+    "Detected Compound Combination Mode Distribution":
         ""
 }
 

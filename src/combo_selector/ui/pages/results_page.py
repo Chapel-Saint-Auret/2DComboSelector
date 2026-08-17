@@ -534,12 +534,20 @@ class ResultsPage(QFrame):
                 lambda s: {}
             ),
 
-            "Hypothetical Peak Capacity vs Orthogonality Score (old)": (
-                self.plot_utils.plot_peak_capacity_vs_old_orthogonality_score,
+            "Practical Peak Capacity Rank vs Final Consensus Rank": (
+                self.plot_utils.plot_peak_capacity_vs_final_consensus_utility,
+                lambda s: {}
+            ),
+
+            "Detected Compound Mode Distribution": (
+                self.plot_utils.plot_detected_compound_by_chrom_mode,
+                lambda s: {}
+            ),
+
+            "Detected Compound Combination Mode Distribution": (
+                self.plot_utils.plot_detected_compound_by_combination_combination_chrom_mode,
                 lambda s: {}
             )
-
-
         }
 
         plot_frame_layout.addWidget(plot_title)
@@ -597,7 +605,7 @@ class ResultsPage(QFrame):
         self.orthogonality_table.add_help_button(column=3,title="Coverage Score",markdown_path="markdown/coverage_score.md")
         self.orthogonality_table.add_help_button(column=4,title="Distribution Score",markdown_path="markdown/distribution_score.md")
         self.orthogonality_table.add_help_button(column=5,title="Orthogonality Utility",markdown_path="markdown/orthogonality_utility.md")
-        self.orthogonality_table.add_help_button(column=6,title="Agreement Indicator",markdown_path="markdown/agreement_indicator.md")
+        self.orthogonality_table.add_help_button(column=6,title="Metric Agreement",markdown_path="markdown/agreement_indicator.md")
         # self.orthogonality_table.add_help_button(column=7,title="Outlier Flag",markdown_path="markdown/outlier_flag.md")
         self.orthogonality_table.set_header_label(
             [
@@ -607,7 +615,7 @@ class ResultsPage(QFrame):
                 "Coverage Score",
                 "Distribution Score",
                 "Orthogonality Utility",
-                "Agreement Indicator"
+                "Metric Agreement"
             ])
 
         self.practical_feasibility_table = self.styled_table.get_table_from_sheet(sheet_name='Practical Feasibility')

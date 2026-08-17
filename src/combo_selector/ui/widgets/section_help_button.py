@@ -18,6 +18,7 @@ Usage:
 
 import sys
 import markdown
+from PySide6.QtWebEngineWidgets import QWebEngineView
 
 from PySide6.QtCore import QPoint, Qt
 from PySide6.QtGui import QIcon
@@ -103,8 +104,8 @@ class HelpDialog(QDialog):
         outer.setSpacing(8)
 
         # Scrollable Markdown browser
-        self._browser = QTextBrowser()
-        self._browser.setOpenExternalLinks(True)
+        self._browser = QWebEngineView()
+        # self._browser.setOpenExternalLinks(True)
         self._browser.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         outer.addWidget(self._browser)
 
@@ -502,7 +503,7 @@ if __name__ == "__main__":
     SectionHelpButton.for_group(
         ranking_group,
         title="Ranking",
-        markdown_path="ranking.md",  # resolved via patched resource_path above
+        markdown_path="markdown/ranking.md",  # resolved via patched resource_path above
     )
 
     # --- Group 2: Orthogonality Score (missing .md → shows fallback message) ---
@@ -520,7 +521,7 @@ if __name__ == "__main__":
     SectionHelpButton.for_group(
         score_group,
         title="Orthogonality Score Calculation",
-        markdown_path="orthogonality_score.md",  # intentionally missing
+        markdown_path="markdown/orthogonality_utility.md",  # intentionally missing
     )
 
     root_layout.addWidget(ranking_group)

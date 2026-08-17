@@ -457,7 +457,7 @@ class Scoring:
         self.metric_removal_impact_old_approach_df['Median Orthogonality Rank Difference'] = \
         self.metric_removal_impact_old_approach_df['Median Orthogonality Rank Difference'].apply(lambda x: (x*100)/self.nb_combination)
 
-    def compute_consensus_orthogonality_score(self):
+    def _old_compute_consensus_orthogonality_score(self):
         """Compute the consensus orthogonality score as the median of group medians.
 
         For each correlation group, computes the column-wise median of its

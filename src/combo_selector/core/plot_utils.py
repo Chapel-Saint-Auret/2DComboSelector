@@ -1219,6 +1219,36 @@ class PlotUtils:
         self.fig.canvas.draw()
         self.fig.canvas.flush_events()
 
+    def plot_peak_capacity_vs_final_consensus_utility(self):
+
+        self.fig.clear()
+        self.axe = self.fig.add_subplot(111)
+        self.axe.set_box_aspect(1)
+        self.set_annotation()
+
+        df = self.model.get_filtered_result_df().copy()
+
+        x = df['Practical Peak Capacity Rank']
+        y = df['Final Rank (Utility)']
+
+        peak_capacity_available = pd.to_numeric(x, errors='coerce').notna().any()
+
+        if not peak_capacity_available:
+            self._show_missing_data()
+            return
+
+        self.axe.set_xlabel('Practical Peak Capacity Rank', fontsize=12)
+        self.axe.set_ylabel('Final Consensus Rank', fontsize=12)
+
+        # 2) Create or update scatter
+
+        self.axe.scatter(x, y, s=15,
+                         edgecolors='k', alpha=0.85,
+                         linewidths=0.3, picker=5)
+
+        self.fig.canvas.draw()
+        self.fig.canvas.flush_events()
+
     def plot_top_ranked_combination(self,number_of_rank_to_show):
 
         if number_of_rank_to_show == 'all':
@@ -1661,6 +1691,20 @@ class PlotUtils:
             plot_title = 'Multi-Criteria Space'
             plot_subtitle = f'Peak Capacity Utility vs Elution Domain Utility· {subset}'
 
+            legend_elements = [
+                patches.Patch(color='#1A3A9E', label='Top 1%'),
+                patches.Patch(color='#A0379A', label='Top 5%'),
+                patches.Patch(color='#E64981', label='Top 10%'),
+                patches.Patch(color='#FF7C64', label='Top 25%'),
+                patches.Patch(color='#F9F871', label='> 25%'),
+            ]
+            self.fig.legend(handles=legend_elements,
+                            title="Orthogonality rank\npercentile",
+                            loc='center right',
+                            bbox_to_anchor=(1.0, 0.5),
+                            fontsize=8, title_fontsize=8,
+                            frameon=True, edgecolor='gray')
+
         # ------------------------------------------------------------------
         # Reduced Criteria — only one of the two columns available
         # ------------------------------------------------------------------
@@ -1738,19 +1782,6 @@ class PlotUtils:
                       style='italic',
                       color='#b05000' if jitter_applied else 'dimgray')
 
-        legend_elements = [
-            patches.Patch(color='#1A3A9E', label='Top 1%'),
-            patches.Patch(color='#A0379A', label='Top 5%'),
-            patches.Patch(color='#E64981', label='Top 10%'),
-            patches.Patch(color='#FF7C64', label='Top 25%'),
-            patches.Patch(color='#F9F871', label='> 25%'),
-        ]
-        self.fig.legend(handles=legend_elements,
-                        title="Orthogonality rank\npercentile",
-                        loc='center right',
-                        bbox_to_anchor=(1.0, 0.5),
-                        fontsize=8, title_fontsize=8,
-                        frameon=True, edgecolor='gray')
 
         self.fig.subplots_adjust(left=0.12, right=0.82, top=0.84, bottom=0.12)
         self.fig.canvas.draw()
@@ -2156,7 +2187,7 @@ class PlotUtils:
             }
             recommendation_order = list(recommendation_colors.keys())
 
-            _marker_pool = ["o", "s", "^", "D", "v", "h", "p", "*", "<", ">", "X"]
+            _marker_pool = ["o", "s", "^", "D", "*", "h", "p", "<", ">", "X"]
             unique_modes = self.model.get_chromatographic_mode_list()
             mode_to_marker = {
                 mode: _marker_pool[i % len(_marker_pool)]
@@ -2247,7 +2278,7 @@ class PlotUtils:
                 "Use with caution": "#f0a11a",
                 "Not recommended": "#d9534f",
             }
-            mode_markers = ["o", "s", "^", "D", "v", "p", "X", "<", ">"]
+            mode_markers = ["o", "s", "^", "D", "*", "h", "p", "<", ">", "X"]
 
             if chrom_mode == "All mode":
                 n_modes = len(grouped_df)
@@ -2532,7 +2563,7 @@ class PlotUtils:
         }
 
         mode_order = self.model.get_chromatographic_mode_list()
-        mode_markers = ["o", "s", "^", "D", "v", "p", "X", "<", ">"]
+        mode_markers = ["o", "s", "^", "D", "*", "h", "p", "<", ">", "X"]
         mode_to_marker = {
             mode: mode_markers[i % len(mode_markers)]
             for i, mode in enumerate(mode_order)
@@ -2750,7 +2781,171 @@ class PlotUtils:
         self.fig.canvas.draw()
         self.fig.canvas.flush_events()
 
-    def plot_rank_shift_scatter(self, color_by: str = "Chromatographic Mode"):
+    def plot_detected_compound_by_chrom_mode(self):
+        self.fig.clear()
+        self.axe = self.fig.add_subplot(111)
+
+        grouped_df = list(self.model.get_detected_compounds_grouped_by_mode_table())
+
+
+        if not grouped_df:
+            self._show_missing_data()
+            return
+
+        palette = [
+            "#E41A1C", "#377EB8", "#4DAF4A", "#984EA3",
+            "#FF7F00", "#00A6A6", "#A65628", "#F781BF",
+        ]
+
+        labels, values = [], []
+
+
+        for mode, group in grouped_df:
+            labels.append(mode)
+            values.append(group['count'].values)
+
+        if not labels:
+            self._show_missing_data()
+            return
+
+        box = self.axe.boxplot(
+            values, patch_artist=True,
+            widths=0.55, showfliers=False
+        )
+
+        # jittered points
+        np.random.seed(42)
+        for j, (y_data, color) in enumerate(zip(values, palette), start=1):
+            x_jitter = np.random.normal(j, 0.05, size=len(y_data))
+            self.axe.scatter(
+                x_jitter, y_data,
+                s=10, color=color,
+                edgecolors="k", linewidths=0.2,
+                alpha=0.70, picker=5
+            )
+
+        for patch, color in zip(box["boxes"], palette):
+            patch.set_facecolor(color)
+            patch.set_alpha(0.25)
+            patch.set_edgecolor(color)
+            patch.set_linewidth(1.0)
+        for median in box["medians"]:
+            median.set_color("black")
+            median.set_linewidth(1.2)
+
+        self.axe.set_xticks(range(1, len(labels) + 1))
+        self.axe.set_xticklabels(labels, rotation=30, ha="right", fontsize=13)
+        self.axe.set_ylabel("Detected Compound", fontsize=11)
+        # subtitle = "Rank gain by chromatographic mode"
+
+        # ------------------------------------------------------------------
+        # Shared formatting
+        # ------------------------------------------------------------------
+
+        # Get current ticks and add 120
+        current_ticks = self.axe.get_yticks()
+        new_ticks = np.append(current_ticks, 120)
+
+        self.axe.set_yticks(new_ticks)
+        self.axe.set_ylim(top=125)
+
+        self.axe.tick_params(axis="both")
+        self.axe.grid(True, axis="y", linestyle="--", linewidth=0.4, alpha=0.5)
+        self.axe.set_axisbelow(True)
+        self.axe.spines[["top", "right"]].set_visible(False)
+
+        self.axe.text(
+            0.5, 1.10, "Detected Compound Grouped By Chromatographic Mode",
+            transform=self.axe.transAxes, ha="center", va="bottom",
+            fontsize=16, fontweight="bold"
+        )
+
+        self.fig.subplots_adjust(left=0.23, right=0.74, top=0.85, bottom=0.255)
+        self.fig.canvas.draw()
+        self.fig.canvas.flush_events()
+
+    def plot_detected_compound_by_combination_combination_chrom_mode(self):
+        self.fig.clear()
+        self.axe = self.fig.add_subplot(111)
+
+        grouped_df = list(self.model.get_detected_compounds_grouped_by_combination_mode_table())
+
+        if not grouped_df:
+            self._show_missing_data()
+            return
+
+        palette = [
+            "#E41A1C", "#377EB8", "#4DAF4A", "#984EA3",
+            "#FF7F00", "#00A6A6", "#A65628", "#F781BF",
+        ]
+
+        labels, values = [], []
+
+        for mode, group in grouped_df:
+            labels.append(mode)
+            values.append(group.values)
+
+        if not labels:
+            self._show_missing_data()
+            return
+
+        box = self.axe.boxplot(
+            values, patch_artist=True,
+            widths=0.55, showfliers=False
+        )
+
+        # jittered points
+        np.random.seed(42)
+        for j, (y_data, color) in enumerate(zip(values, palette), start=1):
+            x_jitter = np.random.normal(j, 0.05, size=len(y_data))
+            self.axe.scatter(
+                x_jitter, y_data,
+                s=10, color=color,
+                edgecolors="k", linewidths=0.2,
+                alpha=0.70, picker=5
+            )
+
+        for patch, color in zip(box["boxes"], palette):
+            patch.set_facecolor(color)
+            patch.set_alpha(0.25)
+            patch.set_edgecolor(color)
+            patch.set_linewidth(1.0)
+        for median in box["medians"]:
+            median.set_color("black")
+            median.set_linewidth(1.2)
+
+        self.axe.set_xticks(range(1, len(labels) + 1))
+        self.axe.set_xticklabels(labels, rotation=30, ha="right", fontsize=13)
+        self.axe.set_ylabel("Detected Compound", fontsize=11)
+        # subtitle = "Rank gain by chromatographic mode"
+
+        # ------------------------------------------------------------------
+        # Shared formatting
+        # ------------------------------------------------------------------
+
+        # Get current ticks and add 120
+        current_ticks = self.axe.get_yticks()
+        new_ticks = np.append(current_ticks, 120)
+
+        self.axe.set_yticks(new_ticks)
+        self.axe.set_ylim(top=125)
+
+        self.axe.tick_params(axis="both")
+        self.axe.grid(True, axis="y", linestyle="--", linewidth=0.4, alpha=0.5)
+        self.axe.set_axisbelow(True)
+        self.axe.spines[["top", "right"]].set_visible(False)
+
+        self.axe.text(
+            0.5, 1.10, "Detected Compound Grouped By Chromatographic Mode",
+            transform=self.axe.transAxes, ha="center", va="bottom",
+            fontsize=16, fontweight="bold"
+        )
+
+        self.fig.subplots_adjust(left=0.23, right=0.74, top=0.85, bottom=0.255)
+        self.fig.canvas.draw()
+        self.fig.canvas.flush_events()
+
+    def     plot_rank_shift_scatter(self, color_by: str = "Chromatographic Mode"):
         """Scatter plot of Old Rank vs New Rank (Utility) with y=x diagonal.
 
         Points below the diagonal → combination moves up in the new ranking.
@@ -2770,8 +2965,8 @@ class PlotUtils:
 
         df = self.model.get_filtered_result_df().copy()
 
-        old_rank = pd.to_numeric(df.get("Orthogonality Utility"), errors="coerce")
-        new_rank = pd.to_numeric(df.get("Suggested Orthogonality Rank"), errors="coerce")
+        old_rank = pd.to_numeric(df.get("Suggested Orthogonality Rank"), errors="coerce")
+        new_rank = pd.to_numeric(df.get("Orthogonality Rank"), errors="coerce")
 
         valid = old_rank.notna() & new_rank.notna()
         if not valid.any():
@@ -2878,8 +3073,8 @@ class PlotUtils:
         # ------------------------------------------------------------------
         # Axes formatting
         # ------------------------------------------------------------------
-        self.axe.set_xlabel("Old Rank  (Final Rank)", fontsize=11)
-        self.axe.set_ylabel("New Rank  (Utility)", fontsize=11)
+        self.axe.set_xlabel("Old Rank  (Suggested Orthogonality Rank)", fontsize=11)
+        self.axe.set_ylabel("New Rank  (Orthogonality Rank)", fontsize=11)
         self.axe.tick_params(axis="both", labelsize=9)
         self.axe.grid(True, linestyle=":", linewidth=0.8, alpha=0.5)
         self.axe.set_axisbelow(True)
@@ -2893,7 +3088,7 @@ class PlotUtils:
         )
         self.axe.text(
             0.5, 1.03,
-            f"Old Rank vs New Rank (Utility)  ·  colored by {color_by}",
+            f"Old Rank (Suggested) vs New Rank (Utility)  ·  colored by {color_by}",
             transform=self.axe.transAxes, ha="center", va="bottom",
             fontsize=9, style="italic", color="dimgray"
         )
@@ -2919,8 +3114,8 @@ class PlotUtils:
         self.axe = self.fig.add_subplot(111)
 
         df = self.model.get_filtered_result_df().copy()
-        old_rank = pd.to_numeric(df.get("Final Rank"), errors="coerce")
-        new_rank = pd.to_numeric(df.get("Final Rank (Utility)"), errors="coerce")
+        old_rank = pd.to_numeric(df.get("Suggested Orthogonality Rank"), errors="coerce")
+        new_rank = pd.to_numeric(df.get("Orthogonality Rank"), errors="coerce")
 
         valid = old_rank.notna() & new_rank.notna()
         if not valid.any():
@@ -3049,13 +3244,13 @@ class PlotUtils:
         self.axe = self.fig.add_subplot(111)
 
         df = self.model.get_filtered_result_df().copy()
-        required_cols = {"Final Rank", "Final Rank (Utility)"}
+        required_cols = {"Suggested Orthogonality Rank", "Orthogonality Rank"}
         if not required_cols.issubset(df.columns):
             self._show_missing_data()
             return
 
-        old_rank = pd.to_numeric(df["Final Rank"], errors="coerce")
-        new_rank = pd.to_numeric(df["Final Rank (Utility)"], errors="coerce")
+        old_rank = pd.to_numeric(df["Suggested Orthogonality Rank"], errors="coerce")
+        new_rank = pd.to_numeric(df["Orthogonality Rank"], errors="coerce")
 
         # ------------------------------------------------------------------
         # Shared: rank-based subset filtering + coloring
@@ -3115,13 +3310,13 @@ class PlotUtils:
         self.axe = self.fig.add_subplot(111)
 
         df = self.model.get_filtered_result_df().copy()
-        required_cols = {"Final Rank", "Final Rank (Utility)"}
+        required_cols = {"Suggested Orthogonality Rank", "Orthogonality Rank"}
         if not required_cols.issubset(df.columns):
             self._show_missing_data()
             return
 
-        old_rank = pd.to_numeric(df["Final Rank"], errors="coerce")
-        new_rank = pd.to_numeric(df["Final Rank (Utility)"], errors="coerce")
+        old_rank = pd.to_numeric(df["Suggested Orthogonality Rank"], errors="coerce")
+        new_rank = pd.to_numeric(df["Orthogonality Rank"], errors="coerce")
 
         if old_rank.notna().sum() == 0 or new_rank.notna().sum() == 0:
             self._show_missing_data()

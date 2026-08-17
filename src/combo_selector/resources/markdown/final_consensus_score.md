@@ -6,10 +6,10 @@ It reflects the overall multi-criteria performance of each combination based on 
 
 It is calculated as:
 
-	- **S_final = (U_O + U_P + U_D) / 3**
+	- S_final = (U_O + U_P + U_D) / 3
 
 or, when peak capacity is unavailable:
 	
-	- **S_final = (U_O + U_D) / 2**
+	- S_final = (U_O + U_D) / 2
 	
 Higher values indicate better overall performance.

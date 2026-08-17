@@ -124,7 +124,7 @@ class ExportPage(QFrame):
             "Grouped Metric Table": self.model.get_correlation_group_df,
             "Orthogonality Table": self.model.get_orthogonality_table,
             "Practical Feasibility Table": self.model.get_practical_feasibility_table,
-            "Separetional Potential Table": self.model.get_separational_potential_table,
+            "Separational Potential Table": self.model.get_separational_potential_table,
             "Final Evaluation Table": self.model.get_final_recommendation_table,
             "Overall Results Table": self.model.get_orthogonality_result_df,
         }
@@ -164,7 +164,7 @@ class ExportPage(QFrame):
         user_input_scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
 
         user_input_frame = QFrame()
-        user_input_frame.setFixedWidth(445)
+        # user_input_frame.setFixedWidth(445)
 
         user_input_frame_layout = QVBoxLayout(user_input_frame)
         user_input_frame_layout.setContentsMargins(20, 20, 20, 20)
@@ -321,7 +321,7 @@ class ExportPage(QFrame):
             "Grouped Metric Table",
             "Orthogonality Table",
             "Practical Feasibility Table",
-            "Seperational Potential Table",
+            "Separational Potential Table",
             "Final Evaluation Table",
             "Overall Results Table",
         ]
@@ -441,6 +441,7 @@ class ExportPage(QFrame):
 
         self.figure_type_chklist.clear()
         self.figure_type_chklist.add_items(["Scatter"]+om_list)
+        self.figure_type_chklist.checked_all()
 
     def update_figure_set(self):
         self.figure_list_chklist.clear()

@@ -353,12 +353,10 @@ class DataManager:
                 x_y_pair_list = [
                     pair for pair in x_y_pair_list if pair[0] != "" and pair[1] != ""
                 ]
-
+                compound_list = [self.compound_name_list[i] for i, pair in enumerate(x_y_pair_list) if
+                                 pair[0] != "" and pair[1] != ""]
                 if x_y_pair_list:
-
-
                     # unpack x and y list cleaned of incomplete x y pairs
-
                     x_series, y_series = zip(*x_y_pair_list)
 
                     # working with pd.Series makes operation on list easier
@@ -392,6 +390,7 @@ class DataManager:
                         "x_title": self.column_names[current_column],
                         "y_title": self.column_names[next_column],
                         "y_values": y_series,
+                        "compound_list": compound_list,
                         "nb_peaks": nb_peaks,
                         "hull_subset": 0,
                         "convex_hull": 0,
@@ -746,6 +745,7 @@ class DataManager:
                             "x_title": self.column_names[current_column],
                             "y_title": self.column_names[next_column],
                             "y_values": y_values,
+                            "compound_list": self.compound_name_list,
                             "nb_peaks": self.nb_peaks,
                             "hull_subset": 0,
                             "convex_hull": 0,
@@ -985,9 +985,8 @@ class DataManager:
                 # check if x,y pair element contains at least one empty item.
                 # if an empty item exist on an x,y pair, that pair will be deleted from the list
                 x_y_pair_list = list(zip(x_values, y_values))
-                x_y_pair_list = [
-                    pair for pair in x_y_pair_list if pair[0] != "" and pair[1] != ""
-                ]
+                x_y_pair_list = [pair for pair in  x_y_pair_list if pair[0] != "" and pair[1] != ""]
+                compound_list = [self.compound_name_list[i] for i,pair in enumerate(x_y_pair_list) if pair[0] != "" and pair[1] != ""]
 
                 if x_y_pair_list:
                     # unpack x and y list cleaned of incomplete x y pairs
@@ -1006,11 +1005,10 @@ class DataManager:
                     # Update orthogonality dictionary
                     self.orthogonality_dict[set_key]["x_values"] = x_series
                     self.orthogonality_dict[set_key]["y_values"] = y_series
+                    self.orthogonality_dict[set_key]["compound_list"] = compound_list
                     self.orthogonality_dict[set_key]["nb_peaks"] = nb_peaks
                     set_number = extract_set_number(set_key)
-                    self.update_metrics(
-                        set_key, "nb_peaks", nb_peaks, table_row_index=set_number - 1
-                    )
+                    self.update_metrics(set_key, "nb_peaks", nb_peaks, table_row_index=set_number - 1)
 
                 else:
                     if set_key in self.orthogonality_dict:
