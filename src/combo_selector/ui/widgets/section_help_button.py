@@ -104,7 +104,7 @@ class HelpDialog(QDialog):
         outer.setSpacing(8)
 
         # Scrollable Markdown browser
-        self._browser = QWebEngineView()
+        self._browser = QTextBrowser()
         # self._browser.setOpenExternalLinks(True)
         self._browser.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         outer.addWidget(self._browser)

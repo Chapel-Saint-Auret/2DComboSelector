@@ -334,20 +334,28 @@ class VisualizationOptionsPanel(QGroupBox):
         else:
             self._criteria_combo_widget.setVisible(False)
 
-        # Chromatographic mode combo visibility depends on view panel state
-        if show_recommendation:
-            self.chromatographic_mode_combo_widget.setVisible(True)
-        else:
-            self.chromatographic_mode_combo_widget.setVisible(False)
+        # # Chromatographic mode combo visibility depends on view panel state
+        # if show_chrom_mode:
+        #     self.chromatographic_mode_combo_widget.setVisible(True)
+        # else:
+        #     self.chromatographic_mode_combo_widget.setVisible(False)
 
         # Chromatographic mode combo visibility depends on view panel state
-        if show_recommendation and show_chrom_mode:
+        if show_chrom_mode:
             text = self._grouping_panel.currentText()
             self._update_chrom_mode_visibility(text)
         else:
             self.chromatographic_mode_combo_widget.setVisible(False)
 
         self.plotTypeChanged.emit(plot)
+
+    def get_plot_view(self):
+        plot_type = self._type_panel.currentText()
+        return plot_type
+
+    def get_plot_type(self):
+        plot_type = self._plot_combo.currentText()
+        return plot_type
 
     def get_subset(self):
         plot = self._plot_combo.currentText()
@@ -367,8 +375,10 @@ class VisualizationOptionsPanel(QGroupBox):
         self._criteria_combo_widget.setVisible(is_boxplot)
 
     def _update_chrom_mode_visibility(self,text):
+        show_chrom_mode = self.get_plot_type() == "Feasibility Profile"
         is_by_mode = text == "By mode"
-        self.chromatographic_mode_combo_widget.setVisible(is_by_mode)
+        is_visible = show_chrom_mode and is_by_mode
+        self.chromatographic_mode_combo_widget.setVisible(is_visible)
 
     def _percentile_toggled(self, button, checked):
         button.text()

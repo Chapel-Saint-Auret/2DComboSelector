@@ -102,6 +102,7 @@ class PlotUtils:
         self.axe = None
         self.set_number = "Set 1"
         self.scatter_collection = None
+        self.scatter_metadata = {}  # artist -> DataFrame (rows aligned to that artist's offsets)
 
     def set_orthogonality_result_data(self, orthogonality_result_df: pd.DataFrame) -> None:
         self.orthogonality_result_data = orthogonality_result_df
@@ -1325,7 +1326,7 @@ class PlotUtils:
             elif pct <= 5:
                 return '#A0379A'   # Top 5%
             elif pct <= 10:
-                return '#E64981'   # Top 10%
+                return '#62BD6E'   # Top 10%
             elif pct <= 25:
                 return '#FF7C64'   # Top 25%
             else:
@@ -1333,10 +1334,24 @@ class PlotUtils:
 
         colors = np.array([get_color(p) for p in orthogonality_rank_pct_filtered])
 
-        self.axe.scatter(x, y,
-                         c=colors, s=15,
+        # ------------------------------------------------------------------
+        # Layer worst points (>25%) in the background, everything else on top
+        # ------------------------------------------------------------------
+        background_mask = orthogonality_rank_pct_filtered > 25
+
+        scatter_bg = self.axe.scatter(x[background_mask], y[background_mask],
+                         c=colors[background_mask], s=15,
                          edgecolors='k', alpha=0.85,
-                         linewidths=0.3, picker=5)
+                         linewidths=0.3, picker=5, zorder=1)
+
+        scatter_fg = self.axe.scatter(x[~background_mask], y[~background_mask],
+                         c=colors[~background_mask], s=15,
+                         edgecolors='k', alpha=0.85,
+                         linewidths=0.3, picker=5, zorder=2)
+
+        df_valid = df_filtered[valid].reset_index(drop=True)
+        self.scatter_metadata[scatter_bg] = df_valid[background_mask.values].reset_index(drop=True)
+        self.scatter_metadata[scatter_fg] = df_valid[~background_mask.values].reset_index(drop=True)
 
         # ------------------------------------------------------------------
         # Legend — only show tiers present in the filtered data
@@ -1344,7 +1359,7 @@ class PlotUtils:
         tier_defs = [
             (1, '#1A3A9E', 'Top 1%'),
             (5, '#A0379A', 'Top 5%'),
-            (10,'#E64981', 'Top 10%'),
+            (10,'#62BD6E', 'Top 10%'),
             (25,'#FF7C64', 'Top 25%'),
             (100,'#F9F871', '> 25%'),
         ]
@@ -1584,7 +1599,7 @@ class PlotUtils:
         # ------------------------------------------------------------------
         final_rank = pd.to_numeric(df['Final Rank (Utility)'], errors='coerce')
         orthogonality_rank = pd.to_numeric(df['Orthogonality Rank'], errors='coerce')
-        n = len(df)
+        n = self.model.get_number_of_combination()
 
         final_rank_pct = (final_rank / n) * 100
         orthogonality_rank_pct = (orthogonality_rank / n) * 100
@@ -1605,13 +1620,18 @@ class PlotUtils:
             elif pct <= 5:
                 return '#A0379A'   # Top 5%
             elif pct <= 10:
-                return '#E64981'   # Top 10%
+                return '#62BD6E'   # Top 10%
             elif pct <= 25:
                 return '#FF7C64'   # Top 25%
             else:
                 return '#F9F871'   # > 25%
 
         colors = np.array([get_color(p) for p in orthogonality_rank_pct])
+
+        # ------------------------------------------------------------------
+        # Layer worst points (>25%) in the background, everything else on top
+        # ------------------------------------------------------------------
+        background_mask = orthogonality_rank_pct > 25
 
         # ------------------------------------------------------------------
         # Near-identical peak rate detection + jitter (reduced criteria only)
@@ -1672,10 +1692,19 @@ class PlotUtils:
             valid = x.notna() & y.notna()
             x, y, colors_plot = x[valid], y[valid], colors[valid.values]
 
-            self.axe.scatter(x, y,
-                             c=colors_plot, s=15,
+            scatter_bg = self.axe.scatter(x[background_mask], y[background_mask],
+                             c=colors[background_mask], s=15,
                              edgecolors='k', alpha=0.85,
-                             linewidths=0.3, picker=5)
+                             linewidths=0.3, picker=5, zorder=1)
+
+            scatter_fg = self.axe.scatter(x[~background_mask], y[~background_mask],
+                             c=colors[~background_mask], s=15,
+                             edgecolors='k', alpha=0.85,
+                             linewidths=0.3, picker=5, zorder=2)
+
+            df_valid = df[valid].reset_index(drop=True)
+            self.scatter_metadata[scatter_bg] = df_valid[background_mask.values].reset_index(drop=True)
+            self.scatter_metadata[scatter_fg] = df_valid[~background_mask.values].reset_index(drop=True)
 
             # apply_scale(self.axe, subset, axis_scale)
             self.axe.tick_params(axis='y', labelsize=8)
@@ -1694,7 +1723,7 @@ class PlotUtils:
             legend_elements = [
                 patches.Patch(color='#1A3A9E', label='Top 1%'),
                 patches.Patch(color='#A0379A', label='Top 5%'),
-                patches.Patch(color='#E64981', label='Top 10%'),
+                patches.Patch(color='#62BD6E', label='Top 10%'),
                 patches.Patch(color='#FF7C64', label='Top 25%'),
                 patches.Patch(color='#F9F871', label='> 25%'),
             ]
@@ -1724,15 +1753,27 @@ class PlotUtils:
             colors_plot = colors[valid.values]
 
             # ← Detect near-identical peak rate and apply jitter if needed
-            jitter_applied = _is_near_identical(y_raw)
+            # jitter_applied = _is_near_identical(y_raw)
+            jitter_applied = False
             if jitter_applied:
                 y_display = _apply_jitter(y_raw)
             else:
                 y_display = y_raw.copy()
             y = y_display
-            self.axe.scatter(x, y_display, s=15,
+
+            scatter_bg = self.axe.scatter(x[background_mask], y_display[background_mask],
+                             c=colors_plot[background_mask], s=15,
                              edgecolors='k', alpha=0.85,
-                             linewidths=0.3, picker=5)
+                             linewidths=0.3, picker=5, zorder=1)
+
+            scatter_fg = self.axe.scatter(x[~background_mask], y_display[~background_mask],
+                             c=colors[~background_mask], s=15,
+                             edgecolors='k', alpha=0.85,
+                             linewidths=0.3, picker=5, zorder=2)
+
+            df_valid = df[valid].reset_index(drop=True)
+            self.scatter_metadata[scatter_bg] = df_valid[background_mask.values].reset_index(drop=True)
+            self.scatter_metadata[scatter_fg] = df_valid[background_mask.values].reset_index(drop=True)
 
             # apply_scale(self.axe,subset , axis_scale)
             self.axe.tick_params(axis='y', labelsize=8)
@@ -1787,8 +1828,12 @@ class PlotUtils:
         self.fig.canvas.draw()
         self.fig.canvas.flush_events()
 
-    def plot_chroma_mode_performance(self, type: str = "Heatmap",view: str = "Rank", criteria: str = None):
+    def plot_chroma_mode_performance(self, type: str = "Heatmap", view: str = "Rank", criteria: str = None):
         self.fig.clear()
+
+        # heatmap branch below uses imshow, not scatter, so nothing to register there.
+        # still clear here since old boxplot scatters (if any) are destroyed by fig.clear().
+        self.scatter_metadata.clear()
 
         # ------------------------------------------------------------------
         # Availability checks
@@ -1816,7 +1861,6 @@ class PlotUtils:
                 elution_domain_title = "Elution Domain Utility"
                 peak_capcity_title = "Peak Capacity Utility"
 
-            # Drop unavailable rank columns
             cols_to_drop = []
             if not elution_domain_available and elution_domain_title in median_df.columns:
                 cols_to_drop.append(elution_domain_title)
@@ -1837,11 +1881,6 @@ class PlotUtils:
 
             rank_min = float(rank_df.values.min())
             rank_max = float(rank_df.values.max())
-            # rank_score = (
-            #     ((rank_df - rank_min) / (rank_max - rank_min)) * 100.0
-            #     if rank_max > rank_min
-            #     else rank_df * 0.0
-            # )
 
             rank_cmap = LinearSegmentedColormap.from_list(
                 "rank_cmap",
@@ -1953,9 +1992,6 @@ class PlotUtils:
 
             BOXPLOT_COLORS = ["#E41A1C", "#377EB8", "#4DAF4A", "#984EA3", "#FF7F00", "#00A6A6"]
 
-            # ------------------------------------------------------------------
-            # Near-identical peak rate detection helper
-            # ------------------------------------------------------------------
             def _is_near_identical(values_list):
                 """Return True if peak rate range across all groups < 1%."""
                 all_vals = np.concatenate([v for v in values_list if len(v) > 0]) \
@@ -1972,12 +2008,19 @@ class PlotUtils:
                 return y_data + np.random.normal(0, amplitude, size=len(y_data))
 
             def _draw_single_boxplot(ax, col_name, title, show_title=True):
-                labels, values = [], []
+                labels = []
+                values = []  # y-values per mode, feeds ax.boxplot
+                row_slices = []  # df rows per mode, same order/length as values
+
                 for mode, group in grouped_df:
                     labels.append(mode)
-                    values.append(group[col_name].dropna().values)
 
-                # ← Detect near-identical peak rate for this specific column
+                    # drop NaNs the same way `values` is built, keep matching rows
+                    # together so values[i] and row_slices[i] stay aligned
+                    valid_group = group.dropna(subset=[col_name])
+                    values.append(valid_group[col_name].values)
+                    row_slices.append(valid_group.reset_index(drop=True))
+
                 is_peak_rate_col = col_name == "Peak Detection Rate (%)"
                 jitter_applied = is_peak_rate_col and _is_near_identical(values)
 
@@ -2001,10 +2044,15 @@ class PlotUtils:
 
                 all_display_vals = []
                 np.random.seed(42)
+
+                # one scatter per mode/box position.
+                # NOTE: original code had `return scatter` inside this loop, which
+                # exited after the first mode and skipped everything below
+                # (other modes' points, title, axis labels). Fixed by removing
+                # the early return.
                 for j, y_data in enumerate(values, start=1):
                     x_jitter = np.random.normal(j, 0.04, size=len(y_data))
 
-                    # ← Apply vertical jitter only when peak rate is near-identical
                     if jitter_applied and len(y_data) > 0:
                         y_plot = _apply_jitter(y_data)
                     else:
@@ -2012,22 +2060,25 @@ class PlotUtils:
 
                     all_display_vals.extend(y_plot)
 
-                    ax.scatter(x_jitter, y_plot, s=10,
-                               color=BOXPLOT_COLORS[j - 1],
-                               edgecolors="k", linewidths=0.2,
-                               alpha=0.75, picker=5)
+                    scatter = ax.scatter(
+                        x_jitter, y_plot, s=10,
+                        color=BOXPLOT_COLORS[j - 1],
+                        edgecolors="k", linewidths=0.2,
+                        alpha=0.75, picker=5
+                    )
+
+                    # register so on_pick can trace a clicked point back to its row
+                    self.scatter_metadata[scatter] = row_slices[j - 1]
 
                 if show_title:
                     ax.set_title(title, fontsize=9, fontweight="bold")
 
-                # ← Y-label and y-axis zoom when jitter applied
                 if jitter_applied:
                     ax.set_ylabel("Peak rate (%) †", fontsize=8)
                     if all_display_vals:
                         disp = np.array(all_display_vals)
                         margin = (disp.max() - disp.min()) * 0.3 or 0.5
                         ax.set_ylim(disp.min() - margin, disp.max() + margin)
-                    # ← Small note at bottom of subplot
                     ax.text(0.5, -0.02,
                             "† Jitter added; values are near-identical",
                             transform=ax.transAxes,
@@ -2087,7 +2138,6 @@ class PlotUtils:
                     created_axes.append(self.axe)
                     _draw_single_boxplot(self.axe, col_name, title)
 
-                # Hide unused grid cells
                 for i in range(n, nrows * ncols):
                     self.fig.add_subplot(gs[i // ncols, i % ncols]).axis("off")
 
@@ -2106,7 +2156,6 @@ class PlotUtils:
             else:
                 col_name, title = col_name_value
 
-                # Availability guard for optional columns
                 if criteria == "Elution Domain" and not elution_domain_available:
                     self._show_missing_data()
                     return
@@ -2131,6 +2180,7 @@ class PlotUtils:
 
     def plot_feasibility_profile(self, grouping: str = "Global", axis_scale: str = "Auto",chrom_mode: str = 'All mode'):
         self.fig.clear()
+        self.set_annotation()
 
         def apply_scale(ax, scale: str):
             if scale == "Auto":
@@ -2198,11 +2248,14 @@ class PlotUtils:
                 rec_mask = df["Final Recommendation"] == rec_label
                 if not rec_mask.any():
                     continue
+
                 for mode in unique_modes:
+                    # one scatter per (recommendation, mode) pair -> distinct color/marker
                     mask = rec_mask & (df["Chromatographic Mode"] == mode)
                     if not mask.any():
                         continue
-                    self.axe.scatter(
+
+                    scatter = self.axe.scatter(
                         rank_numeric[mask], peak_rate[mask],
                         s=15,
                         marker=mode_to_marker[mode],
@@ -2210,6 +2263,10 @@ class PlotUtils:
                         edgecolors="k", linewidths=0.3,
                         alpha=0.88, zorder=5, picker=5
                     )
+
+                    # save the rows behind this scatter so on_pick can find them later.
+                    # reset_index is needed so row 0..n here matches point 0..n in the plot.
+                    self.scatter_metadata[scatter] = df.loc[mask].reset_index(drop=True)
 
             apply_scale(self.axe, axis_scale)
 
@@ -2239,7 +2296,7 @@ class PlotUtils:
                 Line2D([0], [0], marker=mode_to_marker[mode], color="w",
                        markerfacecolor="#555555", markeredgecolor="k",
                        markeredgewidth=0.3, markersize=5,
-                       label=mode.replace(" ", "×"))
+                       label=mode)
                 for mode in unique_modes
             ]
 
@@ -2260,7 +2317,7 @@ class PlotUtils:
                 frameon=True, framealpha=0.92, edgecolor="#aaaaaa"
             )
 
-            self.fig.subplots_adjust(left=0.10, right=0.97, top=0.88, bottom=0.30)
+            self.fig.subplots_adjust(left=0.23, right=0.74, top=0.85, bottom=0.280)
 
         # ------------------------------------------------------------------
         # BY MODE — faceted
@@ -2297,12 +2354,13 @@ class PlotUtils:
                         subset = group[group["Final Recommendation"] == recommendation]
                         if subset.empty:
                             continue
-                        self.axe.scatter(
+                        scatter = self.axe.scatter(
                             subset["Final Rank (Utility)"].astype(float),
                             subset["Peak Detection Rate (%)"].astype(float),
                             s=15, c=color, marker=marker,
                             edgecolors="black", linewidths=0.3, alpha=0.85, picker=5
                         )
+                        self.scatter_metadata[scatter] = subset.reset_index(drop=True)
 
                         apply_scale(self.axe, axis_scale)
 
@@ -2355,12 +2413,13 @@ class PlotUtils:
                         continue
                     if not chrom_mode_df[chrom_mode_df["Final Recommendation"] == recommendation].any().any():
                         continue
-                    self.axe.scatter(
+                    scatter = self.axe.scatter(
                         subset["Final Rank (Utility)"].astype(float),
                         subset["Peak Detection Rate (%)"].astype(float),
                         s=15, c=color, marker=marker,
                         edgecolors="black", linewidths=0.3, alpha=0.85, picker=5
                     )
+                    self.scatter_metadata[scatter] = subset.reset_index(drop=True)
 
                     apply_scale(self.axe, axis_scale)
 
@@ -2403,7 +2462,6 @@ class PlotUtils:
         self.fig.canvas.draw()
         self.fig.canvas.flush_events()
 
-
     def plot_recommendation_distribution(self, grouping: str = "Global"):
         self.fig.clear()
         self.axe = self.fig.add_subplot(111)
@@ -2412,7 +2470,8 @@ class PlotUtils:
         # GLOBAL — one single stacked bar
         # ------------------------------------------------------------------
         if grouping == "Global":
-            recommendations = self.orthogonality_result_data.copy()['Final Recommendation']
+            recommendations = self.model.get_filtered_result_df().copy()['Final Recommendation']
+
 
             if recommendations.empty:
                 self._show_missing_data()
@@ -2541,6 +2600,7 @@ class PlotUtils:
 
     def plot_final_rank_by_recommendation_class(self,recommendation: str = 'All recommendation'):
         self.fig.clear()
+        self.set_annotation()
         self.axe = self.fig.add_subplot(111)
 
         grouped_df = list(self.model.get_rank_score_grouped_by_recommendation_table())
@@ -2652,7 +2712,6 @@ class PlotUtils:
             # ------------------------------------------------------------------
             # Axes formatting
             # ------------------------------------------------------------------
-            plot_labels
             self.axe.set_xticks(positions)
             self.axe.set_xticklabels(plot_labels, fontsize=9)
             self.axe.set_ylabel("Final consensus rank", fontsize=10)
@@ -2777,7 +2836,7 @@ class PlotUtils:
                       transform=self.axe.transAxes, ha="center", va="bottom",
                       fontsize=9, style="italic", color="dimgray")
 
-        self.fig.subplots_adjust(left=0.10, right=0.97, top=0.88, bottom=0.30)
+        self.fig.subplots_adjust(left=0.23, right=0.74, top=0.85, bottom=0.255)
         self.fig.canvas.draw()
         self.fig.canvas.flush_events()
 
@@ -2936,7 +2995,88 @@ class PlotUtils:
         self.axe.spines[["top", "right"]].set_visible(False)
 
         self.axe.text(
-            0.5, 1.10, "Detected Compound Grouped By Chromatographic Mode",
+            0.5, 1.10, "Detected Compound Grouped By Chromatographic Mode Combination",
+            transform=self.axe.transAxes, ha="center", va="bottom",
+            fontsize=16, fontweight="bold"
+        )
+
+        self.fig.subplots_adjust(left=0.23, right=0.74, top=0.85, bottom=0.255)
+        self.fig.canvas.draw()
+        self.fig.canvas.flush_events()
+
+    def plot_metric_agreement_by_combination_combination_chrom_mode(self):
+        self.fig.clear()
+        self.axe = self.fig.add_subplot(111)
+
+        grouped_df = list(self.model.get_metric_agreement_grouped_by_combination_mode_table())
+
+        if not grouped_df:
+            self._show_missing_data()
+            return
+
+        palette = [
+            "#E41A1C", "#377EB8", "#4DAF4A", "#984EA3",
+            "#FF7F00", "#00A6A6", "#A65628", "#F781BF",
+        ]
+
+        labels, values = [], []
+
+        for mode, group in grouped_df:
+            labels.append(mode)
+            values.append(group.values)
+
+        if not labels:
+            self._show_missing_data()
+            return
+
+        box = self.axe.boxplot(
+            values, patch_artist=True,
+            widths=0.55, showfliers=False
+        )
+
+        # jittered points
+        np.random.seed(42)
+        for j, (y_data, color) in enumerate(zip(values, palette), start=1):
+            x_jitter = np.random.normal(j, 0.05, size=len(y_data))
+            self.axe.scatter(
+                x_jitter, y_data,
+                s=10, color=color,
+                edgecolors="k", linewidths=0.2,
+                alpha=0.70, picker=5
+            )
+
+        for patch, color in zip(box["boxes"], palette):
+            patch.set_facecolor(color)
+            patch.set_alpha(0.25)
+            patch.set_edgecolor(color)
+            patch.set_linewidth(1.0)
+        for median in box["medians"]:
+            median.set_color("black")
+            median.set_linewidth(1.2)
+
+        self.axe.set_xticks(range(1, len(labels) + 1))
+        self.axe.set_xticklabels(labels, rotation=30, ha="right", fontsize=13)
+        self.axe.set_ylabel("Metric Agreement (%)", fontsize=11)
+        # subtitle = "Rank gain by chromatographic mode"
+
+        # ------------------------------------------------------------------
+        # Shared formatting
+        # ------------------------------------------------------------------
+
+        # Get current ticks and add 120
+        current_ticks = self.axe.get_yticks()
+        new_ticks = np.append(current_ticks, 120)
+
+        self.axe.set_yticks(new_ticks)
+        self.axe.set_ylim(top=125)
+
+        self.axe.tick_params(axis="both")
+        self.axe.grid(True, axis="y", linestyle="--", linewidth=0.4, alpha=0.5)
+        self.axe.set_axisbelow(True)
+        self.axe.spines[["top", "right"]].set_visible(False)
+
+        self.axe.text(
+            0.5, 1.10, "Metric Agreement Grouped By Chromatographic Mode Combination",
             transform=self.axe.transAxes, ha="center", va="bottom",
             fontsize=16, fontweight="bold"
         )
@@ -3235,7 +3375,7 @@ class PlotUtils:
             fontsize=9, style="italic", color="dimgray"
         )
 
-        self.fig.subplots_adjust(left=0.12, right=0.95, top=0.84, bottom=0.28)
+        self.fig.subplots_adjust(left=0.23, right=0.74, top=0.85, bottom=0.255)
         self.fig.canvas.draw()
         self.fig.canvas.flush_events()
 
@@ -3350,7 +3490,7 @@ class PlotUtils:
             # new_top = rank_df.nsmallest(k, "New Rank").index.to_numpy()
             # overlap_count = int(np.sum(old_top == new_top))
 
-            #check if top k of old and new rank shared combination regardles of rank position
+                    #check if top k of old and new rank shared combination regardles of rank position
             top_k_combination_old_rank = df["2D Combination"].iloc[rank_df.nsmallest(k, "Old Rank").index]
             top_k_combination_new_rank = df["2D Combination"].iloc[rank_df.nsmallest(k, "New Rank").index]
 
@@ -3430,38 +3570,38 @@ class PlotUtils:
 
             self.annotation.set_visible(False)
 
-    def on_pick(self,event,subset):
-        axe = event.artist.axes
-
-        xy_data = axe.collections[0].get_offsets()
-
-        extracted_x = xy_data[:, 0]
-        extracted_y = xy_data[:, 1]
+    def on_pick(self, event):
+        df_for_artist = self.scatter_metadata.get(event.artist)
+        if df_for_artist is None:
+            return
 
         ind = event.ind[0]
+        x, y = event.artist.get_offsets()[ind]
 
-        df_filtered = self.model.get_filtered_result_df()
-        n = self.model.get_number_of_combination()
-        final_rank = pd.to_numeric(df_filtered['Final Rank (Utility)'], errors='coerce')
+        row = df_for_artist.iloc[ind]
+        combination = row['2D Combination']
+        combination_number = row['Combination #']
 
-        final_rank_pct = (final_rank / n) * 100
+        # event.artist.axes is the actual Axes the clicked point belongs to.
+        # self.annotation may currently be attached to a different (or stale,
+        # since fig.clear() destroys axes) Axes - e.g. in faceted plots with
+        # multiple subplots, or if set_annotation() ran before the axes it's
+        # meant to sit on was created. Recreate it on the correct axes if needed.
+        target_axes = event.artist.axes
+        if self.annotation is None or self.annotation.axes is not target_axes:
+            if self.annotation is not None:
+                self.annotation.remove()
+            self.annotation = target_axes.annotate("", xy=(0, 0), xytext=(10, 10),
+                                                                         fontsize='x-small',
+                                                                          textcoords="offset points",
+                                                                          bbox=dict(boxstyle="round", fc="white",
+                                                                                    ec="gray"),
+                                                                          arrowprops=dict(arrowstyle="->"))
 
-        if subset:
-            threshold = SUBSET_THRESHOLDS.get(subset, 0)
-            mask = final_rank_pct <= threshold
-
-            df_filtered = df_filtered[mask]
-
-        # convert panda series into list to reset the serie index which has been held even after filtering the data
-        # when filtering panda dataframe or series, the index stays unchanged
-        combination = list(df_filtered['2D Combination'])[ind]
-        combination_number = list(df_filtered['Combination #'])[ind]
-
-        x = extracted_x[ind]
-        y = extracted_y[ind]
-
-        self.annotation.xy = (extracted_x[ind], extracted_y[ind])
-        self.annotation.set_text(f"Combination # {combination_number}\n{combination}\n(x, y) = ({x:.2f}, {y:.2f})")
+        self.annotation.xy = (x, y)
+        self.annotation.set_text(
+            f"Combination # {combination_number}\n{combination}\n(x, y) = ({x:.2f}, {y:.2f})"
+        )
         self.annotation.set_visible(True)
 
         self._destroy_popup()
@@ -3596,35 +3736,32 @@ class PlotUtils:
         dialog.show()
         dialog.raise_()
 
-    def show_combination_plot_dialog(self,subset,number):
-        xy_data = self.axe.collections[0].get_offsets()
+    def show_combination_plot_dialog(self, number):
+        # Search every registered scatter to find which one contains this
+        # combination number, and at what position within that scatter.
+        target_artist = None
+        target_ind = None
+        target_row = None
 
-        extracted_x = xy_data[:, 0]
-        extracted_y = xy_data[:, 1]
+        for artist, df_slice in self.scatter_metadata.items():
+            match = df_slice.index[df_slice['Combination #'] == int(number)]
+            if len(match):
+                target_artist = artist
+                target_ind = match[0]  # position within this artist's data
+                target_row = df_slice.iloc[target_ind]
+                break
 
-        df_filtered = self.model.get_filtered_result_df()
-        n = self.model.get_number_of_combination()
-        final_rank = pd.to_numeric(df_filtered['Final Rank (Utility)'], errors='coerce')
+        if target_artist is None:
+            # combination isn't in any currently plotted scatter (e.g. filtered out)
+            return
 
-        final_rank_pct = (final_rank / n) * 100
+        # true coordinates of that point, read from the artist that actually plotted it
+        x, y = target_artist.get_offsets()[target_ind]
 
-        if subset:
-            threshold = SUBSET_THRESHOLDS.get(subset, 0)
-            mask = final_rank_pct <= threshold
+        combination = target_row['2D Combination']
 
-            df_filtered = df_filtered[mask]
-
-        # convert panda series into list to reset the serie index which has been held even after filtering the data
-        # when filtering panda dataframe or series, the index stays unchanged
-        combination = list(df_filtered['2D Combination'])
-        combination_number = list(df_filtered['Combination #'])
-        ind = combination_number.index(int(number))
-
-        x = extracted_x[ind]
-        y = extracted_y[ind]
-
-        self.annotation.xy = (extracted_x[ind], extracted_y[ind])
-        self.annotation.set_text(f"Combination # {number}\n{combination[ind]}\n(x, y) = ({x:.2f}, {y:.2f})")
+        self.annotation.xy = (x, y)
+        self.annotation.set_text(f"Combination # {number}\n{combination}\n(x, y) = ({x:.2f}, {y:.2f})")
         self.annotation.set_visible(True)
 
         self._destroy_popup()

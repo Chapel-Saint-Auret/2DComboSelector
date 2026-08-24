@@ -353,7 +353,8 @@ PLOT_TYPES = [
     "Top Rank Overlap",
     "Practical Peak Capacity Rank vs Final Consensus Rank",
     "Detected Compound Mode Distribution",
-    "Detected Compound Combination Mode Distribution"
+    "Detected Compound Combination Mode Distribution",
+    "Metric Agreement Combination Mode Distribution"
 ]
 
 PLOT_DESCRIPTIONS = {
@@ -386,6 +387,8 @@ PLOT_DESCRIPTIONS = {
     "Detected Compound Mode Distribution":
         "",
     "Detected Compound Combination Mode Distribution":
+        "",
+    "Metric Agreement Combination Mode Distribution":
         ""
 }
 

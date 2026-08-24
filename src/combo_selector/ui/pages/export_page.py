@@ -127,6 +127,7 @@ class ExportPage(QFrame):
             "Separational Potential Table": self.model.get_separational_potential_table,
             "Final Evaluation Table": self.model.get_final_recommendation_table,
             "Overall Results Table": self.model.get_orthogonality_result_df,
+            "Old Approach Table": self.model.get_old_approach_table,
         }
 
         # --- Page frame & outer layout ----------------------------------------
@@ -250,8 +251,8 @@ class ExportPage(QFrame):
         # Figure type + list
         self.figure_type_chklist = CheckableTreeList()
         self.figure_type_chklist.setFixedHeight(175)
-        form_layout.addWidget(QLabel("Figure type:"))
-        form_layout.addWidget(self.figure_type_chklist)
+        # form_layout.addWidget(QLabel("Figure type:"))
+        # form_layout.addWidget(self.figure_type_chklist)
 
         # Subset panel (Orthogonality + Multi-Criteria)
         self._percentile_panel = FlatRadioGroupedButton(title='',
@@ -324,6 +325,7 @@ class ExportPage(QFrame):
             "Separational Potential Table",
             "Final Evaluation Table",
             "Overall Results Table",
+            "Old Approach Table"
         ]
         self.table_selection = CheckableTreeList(table_list)
         self.table_selection.setFixedHeight(175)
@@ -446,8 +448,10 @@ class ExportPage(QFrame):
     def update_figure_set(self):
         self.figure_list_chklist.clear()
 
-        df = self.model.get_filtered_result_df()[["Combination #", "Final Rank (Utility)"]].sort_values(
-            "Final Rank (Utility)")
+        # df = self.model.get_filtered_result_df()[["Combination #", "Final Rank (Utility)"]].sort_values(
+        #     "Final Rank (Utility)")
+
+        df = self.model.get_combination_df()
 
         set_list = list(df["Combination #"].apply(lambda x: f"Set {x}"))
 
