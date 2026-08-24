@@ -19,6 +19,8 @@ from PySide6.QtWidgets import (
     QApplication,
     QButtonGroup,
     QComboBox,
+    QFormLayout,
+    QDoubleSpinBox,
     QFrame,
     QGroupBox,
     QHBoxLayout,
@@ -36,6 +38,7 @@ from PySide6.QtWidgets import (
 from combo_selector.ui.config.table_color_config import COLOR_CONFIG_TABLE_FEASIBILITY, COLOR_CONFIG_FINAL_EVALUATION
 from combo_selector.core.workers import UpdateTableResultsWorker
 from combo_selector.ui.widgets.visualization_option_panel import VisualizationOptionsPanel,PlotState
+from combo_selector.ui.widgets.flat_radio_grouped_button import FlatRadioGroupedButton
 from combo_selector.ui.widgets.checkable_tree_list import CheckableTreeList
 from combo_selector.ui.widgets.section_help_button import SectionHelpButton
 from combo_selector.ui.widgets.circle_progress_bar import RoundProgressBar
@@ -184,6 +187,10 @@ class ResultsPage(QFrame):
             self.set_use_suggested_om_score_flag
         )
         self.compute_score_btn.clicked.connect(self.start_om_computation)
+        self.on_off_button.buttonClicked.connect(self.set_performance_penalty)
+        self.orthogonality_threshold.editingFinished.connect(lambda: self.model.set_orthogonality_threshold_penalty(self.orthogonality_threshold.value()))
+        self.elution_domain_threshold.editingFinished.connect(lambda: self.model.set_elution_threshold_penalty(self.elution_domain_threshold.value()))
+        self.apply_penalty_btn.clicked.connect(self.apply_performance_penalty)
         self.vizualation_settings_group.stateChanged.connect(self.plot_visualization_state_changed)
 
         self.orthogonality_table.filter_changed.connect(self.filter_table_changed)
@@ -200,7 +207,7 @@ class ResultsPage(QFrame):
         # us to pass both Matplotlib's 'event' and our custom 'subset' data simultaneously.
         self.cid = self.fig.canvas.mpl_connect(
             'pick_event',
-            lambda event: self.plot_utils.on_pick(event, subset=self.vizualation_settings_group.get_subset())
+            lambda event: self.plot_utils.on_pick(event)
         )
 
         # Connexion
@@ -290,6 +297,8 @@ class ResultsPage(QFrame):
         input_layout.addWidget(input_title)
         input_layout.addWidget(user_input_scroll_area)
 
+        self.minimum_performance_penalty_group = self._create_performance_penalty_group()
+
         # Create control groups
         orthogonality_score_group = self._create_score_calculation_group()
         # ranking_selection_group = self._create_ranking_group()
@@ -297,6 +306,8 @@ class ResultsPage(QFrame):
         self.vizualation_settings_group = VisualizationOptionsPanel()
         self.vizualation_settings_group.setStyleSheet(self._get_group_stylesheet())
 
+        user_input_frame_layout.addWidget(self.minimum_performance_penalty_group)
+        user_input_frame_layout.addSpacing(15)
         user_input_frame_layout.addWidget(orthogonality_score_group)
         user_input_frame_layout.addSpacing(15)
         user_input_frame_layout.addWidget(LineWidget("Horizontal"))
@@ -331,6 +342,67 @@ class ResultsPage(QFrame):
         ranking_layout.addSpacing(20)
 
         return ranking_selection_group
+
+    def _create_performance_penalty_group(self) -> QGroupBox:
+        """Create minimum performance penalty group.
+
+        Returns:
+            QGroupBox: Group box with orthogonality threshold and apply "ON/OFF" button.
+        """
+        performance_penalty_group = QGroupBox("Minimum Performance Penalty ")
+        performance_penalty_group.setStyleSheet(self._get_group_stylesheet())
+
+        performance_penalty_layout = QVBoxLayout()
+        performance_penalty_layout.setContentsMargins(5, 5, 5, 5)
+
+        performance_penalty_title_label = QLabel("Apply minimum performance penalty ")
+        performance_penalty_title_label.setObjectName("sub-title")
+
+        performance_penalty_help_btn = SectionHelpButton(
+            title="Performance penalty",
+            markdown_path="markdown/performance_penalty.md",
+            parent=performance_penalty_group,
+        )
+
+        performance_penalty_label_layout = QHBoxLayout()
+        performance_penalty_label_layout.addWidget(performance_penalty_title_label)
+        performance_penalty_label_layout.addWidget( performance_penalty_help_btn)
+        performance_penalty_label_layout.addStretch()
+
+        # Grouping panel (Recommendation + Feasibility)
+        self.on_off_button = FlatRadioGroupedButton(title='',
+                                                      items=["On", "Off"])
+
+        # self._grouping_panel.setFixedWidth(200)
+        # self._grouping_panel.buttonClicked.connect(self._on_grouping_toggled)
+
+        self.threshold_widget = QWidget()
+        size_policy = self.threshold_widget.sizePolicy()
+        size_policy.setRetainSizeWhenHidden(True)
+        self.threshold_widget.setSizePolicy(size_policy)
+        form_layout = QFormLayout(self.threshold_widget)
+
+        self.orthogonality_threshold = QDoubleSpinBox()
+        self.orthogonality_threshold.setFixedWidth(100)
+        self.orthogonality_threshold.setValue(0.30)
+
+        self.elution_domain_threshold = QDoubleSpinBox()
+        self.elution_domain_threshold.setFixedWidth(100)
+        self.elution_domain_threshold.setValue(0.25)
+
+        form_layout.addRow("Orthogonality threshold", self.orthogonality_threshold)
+        form_layout.addRow("Elution Domain threshold", self.elution_domain_threshold)
+
+        self.apply_penalty_btn = QPushButton("Apply")
+
+        performance_penalty_layout.addLayout(performance_penalty_label_layout)
+        performance_penalty_layout.addWidget(self.on_off_button)
+        performance_penalty_layout.addWidget(self.threshold_widget)
+        performance_penalty_layout.addWidget(self.apply_penalty_btn)
+
+        performance_penalty_group.setLayout(performance_penalty_layout)
+
+        return performance_penalty_group
 
     def _create_score_calculation_group(self) -> QGroupBox:
         """Create orthogonality score calculation group.
@@ -547,7 +619,14 @@ class ResultsPage(QFrame):
             "Detected Compound Combination Mode Distribution": (
                 self.plot_utils.plot_detected_compound_by_combination_combination_chrom_mode,
                 lambda s: {}
+            ),
+
+            "Metric Agreement Combination Mode Distribution": (
+                self.plot_utils.plot_metric_agreement_by_combination_combination_chrom_mode,
+                lambda s: {}
             )
+
+
         }
 
         plot_frame_layout.addWidget(plot_title)
@@ -1006,7 +1085,7 @@ class ResultsPage(QFrame):
             self.plot_utils.set_orthogonality_result_data(data)
 
         self.vizualation_settings_group.set_chrom_mode_item(["All mode"]+self.model.get_chromatographic_mode_list())
-        self.plot_visualization_state_changed()
+        self.vizualation_settings_group._emit_state()
 
     def hide_progress_overlay(self) -> None:
         """Hide the progress overlay and return to main view."""
@@ -1106,6 +1185,27 @@ class ResultsPage(QFrame):
         self.fig.canvas.draw()
         self.fig.canvas.flush_events()
 
+    def set_performance_penalty(self):
+
+        penalty = self.on_off_button.currentText()
+        show_threshold = penalty == 'On'
+
+        group_box = self.threshold_widget.parentWidget()
+        group_box.setUpdatesEnabled(False)
+        self.threshold_widget.setVisible(show_threshold)
+        group_box.setUpdatesEnabled(True)
+
+        self.model.set_performance_penalty(penalty)
+
+    def apply_performance_penalty(self):
+        self.model.compute_final_results()
+        self.progress_overlay.setGeometry(self.rect())
+        self.progress_overlay.raise_()
+        self.progress_overlay.show()
+        self.handle_progress_update(80)
+        self.model.compute_final_results()
+        self.handle_finished()
+
     def plot_visualization_state_changed(self, state = PlotState()):
         fn, get_kwargs = self.plot_dispatch[state.plot]
         fn(**get_kwargs(state))
@@ -1125,7 +1225,7 @@ class ResultsPage(QFrame):
 
         subset = self.vizualation_settings_group.get_subset()
 
-        self.plot_utils.show_combination_plot_dialog(number=data,subset=subset)
+        self.plot_utils.show_combination_plot_dialog(number=data)
 
     # ==========================================================================
     # Ranking & Filtering

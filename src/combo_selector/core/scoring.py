@@ -543,9 +543,9 @@ class Scoring:
 
         agreement_index_df = self.orthogonality_group_ranking_df.apply(iqr, axis=1)
 
-        agreement_index_df = 1 - (agreement_index_df / (self.nb_combination - 1))
+        agreement_index_df = (1 - (agreement_index_df / (self.nb_combination - 1)))*100
 
-        self.orthogonality_result_df['Agreement Indicator'] = agreement_index_df
+        self.orthogonality_result_df['Agreement Indicator'] = agreement_index_df.astype(int)
 
     def compute_outlier_metric_flag(self):
         """Flag combinations whose group rank deviates more than τ from the group median.

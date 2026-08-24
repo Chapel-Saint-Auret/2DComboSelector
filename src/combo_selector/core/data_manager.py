@@ -64,6 +64,7 @@ class DataManager:
         self.coverage_distribution_df = pd.DataFrame()
         self.coverage_score_df = pd.DataFrame()
         self.filtered_result_df = pd.DataFrame()
+        self.active_multi_column_filters = {}
         self.final_recommendation_table_df = pd.DataFrame()
         self.gradient_end_time_df = pd.DataFrame()
         self.normalized_retention_time_df = pd.DataFrame()
@@ -88,7 +89,9 @@ class DataManager:
         self.nb_combination = 0
         self.nb_condition = 0
         self.use_suggested_score = True
-
+        self.penalty_is_on = 'On'
+        self.orthogonality_threshold_penalty = 0.3
+        self.elution_threshold_penalty = 0.25
         # Status Indicators
         self.elution_data_status = "no_data"
         self.peak_capacity_status = "no_data"
@@ -703,6 +706,8 @@ class DataManager:
                 0, "Peak #", range(1, len(self.retention_time_df) + 1)
             )
 
+            #in case loaded data are already normalized
+            self.normalized_retention_time_df = self.retention_time_df.copy()
             current_column = 0
             set_number = 1
 
