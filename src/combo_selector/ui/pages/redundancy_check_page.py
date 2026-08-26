@@ -206,11 +206,8 @@ class RedundancyCheckPage(QFrame):
 
         # Correlation parameter group
         correlation_parameter_group = self._create_correlation_parameter_group()
-
-        # Info group
         user_input_frame_layout.addWidget(correlation_parameter_group)
         user_input_frame_layout.addStretch()
-        # user_input_frame_layout.addWidget(info_page_group)
 
         return input_section
 
