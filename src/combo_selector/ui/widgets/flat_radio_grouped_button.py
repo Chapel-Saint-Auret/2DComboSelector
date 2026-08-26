@@ -1,12 +1,17 @@
+"""Custom grouped radio buttons with a segmented-control appearance."""
+
 from PySide6.QtCore import Qt, Signal, QRectF, QPointF
 from PySide6.QtGui import QColor, QPainter, QPen, QPainterPath, QFont
 from PySide6.QtWidgets import QWidget, QHBoxLayout, QVBoxLayout, QSizePolicy, QLabel
 
 
 class _FlatRadioItem(QWidget):
+    """Single clickable item rendered inside the grouped radio control."""
+
     clicked = Signal(str)
 
     def __init__(self, text: str, is_first: bool = False, is_last: bool = False, parent=None):
+        """Initialize one segmented radio item."""
         super().__init__(parent)
         self._text = text
         self._checked = False
@@ -17,12 +22,15 @@ class _FlatRadioItem(QWidget):
         self.setMinimumHeight(42)
 
     def text(self) -> str:
+        """Return the displayed item label."""
         return self._text
 
     def isChecked(self) -> bool:
+        """Return whether the item is currently selected."""
         return self._checked
 
     def setChecked(self, checked: bool):
+        """Update the checked state and repaint when needed."""
         if self._checked == checked:
             return
         self._checked = checked
@@ -93,9 +101,12 @@ class _FlatRadioItem(QWidget):
 
 
 class _FlatRadioGroupPanel(QWidget):
+    """Container that manages selection across multiple radio items."""
+
     buttonClicked = Signal(str)
 
     def __init__(self, items: list[str], parent=None):
+        """Build the segmented control from the provided labels."""
         super().__init__(parent)
 
         self._items: list[_FlatRadioItem] = []
@@ -145,14 +156,17 @@ class _FlatRadioGroupPanel(QWidget):
         self.buttonClicked.emit(text)
 
     def currentText(self) -> str:
+        """Return the label of the currently selected item."""
         if 0 <= self._current_index < len(self._items):
             return self._items[self._current_index].text()
         return ""
 
     def currentIndex(self) -> int:
+        """Return the index of the currently selected item."""
         return self._current_index
 
     def setCurrentIndex(self, index: int):
+        """Select the item at ``index`` when it is in range."""
         if not (0 <= index < len(self._items)):
             return
         self._current_index = index
@@ -161,9 +175,12 @@ class _FlatRadioGroupPanel(QWidget):
 
 
 class FlatRadioGroupedButton(QWidget):
+    """Composite widget exposing a titled segmented radio-button control."""
+
     buttonClicked = Signal(str)
 
     def __init__(self, items: list[str], title: str = "", parent=None):
+        """Create the title label and grouped radio-button panel."""
         super().__init__(parent)
 
         self._title_label = QLabel(title, self)
@@ -188,17 +205,22 @@ class FlatRadioGroupedButton(QWidget):
         layout.addWidget(self._panel)
 
     def setTitle(self, title: str):
+        """Set the optional group title text."""
         self._title_label.setText(title)
         self._title_label.setVisible(bool(title))
 
     def title(self) -> str:
+        """Return the current group title."""
         return self._title_label.text()
 
     def currentText(self) -> str:
+        """Return the currently selected item label."""
         return self._panel.currentText()
 
     def currentIndex(self) -> int:
+        """Return the currently selected item index."""
         return self._panel.currentIndex()
 
     def setCurrentIndex(self, index: int):
+        """Select the item at ``index`` in the underlying panel."""
         self._panel.setCurrentIndex(index)

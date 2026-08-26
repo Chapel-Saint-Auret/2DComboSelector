@@ -1,11 +1,16 @@
+"""Editable combo box with filtered completion support."""
+
 import sys
 
-from PySide6.QtWidgets import (QComboBox, QLineEdit, QVBoxLayout,
-                                QWidget, QCompleter,QApplication)
-from PySide6.QtCore import Qt,QSortFilterProxyModel
+from PySide6.QtCore import Qt, QSortFilterProxyModel
+from PySide6.QtWidgets import QApplication, QComboBox, QCompleter, QVBoxLayout, QWidget
+
 
 class SearchableComboBox(QComboBox):
+    """Combo box that filters completion suggestions as the user types."""
+
     def __init__(self, parent=None):
+        """Initialize the editable combo box and its proxy completer."""
         super().__init__(parent)
         self.setFocusPolicy(Qt.StrongFocus)
         self.setEditable(True)
@@ -20,6 +25,7 @@ class SearchableComboBox(QComboBox):
 
         self.setCompleter(completer)
 
+        self.lineEdit().textEdited.connect(self.filter_model.setFilterFixedString)
         self.lineEdit().textEdited.connect(self.filter_model.setFilterFixedString)
 
 if __name__ == "__main__":
@@ -40,4 +46,3 @@ if __name__ == "__main__":
 
     window.show()
     sys.exit(app.exec())
-

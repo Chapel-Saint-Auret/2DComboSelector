@@ -6,13 +6,19 @@ Dynamically shows/hides sub-option panels depending on the selected plot type.
 """
 
 from PySide6.QtWidgets import (
-    QApplication, QGroupBox, QVBoxLayout, QHBoxLayout,
-    QLabel, QComboBox, QWidget, QButtonGroup, QRadioButton,
-    QFrame, QSizePolicy,
+    QApplication,
+    QButtonGroup,
+    QComboBox,
+    QFrame,
+    QGroupBox,
+    QHBoxLayout,
+    QLabel,
+    QRadioButton,
+    QVBoxLayout,
+    QWidget,
 )
-from PySide6.QtCore import Qt,Signal
+from PySide6.QtCore import Signal
 from PySide6.QtGui import QFont
-
 
 from dataclasses import dataclass
 
@@ -32,6 +38,7 @@ import sys
 # ---------------------------------------------------------------------------
 
 def _make_separator():
+    """Create a thin horizontal separator used between option groups."""
     line = QFrame()
     line.setFrameShape(QFrame.HLine)
     line.setFrameShadow(QFrame.Sunken)
@@ -110,7 +117,10 @@ class RadioPanel(QWidget):
 # ---------------------------------------------------------------------------
 
 class LabelledCombo(QWidget):
+    """Stack a bold label above a combo box."""
+
     def __init__(self, label: str, items: list[str], parent=None):
+        """Create the label and populate the combo box."""
         super().__init__(parent)
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
@@ -136,15 +146,17 @@ class LabelledCombo(QWidget):
 # ---------------------------------------------------------------------------
 @dataclass
 class PlotState:
-    plot: str  = 'Orthogonality Space'        # always set
-    subset:     str = 'All'   # "All" | "Top 50%" | "Top 20%" | "Top 10%"
-    axis_scale: str = 'Auto'  # "Auto" | "Linear" | "Log"
-    type:       str = 'Heatmap'  # "Heatmap" | "Boxplot"
-    view:       str = 'Rank'  # "Rank" | "Utility"
-    criteria:   str = 'All criteria'  # only when view == "Boxplot"
-    grouping:   str = 'Global' # "Global" | "By mode"
-    chrom_mode: str = 'All mode'
-    recommendation: str = 'All recommendation'
+    """Current visualization selections for the options panel."""
+
+    plot: str = "Orthogonality Space"
+    subset: str = "All"
+    axis_scale: str = "Auto"
+    type: str = "Heatmap"
+    view: str = "Rank"
+    criteria: str = "All criteria"
+    grouping: str = "Global"
+    chrom_mode: str = "All mode"
+    recommendation: str = "All recommendation"
 
 
 class VisualizationOptionsPanel(QGroupBox):

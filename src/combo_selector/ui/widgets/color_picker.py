@@ -6,9 +6,19 @@ palette colors, and supporting palette widget classes used internally.
 
 import sys
 
-from PySide6.QtCore import QSize,Signal
-
-from PySide6.QtWidgets import QApplication, QPushButton, QHBoxLayout, QVBoxLayout,QWidget,QWidgetAction,QGridLayout, QColorDialog, QDialog,QMenu,QToolButton
+from PySide6.QtCore import QSize, Signal
+from PySide6.QtWidgets import (
+    QApplication,
+    QColorDialog,
+    QDialog,
+    QGridLayout,
+    QHBoxLayout,
+    QMenu,
+    QPushButton,
+    QVBoxLayout,
+    QWidget,
+    QWidgetAction,
+)
 
 PALETTES = {
     # bokeh paired 12
@@ -157,8 +167,6 @@ class ColorPicker(QWidget):
         self.vLayout.setContentsMargins(0, 0, 0, 0)
         self.vLayout.setSpacing(0)
         self.colorPicketBtn = QPushButton()
-        # self.colorPicketBtn = QToolButton()
-        # self.colorPicketBtn.setPopupMode(QToolButton.MenuButtonPopup)
         self.menu = QMenu()
         self.colorPicketBtn.setMenu(self.menu)
         self.colorPicketBtn.setStyleSheet("background-color:#000000;")
@@ -218,8 +226,11 @@ class ColorPicker(QWidget):
         """
         self.menu.setVisible(False)
         self.setFixedHeight(self.colorPicketBtn.sizeHint().height())
+        color = QColorDialog.getColor(parent=self, title="Select custom color")
+        if not color.isValid():
+            return
         self.colorPicketBtn.setStyleSheet("background-color:{};".format(color.name()))
-        self.color = color
+        self.color = color.name()
         self.selected.emit()
 
     def get_color(self):

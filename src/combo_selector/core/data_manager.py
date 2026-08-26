@@ -19,7 +19,6 @@ from combo_selector.core.orthogonality_utils import (
     load_table_with_header_anywhere,
     normalize_x_y_series,
 )
-from combo_selector.ui.widgets.nan_policy_widget import NanPolicyDialog
 
 
 class DataManager:

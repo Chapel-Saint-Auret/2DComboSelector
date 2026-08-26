@@ -19,13 +19,12 @@ from PySide6.QtWidgets import (
 )
 
 from combo_selector.utils import resource_path
-from combo_selector.ui.widgets.info_dialog import InfoPopupDialog
 from combo_selector.constants import (
-    PLOT_SIZE,
-    HOW_IT_WORKS_TEXT,
     USER_GUIDE_TEXT,
     BEFORE_YOU_BEGIN_TEXT,
+    HOW_IT_WORKS_TEXT,
 )
+from combo_selector.ui.widgets.info_dialog import InfoPopupDialog
 
 
 class HomePage(QFrame):

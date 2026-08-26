@@ -303,6 +303,16 @@ def resource_path(relative_path: str) -> str:
 
 
 def get_symmetric_mode_dict(data_dict, key):
+    """Return the value for a mode pair, checking both key orders.
+
+    Args:
+        data_dict (dict): Mapping keyed by strings such as ``"A vs B"``.
+        key (str): Preferred lookup key.
+
+    Returns:
+        Any: The matching value if either ``key`` or its reversed form exists,
+        otherwise ``"Unknown"``.
+    """
     if key in data_dict:
         return data_dict[key]
 
@@ -857,9 +867,14 @@ def build_box_count_curve(x, y, i_min=2, i_max=30, i_step=1):
     return curve
 
 def linear_regression(x, y):
-    """
-    Simple least-squares linear regression.
-    Returns slope, intercept, R^2.
+    """Compute a simple least-squares regression for paired series.
+
+    This helper is currently retained for future metric work and is not called
+    by the active computation pipeline.
+
+    Returns:
+        tuple[float, float, float]: Slope, intercept, and coefficient of
+        determination (R²).
     """
     n = len(x)
     if n < 2:

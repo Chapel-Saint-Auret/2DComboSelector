@@ -20,24 +20,23 @@ Background workers are used for:
 
 import sys
 
-from PySide6.QtCore import QThreadPool,Qt
+from PySide6.QtCore import Qt, QThreadPool
 from PySide6.QtGui import QIcon
-from PySide6.QtWidgets import QApplication,QFrame
+from PySide6.QtWidgets import QApplication
 
 
 from combo_selector.core.orthogonality import Orthogonality
 from combo_selector.core.workers import RedundancyWorker
 from combo_selector.ui.pages.export_page import ExportPage
 from combo_selector.ui.pages.home_page import HomePage
-# from combo_selector.ui.pages.import_data_page import ImportDataPage
 from combo_selector.ui.pages.import_data_page import ImportDataPage
 from combo_selector.ui.pages.om_calculation_page import OMCalculationPage
 from combo_selector.ui.pages.plot_pairwise_page import PlotPairWisePage
 from combo_selector.ui.pages.redundancy_check_page import RedundancyCheckPage
 from combo_selector.ui.pages.results_page import ResultsPage
+from combo_selector.ui.widgets.info_dialog import AboutDialog
 from combo_selector.ui.widgets.custom_main_window import CustomMainWindow
 from combo_selector.utils import resource_path
-from combo_selector.ui.widgets.info_dialog import AboutDialog
 
 
 class ComboSelectorMain(CustomMainWindow):

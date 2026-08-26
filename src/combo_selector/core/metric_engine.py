@@ -7,9 +7,8 @@ imported and unit-tested without a running Qt application.
 """
 
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from math import acos, atan, log2, pi, sqrt, tan,log
+from math import acos, atan, log2, pi, sqrt, tan
 
-import random
 import numpy as np
 import pandas as pd
 
@@ -29,12 +28,11 @@ from scipy.stats import (
 from combo_selector.core.orthogonality_utils import (
     FuncStatus,
     METRIC_MAPPING,
-    UI_TO_MODEL_MAPPING,
-    compute_bin_box_mask_color,
     compute_percent_fit_for_set,
+    compute_bin_box_mask_color,
     build_box_count_curve,
+    extract_set_number,
     find_best_schure_segment,
-    extract_set_number
 )
 
 
