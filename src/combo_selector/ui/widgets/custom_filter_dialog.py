@@ -600,6 +600,7 @@ class MultiListView(QTableView):
 
 
 class FilteredListView(QWidget):
+    """Simple usage example showing the filter dialog."""
     """Checkable list with text filter and regex support.
 
     Displays a list of items with checkboxes and provides a filter
@@ -781,7 +782,6 @@ class FilteredListView(QWidget):
 # =============================================================================
 
 if __name__ == "__main__":
-    """Simple usage example showing the filter dialog."""
 
     app = QApplication(sys.argv)
 

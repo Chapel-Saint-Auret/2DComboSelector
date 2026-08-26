@@ -22,6 +22,7 @@ from PySide6.QtGui import QColor, QFont, QPainter, QPaintEvent, QPen
 
 
 class RoundProgressBar(QtWidgets.QWidget):
+    """Simple usage example showing progress animation."""
     """Customizable circular progress bar widget.
 
     A highly flexible circular progress indicator that supports multiple
@@ -478,7 +479,6 @@ class RoundProgressBar(QtWidgets.QWidget):
 # =============================================================================
 
 if __name__ == "__main__":
-    """Simple usage example showing progress animation."""
 
     app = QtWidgets.QApplication(sys.argv)
 

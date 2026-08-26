@@ -64,7 +64,7 @@ class TablePanel(QWidget):
         bold_columns=None,
         parent: QWidget | None = None,
     ) -> None:
-        """Initialize the tablepanel."""
+        """Initialize the table panel."""
         super().__init__(parent)
 
         self.threadpool = QThreadPool()
@@ -170,11 +170,11 @@ class TablePanel(QWidget):
         )
 
     def button_state_has_changed(self):
+        """Refresh table filters after a header button state change."""
 
         filter_spec_list = []
 
         for widget in self.header_widgets:
-        """Button state has changed."""
             filter_spec_list.append(widget.get_filter_spec())
 
         self.table.getProxyModel().set_multi_column_filters(filter_spec_list)
@@ -286,6 +286,7 @@ class StyledTable(QWidget):
         enable_decoration: bool = False,
         has_tooltip: bool = False,
     ) -> None:
+        """Initialize the styled table container and its optional tab shell."""
         super().__init__()
 
         self.sheet_index = {}
@@ -348,7 +349,6 @@ class StyledTable(QWidget):
             card.layout().addWidget(self.tab_widget, 1)
 
         else:
-        """Initialize the styledtable."""
             card.layout().addWidget(self.table_panel, 1)
 
         card.layout().addWidget(self.footer)

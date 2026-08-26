@@ -211,6 +211,7 @@ class DataManager:
     # ------------------------------------------------------------------
 
     def remove_compound(self):
+        """Remove compounds that exceed the configured NaN threshold."""
         self.removed_compound_list = []
         remove_compound_index = []
 
@@ -220,7 +221,6 @@ class DataManager:
 
             # nan_policy_threshold is % of total condition
             if (nan_count * 100) / self.nb_condition > self.nan_policy_option1_threshold:
-        """Remove compound."""
                 remove_compound_index.append(row_data[0])
                 self.removed_compound_list.append(row_data[1][1])
 
@@ -229,6 +229,7 @@ class DataManager:
         self.retention_time_df = self.retention_time_df.fillna("").infer_objects(copy=False)
 
     def remove_condition(self):
+        """Remove conditions that exceed the configured NaN threshold."""
         self.removed_condition_list = []
 
         for column_data in self.retention_time_df.T.iterrows():
@@ -237,7 +238,6 @@ class DataManager:
 
             # nan_policy_threshold is % of total condition
             if (nan_count * 100) / self.nb_peaks > self.nan_policy_option2_threshold:
-        """Remove condition."""
                 self.removed_condition_list.append(column_data[0])
 
         self.retention_time_df = self.retention_time_df.drop(columns=self.removed_condition_list)
@@ -287,10 +287,10 @@ class DataManager:
                 continue
 
             def _blank_if_below_threshold(value):
+                """Blank if below threshold."""
                 if value == "" or pd.isna(value):
                     return value
                 try:
-                """Blank if below threshold."""
                     return "" if float(value) < threshold else value
                 except (TypeError, ValueError):
                     return value

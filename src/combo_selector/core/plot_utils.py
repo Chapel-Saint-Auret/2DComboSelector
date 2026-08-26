@@ -1159,6 +1159,7 @@ class PlotUtils:
         self.__draw_figure()
 
     def plot_coverage_vs_distribution(self):
+        """Plot coverage score against distribution score."""
 
         x = self.orthogonality_result_data['Coverage Score']
         y = self.orthogonality_result_data['Distribution Score']
@@ -1175,13 +1176,13 @@ class PlotUtils:
         # 3) Hide legend if present
         leg = self.axe.get_legend()
         if leg:
-        """Plot coverage vs distribution."""
             leg.set_visible(False)
 
         self.fig.canvas.draw()
         self.fig.canvas.flush_events()
 
     def plot_peak_capacity_vs_old_orthogonality_score(self):
+        """Plot peak capacity against the suggested orthogonality score."""
 
         self.fig.clear()
         self.axe = self.fig.add_subplot(111)
@@ -1196,7 +1197,6 @@ class PlotUtils:
         peak_capacity_available = pd.to_numeric(x, errors='coerce').notna().any()
 
         if not peak_capacity_available:
-        """Plot peak capacity vs old orthogonality score."""
             self._show_missing_data()
             return
 
@@ -1213,6 +1213,7 @@ class PlotUtils:
         self.fig.canvas.flush_events()
 
     def plot_peak_capacity_vs_final_consensus_utility(self):
+        """Plot peak capacity vs final consensus utility."""
 
         self.fig.clear()
         self.axe = self.fig.add_subplot(111)
@@ -1227,7 +1228,6 @@ class PlotUtils:
         peak_capacity_available = pd.to_numeric(x, errors='coerce').notna().any()
 
         if not peak_capacity_available:
-        """Plot peak capacity vs final consensus utility."""
             self._show_missing_data()
             return
 
@@ -1244,6 +1244,7 @@ class PlotUtils:
         self.fig.canvas.flush_events()
 
     def plot_top_ranked_combination(self,number_of_rank_to_show):
+        """Plot top ranked combination."""
 
         if number_of_rank_to_show == 'all':
             index = None
@@ -1267,13 +1268,13 @@ class PlotUtils:
         # 3) Hide legend if present
         leg = self.axe.get_legend()
         if leg:
-        """Plot top ranked combination."""
             leg.set_visible(False)
 
         self.fig.canvas.draw()
         self.fig.canvas.flush_events()
 
     def plot_orthogonality_space(self, subset: str = "All"):
+        """Plot orthogonality space."""
 
         self.fig.clear()
         self.scatter_metadata.clear()
@@ -1316,8 +1317,8 @@ class PlotUtils:
         # Same palette as plot_multi_criteria_space
         # ------------------------------------------------------------------
         def get_color(pct):
-            if pct <= 1:
             """Return color."""
+            if pct <= 1:
                 return '#1A3A9E'   # Top 1%
             elif pct <= 5:
                 return '#A0379A'   # Top 5%
@@ -1378,7 +1379,6 @@ class PlotUtils:
             self.axe.set_xlim(0, 1)
             self.axe.set_ylim(0, 1)
         else:
-        """Plot orthogonality space."""
             x_min, x_max = x.min(), x.max()
             y_min, y_max = y.min(), y.max()
 
@@ -1570,6 +1570,7 @@ class PlotUtils:
         self.fig.canvas.flush_events()
 
     def plot_multi_criteria_space(self, subset: str = "All", axis_scale: str = "Auto"):
+        """Plot multi criteria space."""
 
         self.fig.clear()
         self.axe = self.fig.add_subplot(111)
@@ -1613,8 +1614,8 @@ class PlotUtils:
             return
 
         def get_color(pct):
-            if pct <= 1:
             """Return color."""
+            if pct <= 1:
                 return '#1A3A9E'   # Top 1%
             elif pct <= 5:
                 return '#A0379A'   # Top 5%
@@ -1653,6 +1654,7 @@ class PlotUtils:
         # Axis scale helper
         # ------------------------------------------------------------------
         def apply_scale(ax, subset: str, scale: str):
+            """Apply scale."""
 
             if subset == "All":
                 self.axe.set_xlim(0, 1)
@@ -1671,7 +1673,6 @@ class PlotUtils:
             ax.set_xscale(s)
             ax.set_yscale(s)
             if s == 'log':
-            """Apply scale."""
                 ax.xaxis.set_major_formatter(
                     ticker.FuncFormatter(lambda val, _: f"{int(val):,}")
                 )
@@ -1804,7 +1805,6 @@ class PlotUtils:
                     'Vertical jitter added for visibility; peak rate values are near-identical.'
                 )
             else:
-        """Plot multi criteria space."""
                 plot_subtitle = f'{x_label} vs orthogonality utility · {subset}'
 
         # ------------------------------------------------------------------
@@ -1830,6 +1830,7 @@ class PlotUtils:
         self.fig.canvas.flush_events()
 
     def plot_chroma_mode_performance(self, type: str = "Heatmap", view: str = "Rank", criteria: str = None):
+        """Plot chroma mode performance."""
         self.fig.clear()
 
         # heatmap branch below uses imshow, not scatter, so nothing to register there.
@@ -2007,6 +2008,7 @@ class PlotUtils:
                 return y_data + np.random.normal(0, amplitude, size=len(y_data))
 
             def _draw_single_boxplot(ax, col_name, title, show_title=True):
+                """Draw single boxplot."""
                 labels = []
                 values = []  # y-values per mode, feeds ax.boxplot
                 row_slices = []  # df rows per mode, same order/length as values
@@ -2087,7 +2089,6 @@ class PlotUtils:
                     if title in "Peak rate (%)":
                         ax.set_ylabel("Peak rate", fontsize=8)
                     else:
-                """Draw single boxplot."""
                         ax.set_ylabel("Rank", fontsize=8)
 
                 ax.set_xticks(range(1, len(labels) + 1))
@@ -2160,7 +2161,6 @@ class PlotUtils:
                     self._show_missing_data()
                     return
                 if criteria == "Peak Capacity" and not peak_capacity_available:
-        """Plot chroma mode performance."""
                     self._show_missing_data()
                     return
 
@@ -2185,13 +2185,13 @@ class PlotUtils:
         self.scatter_metadata.clear()
 
         def apply_scale(ax, scale: str):
+            """Apply scale."""
             if scale == "Auto":
                 return
             s = scale.lower()
             ax.set_xscale(s)
             ax.set_yscale(s)
             if scale == "Log":
-            """Apply scale."""
                 ax.xaxis.set_major_formatter(
                     ticker.FuncFormatter(lambda val, _: f"{int(val):,}")
                 )
@@ -2433,11 +2433,6 @@ class PlotUtils:
                     self.axe.set_ylabel("Peak rate (%)", fontsize=8)
                     self.axe.spines[["top", "right"]].set_visible(False)
 
-                # # Hide unused grid cells
-                # for j in range(n_modes, nrows * ncols):
-        """Plot feasibility profile."""
-                #     self.fig.add_subplot(gs[j // ncols, j % ncols]).axis("off")
-
                 legend_handles = [
                     patches.Patch(facecolor="#1a7a4a", edgecolor="none", label="Highly recommended"),
                     patches.Patch(facecolor="#6abf4b", edgecolor="none", label="Recommended"),
@@ -2466,6 +2461,7 @@ class PlotUtils:
         self.fig.canvas.flush_events()
 
     def plot_recommendation_distribution(self, grouping: str = "Global"):
+        """Plot recommendation distribution."""
         self.fig.clear()
         self.axe = self.fig.add_subplot(111)
 
@@ -2555,7 +2551,6 @@ class PlotUtils:
             # ← Total on top of each bar (original style)
             max_total = max(bottoms) if bottoms else 1
             for i, total in enumerate(bottoms):
-        """Plot recommendation distribution."""
                 self.axe.text(
                     i, total + max_total * 0.01,
                     f"{total:,}",
@@ -2603,6 +2598,7 @@ class PlotUtils:
         self.fig.canvas.flush_events()
 
     def plot_final_rank_by_recommendation_class(self,recommendation: str = 'All recommendation'):
+        """Plot final rank by recommendation class."""
         self.fig.clear()
         self.set_annotation()
         self.axe = self.fig.add_subplot(111)
@@ -2819,7 +2815,6 @@ class PlotUtils:
             for mode in seen_modes
         ]
         if legend_handles:
-        """Plot final rank by recommendation class."""
             self.axe.legend(
                 handles=legend_handles,
                 title="Chromatographic mode",
@@ -2846,6 +2841,7 @@ class PlotUtils:
         self.fig.canvas.flush_events()
 
     def plot_detected_compound_by_chrom_mode(self):
+        """Plot detected compound by chrom mode."""
         self.fig.clear()
         self.axe = self.fig.add_subplot(111)
 
@@ -2894,7 +2890,6 @@ class PlotUtils:
             patch.set_edgecolor(color)
             patch.set_linewidth(1.0)
         for median in box["medians"]:
-        """Plot detected compound by chrom mode."""
             median.set_color("black")
             median.set_linewidth(1.2)
 
@@ -2930,6 +2925,7 @@ class PlotUtils:
         self.fig.canvas.flush_events()
 
     def plot_detected_compound_by_combination_combination_chrom_mode(self):
+        """Plot detected compound by combination combination chrom mode."""
         self.fig.clear()
         self.axe = self.fig.add_subplot(111)
 
@@ -2976,7 +2972,6 @@ class PlotUtils:
             patch.set_edgecolor(color)
             patch.set_linewidth(1.0)
         for median in box["medians"]:
-        """Plot detected compound by combination combination chrom mode."""
             median.set_color("black")
             median.set_linewidth(1.2)
 
@@ -3012,6 +3007,7 @@ class PlotUtils:
         self.fig.canvas.flush_events()
 
     def plot_metric_agreement_by_combination_combination_chrom_mode(self):
+        """Plot metric agreement by combination combination chrom mode."""
         self.fig.clear()
         self.axe = self.fig.add_subplot(111)
 
@@ -3058,7 +3054,6 @@ class PlotUtils:
             patch.set_edgecolor(color)
             patch.set_linewidth(1.0)
         for median in box["medians"]:
-        """Plot metric agreement by combination combination chrom mode."""
             median.set_color("black")
             median.set_linewidth(1.2)
 
@@ -3388,6 +3383,7 @@ class PlotUtils:
         self.fig.canvas.flush_events()
 
     def plot_rank_shift_by_combination(self, subset: str = "All"):
+        """Plot rank shift by combination."""
         self.fig.clear()
         self.axe = self.fig.add_subplot(111)
 
@@ -3419,7 +3415,6 @@ class PlotUtils:
 
         valid = old_rank.notna() & new_rank.notna()
         if not valid.any():
-        """Plot rank shift by combination."""
             self._show_missing_data()
             return
 
@@ -3455,6 +3450,7 @@ class PlotUtils:
         self.fig.canvas.flush_events()
 
     def plot_top_rank_overlap(self):
+        """Plot top rank overlap."""
         self.fig.clear()
         self.axe = self.fig.add_subplot(111)
 
@@ -3539,7 +3535,6 @@ class PlotUtils:
         annot_fs = max(8, 11 - max(0, len(top_ks) - 3))
         label_offset = y_max * 0.02
         for bar, k, count, pct, color in zip(bars, top_ks, overlaps, percentages, bar_colors):
-        """Plot top rank overlap."""
             self.axe.text(
                 bar.get_x() + bar.get_width() / 2,
                 bar.get_height() + label_offset,
@@ -3568,9 +3563,9 @@ class PlotUtils:
         self.fig.canvas.flush_events()
 
     def set_annotation(self,annotation = None):
+        """Set annotation."""
 
         if annotation:
-        """Set annotation."""
             self.annotation = annotation
         else:
             self.annotation = self.axe.annotate("", xy=(0, 0), xytext=(10, 10),
@@ -3583,6 +3578,7 @@ class PlotUtils:
             self.annotation.set_visible(False)
 
     def on_pick(self, event):
+        """Handle point selection from a pick event."""
         df_for_artist = self.scatter_metadata.get(event.artist)
         if df_for_artist is None:
             return
@@ -3602,7 +3598,6 @@ class PlotUtils:
         target_axes = event.artist.axes
         if self.annotation is None or self.annotation.axes is not target_axes:
             if self.annotation is not None:
-        """Handle pick."""
                 self.annotation.remove()
             self.annotation = target_axes.annotate("", xy=(0, 0), xytext=(10, 10),
                                                                          fontsize='x-small',
@@ -3625,6 +3620,7 @@ class PlotUtils:
         self.fig.canvas.flush_events()
 
     def on_motion(self, event, subset=None):
+        """Handle motion."""
         if event.inaxes is None:
             self._hovered_ind = None
             self.hide_popup()
@@ -3660,7 +3656,6 @@ class PlotUtils:
         nearest = int(np.argmin(dists))
 
         if dists[nearest] <= 8:
-        """Handle motion."""
             if self._hovered_ind != nearest:
                 self._hovered_ind = nearest
                 combination_number = list(df_filtered['Combination #'])[nearest]
@@ -3674,8 +3669,8 @@ class PlotUtils:
                 self.hide_popup()
 
     def _destroy_popup(self):
-        if hasattr(self, 'pop_up_fig'):
         """Destroy popup."""
+        if hasattr(self, 'pop_up_fig'):
             if hasattr(self.pop_up_fig, '_popup_dialog') and self.pop_up_fig._popup_dialog:
                 self.pop_up_fig._popup_dialog.hide()
                 self.pop_up_fig._popup_dialog.deleteLater()
@@ -3683,8 +3678,8 @@ class PlotUtils:
             del self.pop_up_fig
 
     def hide_popup(self):
-        if hasattr(self, 'pop_up_fig') and hasattr(self.pop_up_fig, '_popup_dialog') and self.pop_up_fig._popup_dialog:
         """Hide popup."""
+        if hasattr(self, 'pop_up_fig') and hasattr(self.pop_up_fig, '_popup_dialog') and self.pop_up_fig._popup_dialog:
             self.pop_up_fig._popup_dialog.hide()
 
     def show_popup_at(self, event=None, parent=None):
@@ -3753,6 +3748,7 @@ class PlotUtils:
         dialog.raise_()
 
     def show_combination_plot_dialog(self, number):
+        """Show combination plot dialog."""
         # Search every registered scatter to find which one contains this
         # combination number, and at what position within that scatter.
         target_artist = None
@@ -3768,7 +3764,6 @@ class PlotUtils:
                 break
 
         if target_artist is None:
-        """Show combination plot dialog."""
             # combination isn't in any currently plotted scatter (e.g. filtered out)
             return
 

@@ -319,12 +319,12 @@ class SectionHelpButton(QToolButton):
             title: str,
             markdown_path: str,
     ) -> "SectionHelpButton":
+        """Create and attach a help button to a group box."""
         btn = cls(title, markdown_path, parent=group)
         btn.adjustSize()
 
         def _place_button():
             """Place button."""
-        """Create group."""
             font_metrics = group.fontMetrics()
             font_height = font_metrics.height()
             title_text = group.title() or title

@@ -258,6 +258,7 @@ class Redundancy:
         self.coverage_distribution_df = self.coverage_distribution_df.T
 
     def fill_correlation_group_average(self,matrix_type: str = 'Values'):
+        """Fill average redundancy values for each correlation group."""
         average_redundancy_list = []
 
         for group, Correlated_Metrics_list in zip(self.correlation_group_df['Group'],
@@ -267,7 +268,6 @@ class Redundancy:
             if matrix_type == 'Values':
                 corr_matrix = self.orthogonality_metric_corr_matrix_df.corr(method='spearman')
             else:
-        """Fill correlation group average."""
                 corr_matrix = self.orthogonality_metric_ranking_corr_matrix_df.corr(method='pearson')
 
             corr_matrix = corr_matrix.loc[

@@ -632,6 +632,7 @@ class OMCalculationPage(QFrame):
         return progress_overlay
 
     def on_pick(self,event):
+        """Handle plot selection changes triggered by pick events."""
         self.selected_axe = event.artist.axes
 
         # Find selector index for current axes
@@ -642,7 +643,6 @@ class OMCalculationPage(QFrame):
         ]
 
         if matching_indices:
-        """Handle pick."""
             index = matching_indices[0]
             self.selected_annotation = self.om_selector_map[index]["annotation"]
 
@@ -804,7 +804,6 @@ class OMCalculationPage(QFrame):
             - Triggers table update then final results preparation
             - Hides overlay after all operations complete
         """
-        """Handle computation completion with staged progress updates."""
         # Stop animation timer
         self._progress_animation_timer.stop()
 

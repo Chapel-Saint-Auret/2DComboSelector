@@ -78,12 +78,7 @@ class MetricEngine:
         return self.orthogonality_dict
 
     def get_table_data(self) -> list:
-        """Get the table data containing computed metrics for tabular display.
-
-        Returns:
-            list: A list of lists, where each inner list represents a row of computed metrics
-                  for a specific set.
-        """
+        """Return the table data used for tabular metric display."""
         return self.table_data
 
     def get_orthogonality_score_df(self) -> dict:
@@ -1081,16 +1076,7 @@ class MetricEngine:
     # ------------------------------------------------------------------
 
     def set_orthogonality_value(self, selected_orthogonality: str) -> None:
-        """Set the orthogonality value for each set based on a selected metric.
-
-        Args:
-            selected_orthogonality (str): The key of the selected orthogonality metric
-                                         (e.g., 'convex_hull', 'pearson_r').
-
-        Side Effects:
-            Updates orthogonality_value in both orthogonality_score and orthogonality_dict
-            for all sets.
-        """
+        """Set the active orthogonality value for each computed set."""
         for data_set in self.orthogonality_dict:
             self.orthogonality_score[data_set]["orthogonality_value"] = (
                 self.orthogonality_score[data_set][selected_orthogonality]

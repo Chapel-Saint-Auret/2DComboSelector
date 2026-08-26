@@ -31,21 +31,11 @@ class Scoring:
     # ------------------------------------------------------------------
 
     def get_orthogonality_metric_df(self) -> pd.DataFrame:
-        """Get the orthogonality metrics DataFrame.
-
-        Returns:
-            pd.DataFrame: DataFrame containing all computed orthogonality metrics
-                         for each column combination set.
-        """
+        """Return the orthogonality metrics DataFrame."""
         return self.orthogonality_metric_df
 
     def get_orthogonality_metric_ranking_df(self) -> pd.DataFrame:
-        """Get the orthogonality metrics ranking DataFrame.
-
-        Returns:
-            pd.DataFrame: DataFrame containing all computed orthogonality metrics ranking
-                         for each column combination set.
-        """
+        """Return the orthogonality metric ranking DataFrame."""
         return self.orthogonality_metric_ranking_df
 
     def get_orthogonality_metric_corr_matrix_df(self) -> pd.DataFrame:
@@ -235,6 +225,7 @@ class Scoring:
             self.orthogonality_result_df['Suggested Orthogonality Rank'] =self.orthogonality_result_df['Suggested Orthogonality Score'].rank(ascending=False, method='average')
 
     def compute_practical_2d_peak_capacity(self):
+        """Compute the practical 2D peak capacity for each combination."""
         if self.peak_capacity_status not in ['peak_capacity_loaded']:
             self.orthogonality_result_df['Practical Peak Capacity'] = 'Not available'
             self.orthogonality_result_df['Practical Peak Capacity Rank'] = 'Not available'
@@ -242,7 +233,6 @@ class Scoring:
 
         # Iterate through each set in the orthogonality dictionary
         for data_set in self.orthogonality_dict:
-        """Compute practical 2d peak capacity."""
 
             practical_2d_peak_capacity = (self.orthogonality_score[data_set]['suggested_score'] *
                                          self.orthogonality_score[data_set]['2d_peak_capacity'])

@@ -147,6 +147,7 @@ class OrthogonalityTableSortProxy(QSortFilterProxyModel):
         self.invalidateFilter()
 
     def filterAcceptsRow(self, source_row, source_parent):
+        """Return whether a row matches every active column filter."""
         model = self.sourceModel()
         total_columns = model.columnCount()  # e.g., returns 7 for Table 1, 10 for Table 2
 
@@ -182,7 +183,6 @@ class OrthogonalityTableSortProxy(QSortFilterProxyModel):
 
             # If we failed to find a match in ANY of the valid target columns, reject the row
             if not matched_any_col:
-        """Filteracceptsrow."""
                 return False
 
         return True  # The row passed all specifications
@@ -483,6 +483,7 @@ class SquareBackgroundDelegate(QStyledItemDelegate):
 
 
 class OrthogonalityTableView(QTableView):
+    """Example showing orthogonality table with sample data."""
     """Custom table view for orthogonality data with sorting and filtering.
 
     Features:
@@ -724,7 +725,6 @@ class OrthogonalityTableView(QTableView):
 # =============================================================================
 
 if __name__ == "__main__":
-    """Example showing orthogonality table with sample data."""
 
     app = QApplication(sys.argv)
 

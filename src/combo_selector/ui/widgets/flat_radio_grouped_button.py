@@ -37,12 +37,13 @@ class _FlatRadioItem(QWidget):
         self.update()
 
     def mousePressEvent(self, event):
-        if event.button() == Qt.MouseButton.LeftButton:
         """Handle the mouse press event."""
+        if event.button() == Qt.MouseButton.LeftButton:
             self.clicked.emit(self._text)
         super().mousePressEvent(event)
 
     def paintEvent(self, event):
+        """Handle the paint event."""
         painter = QPainter(self)
         painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
 
@@ -95,9 +96,7 @@ class _FlatRadioItem(QWidget):
             Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignLeft,
             self._text,
         )
-
         if not self._is_last:
-        """Handle the paint event."""
             painter.setPen(QColor("#e6e6e6"))
             painter.drawLine(self.rect().topRight(), self.rect().bottomRight())
 
@@ -151,11 +150,11 @@ class _FlatRadioGroupPanel(QWidget):
         painter.drawPath(path)
 
     def _on_item_clicked(self, text: str):
+        """Handle item clicked."""
         for i, item in enumerate(self._items):
             checked = item.text() == text
             item.setChecked(checked)
             if checked:
-        """Handle item clicked."""
                 self._current_index = i
         self.buttonClicked.emit(text)
 

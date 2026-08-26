@@ -143,6 +143,7 @@ class PlotPairWisePage(QFrame):
         self.cid = self.fig.canvas.mpl_connect('pick_event', self.on_pick)
 
     def on_pick(self,event):
+        """Handle plot selection changes triggered by pick events."""
         self.selected_axe = event.artist.axes
 
         # Find selector index for current axes
@@ -153,7 +154,6 @@ class PlotPairWisePage(QFrame):
         ]
 
         if matching_indices:
-        """Handle pick."""
             index = matching_indices[0]
             self.selected_annotation = self.dataset_selector_map[index]["annotation"]
 

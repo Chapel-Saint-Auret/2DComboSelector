@@ -34,6 +34,7 @@ from combo_selector.ui.widgets.removal_summary_dialog import RemovalSummaryDialo
 from combo_selector.ui.widgets.line_widget import LineWidget
 
 class NanPolicyDialog(QDialog):
+    """Example showing the NaN policy dialog with a mock model."""
     """Dialog for configuring retention-time data cleanup operations.
 
     Presents users with options for handling missing retention time data and
@@ -251,6 +252,7 @@ class NanPolicyDialog(QDialog):
         self.option_replace_below_threshold.toggled.connect(self.update_button_state)
 
     def update_button_state(self):
+        """Update button availability based on the selected cleanup option."""
         sender = self.sender()
 
         remove_ops_checked = (
@@ -260,7 +262,6 @@ class NanPolicyDialog(QDialog):
 
         # If option_replace was just turned ON while remove options are active, uncheck removes.
         if sender is self.option_replace and self.option_replace.isChecked():
-        """Update button state."""
             if remove_ops_checked:
                 self._set_checked_silent(self.option_remove_compound, False)
                 self._set_checked_silent(self.option_remove_condition, False)
@@ -279,6 +280,7 @@ class NanPolicyDialog(QDialog):
         button.blockSignals(False)
 
     def _load_rt_threshold_file(self):
+        """Load per-condition retention time thresholds from an Excel file."""
         file_path, _ = QFileDialog.getOpenFileName(
             self, "Open RT Threshold File", "", "Excel Files (*.xlsx *.xls)"
         )
@@ -286,7 +288,6 @@ class NanPolicyDialog(QDialog):
             return
 
         try:
-        """Load rt threshold file."""
             sheet_names = pd.ExcelFile(file_path, engine="openpyxl").sheet_names
             selected_sheet, ok = QInputDialog.getItem(
                 self, "Select Sheet", "Choose a sheet:", sheet_names, editable=False
@@ -352,7 +353,6 @@ class NanPolicyDialog(QDialog):
 # =============================================================================
 
 if __name__ == "__main__":
-    """Example showing the NaN policy dialog with a mock model."""
 
 
     # Mock model to demonstrate the interface

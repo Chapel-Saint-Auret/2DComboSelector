@@ -35,6 +35,7 @@ from combo_selector.ui.widgets.orthogonality_table import (
 
 
 class StyledTable(QWidget):
+    """Example showing the styled table with sample data."""
     """Complete styled table with title, content, and footer.
 
     Provides a card-style table widget with:
@@ -383,7 +384,6 @@ class StyledTable(QWidget):
 # =============================================================================
 
 if __name__ == "__main__":
-    """Example showing the styled table with sample data."""
 
     # Note: This example requires TableDataWorker which may not be available
     # in standalone context. For full functionality, run within the application.

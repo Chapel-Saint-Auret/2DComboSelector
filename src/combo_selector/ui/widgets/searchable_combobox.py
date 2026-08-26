@@ -7,6 +7,7 @@ from PySide6.QtWidgets import QApplication, QComboBox, QCompleter, QVBoxLayout, 
 
 
 class SearchableComboBox(QComboBox):
+    """Simple usage example showing horizontal and vertical separators."""
     """Combo box that filters completion suggestions as the user types."""
 
     def __init__(self, parent=None):
@@ -29,7 +30,6 @@ class SearchableComboBox(QComboBox):
         self.lineEdit().textEdited.connect(self.filter_model.setFilterFixedString)
 
 if __name__ == "__main__":
-    """Simple usage example showing horizontal and vertical separators."""
 
     app = QApplication(sys.argv)
 

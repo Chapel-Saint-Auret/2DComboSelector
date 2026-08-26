@@ -413,9 +413,9 @@ class ImportDataPage(QFrame):
         grad_keywords = ("gradient", "grad", "end")
 
         def _find(keywords):
+            """Find the first sheet whose name matches any keyword."""
             for i, name in enumerate(sheet_names):
                 if any(k in name.lower() for k in keywords):
-            """Find find."""
                     return i + 1  # +1 because index 0 is the placeholder
             return 0
 
@@ -472,8 +472,8 @@ class ImportDataPage(QFrame):
                 self._load_gradient_from_combo(file_path, grad_sheet)
 
     def _load_retention_data(self, file_path: str, sheet: str) -> None:
+        """Load retention time data from the selected workbook sheet."""
         try:
-        """Load retention data."""
             self.model.load_retention_time(filepath=file_path, sheetname=sheet)
 
             if self.model.get_status() == "error":
@@ -497,8 +497,8 @@ class ImportDataPage(QFrame):
             QMessageBox.critical(self, "Error", f"Retentions Times:\n{e}")
 
     def _load_peak_capacities(self, file_path: str, sheet: str) -> None:
-        try:
         """Load peak capacities."""
+        try:
             self.model.load_hypothetical_2d_peak_capacity(
                 filepath=file_path, sheetname=sheet
             )
@@ -514,8 +514,8 @@ class ImportDataPage(QFrame):
             QMessageBox.critical(self, "Error", f"Peak Capacities:\n{e}")
 
     def _load_elution_composition(self, file_path: str, sheet: str) -> None:
-        try:
         """Load elution composition."""
+        try:
             self.model.load_elution_composition_space_area_data(
                 filepath=file_path, sheetname=sheet
             )
@@ -531,8 +531,8 @@ class ImportDataPage(QFrame):
             QMessageBox.critical(self, "Error", f"Elution Ranges:\n{e}")
 
     def _load_void_from_combo(self, file_path: str, sheet: str) -> None:
-        try:
         """Load void from combo."""
+        try:
             self.model.load_void_time(filepath=file_path, sheetname=sheet)
             if self.model.get_status() == "error":
                 self.void_time_import_status.set_error()
@@ -543,8 +543,8 @@ class ImportDataPage(QFrame):
             QMessageBox.critical(self, "Error", f"Void Time:\n{e}")
 
     def _load_gradient_from_combo(self, file_path: str, sheet: str) -> None:
-        try:
         """Load gradient from combo."""
+        try:
             self.model.load_gradient_end_time(filepath=file_path, sheetname=sheet)
             if self.model.get_status() == "error":
                 self.gradient_end_time_import_status.set_error()
@@ -728,6 +728,7 @@ class ImportDataPage(QFrame):
     # ==========================================================================
 
     def change_norm_svg(self) -> None:
+        """Change norm svg."""
         button_checked = self.radio_button_group.checkedButton()
         method = button_checked.objectName()
 
@@ -744,7 +745,6 @@ class ImportDataPage(QFrame):
             self.gradient_end_time_import_status.setVisible(v)
 
         if method == "min_max":
-        """Change norm svg."""
             self.scaling_method_svg_qstack.setCurrentIndex(0)
             _set_void_visible(False)
             _set_gradient_visible(False)
@@ -760,11 +760,11 @@ class ImportDataPage(QFrame):
             _set_gradient_visible(True)
 
     def normalize_retention_time(self) -> None:
+        """Normalize retention time."""
         button_checked = self.radio_button_group.checkedButton()
         method = button_checked.objectName()
 
         try:
-        """Normalize retention time."""
             self.model.normalize_retention_time(method)
             self.normalization_status.set_valid()
 
@@ -778,10 +778,10 @@ class ImportDataPage(QFrame):
             QMessageBox.critical(self, "Error", f"Cannot normalize data:\n{e}")
 
     def show_nan_policy_dialog(self) -> None:
+        """Show nan policy dialog."""
         self.nan_policy_dialog.exec()
 
         data = self.model.get_retention_time_df()
         if not data.empty:
-        """Show nan policy dialog."""
             self.normalized_data_table.async_set_table_data(data)
             self.retention_time_loaded.emit()

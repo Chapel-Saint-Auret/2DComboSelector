@@ -242,6 +242,7 @@ class ResultsBuilder:
     #     self.create_recommendation_distribution_group()
 
     def apply_multi_column_filter(self, filter_spec_list:list = None) -> None:
+        """Apply all active multi-column filters to the results table."""
         if filter_spec_list is None:
             active_filters = list(self.active_multi_column_filters.values())
         elif not filter_spec_list:
@@ -264,9 +265,7 @@ class ResultsBuilder:
 
             if not col_name or col_name not in self.orthogonality_result_df.columns:
                 continue
-
             if not pattern:
-        """Apply multi column filter."""
                 continue
 
             mask &= self.orthogonality_result_df[col_name].astype(str).str.contains(
@@ -449,6 +448,7 @@ class ResultsBuilder:
         self.old_approach_table_df = self.filtered_result_df[column_name].copy()
 
     def create_median_rank_score_based_on_chromatographic_group(self):
+        """Create median rank values grouped by chromatographic mode."""
 
         column_name = [
             "2D Combination",
@@ -464,12 +464,12 @@ class ResultsBuilder:
             "Elution Domain Rank",
             "Peak Capacity Rank",
         ]:
-        """Create median rank score based on chromatographic group."""
             self.filtered_result_df[col] = pd.to_numeric(self.filtered_result_df[col], errors="coerce").fillna(0)
 
         self.median_rank_score_df = (self.filtered_result_df.groupby("Chromatographic Mode")[column_name].median(numeric_only=True))
 
     def create_median_utility_score_based_on_chromatographic_group(self):
+        """Create median utility values grouped by chromatographic mode."""
 
         column_name = [
             "2D Combination",
@@ -485,12 +485,12 @@ class ResultsBuilder:
             "Elution Domain Utility",
             "Peak Capacity Utility",
         ]:
-        """Create median utility score based on chromatographic group."""
             self.filtered_result_df[col] = pd.to_numeric(self.filtered_result_df[col], errors="coerce").fillna(0)
 
         self.median_utility_score_df = (self.filtered_result_df.groupby("Chromatographic Mode")[column_name].median(numeric_only=True))
 
     def create_utility_score_based_on_chromatographic_group(self):
+        """Create utility-score groups keyed by chromatographic mode."""
 
         column_name = [
             "2D Combination",
@@ -507,12 +507,12 @@ class ResultsBuilder:
             "Elution Domain Utility",
             "Peak Capacity Utility",
         ]:
-        """Create utility score based on chromatographic group."""
             self.filtered_result_df[col] = pd.to_numeric(self.filtered_result_df[col], errors="coerce").fillna(0)
 
         self.utility_score_grouped_by_chrom_mode_df = self.filtered_result_df.groupby("Chromatographic Mode")[column_name]
 
     def create_rank_score_based_on_chromatographic_group(self):
+        """Create rank-score groups keyed by chromatographic mode."""
 
         column_name = [
             "2D Combination",
@@ -529,12 +529,12 @@ class ResultsBuilder:
             "Elution Domain Rank",
             "Peak Capacity Rank",
         ]:
-        """Create rank score based on chromatographic group."""
             self.filtered_result_df[col] = pd.to_numeric(self.filtered_result_df[col], errors="coerce").fillna(0)
 
         self.rank_score_grouped_by_chrom_mode_df = self.filtered_result_df.groupby("Chromatographic Mode")[column_name]
 
     def create_rank_score_based_on_recommendation_class(self):
+        """Create rank-score groups keyed by final recommendation."""
         column_name = [
             "2D Combination",
             "Combination #",
@@ -546,30 +546,29 @@ class ResultsBuilder:
             "Elution Domain Utility",
             "Peak Capacity Utility",
         ]:
-        """Create rank score based on recommendation class."""
             self.filtered_result_df[col] = pd.to_numeric(self.filtered_result_df[col], errors="coerce").fillna(0)
         self.rank_score_grouped_by_final_recommendation_df = self.filtered_result_df.groupby("Final Recommendation")[column_name]
 
     def create_recommendation_distribution_group(self):
+        """Create recommendation distribution groups by chromatographic mode."""
 
         for col in [
             "Elution Domain Utility",
             "Peak Capacity Utility",
         ]:
-        """Create recommendation distribution group."""
             self.filtered_result_df[col] = pd.to_numeric(self.filtered_result_df[col], errors="coerce").fillna(0)
 
         self.recommendation_distribution_df = self.filtered_result_df.groupby("Chromatographic Mode")['Final Recommendation']
 
     def create_detected_compounds_grouped_by_mode(self):
+        """Create detected compounds grouped by mode."""
 
         def get_mode(col_name):
+            """Return mode."""
             # Loop through the known chromatography modes
             # and return the first mode found as a substring of the column name
             for mode in CHROM_MODE:
                 if mode in col_name:
-            """Return mode."""
-        """Create detected compounds grouped by mode."""
                     return mode
             return None  # no mode found in the column name
 
@@ -745,28 +744,28 @@ class ResultsBuilder:
         K_70 =  max(1,ceil(0.70*self.nb_condition))
 
         def is_top_1(rank):
+            """Return whether a rank falls within the top 1%."""
             if rank <= K_1:
-            """Return whether top 1."""
                 return True
             else:
                 return False
 
         def is_top_5(rank):
+            """Return whether a rank falls within the top 5%."""
             if rank <= K_5:
-            """Return whether top 5."""
                 return True
             else:
                 return False
         def is_bottom_30(rank):
+            """Return whether a rank falls within the bottom 30%."""
             if rank >= K_70:
-            """Return whether bottom 30."""
                 return True
             else:
                 return False
 
         def is_top_10(rank):
+            """Return whether a rank falls within the top 10%."""
             if rank <= K_10:
-            """Return whether top 10."""
                 return True
             else:
                 return False
@@ -794,8 +793,8 @@ class ResultsBuilder:
                 return ''
 
         def set_penality_flag(ortho,elution):
-            if ortho < 0.7 and elution < 0.30:
             """Set penality flag."""
+            if ortho < 0.7 and elution < 0.30:
                 return "Below penalty threshold: O + Δφ"
             elif ortho<0.7:
                 return "Below penalty threshold: O"
@@ -926,16 +925,17 @@ class ResultsBuilder:
                 return False
 
         def is_not_recommended(row):
+            """Return whether not recommended."""
             suggested_rank = row["Final Rank (Utility)"]
             peak_rate = row['Peak Detection Rate (%)']
 
             if peak_rate < 40 or suggested_rank >= top_70_threshold:
-            """Return whether not recommended."""
                 return True
             else:
                 return False
 
         def set_final_recommendation(row):
+            """Set final recommendation."""
             if is_not_recommended(row):
                 return 'Not recommended'
 
@@ -946,7 +946,6 @@ class ResultsBuilder:
                 return 'Recommended'
 
             if is_use_with_caution(row):
-            """Set final recommendation."""
                 return 'Use with caution'
 
             return '---'

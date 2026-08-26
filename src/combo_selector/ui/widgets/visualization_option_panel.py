@@ -54,6 +54,7 @@ class RadioPanel(QWidget):
     """A row of radio buttons in a light rounded container."""
 
     def __init__(self, label: str, options: list[str], parent=None):
+        """Initialize the radio panel with its label and button options."""
         super().__init__(parent)
         self._group = QButtonGroup(self)
         self._buttons: dict[str, QRadioButton] = {}
@@ -100,7 +101,6 @@ class RadioPanel(QWidget):
             self._buttons[opt] = rb
             row.addWidget(rb)
             if i == 0:
-        """Initialize the radiopanel."""
                 rb.setChecked(True)
 
         outer.addWidget(container)
@@ -324,6 +324,7 @@ class VisualizationOptionsPanel(QGroupBox):
         self.stateChanged.emit(state)
 
     def _on_plot_changed(self, index: int):
+        """Handle plot type changes and update the visible option controls."""
         plot = PLOT_TYPES[index]
 
         # Update description
@@ -364,7 +365,6 @@ class VisualizationOptionsPanel(QGroupBox):
             text = self._grouping_panel.currentText()
             self._update_chrom_mode_visibility(text)
         else:
-        """Handle plot changed."""
             self.chromatographic_mode_combo_widget.setVisible(False)
 
         self.plotTypeChanged.emit(plot)
