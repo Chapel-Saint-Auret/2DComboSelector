@@ -698,6 +698,7 @@ class ResultsPage(QFrame):
             ])
 
         self.practical_feasibility_table = self.styled_table.get_table_from_sheet(sheet_name='Practical Feasibility')
+        self.practical_feasibility_table.selectionChanged.connect(self.show_combination_plot_pop_up)
         self.practical_feasibility_table.add_header_button(column=2, tooltip="Chromatographic Mode filter", widget_to_show=self.chrom_mode_filter_dialog)
         self.practical_feasibility_table.add_header_button(column=3, tooltip="Complexity filter", widget_to_show=self.complexity_filter_dialog)
         self.practical_feasibility_table.add_help_button(column=3,title="Complexity",markdown_path="markdown/complexity.md")
@@ -718,6 +719,7 @@ class ResultsPage(QFrame):
             ])
 
         self.seperational_potential_table = self.styled_table.get_table_from_sheet(sheet_name='Separation Potential')
+        self.seperational_potential_table.selectionChanged.connect(self.show_combination_plot_pop_up)
         self.seperational_potential_table.add_header_button(column=2, tooltip="Custom filter",
                                                            widget_to_show=self.chrom_mode_filter_dialog)
         self.seperational_potential_table.add_help_button(column=3, title="Hypothetical 2D Peak Capacity",markdown_path="markdown/hypothetical_peak_capacity.md")
@@ -732,6 +734,7 @@ class ResultsPage(QFrame):
             ])
 
         self.final_recommendation_table = self.styled_table.get_table_from_sheet(sheet_name='Final Evaluation')
+        self.final_recommendation_table.selectionChanged.connect(self.show_combination_plot_pop_up)
         self.final_recommendation_table.add_header_button(column=2, tooltip="Custom filter",
                                                            widget_to_show=self.chrom_mode_filter_dialog)
         self.final_recommendation_table.add_help_button(column=3, title="Orthogonality Utility",
@@ -769,6 +772,7 @@ class ResultsPage(QFrame):
             ])
 
         self.old_approach_table = self.styled_table.get_table_from_sheet(sheet_name='Old Approach')
+        self.old_approach_table.selectionChanged.connect(self.show_combination_plot_pop_up)
         self.old_approach_table.add_header_button(column=2, tooltip="Custom filter",
                                                            widget_to_show=self.chrom_mode_filter_dialog)
 
@@ -1220,8 +1224,8 @@ class ResultsPage(QFrame):
         if plot_fn is not None:
             plot_fn()
 
-    def show_combination_plot_pop_up(self):
-        data = self.orthogonality_table.get_selected_rows()[0].data()
+    def show_combination_plot_pop_up(self,table):
+        data = table.get_selected_rows()[0].data()
 
         subset = self.vizualation_settings_group.get_subset()
 

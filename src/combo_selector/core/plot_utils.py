@@ -1282,6 +1282,7 @@ class PlotUtils:
     def plot_orthogonality_space(self, subset: str = "All"):
 
         self.fig.clear()
+        self.scatter_metadata.clear()
         self.axe = self.fig.add_subplot(111)
         self.axe.set_box_aspect(1)
         self.set_annotation()
@@ -1578,6 +1579,7 @@ class PlotUtils:
         self.axe = self.fig.add_subplot(111)
         self.axe.set_box_aspect(1)
         self.set_annotation()
+        self.scatter_metadata.clear()
 
         df = self.model.get_filtered_result_df().copy()
 
@@ -2181,6 +2183,7 @@ class PlotUtils:
     def plot_feasibility_profile(self, grouping: str = "Global", axis_scale: str = "Auto",chrom_mode: str = 'All mode'):
         self.fig.clear()
         self.set_annotation()
+        self.scatter_metadata.clear()
 
         def apply_scale(ax, scale: str):
             if scale == "Auto":

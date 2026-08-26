@@ -52,7 +52,7 @@ class TablePanel(QWidget):
         header (HeaderButton): Custom header with filter-button support.
     """
 
-    selectionChanged = Signal()
+    selectionChanged = Signal(object)
     filter_changed = Signal(list)
 
     def __init__(
@@ -101,7 +101,7 @@ class TablePanel(QWidget):
     # ------------------------------------------------------------------
 
     def _on_selection_changed(self) -> None:
-        self.selectionChanged.emit()
+        self.selectionChanged.emit(self)
 
     def get_selected_rows(self) -> list:
         """Return a list of selected :class:`QModelIndex` objects."""
