@@ -1229,7 +1229,10 @@ class ResultsPage(QFrame):
 
     def show_combination_plot_pop_up(self,table):
         """Show combination plot pop up."""
-        data = table.get_selected_rows()[0].data()
+        selected_rows = table.get_selected_rows()
+        if not selected_rows:
+            return
+        data = selected_rows[0].data()
 
         self.plot_utils.show_combination_plot_dialog(number=data)
 
@@ -1297,7 +1300,7 @@ class ResultsPage(QFrame):
         if not data.empty:
             self.final_recommendation_table.async_set_table_data(data)
             self.final_recommendation_table.set_table_proxy()
-        if 'Final Recommendation tooltip' in result_df.columns:
+        if not result_df.empty and 'Final Recommendation tooltip' in result_df.columns:
             tooltip = result_df['Final Recommendation tooltip']
             self.final_recommendation_table.set_tooltip_config({8: tooltip})
 

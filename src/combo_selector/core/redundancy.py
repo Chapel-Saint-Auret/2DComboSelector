@@ -128,7 +128,9 @@ class Redundancy:
         """Compute pairwise top-10 overlap for metrics within each correlation group."""
 
         result_dict = {}
-        top_10_count = int(self.nb_combination * 0.10)
+        if self.nb_combination <= 0 or self.correlation_group_df.empty:
+            return pd.DataFrame()
+        top_10_count = max(1, int(self.nb_combination * 0.10))
 
         for group, Correlated_Metrics_list in zip(
             self.correlation_group_df["Group"],

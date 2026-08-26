@@ -251,6 +251,8 @@ class DataManager:
         """Remove compounds that exceed the configured NaN threshold."""
         self.removed_compound_list = []
         remove_compound_index = []
+        if self.nb_condition <= 0:
+            return
 
         for row_data in self.retention_time_df.iterrows():
             peak_retention_time = row_data[1]
@@ -268,6 +270,8 @@ class DataManager:
     def remove_condition(self):
         """Remove conditions that exceed the configured NaN threshold."""
         self.removed_condition_list = []
+        if not self.nb_peaks or self.nb_peaks <= 0:
+            return
 
         for column_data in self.retention_time_df.T.iterrows():
             condition_retention_time = column_data[1]

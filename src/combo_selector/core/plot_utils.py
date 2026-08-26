@@ -1284,6 +1284,9 @@ class PlotUtils:
         final_rank = pd.to_numeric(df['Final Rank (Utility)'], errors='coerce')
         orthogonality_rank = pd.to_numeric(df['Orthogonality Rank'], errors='coerce')
 
+        if n <= 0:
+            self._show_missing_data()
+            return
         final_rank_pct = (final_rank / n) * 100          # controls which points are shown
         orthogonality_rank_pct = (orthogonality_rank / n) * 100  # controls point color
 
@@ -1596,6 +1599,9 @@ class PlotUtils:
         orthogonality_rank = pd.to_numeric(df['Orthogonality Rank'], errors='coerce')
         n = self.model.get_number_of_combination()
 
+        if n <= 0:
+            self._show_missing_data()
+            return
         final_rank_pct = (final_rank / n) * 100
         orthogonality_rank_pct = (orthogonality_rank / n) * 100
 
@@ -2339,6 +2345,13 @@ class PlotUtils:
             }
             mode_markers = ["o", "s", "^", "D", "*", "h", "p", "<", ">", "X"]
 
+            legend_handles = [
+                patches.Patch(facecolor="#1a7a4a", edgecolor="none", label="Highly recommended"),
+                patches.Patch(facecolor="#6abf4b", edgecolor="none", label="Recommended"),
+                patches.Patch(facecolor="#f0a11a", edgecolor="none", label="Use with caution"),
+                patches.Patch(facecolor="#d9534f", edgecolor="none", label="Not recommended"),
+            ]
+
             if chrom_mode == "All mode":
                 n_modes = len(grouped_df)
                 ncols = min(3, n_modes)
@@ -2369,34 +2382,24 @@ class PlotUtils:
                         self.axe.set_title(mode, fontsize=10, fontweight="bold")
                         self.axe.grid(True, linestyle="--", linewidth=0.4, alpha=0.4)
                         self.axe.tick_params(axis="both", labelsize=8)
-                        self.axe.set_xlabel("Final consensus rank)", fontsize=8)
+                        self.axe.set_xlabel("Final consensus rank", fontsize=8)
                         self.axe.set_ylabel("Peak rate (%)" if i % ncols == 0 else "", fontsize=8)
                         self.axe.spines[["top", "right"]].set_visible(False)
 
-                    # Hide unused grid cells
-                    for j in range(n_modes, nrows * ncols):
-                        self.fig.add_subplot(gs[j // ncols, j % ncols]).axis("off")
-
-                    legend_handles = [
-                        patches.Patch(facecolor="#1a7a4a", edgecolor="none", label="Highly recommended"),
-                        patches.Patch(facecolor="#6abf4b", edgecolor="none", label="Recommended"),
-                        patches.Patch(facecolor="#f0a11a", edgecolor="none", label="Use with caution"),
-                        patches.Patch(facecolor="#d9534f", edgecolor="none", label="Not recommended"),
-                    ]
-                    self.fig.legend(
-                        handles=legend_handles,
-                        loc="lower center", ncol=2,
-                        frameon=True, fancybox=True, framealpha=0.95,
-                        bbox_to_anchor=(0.5, 0.01),
-                        fontsize=9, columnspacing=1.8, handlelength=1.8
-                    )
-
-                    # Titles — suptitle high, subtitle clearly below it
-                    self.fig.suptitle("Feasibility Profile",
-                                      fontsize=16, fontweight="bold", y=0.97)
-                    self.fig.text(0.5, 0.89,  # ← was 0.93, now lower
-                                  "Faceted feasibility maps by chromatographic mode",
-                                  ha="center", fontsize=9, style="italic", color="dimgray")
+                for j in range(n_modes, nrows * ncols):
+                    self.fig.add_subplot(gs[j // ncols, j % ncols]).axis("off")
+                self.fig.legend(
+                    handles=legend_handles,
+                    loc="lower center", ncol=2,
+                    frameon=True, fancybox=True, framealpha=0.95,
+                    bbox_to_anchor=(0.5, 0.01),
+                    fontsize=9, columnspacing=1.8, handlelength=1.8
+                )
+                self.fig.suptitle("Feasibility Profile",
+                                  fontsize=16, fontweight="bold", y=0.97)
+                self.fig.text(0.5, 0.89,
+                              "Faceted feasibility maps by chromatographic mode",
+                              ha="center", fontsize=9, style="italic", color="dimgray")
 
             # ------------------------------------------------------------------
             # Single mode
@@ -2405,15 +2408,19 @@ class PlotUtils:
                 self.axe = self.fig.add_subplot(111)
 
                 chrom_mode_list = self.model.get_chromatographic_mode_list()
+                if chrom_mode not in chrom_mode_list:
+                    self._show_missing_data()
+                    return
                 i = chrom_mode_list.index(chrom_mode)
                 marker = mode_markers[i % len(mode_markers)]
 
                 chrom_mode_df = self.model.get_rank_score_grouped_by_chrom_mode_table().get_group(chrom_mode)
+                if chrom_mode_df.empty:
+                    self._show_missing_data()
+                    return
                 for recommendation, color in recommendation_colors.items():
                     subset = chrom_mode_df[chrom_mode_df["Final Recommendation"] == recommendation]
                     if subset.empty:
-                        continue
-                    if not chrom_mode_df[chrom_mode_df["Final Recommendation"] == recommendation].any().any():
                         continue
                     scatter = self.axe.scatter(
                         subset["Final Rank (Utility)"].astype(float),
@@ -2432,12 +2439,6 @@ class PlotUtils:
                     self.axe.set_ylabel("Peak rate (%)", fontsize=8)
                     self.axe.spines[["top", "right"]].set_visible(False)
 
-                legend_handles = [
-                    patches.Patch(facecolor="#1a7a4a", edgecolor="none", label="Highly recommended"),
-                    patches.Patch(facecolor="#6abf4b", edgecolor="none", label="Recommended"),
-                    patches.Patch(facecolor="#f0a11a", edgecolor="none", label="Use with caution"),
-                    patches.Patch(facecolor="#d9534f", edgecolor="none", label="Not recommended"),
-                ]
                 self.fig.legend(
                     handles=legend_handles,
                     loc="lower center", ncol=2,
@@ -2449,7 +2450,7 @@ class PlotUtils:
                 # Titles — suptitle high, subtitle clearly below it
                 self.fig.suptitle("Feasibility Profile",
                                   fontsize=16, fontweight="bold", y=0.97)
-                self.fig.text(0.5, 0.89,  # ← was 0.93, now lower
+                self.fig.text(0.5, 0.89,
                               chrom_mode,
                               ha="center", fontsize=9, style="italic", color="dimgray")
 
@@ -3402,6 +3403,9 @@ class PlotUtils:
         # ------------------------------------------------------------------
         n = len(df)
 
+        if n <= 0:
+            self._show_missing_data()
+            return
         old_rank_pct = (old_rank / n) * 100
 
         threshold = SUBSET_THRESHOLDS.get(subset, 0)
@@ -3643,6 +3647,8 @@ class PlotUtils:
         df_filtered = self.model.get_filtered_result_df()
         n = self.model.get_number_of_combination()
         final_rank = pd.to_numeric(df_filtered['Final Rank (Utility)'], errors='coerce')
+        if n <= 0:
+            return
         final_rank_pct = (final_rank / n) * 100
 
         if subset:
