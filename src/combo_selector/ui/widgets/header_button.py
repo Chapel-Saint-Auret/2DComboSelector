@@ -35,7 +35,6 @@ from combo_selector.utils import resource_path
 
 
 class HeaderButton(QHeaderView):
-    """Simple usage example showing header with filter buttons."""
     """Custom header view with filter buttons in column headers.
 
     Extends QHeaderView to support small tool buttons positioned inside

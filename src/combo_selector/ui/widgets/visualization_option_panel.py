@@ -179,7 +179,7 @@ class VisualizationOptionsPanel(QGroupBox):
     stateChanged = Signal(object)  # emits a PlotState
 
     def __init__(self, parent=None):
-        """Initialize the visualizationoptionspanel."""
+        """Initialize the VisualizationOptionsPanel."""
         super().__init__("Visualization Options", parent)
 
         self._build_ui()
@@ -408,8 +408,9 @@ class VisualizationOptionsPanel(QGroupBox):
         self.chromatographic_mode_combo_widget.setVisible(is_visible)
 
     def _percentile_toggled(self, button, checked):
-        """Percentile toggled."""
-        button.text()
+        """Emit the current state when a percentile option becomes active."""
+        if checked:
+            self._emit_state()
 
 # ---------------------------------------------------------------------------
 # Standalone test

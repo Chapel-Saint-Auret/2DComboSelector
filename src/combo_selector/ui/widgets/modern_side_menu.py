@@ -246,7 +246,6 @@ class Sidebar(QListWidget):
 
 
 class ModernSidebar(QFrame):
-    """Simple usage example showing the modern sidebar."""
     """Complete modern sidebar component with logo, menu, and footer.
 
     Combines all sidebar elements into a single widget:

@@ -20,7 +20,6 @@ unchecked_icon_path = resource_path("icons/checkbox_unchecked.svg").replace("\\"
 
 
 class CheckableTreeList(QWidget):
-    """Simple usage example showing the checkable tree list."""
     """Tree widget with checkable items and "Select All" functionality.
 
     Displays a hierarchical list with:

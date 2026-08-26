@@ -353,7 +353,6 @@ class CustomMainWindow(QMainWindow):
 # =============================================================================
 
 class OutsideNeumorphismEffect(QGraphicsEffect):
-    """Simple usage example showing the custom main window."""
     """Neumorphism-style outer shadow effect for widgets.
 
     Creates a soft, raised appearance with light and shadow gradients

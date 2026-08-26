@@ -483,7 +483,6 @@ class SquareBackgroundDelegate(QStyledItemDelegate):
 
 
 class OrthogonalityTableView(QTableView):
-    """Example showing orthogonality table with sample data."""
     """Custom table view for orthogonality data with sorting and filtering.
 
     Features:

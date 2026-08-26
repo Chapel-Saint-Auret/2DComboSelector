@@ -34,7 +34,6 @@ from combo_selector.ui.widgets.removal_summary_dialog import RemovalSummaryDialo
 from combo_selector.ui.widgets.line_widget import LineWidget
 
 class NanPolicyDialog(QDialog):
-    """Example showing the NaN policy dialog with a mock model."""
     """Dialog for configuring retention-time data cleanup operations.
 
     Presents users with options for handling missing retention time data and

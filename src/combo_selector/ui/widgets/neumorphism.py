@@ -29,7 +29,6 @@ from PySide6.QtWidgets import (
 
 
 class BoxShadow(QGraphicsEffect):
-    """Example showing neumorphism effect on a white box."""
     """Neumorphism-style box shadow effect with inner and outer shadows.
 
     Creates a soft, raised or pressed appearance using configurable shadow layers.

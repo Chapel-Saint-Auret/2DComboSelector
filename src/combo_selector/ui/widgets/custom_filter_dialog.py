@@ -600,7 +600,6 @@ class MultiListView(QTableView):
 
 
 class FilteredListView(QWidget):
-    """Simple usage example showing the filter dialog."""
     """Checkable list with text filter and regex support.
 
     Displays a list of items with checkboxes and provides a filter

@@ -10,7 +10,6 @@ from PySide6.QtWidgets import QApplication, QFrame, QVBoxLayout, QWidget, QLabel
 
 
 class LineWidget(QFrame):
-    """Simple usage example showing horizontal and vertical separators."""
     """Simple separator line widget (horizontal or vertical).
 
     Creates a thin sunken line that can be used as a visual separator

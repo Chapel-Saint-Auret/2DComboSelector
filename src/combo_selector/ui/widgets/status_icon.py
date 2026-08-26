@@ -26,7 +26,6 @@ from combo_selector.utils import resource_path
 
 
 class Status(QWidget):
-    """Example showing status indicator with state transitions."""
     """Status indicator widget with three states: wait, valid, and error.
 
     Displays a small icon indicating the current status state. Uses a
