@@ -111,7 +111,7 @@ class RadioPanel(QWidget):
         return btn.text() if btn else ""
 
     def connect_toggled(self, slot):
-        """Connect toggled."""
+        """Connect a slot to the radio group's toggle signal."""
         self._group.buttonToggled.connect(slot)
 
 
@@ -190,7 +190,7 @@ class VisualizationOptionsPanel(QGroupBox):
     # ------------------------------------------------------------------
 
     def _build_ui(self):
-        """Build ui."""
+        """Build the panel widgets and wire their state-change signals."""
         root = QVBoxLayout(self)
         root.setContentsMargins(14, 18, 14, 14)
         root.setSpacing(10)
@@ -293,11 +293,11 @@ class VisualizationOptionsPanel(QGroupBox):
     # Slots
     # ------------------------------------------------------------------
     def set_chrom_mode_item(self,items):
-        """Set chrom mode item."""
+        """Populate the chromatographic mode combo box."""
         self.chromatographic_mode_combo_widget.combo.addItems(items)
 
     def _emit_state(self):
-        """Emit state."""
+        """Build and emit the current visualization state snapshot."""
         plot = self._plot_combo.currentText()
 
         show_subset = plot in ("Orthogonality Space", "Multi-Criteria Space","Rank Shift by Combination")
@@ -370,17 +370,17 @@ class VisualizationOptionsPanel(QGroupBox):
         self.plotTypeChanged.emit(plot)
 
     def get_plot_view(self):
-        """Return plot view."""
+        """Return the currently selected visualization subtype."""
         plot_type = self._type_panel.currentText()
         return plot_type
 
     def get_plot_type(self):
-        """Return plot type."""
+        """Return the currently selected top-level plot type."""
         plot_type = self._plot_combo.currentText()
         return plot_type
 
     def get_subset(self):
-        """Return subset."""
+        """Return the active subset choice for plots that expose it."""
         plot = self._plot_combo.currentText()
 
         show_subset = plot in ("Orthogonality Space", "Multi-Criteria Space","Rank Shift by Combination")
@@ -388,20 +388,20 @@ class VisualizationOptionsPanel(QGroupBox):
         return self._percentile_panel.currentText() if show_subset else None
 
     def _on_type_toggled(self, text):
-        """Handle type toggled."""
+        """Update dependent controls after the type selection changes."""
         self._update_criteria_visibility(text)
 
     def _on_grouping_toggled(self,text):
-        """Handle grouping toggled."""
+        """Update dependent controls after the grouping selection changes."""
         self._update_chrom_mode_visibility(text)
 
     def _update_criteria_visibility(self,text):
-        """Update criteria visibility."""
+        """Show the criteria selector only when boxplot mode is active."""
         is_boxplot = text == "Boxplot"
         self._criteria_combo_widget.setVisible(is_boxplot)
 
     def _update_chrom_mode_visibility(self,text):
-        """Update chrom mode visibility."""
+        """Show the chrom mode selector only for feasibility-by-mode views."""
         show_chrom_mode = self.get_plot_type() == "Feasibility Profile"
         is_by_mode = text == "By mode"
         is_visible = show_chrom_mode and is_by_mode

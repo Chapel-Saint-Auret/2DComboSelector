@@ -139,8 +139,6 @@ class OrthogonalityTableSortProxy(QSortFilterProxyModel):
             # If the pattern is empty, remove the filter for this column
             self._column_regexes.pop(column, None)
         else:
-            # Choose case sensitivity flag
-            # Compile the regex pattern using Python's re module
             self._column_regexes[column] = pattern
 
         # Tell the widget to redraw and re-filter the data
