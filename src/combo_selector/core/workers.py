@@ -120,27 +120,13 @@ class ResultsWorker(QRunnable):
 
     @Slot()
     def run(self):
-        """Execute results computation in background thread.
+        """Emit completion for the legacy results worker.
 
-        Performs the following operations in sequence:
-        1. Computes suggested orthogonality scores
-        2. Calculates practical 2D peak capacities
-        3. Creates final results table with rankings
-        4. Emits finished signal
-
-        Side Effects:
-            - Updates model's suggested scores
-            - Updates practical 2D peak capacity values
-            - Creates results table in model
-            - Emits finished signal
-            - Logs exceptions if errors occur
+        This worker is retained for compatibility with older flows, but the
+        current application path uses :class:`UpdateTableResultsWorker`
+        instead for result recomputation.
         """
         try:
-
-            # self.page.get_model().compute_suggested_score()
-            # self.page.get_model().create_results_table()
-            # self.page.get_model().compute_practical_2d_peak_capacity()
-
             self.signals.finished.emit()
         except Exception as e:
             logging.exception(f"[ResultsWorker] Error: {e}")

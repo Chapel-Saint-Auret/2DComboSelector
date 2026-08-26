@@ -221,26 +221,6 @@ class ResultsBuilder:
         self.orthogonality_result_df["Elution Domain"] = self.combination_df["Elution Domain"].copy()
         self.orthogonality_result_df["Elution Domain Rank"] = self.combination_df["Elution Domain"].copy()
         self.orthogonality_result_df["Elution Domain Utility"] = self.combination_df["Elution Domain"].copy()
-        # self.orthogonality_result_df["Practical Peak Capacity"] = 'Not available'
-        # self.orthogonality_result_df["Practical Peak Capacity Rank"] = 'Not available'
-
-    # def apply_chromatographic_mode_filter(self,filter_name: str = "Chromatographic Mode", combine_pattern: str = ".*") -> None:
-    #
-    #     mask = self.orthogonality_result_df[filter_name].str.contains(
-    #         combine_pattern, na=False, regex=True
-    #     )
-    #     self.filtered_result_df = self.orthogonality_result_df[mask].copy()
-    #
-    #     self.create_orthogonality_table()
-    #     self.create_practical_feasibility_table()
-    #     self.create_separational_potential_table()
-    #     self.create_final_recommendation_table()
-    #
-    #     self.create_median_rank_score_based_on_chromatographic_group()
-    #     self.create_rank_score_based_on_chromatographic_group()
-    #     self.create_rank_score_based_on_recommendation_class()
-    #     self.create_recommendation_distribution_group()
-
     def apply_multi_column_filter(self, filter_spec_list:list = None) -> None:
         """Apply all active multi-column filters to the results table."""
         if filter_spec_list is None:
@@ -303,7 +283,6 @@ class ResultsBuilder:
         Side Effects:
             - Updates ``self.orthogonality_result_df`` with all result columns.
         """
-        # self._old_compute_consensus_orthogonality_score()
         self.compute_consensus_orthogonality_ranking()
         self.compute_custom_orthogonality_score()
         self.assess_metric_removal_impact_on_orthogonality_rank()
@@ -316,10 +295,7 @@ class ResultsBuilder:
         self.compute_outlier_metric_flag()
         self.compute_peak_detection_rate()
         self.compute_peak_selectivity_factor()
-        # self.update_result_with_new_peak_capacity()
         self.compute_final_results()
-
-        # self.compute_top_overlap()
 
     def update_result_with_new_peak_capacity(self):
         """Update the results table with the most recent peak capacity data.
@@ -771,17 +747,7 @@ class ResultsBuilder:
                 return False
 
         def set_criterion(rank,criterion):
-            """
-            •	Top 1% in orthogonality
-            •	Top 5% in orthogonality
-            •	Top 10% in orthogonality
-            """
-
-            # if is_top_1(rank):
-            #     return f"Top 1% in {criterion}"
-            #
-            # elif is_top_5(rank):
-            #     return f"Top 5% in {criterion}"
+            """Return the criterion badge text for a rank value."""
 
             if is_top_10(rank):
                 return f"Top 10% in {criterion}"
@@ -793,7 +759,7 @@ class ResultsBuilder:
                 return ''
 
         def set_penality_flag(ortho,elution):
-            """Set penality flag."""
+            """Return the penalty-threshold message for a result row."""
             if ortho < 0.7 and elution < 0.30:
                 return "Below penalty threshold: O + Δφ"
             elif ortho<0.7:
@@ -880,7 +846,7 @@ class ResultsBuilder:
         top_70_threshold = rank_col.quantile(0.7)
 
         def is_highly_recommended(row):
-            """Return whether highly recommended."""
+            """Return whether a row meets the highly recommended criteria."""
             peak_rate = row['Peak Detection Rate (%)']
             suggested_rank = row["Final Rank (Utility)"]
             compatibility = row['Compatibility']
@@ -895,7 +861,7 @@ class ResultsBuilder:
                 return False
 
         def is_recommended(row):
-            """Return whether recommended."""
+            """Return whether a row meets the recommended criteria."""
             peak_rate = row['Peak Detection Rate (%)']
             suggested_rank = row["Final Rank (Utility)"]
             compatibility = row['Compatibility']
@@ -910,7 +876,7 @@ class ResultsBuilder:
                 return False
 
         def is_use_with_caution(row):
-            """Return whether use with caution."""
+            """Return whether a row should be flagged for cautious use."""
             peak_rate = row['Peak Detection Rate (%)']
             suggested_rank = row["Final Rank (Utility)"]
             compatibility = row['Compatibility']
@@ -925,7 +891,7 @@ class ResultsBuilder:
                 return False
 
         def is_not_recommended(row):
-            """Return whether not recommended."""
+            """Return whether a row should be marked as not recommended."""
             suggested_rank = row["Final Rank (Utility)"]
             peak_rate = row['Peak Detection Rate (%)']
 
@@ -935,7 +901,7 @@ class ResultsBuilder:
                 return False
 
         def set_final_recommendation(row):
-            """Set final recommendation."""
+            """Return the final recommendation label for one result row."""
             if is_not_recommended(row):
                 return 'Not recommended'
 

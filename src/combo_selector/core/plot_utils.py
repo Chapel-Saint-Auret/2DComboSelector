@@ -85,7 +85,7 @@ class PlotUtils:
         scatter_collection (PathCollection): Scatter plot collection for updating points.
     """
 
-    def __init__(self, fig: Figure,model=None):
+    def __init__(self, fig: Figure, model=None):
         """Initialize the PlotUtils with a matplotlib Figure.
 
         Args:
@@ -593,10 +593,6 @@ class PlotUtils:
             try:
                 x_seg = np.array(
                     [point["log_epsilon"] for point in selected_segment],
-                    dtype=float
-                )
-                y_seg = np.array(
-                    [point["log_N"] for point in selected_segment],
                     dtype=float
                 )
             except KeyError:
@@ -1243,7 +1239,7 @@ class PlotUtils:
         self.fig.canvas.draw()
         self.fig.canvas.flush_events()
 
-    def plot_top_ranked_combination(self,number_of_rank_to_show):
+    def plot_top_ranked_combination(self, number_of_rank_to_show):
         """Plot top ranked combination."""
 
         if number_of_rank_to_show == 'all':
@@ -2179,13 +2175,19 @@ class PlotUtils:
         self.fig.canvas.draw()
         self.fig.canvas.flush_events()
 
-    def plot_feasibility_profile(self, grouping: str = "Global", axis_scale: str = "Auto",chrom_mode: str = 'All mode'):
+    def plot_feasibility_profile(
+        self,
+        grouping: str = "Global",
+        axis_scale: str = "Auto",
+        chrom_mode: str = "All mode",
+    ):
+        """Plot feasibility results globally or split by chromatographic mode."""
         self.fig.clear()
         self.set_annotation()
         self.scatter_metadata.clear()
 
         def apply_scale(ax, scale: str):
-            """Apply scale."""
+            """Apply the requested axis scale to one feasibility subplot."""
             if scale == "Auto":
                 return
             s = scale.lower()
@@ -2228,9 +2230,6 @@ class PlotUtils:
             if df.empty:
                 self._show_missing_data()
                 return
-
-            # rank_max = rank_numeric.max()
-            # x_pct = (rank_numeric / rank_max) * 100 if rank_max else rank_numeric
 
             recommendation_colors = {
                 "Highly recommended": "#1a7a2e",
@@ -2461,7 +2460,7 @@ class PlotUtils:
         self.fig.canvas.flush_events()
 
     def plot_recommendation_distribution(self, grouping: str = "Global"):
-        """Plot recommendation distribution."""
+        """Plot recommendation-class counts globally or by chromatographic mode."""
         self.fig.clear()
         self.axe = self.fig.add_subplot(111)
 
@@ -2597,7 +2596,9 @@ class PlotUtils:
         self.fig.canvas.draw()
         self.fig.canvas.flush_events()
 
-    def plot_final_rank_by_recommendation_class(self,recommendation: str = 'All recommendation'):
+    def plot_final_rank_by_recommendation_class(
+        self, recommendation: str = "All recommendation"
+    ):
         """Plot final rank by recommendation class."""
         self.fig.clear()
         self.set_annotation()
@@ -3088,7 +3089,7 @@ class PlotUtils:
         self.fig.canvas.draw()
         self.fig.canvas.flush_events()
 
-    def     plot_rank_shift_scatter(self, color_by: str = "Chromatographic Mode"):
+    def plot_rank_shift_scatter(self, color_by: str = "Chromatographic Mode"):
         """Scatter plot of Old Rank vs New Rank (Utility) with y=x diagonal.
 
         Points below the diagonal → combination moves up in the new ranking.
@@ -3562,7 +3563,7 @@ class PlotUtils:
         self.fig.canvas.draw()
         self.fig.canvas.flush_events()
 
-    def set_annotation(self,annotation = None):
+    def set_annotation(self, annotation=None):
         """Set annotation."""
 
         if annotation:

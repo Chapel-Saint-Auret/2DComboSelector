@@ -125,14 +125,15 @@ class Redundancy:
         return self.correlation_group_df
 
     def compute_top_overlap(self):
-
-        """[('A', 'B'), ('A', 'C'), ('A', 'D'), ('B', 'C'), ('B', 'D'), ('C', 'D')]"""
+        """Compute pairwise top-10 overlap for metrics within each correlation group."""
 
         result_dict = {}
         top_10_count = int(self.nb_combination * 0.10)
 
-        for _, Correlated_Metrics_list in zip(self.correlation_group_df['Group'],
-                                                  self.correlation_group_df['Correlated Metrics']):
+        for group, Correlated_Metrics_list in zip(
+            self.correlation_group_df["Group"],
+            self.correlation_group_df["Correlated Metrics"],
+        ):
 
             # The '2' specifies the size of the groups (pairs)
             unique_pairs_metric = list(combinations(Correlated_Metrics_list, 2))
@@ -156,7 +157,7 @@ class Redundancy:
 
                 result_dict[group][str(metric_pair)] = overlap
 
-        result_dict = pd.DataFrame(result_dict)
+        return pd.DataFrame(result_dict)
 
     def compute_rho_coverage(self):
         """Compute Spearman correlation (ρ) between each metric and the coverage anchor.
@@ -261,8 +262,8 @@ class Redundancy:
         """Fill average redundancy values for each correlation group."""
         average_redundancy_list = []
 
-        for group, Correlated_Metrics_list in zip(self.correlation_group_df['Group'],
-                                                  self.correlation_group_df['Correlated Metrics']):
+        for _, Correlated_Metrics_list in zip(self.correlation_group_df['Group'],
+                                              self.correlation_group_df['Correlated Metrics']):
 
             # 1. Get your sub-matrix
             if matrix_type == 'Values':

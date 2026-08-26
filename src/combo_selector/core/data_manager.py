@@ -524,9 +524,6 @@ class DataManager:
 
         self.normalized_retention_time_df = data_frame_copy.copy()
 
-        # delete copy
-        del data_frame_copy
-
         self.set_orthogonality_dict_x_y_series()
 
     def normalize_retention_time_void_max(self) -> None:
@@ -566,9 +563,6 @@ class DataManager:
 
         self.normalized_retention_time_df = data_frame_copy.copy()
 
-        # delete copy
-        del data_frame_copy
-
         self.set_orthogonality_dict_x_y_series()
 
     def normalize_retention_time_wosel(self) -> None:
@@ -606,9 +600,6 @@ class DataManager:
             )
 
         self.normalized_retention_time_df = data_frame_copy.copy()
-
-        # delete copy
-        del data_frame_copy
 
         self.set_orthogonality_dict_x_y_series()
 
@@ -927,7 +918,6 @@ class DataManager:
 
             for col1_idx, col2_idx in combinations(range(num_columns), 2):
                 set_key = f"Set {set_number}"
-                expected_title = f"{columns[col1_idx]} vs {columns[col2_idx]}"
 
                 # Calculate Elution domain
                 e1 = self.load_elution_composition_df.iloc[0, col1_idx]
