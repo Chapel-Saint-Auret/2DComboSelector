@@ -1996,6 +1996,8 @@ class PlotUtils:
                 self._show_missing_data()
                 return
 
+            BOXPLOT_COLORS = ["#E41A1C", "#377EB8", "#4DAF4A", "#984EA3", "#FF7F00", "#00A6A6"]
+
             def _is_near_identical(values_list):
                 """Return True if peak rate range across all groups < 1%."""
                 all_vals = np.concatenate([v for v in values_list if len(v) > 0]) \
@@ -3861,9 +3863,10 @@ class PlotUtils:
             # OFFSET_X > 0 : push the popup to the right of the cursor
             # OFFSET_Y < 0 : shift the popup slightly above the cursor
             # Together they ensure the hovered point is never hidden behind the popup.
-            OFFSET_X = 20
-            OFFSET_Y = -20
-            dialog.move(gp.x() + OFFSET_X, gp.y() + OFFSET_Y)
+            OFFSET_X = 0
+            OFFSET_Y = 0
+            # dialog.move(gp.x() + OFFSET_X, gp.y() + OFFSET_Y)
+            dialog.move(290 + OFFSET_X, 290 + OFFSET_Y)
 
         # --- 6. Render and display ---
         self.pop_up_fig.canvas.draw_idle()

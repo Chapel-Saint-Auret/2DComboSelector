@@ -19,11 +19,11 @@ Background workers are used for:
 """
 
 import sys
+import time
 
-from PySide6.QtCore import Qt, QThreadPool
-from PySide6.QtGui import QIcon
-from PySide6.QtWidgets import QApplication
-
+from PySide6.QtCore import Qt, QThreadPool, QSize
+from PySide6.QtWidgets import QApplication, QSplashScreen
+from PySide6.QtGui import QPixmap, QIcon
 
 from combo_selector.core.orthogonality import Orthogonality
 from combo_selector.core.workers import RedundancyWorker
@@ -300,12 +300,34 @@ def main():
     QApplication.setHighDpiScaleFactorRoundingPolicy(
         Qt.HighDpiScaleFactorRoundingPolicy.PassThrough
     )
+
     app = QApplication(sys.argv)
     app_icon = QIcon(resource_path("icons/app_logo.svg"))
     app.setWindowIcon(app_icon)
 
+    # 2. Chargement direct avec la taille par défaut du SVG
+    pixmap = QPixmap(resource_path("icons/splash_log_ver.svg"))
+
+    # Sécurité au cas où le fichier n'est pas trouvé ou corrompu
+    if pixmap.isNull():
+        print(f"Erreur : Impossible de charger le SVG à l'adresse : {svg_path}")
+        # Optionnel : créer un pixmap de secours pour éviter un crash
+        pixmap = QPixmap(300, 300)
+        pixmap.fill(Qt.GlobalColor.darkGray)
+
+    # 3. Affichage du Splash Screen
+    splash = QSplashScreen(pixmap)
+    splash.show()
+    app.processEvents()
+
+    # Simulation du chargement
+    for i in range(1, 4):
+        splash.showMessage(f"Chargement... {i * 33}%", Qt.AlignmentFlag.AlignBottom | Qt.AlignmentFlag.AlignHCenter, Qt.GlobalColor.black)
+        time.sleep(1)
+        app.processEvents()
+
     window = ComboSelectorMain()
-    window.show()
+    window.showMaximized()
     sys.exit(app.exec())
 
 
