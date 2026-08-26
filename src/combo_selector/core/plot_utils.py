@@ -11,6 +11,7 @@ This module provides the PlotUtils class which handles all visualization tasks i
 """
 
 from math import sqrt
+from textwrap import fill
 from typing import Optional
 import warnings
 
@@ -99,6 +100,7 @@ class PlotUtils:
         self.fig = fig
         self.axe = None
         self.set_number = "Set 1"
+        self.annotation = None
         self.scatter_collection = None
         self.scatter_metadata = {}  # artist -> DataFrame (rows aligned to that artist's offsets)
 
@@ -3576,14 +3578,144 @@ class PlotUtils:
         if annotation:
             self.annotation = annotation
         else:
-            self.annotation = self.axe.annotate("", xy=(0, 0), xytext=(10, 10),
-                                                                         fontsize='x-small',
-                                                                          textcoords="offset points",
-                                                                          bbox=dict(boxstyle="round", fc="white",
-                                                                                    ec="gray"),
-                                                                          arrowprops=dict(arrowstyle="->"))
+            self.annotation = self._create_annotation(self.axe)
 
             self.annotation.set_visible(False)
+
+    def _create_annotation(self, target_axes):
+        """Create a styled annotation attached to *target_axes*."""
+        return target_axes.annotate(
+            "",
+            xy=(0, 0),
+            xytext=(10, 10),
+            fontsize="x-small",
+            textcoords="offset points",
+            ha="left",
+            va="bottom",
+            bbox=dict(boxstyle="round,pad=0.35", fc="white", ec="gray", alpha=0.96),
+            arrowprops=dict(arrowstyle="->"),
+            annotation_clip=False,
+        )
+
+    def _ensure_annotation_on_axes(self, target_axes):
+        """Ensure the shared annotation belongs to the active axes."""
+        if self.annotation is None or self.annotation.axes is not target_axes:
+            if self.annotation is not None:
+                self.annotation.remove()
+            self.annotation = self._create_annotation(target_axes)
+        return self.annotation
+
+    @staticmethod
+    def _bbox_overlap_area(bbox_a, bbox_b) -> float:
+        """Return the overlap area between two display-space bounding boxes."""
+        dx = min(bbox_a.x1, bbox_b.x1) - max(bbox_a.x0, bbox_b.x0)
+        dy = min(bbox_a.y1, bbox_b.y1) - max(bbox_a.y0, bbox_b.y0)
+        if dx <= 0 or dy <= 0:
+            return 0.0
+        return dx * dy
+
+    def _format_annotation_text(
+        self, combination_number: int, combination: str, x: float, y: float, wrap_width: int
+    ) -> str:
+        """Return wrapped annotation text for one plotted combination."""
+        return (
+            f"Combination # {combination_number}\n"
+            f"{fill(str(combination), width=wrap_width)}\n"
+            f"(x, y) = ({x:.2f}, {y:.2f})"
+        )
+
+    def _place_annotation(
+        self, target_axes, combination_number: int, combination: str, x: float, y: float
+    ) -> None:
+        """Place the annotation where it stays readable and avoids legends when possible."""
+        annotation = self._ensure_annotation_on_axes(target_axes)
+        annotation.xy = (x, y)
+        annotation.set_visible(True)
+
+        self.fig.canvas.draw()
+        renderer = self.fig.canvas.get_renderer()
+        figure_bbox = self.fig.bbox
+        legend_bboxes = [
+            legend.get_window_extent(renderer).expanded(1.05, 1.10)
+            for legend in [*self.fig.legends, target_axes.get_legend()]
+            if legend is not None
+        ]
+
+        x_px, y_px = target_axes.transData.transform((x, y))
+        axes_bbox = target_axes.get_window_extent(renderer)
+        prefer_left = x_px > axes_bbox.x0 + axes_bbox.width * 0.55
+        prefer_bottom = y_px > axes_bbox.y0 + axes_bbox.height * 0.6
+        candidate_specs = [
+            {"xytext": (-16, -12), "ha": "right", "va": "top", "wrap": 28},
+            {"xytext": (-16, 12), "ha": "right", "va": "bottom", "wrap": 28},
+            {"xytext": (16, -12), "ha": "left", "va": "top", "wrap": 28},
+            {"xytext": (16, 12), "ha": "left", "va": "bottom", "wrap": 28},
+            {"xytext": (-18, 0), "ha": "right", "va": "center", "wrap": 26},
+            {"xytext": (18, 0), "ha": "left", "va": "center", "wrap": 26},
+            {"xytext": (0, -16), "ha": "center", "va": "top", "wrap": 42},
+            {"xytext": (0, 16), "ha": "center", "va": "bottom", "wrap": 42},
+        ]
+
+        def candidate_priority(spec):
+            dx, dy = spec["xytext"]
+            score = 0
+            if prefer_left and dx < 0:
+                score -= 2
+            if not prefer_left and dx > 0:
+                score -= 2
+            if prefer_bottom and dy < 0:
+                score -= 1
+            if not prefer_bottom and dy > 0:
+                score -= 1
+            if dy == 0:
+                score += 1
+            return score
+
+        best_spec = None
+        best_score = None
+        for spec in sorted(candidate_specs, key=candidate_priority):
+            annotation.set_text(
+                self._format_annotation_text(
+                    combination_number, combination, x, y, spec["wrap"]
+                )
+            )
+            annotation.set_position(spec["xytext"])
+            annotation.set_ha(spec["ha"])
+            annotation.set_va(spec["va"])
+            annotation_bbox = annotation.get_window_extent(renderer).expanded(1.05, 1.10)
+            legend_overlap = sum(
+                self._bbox_overlap_area(annotation_bbox, legend_bbox)
+                for legend_bbox in legend_bboxes
+            )
+            overflow = (
+                max(0, figure_bbox.x0 - annotation_bbox.x0)
+                + max(0, annotation_bbox.x1 - figure_bbox.x1)
+                + max(0, figure_bbox.y0 - annotation_bbox.y0)
+                + max(0, annotation_bbox.y1 - figure_bbox.y1)
+            )
+            point_overlap = (
+                annotation_bbox.contains(x_px, y_px)
+                and abs(spec["xytext"][0]) < 20
+                and abs(spec["xytext"][1]) < 20
+            )
+            score = (legend_overlap * 5) + (overflow * 3) + (200 if point_overlap else 0)
+            if best_score is None or score < best_score:
+                best_score = score
+                best_spec = spec
+            if score == 0:
+                break
+
+        if best_spec is None:
+            best_spec = {"xytext": (16, 12), "ha": "left", "va": "bottom", "wrap": 28}
+
+        annotation.set_text(
+            self._format_annotation_text(
+                combination_number, combination, x, y, best_spec["wrap"]
+            )
+        )
+        annotation.set_position(best_spec["xytext"])
+        annotation.set_ha(best_spec["ha"])
+        annotation.set_va(best_spec["va"])
 
     def on_pick(self, event):
         """Handle point selection from a pick event."""
@@ -3598,27 +3730,8 @@ class PlotUtils:
         combination = row['2D Combination']
         combination_number = row['Combination #']
 
-        # event.artist.axes is the actual Axes the clicked point belongs to.
-        # self.annotation may currently be attached to a different (or stale,
-        # since fig.clear() destroys axes) Axes - e.g. in faceted plots with
-        # multiple subplots, or if set_annotation() ran before the axes it's
-        # meant to sit on was created. Recreate it on the correct axes if needed.
         target_axes = event.artist.axes
-        if self.annotation is None or self.annotation.axes is not target_axes:
-            if self.annotation is not None:
-                self.annotation.remove()
-            self.annotation = target_axes.annotate("", xy=(0, 0), xytext=(10, 10),
-                                                                         fontsize='x-small',
-                                                                          textcoords="offset points",
-                                                                          bbox=dict(boxstyle="round", fc="white",
-                                                                                    ec="gray"),
-                                                                          arrowprops=dict(arrowstyle="->"))
-
-        self.annotation.xy = (x, y)
-        self.annotation.set_text(
-            f"Combination # {combination_number}\n{combination}\n(x, y) = ({x:.2f}, {y:.2f})"
-        )
-        self.annotation.set_visible(True)
+        self._place_annotation(target_axes, combination_number, combination, x, y)
 
         self._destroy_popup()
         self.pop_up_fig = self.plot_combination_popup(set_number=f"Set {combination_number}")
@@ -3781,13 +3894,12 @@ class PlotUtils:
         x, y = target_artist.get_offsets()[target_ind]
 
         combination = target_row['2D Combination']
+        combination_number = int(number)
 
-        self.annotation.xy = (x, y)
-        self.annotation.set_text(f"Combination # {number}\n{combination}\n(x, y) = ({x:.2f}, {y:.2f})")
-        self.annotation.set_visible(True)
+        self._place_annotation(target_artist.axes, combination_number, combination, x, y)
 
         self._destroy_popup()
-        self.pop_up_fig = self.plot_combination_popup(set_number=f"Set {number}")
+        self.pop_up_fig = self.plot_combination_popup(set_number=f"Set {combination_number}")
         self.show_popup_at()
 
         self.fig.canvas.draw_idle()
