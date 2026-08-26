@@ -206,6 +206,43 @@ class DataManager:
         """
         self.nan_policy_option2_threshold = threshold
 
+    @staticmethod
+    def _is_missing_retention_value(value) -> bool:
+        """Return whether a retention-time cell should be treated as missing."""
+        return pd.isna(value) or value == ""
+
+    def _get_valid_retention_values(
+        self, column_value: pd.Series, column_name: str
+    ) -> list:
+        """Return non-missing numeric values for one retention-time column."""
+        valid_values = [
+            value
+            for value in column_value
+            if not self._is_missing_retention_value(value)
+        ]
+        if not valid_values:
+            self.status = "error"
+            raise ValueError(
+                f"Cannot normalize '{column_name}' because it contains no usable values."
+            )
+        return valid_values
+
+    def _get_reference_value(
+        self, reference_df: pd.DataFrame, column_name: str, label: str
+    ):
+        """Return the scalar reference value used for normalization."""
+        if reference_df is None or reference_df.empty:
+            self.status = "error"
+            raise ValueError(f"{label} data is not loaded.")
+        if column_name not in reference_df.columns:
+            self.status = "error"
+            raise ValueError(f"Cannot find {label} value for '{column_name}'.")
+        value = reference_df[column_name].iloc[0]
+        if self._is_missing_retention_value(value):
+            self.status = "error"
+            raise ValueError(f"{label} value for '{column_name}' is missing.")
+        return value
+
     # ------------------------------------------------------------------
     # NaN policy
     # ------------------------------------------------------------------
@@ -480,14 +517,16 @@ class DataManager:
         """
         if method == "min_max":
             self.normalize_retention_time_min_max()
-
-        if method == "void_max":
+        elif method == "void_max":
             self.normalize_retention_time_void_max()
-
-        if method == "wosel":
+        elif method == "wosel":
             self.normalize_retention_time_wosel()
+        else:
+            self.status = "error"
+            raise ValueError(f"Unknown normalization method: {method}")
 
-        self.status = "normalized"
+        if self.status != "error":
+            self.status = "normalized"
 
     def normalize_retention_time_min_max(self) -> None:
         """Normalize retention times using min-max normalization for each column.
@@ -505,21 +544,20 @@ class DataManager:
         for column_name in data_frame_copy.columns[2:]:
             column_value = data_frame_copy[column_name]
 
-            # maximum and Rt0 retention time
-            column_value_cleaned = list(filter(None, column_value))
-            try:
-                rt_min = min(column_value_cleaned)
-                rt_max = max(column_value_cleaned)
-
-            except Exception as e:
-                issue = str(e)
-                print(f"Error while normalizing {column_name} : {issue}")
-                print(f"Unmatch void time column name (cannot find {column_name})")
+            valid_values = self._get_valid_retention_values(column_value, column_name)
+            rt_min = min(valid_values)
+            rt_max = max(valid_values)
+            if rt_max == rt_min:
                 self.status = "error"
+                raise ValueError(
+                    f"Cannot normalize '{column_name}' because all usable values are identical."
+                )
 
             # Normalizing data
             data_frame_copy[column_name] = column_value.apply(
-                lambda x: (x - rt_min) / (rt_max - rt_min) if x else ""
+                lambda x: ""
+                if self._is_missing_retention_value(x)
+                else (x - rt_min) / (rt_max - rt_min)
             )
 
         self.normalized_retention_time_df = data_frame_copy.copy()
@@ -542,23 +580,20 @@ class DataManager:
         #[2:] is because first two columns are compound# and compound name
         for column_name in data_frame_copy.columns[2:]:
             column_value = data_frame_copy[column_name]
-
-            # maximum and Rt0 retention time
-
-            try:
-                rt_0 = self.void_time_df[column_name]
-
-            except Exception as e:
-                issue = str(e)
-                print(f"Error while normalizing {column_name} : {issue}")
-                print(f"Unmatch void time column name (cannot find {column_name})")
+            valid_values = self._get_valid_retention_values(column_value, column_name)
+            rt_0 = self._get_reference_value(self.void_time_df, column_name, "Void time")
+            rt_max = max(valid_values)
+            if rt_max == rt_0:
                 self.status = "error"
-
-            rt_max = column_value.max()
+                raise ValueError(
+                    f"Cannot normalize '{column_name}' because its max value matches the void time."
+                )
 
             # Normalizing data
             data_frame_copy[column_name] = column_value.apply(
-                lambda x: (x - rt_0) / (rt_max - rt_0)
+                lambda x: ""
+                if self._is_missing_retention_value(x)
+                else (x - rt_0) / (rt_max - rt_0)
             )
 
         self.normalized_retention_time_df = data_frame_copy.copy()
@@ -581,22 +616,22 @@ class DataManager:
         #[2:] is because first two columns are compound# and compound name
         for column_name in data_frame_copy.columns[2:]:
             column_value = data_frame_copy[column_name]
-
-            # maximum and Rt0 retention time
-
-            try:
-                rt_0 = self.void_time_df[column_name]
-                rt_end = self.gradient_end_time_df[column_name]
-
-            except Exception as e:
-                issue = str(e)
-                print(f"Error while normalizing {column_name} : {issue}")
-                print(f"Unmatch void time column name (cannot find {column_name})")
+            self._get_valid_retention_values(column_value, column_name)
+            rt_0 = self._get_reference_value(self.void_time_df, column_name, "Void time")
+            rt_end = self._get_reference_value(
+                self.gradient_end_time_df, column_name, "Gradient end time"
+            )
+            if rt_end == rt_0:
                 self.status = "error"
+                raise ValueError(
+                    f"Cannot normalize '{column_name}' because void time equals gradient end time."
+                )
 
             # Normalizing data
             data_frame_copy[column_name] = column_value.apply(
-                lambda x: (x - rt_0) / (rt_end - rt_0)
+                lambda x: ""
+                if self._is_missing_retention_value(x)
+                else (x - rt_0) / (rt_end - rt_0)
             )
 
         self.normalized_retention_time_df = data_frame_copy.copy()
