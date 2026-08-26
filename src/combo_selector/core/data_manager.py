@@ -878,14 +878,12 @@ class DataManager:
                     self.orthogonality_dict[set_key] = (
                         self.get_default_orthogonality_entry()
                     )
-                    self.orthogonality_dict[set_key]["title"] = expected_title
 
                     # Initialize table data by adding a new row with None values
                     self.table_data.append([None] * len(METRIC_MAPPING))
 
                     # Use helper function for updates
                     self.update_metrics(set_key, "set_number", set_number)
-                    self.update_metrics(set_key, "title", expected_title)
                     self.update_metrics(set_key, "2d_peak_capacity", peak_capacity)
 
                 else:
@@ -895,9 +893,6 @@ class DataManager:
                         "set_number",
                         set_number,
                         table_row_index=set_number - 1
-                    )
-                    self.update_metrics(
-                        set_key, "title", expected_title, table_row_index=set_number - 1
                     )
                     self.update_metrics(
                         set_key,
