@@ -445,6 +445,7 @@ class ExportPage(QFrame):
         self.figure_type_chklist.checked_all()
 
     def update_figure_set(self):
+        """Update figure set."""
         self.figure_list_chklist.clear()
 
         # df = self.model.get_filtered_result_df()[["Combination #", "Final Rank (Utility)"]].sort_values(
@@ -457,6 +458,7 @@ class ExportPage(QFrame):
         self.figure_list_chklist.add_items(set_list)
 
     def update_figure_list_check_list(self):
+        """Update figure list check list."""
         # ------------------------------------------------------------------
         # Subset filter — same logic as plot_multi_criteria_space
         # ------------------------------------------------------------------
@@ -472,8 +474,6 @@ class ExportPage(QFrame):
         set_list = list(top_10_percent_df["Combination #"].apply(lambda x: f"Set {x}"))
 
         self.figure_list_chklist.set_checked_items(set_list)
-
-
 
 
     def create_figure_directory(self) -> None:

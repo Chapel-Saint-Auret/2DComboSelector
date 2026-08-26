@@ -37,6 +37,7 @@ class HoverPopup:
 
     def __init__(self, ax, scatter, popup_func,
                  popup_size=(4, 3.5), hover_radius_px=10):
+        """Initialize the hoverpopup."""
         self._ax = ax
         self._scatter = scatter
         self._popup_func = popup_func
@@ -83,6 +84,7 @@ class HoverPopup:
         nearest = int(np.argmin(dists))
 
         if dists[nearest] <= self._hover_radius_px:
+        """Handle motion."""
             if self._current != nearest:
                 self._current = nearest
                 self._update_popup(nearest, event)
@@ -128,6 +130,7 @@ class HoverPopup:
         x = sx + 20  # 20 px à droite du curseur
         y = sy  # bord haut aligné avec le curseur
         try:
+        """Show at."""
             self._win.wm_geometry(f"+{x}+{y}")
             self._win.deiconify()
             self._win.lift()
@@ -138,6 +141,7 @@ class HoverPopup:
 
     def _hide(self):
         try:
+        """Hide hide."""
             self._win.withdraw()
         except AttributeError:
             self._win.hide()

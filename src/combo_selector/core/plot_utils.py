@@ -19,14 +19,12 @@ import pandas as pd
 from PySide6.QtCore import QPoint
 from matplotlib.backend_bases import PickEvent
 from matplotlib.backends.backend_qtagg import FigureCanvas, FigureCanvasQTAgg
-from matplotlib.figure import Figure
-from PySide6.QtWidgets import QDialog,QVBoxLayout
+from PySide6.QtWidgets import QDialog, QVBoxLayout
 from matplotlib import collections, patches, ticker
 from matplotlib.gridspec import GridSpec
 from matplotlib.collections import QuadMesh
 import matplotlib.colors as mcolors
 from matplotlib.colors import LinearSegmentedColormap
-import matplotlib.ticker as ticker
 from matplotlib.colors import ListedColormap
 from matplotlib.figure import Figure
 from matplotlib.lines import Line2D
@@ -105,6 +103,7 @@ class PlotUtils:
         self.scatter_metadata = {}  # artist -> DataFrame (rows aligned to that artist's offsets)
 
     def set_orthogonality_result_data(self, orthogonality_result_df: pd.DataFrame) -> None:
+        """Set orthogonality result data."""
         self.orthogonality_result_data = orthogonality_result_df
 
     def set_orthogonality_data(self, orthogonality_dict: dict) -> None:
@@ -209,7 +208,7 @@ class PlotUtils:
         [quadmesh.remove() for quadmesh in self.axe.findobj(QuadMesh)]
 
         # Remove legend labels but keep handles
-        handles, labels = self.axe.get_legend_handles_labels()
+        handles, _ = self.axe.get_legend_handles_labels()
         for handle in handles:
             handle.set_label(None)
 
@@ -395,7 +394,7 @@ class PlotUtils:
         x = data["x_values"]
         H_color = data["modeling_approach"]["color_mask"]
         xedges, yedges = data["modeling_approach"]["edges"]
-        slope, intercept, r, p, se = data["linregress"]
+        slope, intercept, *_ = data["linregress"]
 
         # reset axes limits
         self.axe.set_xlim(0, 1)
@@ -605,15 +604,6 @@ class PlotUtils:
 
             order_seg = np.argsort(x_seg)
             x_seg_sorted = x_seg[order_seg]
-            y_seg_sorted = y_seg[order_seg]
-
-            # self.scatter_collection = self.axe.scatter(
-            #     x_seg_sorted,
-            #     y_seg_sorted,
-            #     label="Selected linear segment",
-            #     alpha=0.95,
-            #     zorder=3
-            # )
 
             # --------------------------------------------------
             # Regression line
@@ -741,7 +731,7 @@ class PlotUtils:
         self.axe.set_xlim(0, 1)
         self.axe.set_ylim(0, 1)
 
-        colormesh = self.axe.pcolormesh(
+        self.axe.pcolormesh(
             xedges,
             yedges,
             histogram,
@@ -886,10 +876,10 @@ class PlotUtils:
 
         # now the diagonal & cross lines
         time = np.linspace(0, 1, 6)
-        dummy_1 = self.axe.plot(
+        self.axe.plot(
             time, time, label=f"$Z_-$: {z_minus:.3f}", color="black", linestyle="-"
         )[0]
-        dummy_2 = self.axe.plot(
+        self.axe.plot(
             time, 1 - time, label=f"$Z_+$: {z_plus:.3f}", color="black", linestyle="--"
         )[0]
         self.axe.vlines(
@@ -936,7 +926,7 @@ class PlotUtils:
 
         data = self.orthogonality_data[set_nb]
         x = data["x_values"]
-        slope, intercept, r, p, se = data["linregress"]
+        slope, intercept, *_ = data["linregress"]
         r = data["pearson_r"]
         rho = data["spearman_rho"]
         tau = data["kendall_tau"]
@@ -1185,6 +1175,7 @@ class PlotUtils:
         # 3) Hide legend if present
         leg = self.axe.get_legend()
         if leg:
+        """Plot coverage vs distribution."""
             leg.set_visible(False)
 
         self.fig.canvas.draw()
@@ -1205,6 +1196,7 @@ class PlotUtils:
         peak_capacity_available = pd.to_numeric(x, errors='coerce').notna().any()
 
         if not peak_capacity_available:
+        """Plot peak capacity vs old orthogonality score."""
             self._show_missing_data()
             return
 
@@ -1235,6 +1227,7 @@ class PlotUtils:
         peak_capacity_available = pd.to_numeric(x, errors='coerce').notna().any()
 
         if not peak_capacity_available:
+        """Plot peak capacity vs final consensus utility."""
             self._show_missing_data()
             return
 
@@ -1274,6 +1267,7 @@ class PlotUtils:
         # 3) Hide legend if present
         leg = self.axe.get_legend()
         if leg:
+        """Plot top ranked combination."""
             leg.set_visible(False)
 
         self.fig.canvas.draw()
@@ -1323,6 +1317,7 @@ class PlotUtils:
         # ------------------------------------------------------------------
         def get_color(pct):
             if pct <= 1:
+            """Return color."""
                 return '#1A3A9E'   # Top 1%
             elif pct <= 5:
                 return '#A0379A'   # Top 5%
@@ -1383,6 +1378,7 @@ class PlotUtils:
             self.axe.set_xlim(0, 1)
             self.axe.set_ylim(0, 1)
         else:
+        """Plot orthogonality space."""
             x_min, x_max = x.min(), x.max()
             y_min, y_max = y.min(), y.max()
 
@@ -1618,6 +1614,7 @@ class PlotUtils:
 
         def get_color(pct):
             if pct <= 1:
+            """Return color."""
                 return '#1A3A9E'   # Top 1%
             elif pct <= 5:
                 return '#A0379A'   # Top 5%
@@ -1674,6 +1671,7 @@ class PlotUtils:
             ax.set_xscale(s)
             ax.set_yscale(s)
             if s == 'log':
+            """Apply scale."""
                 ax.xaxis.set_major_formatter(
                     ticker.FuncFormatter(lambda val, _: f"{int(val):,}")
                 )
@@ -1806,6 +1804,7 @@ class PlotUtils:
                     'Vertical jitter added for visibility; peak rate values are near-identical.'
                 )
             else:
+        """Plot multi criteria space."""
                 plot_subtitle = f'{x_label} vs orthogonality utility · {subset}'
 
         # ------------------------------------------------------------------
@@ -1992,8 +1991,6 @@ class PlotUtils:
                 self._show_missing_data()
                 return
 
-            BOXPLOT_COLORS = ["#E41A1C", "#377EB8", "#4DAF4A", "#984EA3", "#FF7F00", "#00A6A6"]
-
             def _is_near_identical(values_list):
                 """Return True if peak rate range across all groups < 1%."""
                 all_vals = np.concatenate([v for v in values_list if len(v) > 0]) \
@@ -2090,6 +2087,7 @@ class PlotUtils:
                     if title in "Peak rate (%)":
                         ax.set_ylabel("Peak rate", fontsize=8)
                     else:
+                """Draw single boxplot."""
                         ax.set_ylabel("Rank", fontsize=8)
 
                 ax.set_xticks(range(1, len(labels) + 1))
@@ -2162,6 +2160,7 @@ class PlotUtils:
                     self._show_missing_data()
                     return
                 if criteria == "Peak Capacity" and not peak_capacity_available:
+        """Plot chroma mode performance."""
                     self._show_missing_data()
                     return
 
@@ -2192,6 +2191,7 @@ class PlotUtils:
             ax.set_xscale(s)
             ax.set_yscale(s)
             if scale == "Log":
+            """Apply scale."""
                 ax.xaxis.set_major_formatter(
                     ticker.FuncFormatter(lambda val, _: f"{int(val):,}")
                 )
@@ -2435,6 +2435,7 @@ class PlotUtils:
 
                 # # Hide unused grid cells
                 # for j in range(n_modes, nrows * ncols):
+        """Plot feasibility profile."""
                 #     self.fig.add_subplot(gs[j // ncols, j % ncols]).axis("off")
 
                 legend_handles = [
@@ -2459,7 +2460,6 @@ class PlotUtils:
                               ha="center", fontsize=9, style="italic", color="dimgray")
 
                 self.fig.subplots_adjust(left=0.12, right=0.95, top=0.82, bottom=0.22)
-
 
 
         self.fig.canvas.draw()
@@ -2555,6 +2555,7 @@ class PlotUtils:
             # ← Total on top of each bar (original style)
             max_total = max(bottoms) if bottoms else 1
             for i, total in enumerate(bottoms):
+        """Plot recommendation distribution."""
                 self.axe.text(
                     i, total + max_total * 0.01,
                     f"{total:,}",
@@ -2818,6 +2819,7 @@ class PlotUtils:
             for mode in seen_modes
         ]
         if legend_handles:
+        """Plot final rank by recommendation class."""
             self.axe.legend(
                 handles=legend_handles,
                 title="Chromatographic mode",
@@ -2892,6 +2894,7 @@ class PlotUtils:
             patch.set_edgecolor(color)
             patch.set_linewidth(1.0)
         for median in box["medians"]:
+        """Plot detected compound by chrom mode."""
             median.set_color("black")
             median.set_linewidth(1.2)
 
@@ -2973,6 +2976,7 @@ class PlotUtils:
             patch.set_edgecolor(color)
             patch.set_linewidth(1.0)
         for median in box["medians"]:
+        """Plot detected compound by combination combination chrom mode."""
             median.set_color("black")
             median.set_linewidth(1.2)
 
@@ -3054,6 +3058,7 @@ class PlotUtils:
             patch.set_edgecolor(color)
             patch.set_linewidth(1.0)
         for median in box["medians"]:
+        """Plot metric agreement by combination combination chrom mode."""
             median.set_color("black")
             median.set_linewidth(1.2)
 
@@ -3414,6 +3419,7 @@ class PlotUtils:
 
         valid = old_rank.notna() & new_rank.notna()
         if not valid.any():
+        """Plot rank shift by combination."""
             self._show_missing_data()
             return
 
@@ -3533,6 +3539,7 @@ class PlotUtils:
         annot_fs = max(8, 11 - max(0, len(top_ks) - 3))
         label_offset = y_max * 0.02
         for bar, k, count, pct, color in zip(bars, top_ks, overlaps, percentages, bar_colors):
+        """Plot top rank overlap."""
             self.axe.text(
                 bar.get_x() + bar.get_width() / 2,
                 bar.get_height() + label_offset,
@@ -3545,6 +3552,7 @@ class PlotUtils:
         self.fig.canvas.flush_events()
 
     def _show_missing_data(self):
+        """Show missing data."""
         self.fig.clear()
         ax = self.fig.add_subplot(111)
         ax.axis('off')
@@ -3562,6 +3570,7 @@ class PlotUtils:
     def set_annotation(self,annotation = None):
 
         if annotation:
+        """Set annotation."""
             self.annotation = annotation
         else:
             self.annotation = self.axe.annotate("", xy=(0, 0), xytext=(10, 10),
@@ -3593,6 +3602,7 @@ class PlotUtils:
         target_axes = event.artist.axes
         if self.annotation is None or self.annotation.axes is not target_axes:
             if self.annotation is not None:
+        """Handle pick."""
                 self.annotation.remove()
             self.annotation = target_axes.annotate("", xy=(0, 0), xytext=(10, 10),
                                                                          fontsize='x-small',
@@ -3650,6 +3660,7 @@ class PlotUtils:
         nearest = int(np.argmin(dists))
 
         if dists[nearest] <= 8:
+        """Handle motion."""
             if self._hovered_ind != nearest:
                 self._hovered_ind = nearest
                 combination_number = list(df_filtered['Combination #'])[nearest]
@@ -3664,6 +3675,7 @@ class PlotUtils:
 
     def _destroy_popup(self):
         if hasattr(self, 'pop_up_fig'):
+        """Destroy popup."""
             if hasattr(self.pop_up_fig, '_popup_dialog') and self.pop_up_fig._popup_dialog:
                 self.pop_up_fig._popup_dialog.hide()
                 self.pop_up_fig._popup_dialog.deleteLater()
@@ -3672,6 +3684,7 @@ class PlotUtils:
 
     def hide_popup(self):
         if hasattr(self, 'pop_up_fig') and hasattr(self.pop_up_fig, '_popup_dialog') and self.pop_up_fig._popup_dialog:
+        """Hide popup."""
             self.pop_up_fig._popup_dialog.hide()
 
     def show_popup_at(self, event=None, parent=None):
@@ -3755,6 +3768,7 @@ class PlotUtils:
                 break
 
         if target_artist is None:
+        """Show combination plot dialog."""
             # combination isn't in any currently plotted scatter (e.g. filtered out)
             return
 
@@ -3821,6 +3835,7 @@ class PlotUtils:
 
 
     def open_in_window(self):
+        """Open in window."""
         self._plot_dialog = QDialog()
         self._plot_dialog.setWindowTitle("Multi-Criteria Space")
         self._plot_dialog.resize(1000, 700)

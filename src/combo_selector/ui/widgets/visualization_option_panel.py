@@ -100,15 +100,18 @@ class RadioPanel(QWidget):
             self._buttons[opt] = rb
             row.addWidget(rb)
             if i == 0:
+        """Initialize the radiopanel."""
                 rb.setChecked(True)
 
         outer.addWidget(container)
 
     def checked_text(self) -> str:
+        """Checked text."""
         btn = self._group.checkedButton()
         return btn.text() if btn else ""
 
     def connect_toggled(self, slot):
+        """Connect toggled."""
         self._group.buttonToggled.connect(slot)
 
 
@@ -176,6 +179,7 @@ class VisualizationOptionsPanel(QGroupBox):
     stateChanged = Signal(object)  # emits a PlotState
 
     def __init__(self, parent=None):
+        """Initialize the visualizationoptionspanel."""
         super().__init__("Visualization Options", parent)
 
         self._build_ui()
@@ -186,6 +190,7 @@ class VisualizationOptionsPanel(QGroupBox):
     # ------------------------------------------------------------------
 
     def _build_ui(self):
+        """Build ui."""
         root = QVBoxLayout(self)
         root.setContentsMargins(14, 18, 14, 14)
         root.setSpacing(10)
@@ -288,9 +293,11 @@ class VisualizationOptionsPanel(QGroupBox):
     # Slots
     # ------------------------------------------------------------------
     def set_chrom_mode_item(self,items):
+        """Set chrom mode item."""
         self.chromatographic_mode_combo_widget.combo.addItems(items)
 
     def _emit_state(self):
+        """Emit state."""
         plot = self._plot_combo.currentText()
 
         show_subset = plot in ("Orthogonality Space", "Multi-Criteria Space","Rank Shift by Combination")
@@ -357,19 +364,23 @@ class VisualizationOptionsPanel(QGroupBox):
             text = self._grouping_panel.currentText()
             self._update_chrom_mode_visibility(text)
         else:
+        """Handle plot changed."""
             self.chromatographic_mode_combo_widget.setVisible(False)
 
         self.plotTypeChanged.emit(plot)
 
     def get_plot_view(self):
+        """Return plot view."""
         plot_type = self._type_panel.currentText()
         return plot_type
 
     def get_plot_type(self):
+        """Return plot type."""
         plot_type = self._plot_combo.currentText()
         return plot_type
 
     def get_subset(self):
+        """Return subset."""
         plot = self._plot_combo.currentText()
 
         show_subset = plot in ("Orthogonality Space", "Multi-Criteria Space","Rank Shift by Combination")
@@ -377,22 +388,27 @@ class VisualizationOptionsPanel(QGroupBox):
         return self._percentile_panel.currentText() if show_subset else None
 
     def _on_type_toggled(self, text):
+        """Handle type toggled."""
         self._update_criteria_visibility(text)
 
     def _on_grouping_toggled(self,text):
+        """Handle grouping toggled."""
         self._update_chrom_mode_visibility(text)
 
     def _update_criteria_visibility(self,text):
+        """Update criteria visibility."""
         is_boxplot = text == "Boxplot"
         self._criteria_combo_widget.setVisible(is_boxplot)
 
     def _update_chrom_mode_visibility(self,text):
+        """Update chrom mode visibility."""
         show_chrom_mode = self.get_plot_type() == "Feasibility Profile"
         is_by_mode = text == "By mode"
         is_visible = show_chrom_mode and is_by_mode
         self.chromatographic_mode_combo_widget.setVisible(is_visible)
 
     def _percentile_toggled(self, button, checked):
+        """Percentile toggled."""
         button.text()
 
 # ---------------------------------------------------------------------------

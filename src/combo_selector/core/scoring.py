@@ -83,6 +83,7 @@ class Scoring:
         return self.metric_removal_impact_old_approach_df
 
     def set_computed_score_dict(self,computed_info: dict):
+        """Set computed score dict."""
         self.score_computed_method_info = computed_info
     # ------------------------------------------------------------------
     # DataFrame helpers
@@ -191,7 +192,6 @@ class Scoring:
         self.orthogonality_result_df['Computed Orthogonality Rank'] = self.orthogonality_result_df['Computed Orthogonality Score'].rank(ascending=True, method='average')
 
 
-
     def compute_suggested_score(self) -> None:
         """Compute suggested orthogonality scores based on correlation groups.
 
@@ -203,7 +203,7 @@ class Scoring:
             and table_data for each set.
         """
         # Iterate through each set in the orthogonality dictionary
-        for index, data_set in enumerate(self.orthogonality_score):
+        for data_set in self.orthogonality_score:
             # Reset the sum for each set
 
             mean_sum = 0
@@ -241,7 +241,8 @@ class Scoring:
             return
 
         # Iterate through each set in the orthogonality dictionary
-        for index, data_set in enumerate(self.orthogonality_dict):
+        for data_set in self.orthogonality_dict:
+        """Compute practical 2d peak capacity."""
 
             practical_2d_peak_capacity = (self.orthogonality_score[data_set]['suggested_score'] *
                                          self.orthogonality_score[data_set]['2d_peak_capacity'])
@@ -612,8 +613,6 @@ class Scoring:
         m_g = r_g.mean(axis=1)
 
         d_g = r_g.sub(m_g, axis=0).abs()
-
-        d_g_percent = d_g.apply(lambda x: 100*(x/(self.nb_combination-1)))
 
         # FIX: restrict to current groups only — orthogonality_group_ranking_df may
         # retain stale columns from a previous run (different threshold/groups).

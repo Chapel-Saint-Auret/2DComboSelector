@@ -71,10 +71,6 @@ class HomePage(QFrame):
         self.setFrameShape(QFrame.Shape.StyledPanel)
         self.setFrameShadow(QFrame.Shadow.Raised)
 
-        top_frame = QFrame()
-        # top_frame.setStyleSheet('background-color: #f0f0f0;')
-        top_frame_layout = QHBoxLayout(top_frame)
-
         user_input_scroll_area = QScrollArea()
         user_input_scroll_area.setFixedWidth(290)
         user_input_frame = QFrame()
@@ -241,23 +237,11 @@ class HomePage(QFrame):
         help_button_layout.addWidget(self.user_guide)
 
 
-
         # top_frame_layout.addWidget(user_input_scroll_area)
         # top_frame_layout.addWidget(home_content_frame)
 
-        # self.main_splitter = QSplitter(Qt.Orientation.Horizontal, self)
-        # self.main_splitter.addWidget(user_input_scroll_area)
-        # self.main_splitter.addWidget(home_content_frame)
-
-        # self.main_layout.addWidget(self.main_splitter)
         self.main_layout.addWidget(home_content_frame)
         self.main_layout.addWidget(help_content_frame)
-
-        cards = [
-            ("HOW IT WORKS?", HOW_IT_WORKS_TEXT),
-            ("BEFORE YOU BEGIN?", BEFORE_YOU_BEGIN_TEXT),
-            ("USER GUIDE", USER_GUIDE_TEXT),
-        ]
 
         self.how_it_works.clicked.connect(
             lambda checked, l="HOW IT WORKS?", c=HOW_IT_WORKS_TEXT:

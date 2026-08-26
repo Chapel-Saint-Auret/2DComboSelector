@@ -1190,6 +1190,7 @@ class ResultsPage(QFrame):
         self.fig.canvas.flush_events()
 
     def set_performance_penalty(self):
+        """Set performance penalty."""
 
         penalty = self.on_off_button.currentText()
         show_threshold = penalty == 'On'
@@ -1202,6 +1203,7 @@ class ResultsPage(QFrame):
         self.model.set_performance_penalty(penalty)
 
     def apply_performance_penalty(self):
+        """Apply performance penalty."""
         self.model.compute_final_results()
         self.progress_overlay.setGeometry(self.rect())
         self.progress_overlay.raise_()
@@ -1211,6 +1213,7 @@ class ResultsPage(QFrame):
         self.handle_finished()
 
     def plot_visualization_state_changed(self, state = PlotState()):
+        """Plot visualization state changed."""
         fn, get_kwargs = self.plot_dispatch[state.plot]
         fn(**get_kwargs(state))
 
@@ -1225,9 +1228,8 @@ class ResultsPage(QFrame):
             plot_fn()
 
     def show_combination_plot_pop_up(self,table):
+        """Show combination plot pop up."""
         data = table.get_selected_rows()[0].data()
-
-        subset = self.vizualation_settings_group.get_subset()
 
         self.plot_utils.show_combination_plot_dialog(number=data)
 
@@ -1314,6 +1316,7 @@ class ResultsPage(QFrame):
             self.not_filled = False
 
     def filter_table_changed(self, filter_spec_list:list = None ) -> None:
+        """Filter table changed."""
 
         self.model.apply_multi_column_filter(filter_spec_list)
 
@@ -1388,7 +1391,7 @@ class ResultsPage(QFrame):
                 x = subset[score]
                 y = subset['2d_peak_capacity']
 
-                scatter = self.selected_axe.scatter(x, y, s=20, color=facecolor, edgecolor="black", linewidths=0.9)
+                self.selected_axe.scatter(x, y, s=20, color=facecolor, edgecolor="black", linewidths=0.9)
 
         self.fig.canvas.draw()
         self.fig.canvas.flush_events()

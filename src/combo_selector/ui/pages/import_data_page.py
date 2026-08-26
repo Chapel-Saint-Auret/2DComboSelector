@@ -11,7 +11,7 @@ This module provides the ImportDataPage class which handles:
 
 import pandas as pd
 from PySide6.QtCore import Qt, Signal, QSize
-from PySide6.QtGui import QIcon, QFont, QPixmap
+from PySide6.QtGui import QFont, QIcon
 from PySide6.QtSvgWidgets import QSvgWidget
 from PySide6.QtWidgets import (
     QButtonGroup,
@@ -53,6 +53,7 @@ class ImportDataPage(QFrame):
     retention_time_normalized = Signal()
 
     def __init__(self, model=None) -> None:
+        """Initialize the importdatapage."""
         super().__init__()
 
         self.model = model
@@ -252,6 +253,7 @@ class ImportDataPage(QFrame):
         assignment_grid.setColumnMinimumWidth(0, 195)  # fixed label column
 
         def _make_combo() -> QComboBox:
+            """Make combo."""
             combo = QComboBox()
             combo.setFixedHeight(32)
             combo.setEnabled(False)
@@ -259,6 +261,7 @@ class ImportDataPage(QFrame):
             return combo
 
         def _make_row_label(text: str) -> QLabel:
+            """Make row label."""
             lbl = QLabel(text)
             lbl.setAlignment(Qt.AlignVCenter | Qt.AlignLeft)
             return lbl
@@ -412,6 +415,7 @@ class ImportDataPage(QFrame):
         def _find(keywords):
             for i, name in enumerate(sheet_names):
                 if any(k in name.lower() for k in keywords):
+            """Find find."""
                     return i + 1  # +1 because index 0 is the placeholder
             return 0
 
@@ -456,9 +460,6 @@ class ImportDataPage(QFrame):
             return
 
 
-
-
-
         # Optional: void time and gradient end time if their rows are visible
         if self.void_time_combo.isVisible():
             void_sheet = self.void_time_combo.currentData()
@@ -472,6 +473,7 @@ class ImportDataPage(QFrame):
 
     def _load_retention_data(self, file_path: str, sheet: str) -> None:
         try:
+        """Load retention data."""
             self.model.load_retention_time(filepath=file_path, sheetname=sheet)
 
             if self.model.get_status() == "error":
@@ -496,6 +498,7 @@ class ImportDataPage(QFrame):
 
     def _load_peak_capacities(self, file_path: str, sheet: str) -> None:
         try:
+        """Load peak capacities."""
             self.model.load_hypothetical_2d_peak_capacity(
                 filepath=file_path, sheetname=sheet
             )
@@ -512,6 +515,7 @@ class ImportDataPage(QFrame):
 
     def _load_elution_composition(self, file_path: str, sheet: str) -> None:
         try:
+        """Load elution composition."""
             self.model.load_elution_composition_space_area_data(
                 filepath=file_path, sheetname=sheet
             )
@@ -528,6 +532,7 @@ class ImportDataPage(QFrame):
 
     def _load_void_from_combo(self, file_path: str, sheet: str) -> None:
         try:
+        """Load void from combo."""
             self.model.load_void_time(filepath=file_path, sheetname=sheet)
             if self.model.get_status() == "error":
                 self.void_time_import_status.set_error()
@@ -539,6 +544,7 @@ class ImportDataPage(QFrame):
 
     def _load_gradient_from_combo(self, file_path: str, sheet: str) -> None:
         try:
+        """Load gradient from combo."""
             self.model.load_gradient_end_time(filepath=file_path, sheetname=sheet)
             if self.model.get_status() == "error":
                 self.gradient_end_time_import_status.set_error()
@@ -726,16 +732,19 @@ class ImportDataPage(QFrame):
         method = button_checked.objectName()
 
         def _set_void_visible(v: bool) -> None:
+            """Set void visible."""
             self._void_time_label_widget.setVisible(v)
             self.void_time_combo.setVisible(v)
             self.void_time_import_status.setVisible(v)
 
         def _set_gradient_visible(v: bool) -> None:
+            """Set gradient visible."""
             self._gradient_end_time_label_widget.setVisible(v)
             self.gradient_end_time_combo.setVisible(v)
             self.gradient_end_time_import_status.setVisible(v)
 
         if method == "min_max":
+        """Change norm svg."""
             self.scaling_method_svg_qstack.setCurrentIndex(0)
             _set_void_visible(False)
             _set_gradient_visible(False)
@@ -755,6 +764,7 @@ class ImportDataPage(QFrame):
         method = button_checked.objectName()
 
         try:
+        """Normalize retention time."""
             self.model.normalize_retention_time(method)
             self.normalization_status.set_valid()
 
@@ -772,5 +782,6 @@ class ImportDataPage(QFrame):
 
         data = self.model.get_retention_time_df()
         if not data.empty:
+        """Show nan policy dialog."""
             self.normalized_data_table.async_set_table_data(data)
             self.retention_time_loaded.emit()

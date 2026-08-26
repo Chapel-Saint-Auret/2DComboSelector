@@ -105,7 +105,7 @@ class Redundancy:
 
         sorted_Correlated_Metrics = sorted(Correlated_Metrics, key=len, reverse=True)
 
-        groups, sorted_Correlated_Metrics = cluster_and_fuse(sorted_Correlated_Metrics)
+        _, sorted_Correlated_Metrics = cluster_and_fuse(sorted_Correlated_Metrics)
 
         # If you pass a list of tuples directly → Pandas splits the tuples into multiple columns.
         # If you pass a dictionary with a column name → Pandas keeps each tuple as a single cell in that column.
@@ -131,7 +131,7 @@ class Redundancy:
         result_dict = {}
         top_10_count = int(self.nb_combination * 0.10)
 
-        for group, Correlated_Metrics_list in zip(self.correlation_group_df['Group'],
+        for _, Correlated_Metrics_list in zip(self.correlation_group_df['Group'],
                                                   self.correlation_group_df['Correlated Metrics']):
 
             # The '2' specifies the size of the groups (pairs)
@@ -267,6 +267,7 @@ class Redundancy:
             if matrix_type == 'Values':
                 corr_matrix = self.orthogonality_metric_corr_matrix_df.corr(method='spearman')
             else:
+        """Fill correlation group average."""
                 corr_matrix = self.orthogonality_metric_ranking_corr_matrix_df.corr(method='pearson')
 
             corr_matrix = corr_matrix.loc[

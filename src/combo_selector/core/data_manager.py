@@ -160,6 +160,7 @@ class DataManager:
         return self.normalized_retention_time_df
 
     def get_number_of_combination(self):
+        """Return number of combination."""
         return self.nb_combination
 
     def get_number_of_condition(self) -> int:
@@ -219,6 +220,7 @@ class DataManager:
 
             # nan_policy_threshold is % of total condition
             if (nan_count * 100) / self.nb_condition > self.nan_policy_option1_threshold:
+        """Remove compound."""
                 remove_compound_index.append(row_data[0])
                 self.removed_compound_list.append(row_data[1][1])
 
@@ -235,12 +237,14 @@ class DataManager:
 
             # nan_policy_threshold is % of total condition
             if (nan_count * 100) / self.nb_peaks > self.nan_policy_option2_threshold:
+        """Remove condition."""
                 self.removed_condition_list.append(column_data[0])
 
         self.retention_time_df = self.retention_time_df.drop(columns=self.removed_condition_list)
         self.retention_time_df = self.retention_time_df.fillna("").infer_objects(copy=False)
 
     def clear_all_nan(self):
+        """Clear all nan."""
         self.removed_compound_list = []
         self.removed_condition_list = []
 
@@ -286,6 +290,7 @@ class DataManager:
                 if value == "" or pd.isna(value):
                     return value
                 try:
+                """Blank if below threshold."""
                     return "" if float(value) < threshold else value
                 except (TypeError, ValueError):
                     return value
@@ -833,7 +838,6 @@ class DataManager:
 
             for col1_idx, col2_idx in combinations(range(num_columns), 2):
                 set_key = f"Set {set_number}"
-                expected_title = f"{columns[col1_idx]} vs {columns[col2_idx]}"
 
                 # Calculate 2D peak capacity
                 n1 = self.retention_time_df_2d_peaks.iloc[0, col1_idx]

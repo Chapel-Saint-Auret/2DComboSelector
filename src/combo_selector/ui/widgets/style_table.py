@@ -64,6 +64,7 @@ class TablePanel(QWidget):
         bold_columns=None,
         parent: QWidget | None = None,
     ) -> None:
+        """Initialize the tablepanel."""
         super().__init__(parent)
 
         self.threadpool = QThreadPool()
@@ -101,6 +102,7 @@ class TablePanel(QWidget):
     # ------------------------------------------------------------------
 
     def _on_selection_changed(self) -> None:
+        """Handle selection changed."""
         self.selectionChanged.emit(self)
 
     def get_selected_rows(self) -> list:
@@ -122,6 +124,7 @@ class TablePanel(QWidget):
         self.threadpool.start(worker)
 
     def set_tooltip_config(self,tooltip_config):
+        """Set tooltip config."""
         self.model.set_tooltip_config(tooltip_config)
 
     def _handle_data(self, data: list, rows: int, cols: int) -> None:
@@ -171,6 +174,7 @@ class TablePanel(QWidget):
         filter_spec_list = []
 
         for widget in self.header_widgets:
+        """Button state has changed."""
             filter_spec_list.append(widget.get_filter_spec())
 
         self.table.getProxyModel().set_multi_column_filters(filter_spec_list)
@@ -344,6 +348,7 @@ class StyledTable(QWidget):
             card.layout().addWidget(self.tab_widget, 1)
 
         else:
+        """Initialize the styledtable."""
             card.layout().addWidget(self.table_panel, 1)
 
         card.layout().addWidget(self.footer)
@@ -352,6 +357,7 @@ class StyledTable(QWidget):
         self._apply_styles()
 
     def add_title_bar_info_button(self, markdown_path:str) -> None:
+        """Add title bar info button."""
         title_help_btn = SectionHelpButton(
             title="",
             markdown_path=markdown_path,
@@ -375,6 +381,7 @@ class StyledTable(QWidget):
         self.title_layout.addStretch(1)
 
     def add_sheet(self,sheet_name='unnamed',value_format=".3f",color_config = None,bold_columns = None,enable_decoration= False,has_tooltip = False) -> None:
+        """Add sheet."""
         table_panel = TablePanel(
         value_format=value_format,
         color_config=color_config,
@@ -412,60 +419,79 @@ class StyledTable(QWidget):
     # Public API – forwarded to TablePanel so call sites stay the same
     # ------------------------------------------------------------------
     def set_tooltip_config(self,tooltip_config):
+        """Set tooltip config."""
         self.table_panel.set_tooltip_config(tooltip_config)
 
     def clean_table(self) -> None:
+        """Clean table."""
         self.table_panel.clean_table()
 
     def add_header_button(self, column: int, tooltip: str, widget_to_show: QWidget) -> None:
+        """Add header button."""
         self.table_panel.add_header_button(column, tooltip, widget_to_show)
 
     def add_help_button(self, column: int, title: str,markdown_path: str):
+        """Add help button."""
         self.table_panel.add_help_button(column, title, markdown_path)
 
     def get_header(self) -> HeaderButton:
+        """Return header."""
         return self.table_panel.get_header()
 
     def set_header_label(self, header_label: list) -> None:
+        """Set header label."""
         self.table_panel.set_header_label(header_label)
 
     def set_default_row_count(self, value: int) -> None:
+        """Set default row count."""
         self.table_panel.set_default_row_count(value)
 
     def get_row_count(self) -> int:
+        """Return row count."""
         return self.table_panel.get_row_count()
 
     def select_row(self, index: int) -> None:
+        """Select row."""
         self.table_panel.select_row(index)
 
     def get_selected_rows(self) -> list:
+        """Return selected rows."""
         return self.table_panel.get_selected_rows()
 
     def async_set_table_data(self, df: pd.DataFrame) -> None:
+        """Async set table data."""
         self.table_panel.async_set_table_data(df)
 
     def resize_column_width(self) -> None:
+        """Resize column width."""
         self.table_panel.resize_column_width()
 
     def set_section_resize_mode(self) -> None:
+        """Set section resize mode."""
         self.table_panel.set_section_resize_mode()
 
     def set_filter_key_column(self, column: int) -> None:
+        """Set filter key column."""
         self.table_panel.set_column_regex(column)
 
     def set_proxy_filter_regexp(self, regexp: str) -> None:
+        """Set proxy filter regexp."""
         self.table_panel.set_proxy_filter_regexp(regexp)
 
     def set_table_proxy(self) -> None:
+        """Set table proxy."""
         self.table_panel.set_table_proxy()
 
     def get_proxy_model(self):
+        """Return proxy model."""
         return self.table_panel.get_proxy_model()
 
     def get_model(self) -> OrthogonalityTableModel:
+        """Return model."""
         return self.table_panel.get_model()
 
     def get_table_view(self) -> OrthogonalityTableView:
+        """Return table view."""
         return self.table_panel.get_table_view()
 
     # ------------------------------------------------------------------
@@ -473,6 +499,7 @@ class StyledTable(QWidget):
     # ------------------------------------------------------------------
 
     def _apply_styles(self) -> None:
+        """Apply styles."""
         self.setStyleSheet("""
             QWidget {
                 font-family: Segoe UI, Arial;

@@ -12,7 +12,7 @@ import numpy as np
 from matplotlib.backends.backend_qtagg import FigureCanvas
 from matplotlib.figure import Figure
 from PySide6.QtGui import QIcon
-from PySide6.QtCore import QItemSelectionModel, QModelIndex, Qt, QTimer, QSize
+from PySide6.QtCore import QItemSelectionModel, QSize, Qt, QTimer
 from PySide6.QtWidgets import (
     QComboBox,
     QDialog,
@@ -153,6 +153,7 @@ class PlotPairWisePage(QFrame):
         ]
 
         if matching_indices:
+        """Handle pick."""
             index = matching_indices[0]
             self.selected_annotation = self.dataset_selector_map[index]["annotation"]
 
@@ -245,8 +246,6 @@ class PlotPairWisePage(QFrame):
         info_group = self._create_info_group()
 
         # Tips group
-        page_tips_group = self._create_tips_group()
-
         self.tips_button =         QPushButton(
             QIcon(resource_path("icons/light_bulb.png")), "Tips"
         )
@@ -261,7 +260,6 @@ class PlotPairWisePage(QFrame):
                 border-radius: 6px;
                 padding: 8px 16px;
                 font-weight: 500;""")
-
 
 
         user_input_frame_layout.addWidget(data_selection_group)
@@ -743,6 +741,7 @@ class PlotPairWisePage(QFrame):
     # Interactive Subplot Selection
     # ==========================================================================
     def set_selected_axe_annotation(self):
+        """Set selected axe annotation."""
         self.annot = self.selected_axe.annotate("", xy=(0, 0), xytext=(10, 10),
                             textcoords="offset points",
                             bbox=dict(boxstyle="round", fc="white", ec="gray"),

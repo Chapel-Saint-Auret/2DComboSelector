@@ -208,10 +208,7 @@ class RedundancyCheckPage(QFrame):
         correlation_parameter_group = self._create_correlation_parameter_group()
 
         # Info group
-        info_page_group = self._create_info_group()
-
         user_input_frame_layout.addWidget(correlation_parameter_group)
-        # user_input_frame_layout.addWidget(LineWidget("Horizontal"))
         user_input_frame_layout.addStretch()
         # user_input_frame_layout.addWidget(info_page_group)
 
@@ -525,6 +522,7 @@ class RedundancyCheckPage(QFrame):
         self.update_plot_and_redundacy_group()
 
     def update_plot_and_redundacy_group(self):
+        """Update plot and redundacy group."""
         self.plot_correlation_heat_map()
         self.update_correlation_group_table()
 

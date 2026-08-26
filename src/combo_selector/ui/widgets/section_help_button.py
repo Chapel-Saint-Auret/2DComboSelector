@@ -18,21 +18,16 @@ Usage:
 
 import sys
 import markdown
-from PySide6.QtWebEngineWidgets import QWebEngineView
-
 from PySide6.QtCore import QPoint, Qt
 from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import (
     QApplication,
     QDialog,
     QGroupBox,
-    QHBoxLayout,
     QLabel,
-    QPushButton,
     QSizePolicy,
     QTextBrowser,
     QToolButton,
-    QSizeGrip,
     QVBoxLayout,
     QWidget,
 )
@@ -328,6 +323,8 @@ class SectionHelpButton(QToolButton):
         btn.adjustSize()
 
         def _place_button():
+            """Place button."""
+        """Create group."""
             font_metrics = group.fontMetrics()
             font_height = font_metrics.height()
             title_text = group.title() or title
@@ -357,6 +354,7 @@ class SectionHelpButton(QToolButton):
         return btn
 
     def offset(self,x_offset = 0,y_offset = 0):
+        """Return offset."""
 
         global_pos: QPoint = self.mapToGlobal(self.rect().topRight())
         x = global_pos.x() + x_offset

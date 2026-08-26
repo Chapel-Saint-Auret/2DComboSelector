@@ -737,7 +737,6 @@ def compute_percent_fit_for_set(
         Returns:
             list[float]: X-coordinates on curve closest to each peak.
         """
-        xs = np.linspace(0, 1, num_points)
 
         def optimize_peak(peak: tuple) -> float:
             """Optimize distance for a single peak."""
@@ -848,7 +847,7 @@ def build_box_count_curve(x, y, i_min=2, i_max=30, i_step=1):
     for i in range(i_min, i_max + 1, i_step):
         epsilon = 1.0 / i
 
-        h_color, x_edges, y_edges = compute_bin_box_mask_color(
+        h_color, _, _ = compute_bin_box_mask_color(
             x, y, i
         )
 
@@ -942,7 +941,6 @@ def find_best_schure_segment(
     n = len(curve)
 
     x_all = np.array([p["log_epsilon"] for p in curve], dtype=float)
-    y_all = np.array([p["log_N"] for p in curve], dtype=float)
 
     total_x_range = np.max(x_all) - np.min(x_all)
 

@@ -766,7 +766,7 @@ class MetricEngine:
             x, y = set_data["x_values"], set_data["y_values"]
 
             # Compute the 2D histogram edges based on the range [0, 1]
-            h, x_edges, y_edges = np.histogram2d([0, 1], [0, 1], bins=(5, 5))
+            _, x_edges, y_edges = np.histogram2d([0, 1], [0, 1], bins=(5, 5))
 
             # Compute the 2D histogram for the input data using the same edges
             h_count = np.histogram2d(x, y, bins=[x_edges, y_edges])

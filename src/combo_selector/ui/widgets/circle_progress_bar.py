@@ -16,7 +16,7 @@ Version: v2.0.0 (migrated to PySide6)
 
 import sys
 
-from PySide6 import QtCore, QtWidgets
+from PySide6 import QtWidgets
 from PySide6.QtCore import QSize, Qt, QTimer
 from PySide6.QtGui import QColor, QFont, QPainter, QPaintEvent, QPen
 

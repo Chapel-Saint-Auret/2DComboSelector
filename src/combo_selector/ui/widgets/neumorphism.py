@@ -87,12 +87,6 @@ class BoxShadow(QGraphicsEffect):
             {"outside": True, "offset": [8, 8], "blur": 10, "color": "#ffffff"},
             {"outside": True, "offset": [-8, -8], "blur": 10, "color": "#d0d0d0"},
         ]
-        # Unused but kept for reference
-        light_inside = [
-            {"inside": True, "offset": [6, 6], "blur": 8, "color": "#C1D5EE"},
-            {"inside": True, "offset": [-6, -6], "blur": 8, "color": "#FFFFFF"},
-        ]
-
         self._shadow_list = []
         self._max_x_offset = 0
         self._max_y_offset = 0

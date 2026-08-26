@@ -24,13 +24,12 @@ import numpy as np
 import pandas as pd
 from PySide6.QtCore import (
     QAbstractTableModel,
-    QItemSelectionModel,
     QModelIndex,
     QRegularExpression,
     QSortFilterProxyModel,
     Qt,
 )
-from PySide6.QtGui import QBrush, QColor, QIcon, QFont
+from PySide6.QtGui import QBrush, QColor, QFont
 from PySide6.QtWidgets import (
     QAbstractItemView,
     QApplication,
@@ -44,7 +43,6 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from combo_selector.utils import resource_path
 
 class COLUMN(Enum):
     """Column index enumeration for orthogonality table."""
@@ -130,6 +128,7 @@ class OrthogonalityTableSortProxy(QSortFilterProxyModel):
         return self.mapToSource(self.index(proxy_row, 0)).row()
 
     def set_multi_column_filters(self, filters_spec_list: dict) -> None:
+        """Set multi column filters."""
         # filters = {col: (filter_name, pattern)}
         self._filters_spec_list = filters_spec_list
         self.invalidateFilter()
@@ -141,8 +140,6 @@ class OrthogonalityTableSortProxy(QSortFilterProxyModel):
             self._column_regexes.pop(column, None)
         else:
             # Choose case sensitivity flag
-            flags = 0 if case_sensitive else re.IGNORECASE
-
             # Compile the regex pattern using Python's re module
             self._column_regexes[column] = pattern
 
@@ -185,6 +182,7 @@ class OrthogonalityTableSortProxy(QSortFilterProxyModel):
 
             # If we failed to find a match in ANY of the valid target columns, reject the row
             if not matched_any_col:
+        """Filteracceptsrow."""
                 return False
 
         return True  # The row passed all specifications
@@ -375,6 +373,7 @@ class OrthogonalityTableModel(QAbstractTableModel):
         self.endResetModel()
 
     def set_tooltip_config(self,tooltip_config):
+        """Set tooltip config."""
         self.tooltip_config = tooltip_config
 
     def data(self, index: QModelIndex, role: int = Qt.DisplayRole):

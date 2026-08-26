@@ -12,12 +12,9 @@ condition-specific thresholds with blank values.
 import sys
 
 import pandas as pd
-from PySide6.QtCore import Qt
-from PySide6.QtGui import QFont, QColor
+from PySide6.QtGui import QFont
 from PySide6.QtWidgets import (
     QApplication,
-    QSizePolicy,
-    QButtonGroup,
     QCheckBox,
     QDialog,
     QDialogButtonBox,
@@ -29,7 +26,6 @@ from PySide6.QtWidgets import (
     QLineEdit,
     QMessageBox,
     QPushButton,
-    QRadioButton,
     QSpinBox,
     QVBoxLayout,
 )
@@ -170,7 +166,6 @@ class NanPolicyDialog(QDialog):
                             self.option_remove_compound]
 
         # # Radio button group
-        # self.option_button_grp = QButtonGroup()
         # self.option_button_grp.addButton(self.option_remove_compound)
         # self.option_button_grp.addButton(self.option_remove_condition)
         # self.option_button_grp.addButton(self.option_replace)
@@ -265,6 +260,7 @@ class NanPolicyDialog(QDialog):
 
         # If option_replace was just turned ON while remove options are active, uncheck removes.
         if sender is self.option_replace and self.option_replace.isChecked():
+        """Update button state."""
             if remove_ops_checked:
                 self._set_checked_silent(self.option_remove_compound, False)
                 self._set_checked_silent(self.option_remove_condition, False)
@@ -290,6 +286,7 @@ class NanPolicyDialog(QDialog):
             return
 
         try:
+        """Load rt threshold file."""
             sheet_names = pd.ExcelFile(file_path, engine="openpyxl").sheet_names
             selected_sheet, ok = QInputDialog.getItem(
                 self, "Select Sheet", "Choose a sheet:", sheet_names, editable=False
@@ -345,7 +342,7 @@ class NanPolicyDialog(QDialog):
             conditions=condition_list,
         )
 
-        result = dlg.exec()
+        dlg.exec()
 
         super().accept()
 

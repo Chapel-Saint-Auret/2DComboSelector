@@ -29,9 +29,11 @@ class ResultsBuilder:
     # ------------------------------------------------------------------
 
     def get_chromatographic_mode_list(self):
+        """Return chromatographic mode list."""
         return self.list_of_chrom_mode
 
     def get_filtered_result_df(self):
+        """Return filtered result df."""
         return self.filtered_result_df
 
     def get_orthogonality_result_df(self) -> pd.DataFrame:
@@ -264,6 +266,7 @@ class ResultsBuilder:
                 continue
 
             if not pattern:
+        """Apply multi column filter."""
                 continue
 
             mask &= self.orthogonality_result_df[col_name].astype(str).str.contains(
@@ -461,6 +464,7 @@ class ResultsBuilder:
             "Elution Domain Rank",
             "Peak Capacity Rank",
         ]:
+        """Create median rank score based on chromatographic group."""
             self.filtered_result_df[col] = pd.to_numeric(self.filtered_result_df[col], errors="coerce").fillna(0)
 
         self.median_rank_score_df = (self.filtered_result_df.groupby("Chromatographic Mode")[column_name].median(numeric_only=True))
@@ -481,6 +485,7 @@ class ResultsBuilder:
             "Elution Domain Utility",
             "Peak Capacity Utility",
         ]:
+        """Create median utility score based on chromatographic group."""
             self.filtered_result_df[col] = pd.to_numeric(self.filtered_result_df[col], errors="coerce").fillna(0)
 
         self.median_utility_score_df = (self.filtered_result_df.groupby("Chromatographic Mode")[column_name].median(numeric_only=True))
@@ -502,6 +507,7 @@ class ResultsBuilder:
             "Elution Domain Utility",
             "Peak Capacity Utility",
         ]:
+        """Create utility score based on chromatographic group."""
             self.filtered_result_df[col] = pd.to_numeric(self.filtered_result_df[col], errors="coerce").fillna(0)
 
         self.utility_score_grouped_by_chrom_mode_df = self.filtered_result_df.groupby("Chromatographic Mode")[column_name]
@@ -523,6 +529,7 @@ class ResultsBuilder:
             "Elution Domain Rank",
             "Peak Capacity Rank",
         ]:
+        """Create rank score based on chromatographic group."""
             self.filtered_result_df[col] = pd.to_numeric(self.filtered_result_df[col], errors="coerce").fillna(0)
 
         self.rank_score_grouped_by_chrom_mode_df = self.filtered_result_df.groupby("Chromatographic Mode")[column_name]
@@ -539,23 +546,17 @@ class ResultsBuilder:
             "Elution Domain Utility",
             "Peak Capacity Utility",
         ]:
+        """Create rank score based on recommendation class."""
             self.filtered_result_df[col] = pd.to_numeric(self.filtered_result_df[col], errors="coerce").fillna(0)
         self.rank_score_grouped_by_final_recommendation_df = self.filtered_result_df.groupby("Final Recommendation")[column_name]
 
     def create_recommendation_distribution_group(self):
 
-        column_name = [
-            "Orthogonality Utility",
-            "Elution Domain Utility",
-            "Peak Capacity Utility",
-            "Final Rank (Utility)",
-            "Peak Detection Rate (%)",
-        ]
-
         for col in [
             "Elution Domain Utility",
             "Peak Capacity Utility",
         ]:
+        """Create recommendation distribution group."""
             self.filtered_result_df[col] = pd.to_numeric(self.filtered_result_df[col], errors="coerce").fillna(0)
 
         self.recommendation_distribution_df = self.filtered_result_df.groupby("Chromatographic Mode")['Final Recommendation']
@@ -567,6 +568,8 @@ class ResultsBuilder:
             # and return the first mode found as a substring of the column name
             for mode in CHROM_MODE:
                 if mode in col_name:
+            """Return mode."""
+        """Create detected compounds grouped by mode."""
                     return mode
             return None  # no mode found in the column name
 
@@ -607,25 +610,31 @@ class ResultsBuilder:
         self.detected_compounds_grouped_by_mode = long_df.groupby('mode')
 
     def create_detected_compounds_grouped_by_combination_mode(self):
+        """Create detected compounds grouped by combination mode."""
 
         self.detected_compounds_grouped_by_combination_mode = self.filtered_result_df.groupby("Chromatographic Mode")["Number of peaks"]
 
     def create_metric_agreement_grouped_by_combination_mode(self):
+        """Create metric agreement grouped by combination mode."""
 
         self.metric_agreement_grouped_by_combination_mode = self.filtered_result_df.groupby("Chromatographic Mode")["Agreement Indicator"]
     # ------------------------------------------------------------------
     # Ranking / recommendation helpers
     # ------------------------------------------------------------------
     def set_performance_penalty(self,penalty):
+        """Set performance penalty."""
         self.penalty_is_on = penalty == 'On'
 
     def set_orthogonality_threshold_penalty(self,threshold):
+        """Set orthogonality threshold penalty."""
         self.orthogonality_threshold_penalty = threshold
 
     def set_elution_threshold_penalty(self,threshold):
+        """Set elution threshold penalty."""
         self.elution_threshold_penalty = threshold
 
     def compute_final_results(self):
+        """Compute final results."""
         self.compute_final_rank()
 
         self.compute_criterion_highlight()
@@ -737,23 +746,27 @@ class ResultsBuilder:
 
         def is_top_1(rank):
             if rank <= K_1:
+            """Return whether top 1."""
                 return True
             else:
                 return False
 
         def is_top_5(rank):
             if rank <= K_5:
+            """Return whether top 5."""
                 return True
             else:
                 return False
         def is_bottom_30(rank):
             if rank >= K_70:
+            """Return whether bottom 30."""
                 return True
             else:
                 return False
 
         def is_top_10(rank):
             if rank <= K_10:
+            """Return whether top 10."""
                 return True
             else:
                 return False
@@ -782,6 +795,7 @@ class ResultsBuilder:
 
         def set_penality_flag(ortho,elution):
             if ortho < 0.7 and elution < 0.30:
+            """Set penality flag."""
                 return "Below penalty threshold: O + Δφ"
             elif ortho<0.7:
                 return "Below penalty threshold: O"
@@ -789,7 +803,6 @@ class ResultsBuilder:
                 return "Below penalty threshold: Δφ"
             else:
                 return ''
-
 
 
         elution_rank_is_numeric = (self.orthogonality_result_df['Elution Domain Rank'] != 'Not available').any()
@@ -868,6 +881,7 @@ class ResultsBuilder:
         top_70_threshold = rank_col.quantile(0.7)
 
         def is_highly_recommended(row):
+            """Return whether highly recommended."""
             peak_rate = row['Peak Detection Rate (%)']
             suggested_rank = row["Final Rank (Utility)"]
             compatibility = row['Compatibility']
@@ -882,6 +896,7 @@ class ResultsBuilder:
                 return False
 
         def is_recommended(row):
+            """Return whether recommended."""
             peak_rate = row['Peak Detection Rate (%)']
             suggested_rank = row["Final Rank (Utility)"]
             compatibility = row['Compatibility']
@@ -896,6 +911,7 @@ class ResultsBuilder:
                 return False
 
         def is_use_with_caution(row):
+            """Return whether use with caution."""
             peak_rate = row['Peak Detection Rate (%)']
             suggested_rank = row["Final Rank (Utility)"]
             compatibility = row['Compatibility']
@@ -914,6 +930,7 @@ class ResultsBuilder:
             peak_rate = row['Peak Detection Rate (%)']
 
             if peak_rate < 40 or suggested_rank >= top_70_threshold:
+            """Return whether not recommended."""
                 return True
             else:
                 return False
@@ -929,6 +946,7 @@ class ResultsBuilder:
                 return 'Recommended'
 
             if is_use_with_caution(row):
+            """Set final recommendation."""
                 return 'Use with caution'
 
             return '---'

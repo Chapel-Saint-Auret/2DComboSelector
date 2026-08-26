@@ -16,13 +16,7 @@ from PySide6.QtGui import (
     QColor,
     QFont,
     QIcon,
-    QLinearGradient,
-    QRadialGradient,
-    QConicalGradient,
     QPainter,
-    QPainterPath,
-    QPixmap,
-    QTransform,
 )
 from PySide6.QtWidgets import (
     QApplication,
@@ -337,7 +331,7 @@ class CustomMainWindow(QMainWindow):
             - Displays context menu with Import/Exit options
         """
         menu = QMenu()
-        import_option = menu.addAction("Import data")
+        menu.addAction("Import data")
         exit_option = menu.addAction("Exit")
         exit_option.triggered.connect(lambda: exit())
         menu.exec(self.mapToGlobal(pos))

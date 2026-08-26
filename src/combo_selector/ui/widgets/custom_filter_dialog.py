@@ -31,12 +31,10 @@ from PySide6.QtWidgets import (
     QWidget,
     QCheckBox,
     QAbstractItemView,
-    QListView,
-    QDialogButtonBox, QTableView, QPushButton,
+    QDialogButtonBox, QTableView,
 )
 from PySide6.QtGui import QStandardItem, QStandardItemModel
 
-from combo_selector.ui.widgets.color_picker import ColorPicker
 from combo_selector.constants import CHROM_MODE
 
 
@@ -224,6 +222,7 @@ class CustomFilterDialog(QDialog):
             }
         """)
     def get_filter_spec(self):
+        """Return filter spec."""
         return self.filter_spec
 
     def build_filter_list(self, combination_list):
@@ -573,7 +572,6 @@ class MultiListView(QTableView):
         self.verticalHeader().hide()
 
         # Assuming your view is named 'tree_view'
-        header = self.horizontalHeader()
         # header.setStretchLastSection(True)
         # Set the first column (index 0) to Stretch
         # header.setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
@@ -731,7 +729,6 @@ class FilteredListView(QWidget):
             # proxy_index = self.proxy.mapFromSource(source_index)
             #
             # # 3. Create the button and set it using the PROXY index
-            # btn = ColorPicker("basic")
             # self.listView.setIndexWidget(proxy_index, btn)
 
 
@@ -758,7 +755,6 @@ class FilteredListView(QWidget):
             text_idx = self.model.index(row, 0)
             # color_idx = self.model.index(row, 1)
             text = self.model.data(text_idx, Qt.DisplayRole)
-            # color = self.model.data(color_idx, Qt.DisplayRole)
             checked = self.model.data(text_idx, Qt.CheckStateRole)
 
             # 2. Map it to the PROXY model index (which the View uses)

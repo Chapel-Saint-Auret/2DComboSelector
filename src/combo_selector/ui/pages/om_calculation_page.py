@@ -23,7 +23,6 @@ from PySide6.QtWidgets import (
     QPushButton,
     QScrollArea,
     QSizePolicy,
-    QSpinBox,
     QSplitter,
     QStackedLayout,
     QVBoxLayout,
@@ -376,8 +375,6 @@ class OMCalculationPage(QFrame):
         self.footnote.setText("<strong>NND</strong>: Nearest Neighbor Distance")
         self.footnote.setStyleSheet("font-size: 8pt;")
 
-        # number_of_bin_layout = QHBoxLayout()
-        # self.nb_bin = QSpinBox()
         # self.nb_bin.setFixedWidth(100)
         # self.nb_bin.setValue(14)
         # self.nb_bin_label = QLabel("Number of bin box:")
@@ -645,6 +642,7 @@ class OMCalculationPage(QFrame):
         ]
 
         if matching_indices:
+        """Handle pick."""
             index = matching_indices[0]
             self.selected_annotation = self.om_selector_map[index]["annotation"]
 
