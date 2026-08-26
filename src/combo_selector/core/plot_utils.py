@@ -2414,7 +2414,10 @@ class PlotUtils:
                 i = chrom_mode_list.index(chrom_mode)
                 marker = mode_markers[i % len(mode_markers)]
 
-                chrom_mode_df = self.model.get_rank_score_grouped_by_chrom_mode_table().get_group(chrom_mode)
+                chrom_mode_df = dict(grouped_df).get(chrom_mode)
+                if chrom_mode_df is None:
+                    self._show_missing_data()
+                    return
                 if chrom_mode_df.empty:
                     self._show_missing_data()
                     return
