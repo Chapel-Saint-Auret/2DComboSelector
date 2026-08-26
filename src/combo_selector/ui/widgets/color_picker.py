@@ -7,6 +7,7 @@ palette colors, and supporting palette widget classes used internally.
 import sys
 
 from PySide6.QtCore import QSize, Signal
+from PySide6.QtGui import QColor
 from PySide6.QtWidgets import (
     QApplication,
     QColorDialog,
@@ -170,7 +171,7 @@ class ColorPicker(QWidget):
         self.menu = QMenu()
         self.colorPicketBtn.setMenu(self.menu)
         self.colorPicketBtn.setStyleSheet("background-color:#000000;")
-        self.color = '#000000'
+        self.color = QColor("#000000")
         self.palette = PaletteGrid(type)
 
         action = QWidgetAction(self.colorPicketBtn)
@@ -211,7 +212,7 @@ class ColorPicker(QWidget):
         self.menu.setVisible(False)
         self.colorPicketBtn.setStyleSheet("background-color:{};".format(color))
         self.setFixedHeight(self.colorPicketBtn.sizeHint().height())
-        self.color = color
+        self.color = QColor(color)
         self.selected.emit()
 
     def color_picker_selected_other(self):
@@ -230,14 +231,14 @@ class ColorPicker(QWidget):
         if not color.isValid():
             return
         self.colorPicketBtn.setStyleSheet("background-color:{};".format(color.name()))
-        self.color = color.name()
+        self.color = color
         self.selected.emit()
 
     def get_color(self):
         """Return the currently selected color.
 
         Returns:
-            str | QColor: Currently selected color value.
+            QColor: Currently selected color value.
         """
         return self.color
 

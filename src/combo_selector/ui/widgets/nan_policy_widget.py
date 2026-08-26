@@ -165,13 +165,6 @@ class NanPolicyDialog(QDialog):
                             self.option_remove_condition,
                             self.option_remove_compound]
 
-        # # Radio button group
-        # self.option_button_grp.addButton(self.option_remove_compound)
-        # self.option_button_grp.addButton(self.option_remove_condition)
-        # self.option_button_grp.addButton(self.option_replace)
-        # self.option_button_grp.addButton(self.option_replace_below_threshold)
-        # self.option_button_grp.setExclusive(False)
-
         self.update_button_state()
 
         # Threshold spin box
