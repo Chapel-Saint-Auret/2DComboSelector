@@ -125,10 +125,10 @@ class RedundancyCheckPage(QFrame):
             self.update_correlation_matrix_cmap
         )
         self.correlation_threshold.editingFinished.connect(
-            self.update_plot_and_redundacy_group
+            self.update_plot_and_redundancy_group
         )
         self.correlation_threshold_tolerance.editingFinished.connect(
-            self.update_plot_and_redundacy_group
+            self.update_plot_and_redundancy_group
         )
         self.highlight_threshold.stateChanged.connect(
             self.highlight_correlation_threshold
@@ -137,7 +137,7 @@ class RedundancyCheckPage(QFrame):
             self.plot_correlation_heat_map
         )
         self.show_triangle_grp.buttonClicked.connect(self.plot_correlation_heat_map)
-        self.select_correlation_matrix.currentIndexChanged.connect(self.update_plot_and_redundacy_group)
+        self.select_correlation_matrix.currentIndexChanged.connect(self.update_plot_and_redundancy_group)
 
     def _create_top_section(self) -> QFrame:
         """Create the top section with input panel and heatmap.
@@ -519,10 +519,10 @@ class RedundancyCheckPage(QFrame):
         if self.model.get_orthogonality_metric_corr_matrix_df().empty:
             return
 
-        self.update_plot_and_redundacy_group()
+        self.update_plot_and_redundancy_group()
 
-    def update_plot_and_redundacy_group(self):
-        """Update plot and redundacy group."""
+    def update_plot_and_redundancy_group(self):
+        """Update the correlation heatmap and grouped redundancy table."""
         self.plot_correlation_heat_map()
         self.update_correlation_group_table()
 

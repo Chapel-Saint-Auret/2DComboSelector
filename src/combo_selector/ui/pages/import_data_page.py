@@ -53,7 +53,7 @@ class ImportDataPage(QFrame):
     retention_time_normalized = Signal()
 
     def __init__(self, model=None) -> None:
-        """Initialize the importdatapage."""
+        """Initialize the ImportDataPage."""
         super().__init__()
 
         self.model = model

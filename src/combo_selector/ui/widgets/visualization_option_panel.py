@@ -106,7 +106,7 @@ class RadioPanel(QWidget):
         outer.addWidget(container)
 
     def checked_text(self) -> str:
-        """Checked text."""
+        """Return the selected radio-button text, or an empty string."""
         btn = self._group.checkedButton()
         return btn.text() if btn else ""
 

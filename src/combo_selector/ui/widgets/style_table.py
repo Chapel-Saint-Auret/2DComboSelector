@@ -419,43 +419,43 @@ class StyledTable(QWidget):
     # Public API – forwarded to TablePanel so call sites stay the same
     # ------------------------------------------------------------------
     def set_tooltip_config(self,tooltip_config):
-        """Set tooltip config."""
+        """Apply tooltip metadata to the underlying table panel."""
         self.table_panel.set_tooltip_config(tooltip_config)
 
     def clean_table(self) -> None:
-        """Clean table."""
+        """Clear all table rows and reset the underlying table panel."""
         self.table_panel.clean_table()
 
     def add_header_button(self, column: int, tooltip: str, widget_to_show: QWidget) -> None:
-        """Add header button."""
+        """Attach a header button and its popup widget to a table column."""
         self.table_panel.add_header_button(column, tooltip, widget_to_show)
 
     def add_help_button(self, column: int, title: str,markdown_path: str):
-        """Add help button."""
+        """Attach a contextual help button to a table header column."""
         self.table_panel.add_help_button(column, title, markdown_path)
 
     def get_header(self) -> HeaderButton:
-        """Return header."""
+        """Return the custom header widget used by the table panel."""
         return self.table_panel.get_header()
 
     def set_header_label(self, header_label: list) -> None:
-        """Set header label."""
+        """Set the displayed column labels for the table panel."""
         self.table_panel.set_header_label(header_label)
 
     def set_default_row_count(self, value: int) -> None:
-        """Set default row count."""
+        """Set the placeholder row count shown before real data is loaded."""
         self.table_panel.set_default_row_count(value)
 
     def get_row_count(self) -> int:
-        """Return row count."""
+        """Return the current number of rows in the table panel."""
         return self.table_panel.get_row_count()
 
     def select_row(self, index: int) -> None:
-        """Select row."""
+        """Select a row in the underlying table panel by index."""
         self.table_panel.select_row(index)
 
     def get_selected_rows(self) -> list:
-        """Return selected rows."""
+        """Return the currently selected rows from the table panel."""
         return self.table_panel.get_selected_rows()
 
     def async_set_table_data(self, df: pd.DataFrame) -> None:
