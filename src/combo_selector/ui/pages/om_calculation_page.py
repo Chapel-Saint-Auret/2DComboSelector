@@ -375,15 +375,6 @@ class OMCalculationPage(QFrame):
         self.footnote.setText("<strong>NND</strong>: Nearest Neighbor Distance")
         self.footnote.setStyleSheet("font-size: 8pt;")
 
-        # self.nb_bin.setFixedWidth(100)
-        # self.nb_bin.setValue(14)
-        # self.nb_bin_label = QLabel("Number of bin box:")
-        # self.nb_bin_label.setObjectName("sub-title")
-
-        #TODO disable
-        # number_of_bin_layout.addWidget(self.nb_bin_label)
-        # number_of_bin_layout.addWidget(self.nb_bin)
-
         select_metric_title = QLabel("Select Metric to Compute:")
         select_metric_title.setObjectName("sub-title")
 
