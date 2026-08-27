@@ -243,6 +243,11 @@ class OMWorkerComputeOM(QRunnable):
             - Logs exceptions if errors occur
         """
         try:
+            if not self.model.has_valid_loaded_retention_time_data(require_pairs=True):
+                raise ValueError(
+                    self.model.get_retention_time_validation_error(require_pairs=True)
+                )
+
             # Import these here to avoid circular dependencies
             from combo_selector.core.orthogonality import (
                 METRIC_MAPPING,

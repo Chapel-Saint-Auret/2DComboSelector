@@ -159,6 +159,28 @@ class DataManager:
         """
         return self.normalized_retention_time_df
 
+    def get_retention_time_validation_error(self, require_pairs: bool = False):
+        """Return a validation message when loaded retention-time data is unusable."""
+        if self.retention_time_df.empty:
+            return "No retention time data is loaded."
+        required_columns = {"Peak #", "Compound Name"}
+        if not required_columns.issubset(self.retention_time_df.columns):
+            return "Retention time data does not match the expected file format."
+        condition_columns = self.retention_time_df.columns.tolist()[2:]
+        if not condition_columns:
+            return "Retention time data does not contain any condition columns."
+        if require_pairs and len(condition_columns) < 2:
+            return "Retention time data must contain at least two condition columns."
+        if not self.compound_name_list or len(self.compound_name_list) != len(self.retention_time_df):
+            return "Retention time data is incomplete and must be loaded again."
+        if not self.nb_peaks or self.nb_peaks <= 0:
+            return "Retention time data does not contain any peaks."
+        return None
+
+    def has_valid_loaded_retention_time_data(self, require_pairs: bool = False) -> bool:
+        """Return whether loaded retention-time data is valid for downstream work."""
+        return self.get_retention_time_validation_error(require_pairs=require_pairs) is None
+
     def get_number_of_combination(self):
         """Return number of combination."""
         return self.nb_combination
@@ -353,6 +375,11 @@ class DataManager:
             - Updates orthogonality_dict with cleaned x,y series
             - Calls update_combination_df() to refresh combination DataFrame
         """
+        validation_error = self.get_retention_time_validation_error(require_pairs=True)
+        if validation_error is not None:
+            self.status = "error"
+            raise ValueError(validation_error)
+
         function_map = {"option 1": self.remove_compound,
                         "option 2": self.replace_rt_below_threshold,
                         "option 3": self.remove_condition,

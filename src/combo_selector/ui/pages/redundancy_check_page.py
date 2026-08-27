@@ -518,9 +518,30 @@ class RedundancyCheckPage(QFrame):
 
         self.update_plot_and_redundancy_group()
 
+    def _get_selected_correlation_source_df(self) -> pd.DataFrame:
+        """Return the correlation source table for the current view."""
+        matrix_type = self.select_correlation_matrix.currentText()
+        if matrix_type == 'Values':
+            return self.model.get_orthogonality_metric_corr_matrix_df()
+        if matrix_type == 'Rank':
+            return self.model.get_orthogonality_metric_ranking_corr_matrix_df()
+        if matrix_type == 'coverage vs distribution':
+            return self.model.get_coverage_distribution_matrix_df()
+        return pd.DataFrame()
+
     def update_plot_and_redundancy_group(self):
         """Update the correlation heatmap and grouped redundancy table."""
+        source_df = self._get_selected_correlation_source_df()
+        if source_df.empty or len(source_df.columns) < 2:
+            self.selected_correlation_matrix = pd.DataFrame()
+            self.styled_table.clean_table()
+            self.styled_table.set_header_label(
+                ["Group", "Correlated Metrics", "Average Group Correllation"]
+            )
+            return
         self.plot_correlation_heat_map()
+        if self.selected_correlation_matrix.empty:
+            return
         self.update_correlation_group_table()
 
     # ==========================================================================
@@ -546,16 +567,22 @@ class RedundancyCheckPage(QFrame):
         # self._ax2 = self.fig.add_subplot(122)
 
 
+        source_df = self._get_selected_correlation_source_df()
+        if source_df.empty or len(source_df.columns) < 2:
+            self.selected_correlation_matrix = pd.DataFrame()
+            self.fig.canvas.draw()
+            return
+
         if self.select_correlation_matrix.currentText() == 'Values':
-            self.selected_correlation_matrix = self.model.get_orthogonality_metric_corr_matrix_df().corr(method='spearman')
+            self.selected_correlation_matrix = source_df.corr(method='spearman')
             self._ax.set_title('Value-Based',color='0.7')
 
         if self.select_correlation_matrix.currentText() == 'Rank':
-            self.selected_correlation_matrix = self.model.get_orthogonality_metric_ranking_corr_matrix_df().corr(method='pearson')
+            self.selected_correlation_matrix = source_df.corr(method='pearson')
             self._ax.set_title('Ranking-Based',color='0.7')
 
         if self.select_correlation_matrix.currentText() == 'coverage vs distribution':
-            self.selected_correlation_matrix = self.model.get_coverage_distribution_matrix_df()
+            self.selected_correlation_matrix = source_df
 
         if self.selected_correlation_matrix.empty:
             return
@@ -642,6 +669,8 @@ class RedundancyCheckPage(QFrame):
             - Changes heatmap color scheme
             - Redraws canvas
         """
+        if not hasattr(self, "_ax") or self._ax is None or not self._ax.collections:
+            return
         quadmesh = self._ax.collections[0]
         quadmesh.set_cmap(cmap)
         self.fig.canvas.draw_idle()
@@ -700,6 +729,9 @@ class RedundancyCheckPage(QFrame):
             - Refreshes threshold highlighting
             - Emits correlation_group_ready signal
         """
+        if self.selected_correlation_matrix is None or self.selected_correlation_matrix.empty:
+            return
+
         threshold = self.correlation_threshold.value()
         tolerance = self.correlation_threshold_tolerance.value()
 

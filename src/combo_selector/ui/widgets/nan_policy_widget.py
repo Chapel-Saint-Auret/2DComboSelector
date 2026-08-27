@@ -325,7 +325,11 @@ class NanPolicyDialog(QDialog):
         if self.model:
 
             checked_button =[button.objectName() for button in self.button_list if button.isChecked()]
-            self.model.clean_nan_value(option_list=checked_button)
+            try:
+                self.model.clean_nan_value(option_list=checked_button)
+            except ValueError as exc:
+                QMessageBox.warning(self, "Invalid retention time data", str(exc))
+                return
 
         compound_list = self.model.get_removed_compound_list()
         condition_list = self.model.get_removed_condition_list()

@@ -26,7 +26,7 @@ from PySide6.QtWidgets import (
     QSplitter,
     QStackedLayout,
     QVBoxLayout,
-    QWidget, QStackedWidget,
+    QWidget, QStackedWidget, QMessageBox,
 )
 
 from combo_selector.core.orthogonality import Orthogonality
@@ -923,6 +923,11 @@ class OMCalculationPage(QFrame):
             - Updates metric selectors with plot names
             - Filters and deduplicates metric list
         """
+        validation_error = self.model.get_retention_time_validation_error(require_pairs=True)
+        if validation_error is not None:
+            QMessageBox.warning(self, "Missing retention time data", validation_error)
+            return
+
         self.selected_metric_list = self.om_tree_list.get_checked_items()
 
 
