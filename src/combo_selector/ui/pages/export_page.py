@@ -27,6 +27,7 @@ from PySide6.QtWidgets import (
     QSplitter,
     QVBoxLayout,
     QWidget,
+    QMessageBox,
 )
 
 from combo_selector.core.plot_utils import PlotUtils
@@ -511,12 +512,28 @@ class ExportPage(QFrame):
             by Excel's 31-character sheet name limit.
         """
         select_directory = self.table_export_directory_lineEdit.text()
+        if not select_directory:
+            QMessageBox.warning(self, "Missing export folder", "Select an export folder first.")
+            return
+
         file_path = f"{select_directory}/{self.export_filename.text()}"
         table_to_export_list = self.table_selection.get_checked_items()
+        if not table_to_export_list:
+            QMessageBox.warning(self, "Nothing to export", "Select at least one table to export.")
+            return
+
+        exportable_tables = []
+        for table_name in table_to_export_list:
+            df = self.table_functions_map[table_name]()
+            if not df.empty:
+                exportable_tables.append((table_name, df))
+
+        if not exportable_tables:
+            QMessageBox.warning(self, "Nothing to export", "No selected table contains data to export.")
+            return
 
         with pd.ExcelWriter(file_path, engine="openpyxl") as writer:
-            for table_name in table_to_export_list:
-                df = self.table_functions_map[table_name]()
+            for table_name, df in exportable_tables:
                 df.to_excel(writer, sheet_name=table_name, index=False)
 
     def save_figure_list(self) -> None:
@@ -551,21 +568,36 @@ class ExportPage(QFrame):
         figure_type_list = self.figure_type_chklist.get_checked_item()
         figure_list_chklist = self.figure_list_chklist.get_checked_item()
 
-        if os.path.exists(chosen_directory):
-            if not os.path.exists(chosen_folder_name):
-                os.mkdir(chosen_folder_name)
+        if not chosen_directory:
+            QMessageBox.warning(self, "Missing export folder", "Select a figure export folder first.")
+            return
+        if not figure_type_list:
+            QMessageBox.warning(self, "Nothing to save", "Select at least one figure type to save.")
+            return
+        if not figure_list_chklist:
+            QMessageBox.warning(self, "Nothing to save", "Select at least one set to save.")
+            return
+        if self.model.get_number_of_combination() <= 0:
+            QMessageBox.warning(self, "Nothing to save", "No computed set is available to export.")
+            return
+        if not os.path.exists(chosen_directory):
+            QMessageBox.warning(self, "Invalid export folder", "The selected figure export folder does not exist.")
+            return
 
-            for plot_type in figure_type_list:
-                subdirectory_type_name = f"{chosen_folder_name}/{plot_type}"
-                if not os.path.exists(subdirectory_type_name):
-                    os.mkdir(subdirectory_type_name)
+        if not os.path.exists(chosen_folder_name):
+            os.mkdir(chosen_folder_name)
 
-                for figure_set_nb in figure_list_chklist:
-                    self.save_figure(
-                        plot_type=plot_type,
-                        set_nb=figure_set_nb,
-                        dirname=subdirectory_type_name,
-                    )
+        for plot_type in figure_type_list:
+            subdirectory_type_name = f"{chosen_folder_name}/{plot_type}"
+            if not os.path.exists(subdirectory_type_name):
+                os.mkdir(subdirectory_type_name)
+
+            for figure_set_nb in figure_list_chklist:
+                self.save_figure(
+                    plot_type=plot_type,
+                    set_nb=figure_set_nb,
+                    dirname=subdirectory_type_name,
+                )
 
     def save_figure(self, plot_type: str, set_nb: str, dirname: str) -> None:
         """Render and save a single figure to disk.
