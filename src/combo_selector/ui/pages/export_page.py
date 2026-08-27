@@ -565,8 +565,8 @@ class ExportPage(QFrame):
             # f"{chosen_directory}/{self.figure_folder_name_lineEdit.text()}"
             f"{chosen_directory}/Figure"
         )
-        figure_type_list = self.figure_type_chklist.get_checked_item()
-        figure_list_chklist = self.figure_list_chklist.get_checked_item()
+        figure_type_list = self.figure_type_chklist.get_checked_items()
+        figure_list_chklist = self.figure_list_chklist.get_checked_items()
 
         if not chosen_directory:
             QMessageBox.warning(self, "Missing export folder", "Select a figure export folder first.")
