@@ -643,9 +643,7 @@ class RedundancyCheckPage(QFrame):
             - Redraws canvas
         """
         quadmesh = self._ax.collections[0]
-        quadmesh2 = self._ax2.collections[0]
         quadmesh.set_cmap(cmap)
-        quadmesh2.set_cmap(cmap)
         self.fig.canvas.draw_idle()
 
     def highlight_correlation_threshold(self) -> None:
@@ -671,7 +669,7 @@ class RedundancyCheckPage(QFrame):
             # Create mask: Ignore diagonal and highlight values above threshold
             self.highlight_heatmap_mask = (
                                                   self.selected_correlation_matrix.abs() >= (threshold - tolerance)
-                                          ) & (~np.eye(len(self.corr_matrix), dtype=bool))
+                                          ) & (~np.eye(len(self.selected_correlation_matrix), dtype=bool))
 
             self.highlight_heatmap_mask = (
                                               ~self.heatmap_mask
