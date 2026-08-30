@@ -3394,7 +3394,9 @@ class PlotUtils:
     def plot_rank_shift_by_combination(self, subset: str = "All"):
         """Plot rank shift by combination."""
         self.fig.clear()
+        self.scatter_metadata.clear()
         self.axe = self.fig.add_subplot(111)
+        self.set_annotation()
 
         df = self.model.get_filtered_result_df().copy()
         required_cols = {"Suggested Orthogonality Rank", "Orthogonality Rank"}
@@ -3404,6 +3406,8 @@ class PlotUtils:
 
         old_rank = pd.to_numeric(df["Suggested Orthogonality Rank"], errors="coerce")
         new_rank = pd.to_numeric(df["Orthogonality Rank"], errors="coerce")
+        combination_title = df["2D Combination"]
+        combination_number = pd.to_numeric(df["Combination #"], errors="coerce")
 
         # ------------------------------------------------------------------
         # Shared: rank-based subset filtering + coloring
@@ -3431,6 +3435,8 @@ class PlotUtils:
             return
 
         plot_df = pd.DataFrame({
+            "2D Combination": combination_title[valid],
+            "Combination #": combination_number[valid],
             "Old Rank": old_rank[valid],
             "Rank Shift": (new_rank[valid] - old_rank[valid])
         }).sort_values("Old Rank")
@@ -3439,9 +3445,9 @@ class PlotUtils:
         y = plot_df["Rank Shift"].to_numpy()
         colors = np.where(y > 0, "#f39c12", "#2471a3")
 
-        self.axe.vlines(x, 0, y, colors=colors, linewidth=1.3, alpha=0.9, zorder=2)
-        self.axe.scatter(x, y, c=colors, s=28, zorder=3)
-        self.axe.axhline(0, color="black", linewidth=1.1, zorder=1)
+        self.axe.vlines(x, 0, y, colors=colors, linewidth=0.7, alpha=0.9)
+        scatter = self.axe.scatter(x, y, c=colors, s=8, picker=5)
+        self.axe.axhline(0, color="black", linewidth=1.1)
 
         self.axe.set_title("Rank Shift by Combination", fontsize=14, fontweight="bold")
         self.axe.set_xlabel("Combination (sorted by old rank)", fontsize=11)
@@ -3449,6 +3455,8 @@ class PlotUtils:
         self.axe.grid(True, axis="y", linestyle="--", linewidth=0.5, alpha=0.5)
         self.axe.set_xlim(0.5, len(plot_df) + 0.5)
         self.axe.spines[["top", "right"]].set_visible(False)
+
+        self.scatter_metadata[scatter] = plot_df.reset_index(drop=True)
 
         legend_handles = [
             Line2D([0], [0], marker="o", color="#2471a3", markersize=7, linestyle="None",

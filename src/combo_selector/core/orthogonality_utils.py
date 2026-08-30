@@ -737,6 +737,7 @@ def compute_percent_fit_for_set(
         Returns:
             list[float]: X-coordinates on curve closest to each peak.
         """
+        xs = np.linspace(0, 1, num_points)
 
         def optimize_peak(peak: tuple) -> float:
             """Optimize distance for a single peak."""
