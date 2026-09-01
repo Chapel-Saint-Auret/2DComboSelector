@@ -83,6 +83,7 @@ class DataManager:
         # Configuration / Scalar Values
         self.bin_number = 14
         self.has_nan_value = False
+        self.is_normalized = False
         self.nan_policy_option1_threshold = 50
         self.nan_policy_option2_threshold = 50
         self.nb_combination = 0
@@ -118,6 +119,25 @@ class DataManager:
             bool: True if NaN values are present in the data, False otherwise.
         """
         return self.has_nan_value
+
+    def get_is_normalized(self) -> bool:
+        """returns is_normalized .
+
+        Returns:
+            bool: True if all retention times are normalized.
+        """
+
+        # 1. Convertit le texte en nombres et force les erreurs/vides en NaN
+        df_num = self.normalized_retention_time_df.iloc[:, 2:].apply(pd.to_numeric, errors='coerce')
+
+        # 2. Remplace tous les NaN par 0
+        df_clean = df_num.fillna(0)
+
+        # 3. Crée le masque de plage (0 à 1)
+        mask = (df_clean >= 0) & (df_clean <= 1)
+
+        # 4. Vérifie si tout le masque est True
+        return mask.all().all()
 
     def get_compound_name_list(self) -> list:
         """returns compound_name_list.
@@ -159,7 +179,7 @@ class DataManager:
         """
         return self.normalized_retention_time_df
 
-    def get_retention_time_validation_error(self, require_pairs: bool = False):
+    def get_retention_time_validation_error(self, require_pairs: bool = False,check_normalized: bool = False):
         """Return a validation message when loaded retention-time data is unusable."""
         if self.retention_time_df.empty:
             return "No retention time data is loaded."
@@ -171,6 +191,8 @@ class DataManager:
             return "Retention time data does not contain any condition columns."
         if require_pairs and len(condition_columns) < 2:
             return "Retention time data must contain at least two condition columns."
+        if not self.is_normalized and check_normalized:
+            return "Retention time data is not normalized."
         if not self.compound_name_list or len(self.compound_name_list) != len(self.retention_time_df):
             return "Retention time data is incomplete and must be loaded again."
         if not self.nb_peaks or self.nb_peaks <= 0:
@@ -559,6 +581,8 @@ class DataManager:
         if self.status != "error":
             self.status = "normalized"
 
+        self.is_normalized = self.get_is_normalized()
+
     def normalize_retention_time_min_max(self) -> None:
         """Normalize retention times using min-max normalization for each column.
 
@@ -769,6 +793,9 @@ class DataManager:
 
             #in case loaded data are already normalized
             self.normalized_retention_time_df = self.retention_time_df.copy()
+
+            self.is_normalized = self.get_is_normalized()
+
             current_column = 0
             set_number = 1
 

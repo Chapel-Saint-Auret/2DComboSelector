@@ -923,7 +923,7 @@ class OMCalculationPage(QFrame):
             - Updates metric selectors with plot names
             - Filters and deduplicates metric list
         """
-        validation_error = self.model.get_retention_time_validation_error(require_pairs=True)
+        validation_error = self.model.get_retention_time_validation_error(require_pairs=True,check_normalized=True)
         if validation_error is not None:
             QMessageBox.warning(self, "Missing retention time data", validation_error)
             return

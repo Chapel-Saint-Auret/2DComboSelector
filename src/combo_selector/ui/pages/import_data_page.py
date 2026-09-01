@@ -765,13 +765,19 @@ class ImportDataPage(QFrame):
         method = button_checked.objectName()
 
         try:
-            self.model.normalize_retention_time(method)
-            self.normalization_status.set_valid()
+            is_normalized = self.model.get_is_normalized()
 
-            data = self.model.get_normalized_retention_time_df()
-            self.normalized_data_table.async_set_table_data(data)
+            if is_normalized:
+                QMessageBox.warning(self, "Retention time", 'Retention time is already normalized')
+                return
+            else:
+                self.model.normalize_retention_time(method)
+                self.normalization_status.set_valid()
 
-            self.retention_time_normalized.emit()
+                data = self.model.get_normalized_retention_time_df()
+                self.normalized_data_table.async_set_table_data(data)
+
+                self.retention_time_normalized.emit()
 
         except Exception as e:
             self.normalization_status.set_error()
