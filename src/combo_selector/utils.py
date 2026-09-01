@@ -99,13 +99,14 @@ def load_table_with_header_anywhere(
     raw = pd.read_excel(filepath, sheet_name=sheetname, header=None, dtype=str)
     raw = raw.dropna(how="all", axis=0).dropna(how="all", axis=1)
 
-    # Find first row with enough non-NaN entries (potential header)
-    for i, row in raw.iterrows():
-        if row.notna().sum() >= min_header_cols:
-            header_row = i
-            break
-    else:
+    candidate_rows = [
+        (i, int(row.notna().sum()))
+        for i, row in raw.iterrows()
+        if row.notna().sum() >= min_header_cols
+    ]
+    if not candidate_rows:
         raise ValueError("No header row found with sufficient columns.")
+    header_row = max(candidate_rows, key=lambda item: item[1])[0]
 
     # Now read again, skipping to that header row, using it as header
     df = pd.read_excel(filepath, sheet_name=sheetname, header=header_row)

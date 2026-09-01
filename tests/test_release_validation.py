@@ -66,13 +66,17 @@ class ReleaseValidationTests(unittest.TestCase):
         self.assertEqual(loaded.iloc[0].tolist(), [100, 200])
 
     def test_load_simple_table_supports_vertical_layout(self):
-        frame = pd.DataFrame([["Condition A", 100], ["Condition B", 200]])
+        frame = pd.DataFrame(
+            [["Condition A", 100], ["Condition B", 200], ["Condition C", 300]]
+        )
         file_path = self._create_excel_file(frame)
 
         loaded = load_simple_table(file_path)
 
-        self.assertEqual(loaded.columns.tolist(), ["Condition A", "Condition B"])
-        self.assertEqual(loaded.iloc[0].tolist(), [100, 200])
+        self.assertEqual(
+            loaded.columns.tolist(), ["Condition A", "Condition B", "Condition C"]
+        )
+        self.assertEqual(loaded.iloc[0].tolist(), [100, 200, 300])
 
     def test_load_table_with_header_anywhere_skips_preamble_rows(self):
         temp_dir = Path(tempfile.mkdtemp())
