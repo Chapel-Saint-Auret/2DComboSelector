@@ -1,6 +1,6 @@
 # Accepted File Format
 
-Files must be uploaded in **.csv**, **.xls**, or **.xlsx** format.
+Files must be uploaded in **.xls** or **.xlsx** format.
 
 ## Retention time data
 

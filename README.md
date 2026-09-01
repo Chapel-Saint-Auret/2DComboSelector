@@ -77,6 +77,19 @@ python -m pip install 2dcomboselector
     python -m combo-selector
     ```
 
+# ✅ Release Validation
+
+Before publishing a release, run these checks from the repository root:
+
+```sh
+python -m pip install .
+python -m compileall src/combo_selector
+python -m unittest discover -s tests -v
+```
+
+These checks verify package installation, Python source compilation, and the
+core regression smoke tests used by the repository workflow.
+
 # ℹ️ Troubleshooting & Help
 
 - If you see “command not found” or “not recognized as an internal or external command,”  
