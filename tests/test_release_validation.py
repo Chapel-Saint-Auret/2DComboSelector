@@ -11,6 +11,7 @@ if str(SRC_ROOT) not in sys.path:
     sys.path.insert(0, str(SRC_ROOT))
 
 from combo_selector.core.data_manager import DataManager
+from combo_selector.app_profile import resolve_app_profile
 from combo_selector.core.orthogonality_utils import (
     load_simple_table,
     load_table_with_header_anywhere,
@@ -42,6 +43,18 @@ class ReleaseValidationTests(unittest.TestCase):
 
         self.assertIsNotNone(version)
         self.assertEqual(get_version(), version)
+
+    def test_resolve_app_profile_defaults_to_advanced(self):
+        self.assertEqual(resolve_app_profile(None).key, "advanced")
+        self.assertEqual(resolve_app_profile("unknown").key, "advanced")
+
+    def test_resolve_app_profile_supports_user_mode(self):
+        profile = resolve_app_profile("user")
+
+        self.assertEqual(profile.key, "user")
+        self.assertFalse(profile.show_pairwise_page)
+        self.assertFalse(profile.show_redundancy_page)
+        self.assertFalse(profile.allow_custom_results_settings)
 
     def test_load_simple_table_supports_horizontal_layout(self):
         frame = pd.DataFrame([["Condition A", "Condition B"], [100, 200]])

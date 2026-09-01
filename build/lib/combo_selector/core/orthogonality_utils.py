@@ -1,0 +1,1128 @@
+"""Utility functions and shared constants for orthogonality calculations.
+
+This module provides:
+- Shared constants (METRIC_MAPPING, UI_TO_MODEL_MAPPING, CHROM_MODE, etc.)
+- FuncStatus enum
+- Helper functions for loading data from Excel files
+- Normalizing retention time series
+- Computing geometric relationships between points and curves
+- Calculating bin box histograms
+- Computing percent fit metrics
+- Clustering correlated metrics
+"""
+
+import os
+import re
+import sys
+from enum import Enum
+
+import numpy as np
+import pandas as pd
+from math import log
+from scipy.optimize import minimize_scalar
+from scipy.stats import tmean, tstd,linregress
+from collections import Counter
+
+# ---------------------------------------------------------------------------
+# Shared constants
+# ---------------------------------------------------------------------------
+
+CHROM_MODE = ['RPLC', 'HILIC', 'IEX', 'SEC', 'HIC', 'SFC', 'vs']
+
+FEASABILITY =   {
+                    'RPLC vs RPLC': {'Compatibility':'High','Complexity':'Low'},
+                    'RPLC vs HILIC': {'Compatibility':'Moderate','Complexity':'Moderate'},
+                    'RPLC vs SFC': {'Compatibility':'Low','Complexity':'High'},
+                    'HILIC vs HILIC': {'Compatibility':'High','Complexity':'Low'},
+                    'HILIC vs SFC': {'Compatibility':'Moderate','Complexity':'High'},
+                    'SFC vs SFC': {'Compatibility':'Moderate','Complexity':'High'}
+                }
+
+
+METRIC_MAPPING = {
+    "set_number": {
+        "table_index": 0,
+        "include_in_score": True,
+        "include_in_corr_mat": False,
+    },
+    "title": {
+    "table_index": 1,
+    "include_in_score": True,
+    "include_in_corr_mat": False},
+
+    "nb_peaks": {
+        "table_index": 2,
+        "include_in_score": False,
+        "include_in_corr_mat": False,
+    },
+    "2d_peak_capacity": {
+        "table_index": 3,
+        "include_in_score": True,
+        "include_in_corr_mat": False,
+    },
+    "elution_composition_space": {
+        "table_index": 4,
+        "include_in_score": True,
+        "include_in_corr_mat": False,
+    },
+    "convex_hull": {
+        "table_index": 5,
+        "include_in_score": True,
+        "include_in_corr_mat": True,
+    },
+    "bin_box_ratio": {
+        "table_index": 6,
+        "include_in_score": True,
+        "include_in_corr_mat": True,
+    },
+    "pearson_r": {
+        "table_index": 7,
+        "include_in_score": True,
+        "include_in_corr_mat": True,
+    },
+    "spearman_rho": {
+        "table_index": 8,
+        "include_in_score": True,
+        "include_in_corr_mat": True,
+    },
+    "kendall_tau": {
+        "table_index": 9,
+        "include_in_score": True,
+        "include_in_corr_mat": True,
+    },
+    "cc_mean": {
+        "table_index": 10,
+        "include_in_score": True,
+        "include_in_corr_mat": False,
+    },
+    "asterisk_metrics": {
+        "table_index": 11,
+        "include_in_score": True,
+        "include_in_corr_mat": True,
+    },
+    "nnd_arithmetic_mean": {
+        "table_index": 12,
+        "include_in_score": True,
+        "include_in_corr_mat": False,
+    },
+    "nnd_geom_mean": {
+        "table_index": 13,
+        "include_in_score": True,
+        "include_in_corr_mat": False,
+    },
+    "nnd_harm_mean": {
+        "table_index": 14,
+        "include_in_score": True,
+        "include_in_corr_mat": False,
+    },
+    "nnd_mean": {
+        "table_index": 15,
+        "include_in_score": True,
+        "include_in_corr_mat": True,
+    },
+    "percent_fit": {
+        "table_index": 16,
+        "include_in_score": True,
+        "include_in_corr_mat": True,
+    },
+    "percent_bin": {
+        "table_index": 17,
+        "include_in_score": True,
+        "include_in_corr_mat": True,
+    },
+    "mean_bin_box_percent_bin": {
+        "table_index": 18,
+        "include_in_score": True,
+        "include_in_corr_mat": False,
+    },
+    "asterisk_convex_hull_mean": {
+        "table_index": 19,
+        "include_in_score": True,
+        "include_in_corr_mat": False,
+    },
+    "mean_bin_box_percent_bin_nnd_mean": {
+        "table_index": 20,
+        "include_in_score": True,
+        "include_in_corr_mat": False,
+    },
+    "orthogonality_score": {
+        "table_index": 21,
+        "include_in_score": True,
+        "include_in_corr_mat": False,
+    },
+    "orthogonality_ranking": {
+        "table_index": 22,
+        "include_in_score": True,
+        "include_in_corr_mat": False,
+    },
+    "coverage_score": {
+        "table_index": 23,
+        "include_in_score": True,
+        "include_in_corr_mat": False,
+    },
+    "practical_2d_peak_capacity": {
+        "table_index": 24,
+        "include_in_score": True,
+        "include_in_corr_mat": False,
+    },
+    "heinisch": {
+        "table_index": 25,
+        "include_in_score": True,
+        "include_in_corr_mat": False,
+    },
+    "suggested_score": {
+        "table_index": 26,
+        "include_in_score": True,
+        "include_in_corr_mat": False,
+    },
+    "gilar-watson": {
+        "table_index": 27,
+        "include_in_score": True,
+        "include_in_corr_mat": True,
+    },
+    "modeling_approach": {
+        "table_index": 28,
+        "include_in_score": True,
+        "include_in_corr_mat": True,
+    },
+    "conditional_entropy": {
+        "table_index": 29,
+        "include_in_score": True,
+        "include_in_corr_mat": True,
+    },
+    "geometric_approach": {
+        "table_index": 30,
+        "include_in_score": True,
+        "include_in_corr_mat": True,
+    },
+    "distribution_score": {
+        "table_index": 31,
+        "include_in_score": True,
+        "include_in_corr_mat": True,
+    },
+    "agreement_index": {
+        "table_index": 32,
+        "include_in_score": True,
+        "include_in_corr_mat": True,
+    },
+    "outlier_metric_flag": {
+        "table_index": 33,
+        "include_in_score": True,
+        "include_in_corr_mat": True,
+    },
+    "schure": {
+        "table_index": 34,
+        "include_in_score": True,
+        "include_in_corr_mat": True,
+    }
+}
+
+UI_TO_MODEL_MAPPING = {
+    "Convex hull relative area": "convex_hull",
+    "Bin box counting": "bin_box_ratio",
+    "Schure": "schure",
+    "Pearson Correlation": "pearson_r",
+    "Spearman Correlation": "spearman_rho",
+    "Kendall Correlation": "kendall_tau",
+    "CC mean": "cc_mean",
+    "Asterisk equations": "asterisk_metrics",
+    "Asterisk + Cnvx Hull mean": "asterisk_convex_hull_mean",
+    "NND Arithm mean": "nnd_arithmetic_mean",
+    "NND Geom mean": "nnd_geom_mean",
+    "NND Harm mean": "nnd_harm_mean",
+    "NND mean": "nnd_mean",
+    "%FIT": "percent_fit",
+    "Bin box + %BIN": "percent_bin",
+    "%BIN": "percent_bin",
+    "mean (Bin box + %BIN)": "mean_bin_box_percent_bin",
+    "mean(Bin box + %BIN + NND mean)": "mean_bin_box_percent_bin_nnd_mean",
+    "Gilar-Watson method": "gilar-watson",
+    "Modeling approach": "modeling_approach",
+    "Geometric approach": "geometric_approach",
+    "Conditional entropy": "conditional_entropy",
+}
+
+METRIC_CATEGORY = {
+    "Convex hull relative area": "Coverage",
+    "Bin box counting": "Coverage",
+    "Schure": "Coverage",
+    "Gilar-Watson method": "Coverage",
+    "Modeling approach": "NC",
+    "Conditional entropy": "Distribution",
+    "Pearson Correlation": "Distribution",
+    "Spearman Correlation": "Distribution",
+    "Kendall Correlation": "Distribution",
+    "Asterisk equations": "Distribution",
+    "NND Arithm mean": "Distribution",
+    "NND Geom mean": "Distribution",
+    "NND Harm mean": "Distribution",
+    "%FIT": "Distribution",
+    "%BIN": "Coverage",
+}
+METRIC_WEIGHTS = {"%FIT": 10}
+DEFAULT_WEIGHT = 1
+
+
+class FuncStatus(Enum):
+    """Enumeration for tracking the computation status of orthogonality metric functions.
+
+    Attributes:
+        NOT_COMPUTED: The function has not been computed yet.
+        COMPUTED: The function has been successfully computed.
+    """
+
+    NOT_COMPUTED = 0
+    COMPUTED = 1
+
+
+def resource_path(relative_path: str) -> str:
+    """Get absolute path to resource, works for dev environement and for PyInstaller bundle.
+
+    This function resolves paths correctly whether running from source
+    or from a PyInstaller-bundled executable.
+
+    Args:
+        relative_path (str): Path relative to this file, 
+                            e.g. 'resources/icons/myicon.svg'
+
+    Returns:
+        str: Absolute path .
+
+    Example:
+        >>> icon_path = resource_path('resources/icons/app.svg')
+        >>> # Returns full path whether in dev or bundled mode
+    """
+    try:
+        # PyInstaller creates a temp folder and stores its path in _MEIPASS
+        base_path = sys._MEIPASS
+    except AttributeError:
+        # Use the directory where this script is located (e.g., src/combo_selector/)
+        base_path = os.path.dirname(os.path.abspath(__file__))
+
+    return os.path.join(base_path, relative_path)
+
+
+def get_symmetric_mode_dict(data_dict, key):
+    """Return the value for a mode pair, checking both key orders.
+
+    Args:
+        data_dict (dict): Mapping keyed by strings such as ``"A vs B"``.
+        key (str): Preferred lookup key.
+
+    Returns:
+        Any: The matching value if either ``key`` or its reversed form exists,
+        otherwise ``"Unknown"``.
+    """
+    if key in data_dict:
+        return data_dict[key]
+
+    # Try reversing
+    parts = key.split(' vs ')
+    if len(parts) == 2:
+        rev_key = f"{parts[1]} vs {parts[0]}"
+        return data_dict.get(rev_key)
+
+    return 'Unknown'
+
+def load_simple_table(filepath: str, sheetname: str = 0) -> pd.DataFrame:
+    """Load a simple 2-row or 2-column table from an Excel file.
+
+    Handles two table orientations:
+    - Horizontal: 2 rows x N columns (row 0 = headers, row 1 = values)
+    - Vertical: N rows x 2 columns (col 0 = headers, col 1 = values)
+
+    Args:
+        filepath (str): Path to the Excel file.
+        sheetname (str | int, optional): Name or index of the sheet to load. 
+                                         Defaults to 0 (first sheet).
+
+    Returns:
+        pd.DataFrame: Single-row DataFrame with column headers and values.
+
+    Raises:
+        ValueError: If table shape is not 2xN or Nx2.
+
+    Example:
+        >>> dataframe = load_simple_table("peak_capacities.xlsx", "Sheet1")
+        >>> # Returns DataFrame with peak capacity values
+    """
+    df = pd.read_excel(filepath, sheet_name=sheetname, header=None)
+    df = df.dropna(how="all").dropna(axis=1, how="all")
+
+    # Check shape to decide orientation
+    if df.shape[0] == 2 and df.shape[1] >= 2:
+        # Horizontal: first row is header
+        columns = df.iloc[0]
+        values = df.iloc[1]
+        return pd.DataFrame([values.values], columns=columns)
+    elif df.shape[1] == 2 and df.shape[0] >= 2:
+        # Vertical: first col is header
+        table = df.iloc[:, :2].dropna()
+        columns = table.iloc[:, 0].astype(str).values
+        values = table.iloc[:, 1].values
+        return pd.DataFrame([values], columns=columns)
+    else:
+        raise ValueError("Table shape not recognized.")
+
+
+def load_table_with_header_anywhere(
+        filepath: str,
+        sheetname: str | int = 0,
+        min_header_cols: int = 2,
+        auto_fix_duplicates: bool = True
+) -> pd.DataFrame:
+    """Load a table from Excel, automatically detecting the header row.
+
+    This function searches for the first row with at least `min_header_cols`
+    non-NaN values and treats it as the header. It handles various Excel
+    formatting issues including:
+    - Headers not on the first row
+    - Whitespace in column names
+    - Duplicate column names
+    - Unnamed columns
+
+    Args:
+        filepath (str): Path to the Excel file.
+        sheetname (str | int, optional): Name or index of the sheet. Defaults to 0.
+        min_header_cols (int, optional): Minimum number of non-NaN values required
+                                         for a row to be considered a header. Defaults to 2.
+        auto_fix_duplicates (bool, optional): If True, allows pandas to auto-rename
+                                             duplicate columns with .1, .2 suffixes.
+                                             If False, raises ValueError. Defaults to True.
+
+    Returns:
+        pd.DataFrame: Loaded table with cleaned column names.
+
+    Raises:
+        ValueError: If no header row is found or if duplicate columns exist and
+                   auto_fix_duplicates is False.
+
+    Example:
+        >>> dataframe = load_table_with_header_anywhere("data.xlsx", "Retention Times")
+        >>> # Automatically finds header row and loads data
+    """
+
+    # Load all as raw (no header), strings to avoid type problems
+    raw = pd.read_excel(filepath, sheet_name=sheetname, header=None, dtype=str)
+    raw = raw.dropna(how="all", axis=0).dropna(how="all", axis=1)
+
+    # Find first row with enough non-NaN entries (potential header)
+    for i, row in raw.iterrows():
+        if row.notna().sum() >= min_header_cols:
+            header_row = i
+            break
+    else:
+        raise ValueError("No header row found with sufficient columns.")
+
+    # Now read again, skipping to that header row, using it as header
+    # Fix: Use index_col=None to prevent pandas from guessing an index column
+    df = pd.read_excel(filepath, sheet_name=sheetname, header=header_row, index_col=None)
+    df = df.dropna(how="all")  # Drop fully empty rows
+    df = df.loc[:, ~df.columns.str.contains("^Unnamed")]  # Drop unnamed columns
+
+    # Strip all whitespace from columns
+    df.columns = df.columns.str.strip()
+
+    # Check for duplicates
+    duplicates = [item for item, count in Counter(df.columns).items() if count > 1]
+    if duplicates:
+        print("⚠️ Warning: Duplicate columns found:", duplicates)
+        if auto_fix_duplicates:
+            # Pandas will already have renamed with .1, .2, etc. Keep those for now
+            print("Duplicates were auto-renamed by pandas with .1, .2 etc.")
+        else:
+            raise ValueError(f"Duplicate column names found: {duplicates}")
+
+    return df
+
+
+def extract_set_number(name: str) -> int | None:
+    """Extract the numeric set number from a set name string.
+
+    Args:
+        name (str): Set name containing a number, e.g., 'Set 1', 'Set 42'.
+
+    Returns:
+        int | None: The extracted integer, or None if no digits are found.
+
+    Example:
+        >>> extract_set_number("Set 15")
+        15
+        >>> extract_set_number("Set ABC")
+        None
+    """
+    match = re.search(r"\d+", name)  # Find the first sequence of digits
+    return int(match.group()) if match else None
+
+
+def normalize_x_y_series(
+        x_series: pd.Series,
+        y_series: pd.Series
+) -> tuple[pd.Series, pd.Series]:
+    """Normalize two pandas Series using min-max normalization to [0, 1] range.
+
+    Formula: (value - min) / (max - min)
+
+    Args:
+        x_series (pd.Series): X-coordinate series to normalize.
+        y_series (pd.Series): Y-coordinate series to normalize.
+
+    Returns:
+        tuple[pd.Series, pd.Series]: Normalized x_series and y_series.
+                                     Negative values are replaced with empty strings.
+
+    Example:
+        >>> x = pd.Series([1, 2, 3, 4, 5])
+        >>> y = pd.Series([10, 20, 30, 40, 50])
+        >>> x_norm, y_norm = normalize_x_y_series(x, y)
+        >>> # x_norm: [0.0, 0.25, 0.5, 0.75, 1.0]
+        >>> # y_norm: [0.0, 0.25, 0.5, 0.75, 1.0]
+    """
+    x_min = min(x_series)
+    x_max = max(x_series)
+
+    y_min = min(y_series)
+    y_max = max(y_series)
+
+    x_norm_series = x_series.apply(
+        lambda x: (x - x_min) / (x_max - x_min) if x >= 0 else ""
+    )
+    y_norm_series = y_series.apply(
+        lambda y: (y - y_min) / (y_max - y_min) if y >= 0 else ""
+    )
+
+    return x_norm_series, y_norm_series
+
+
+def point_is_above_curve(x: float, y: float, curve: callable) -> bool:
+    """Determine whether a point (x, y) lies above a curve.
+
+    Args:
+        x (float): The x-coordinate of the point.
+        y (float): The y-coordinate of the point.
+        curve (callable): A function representing the curve. Takes x as input
+                         and returns the y-value on the curve.
+
+    Returns:
+        bool: True if the point is above the curve, False otherwise.
+
+    Example:
+        >>> curve = lambda x: x**2  # Parabola
+        >>> point_is_above_curve(0.5, 0.5, curve)
+        True  # Point (0.5, 0.5) is above y = x²
+    """
+    # Evaluate the curve at the given x-coordinate
+    curve_y = curve(x)
+
+    # Compare the y-coordinate of the point with the curve's y-value
+    if curve_y < y:
+        return True  # The point is above the curve
+    else:
+        return False  # The point is on or below the curve
+
+
+def point_is_below_curve(x: float, y: float, curve: callable) -> bool:
+    """Determine whether a point (x, y) lies below a curve.
+
+    Args:
+        x (float): The x-coordinate of the point.
+        y (float): The y-coordinate of the point.
+        curve (callable): A function representing the curve. Takes x as input
+                         and returns the y-value on the curve.
+
+    Returns:
+        bool: True if the point is below the curve, False otherwise.
+
+    Example:
+        >>> curve = lambda x: x**2  # Parabola
+        >>> point_is_below_curve(0.5, 0.1, curve)
+        True  # Point (0.5, 0.1) is below y = x²
+    """
+    # Evaluate the curve at the given x-coordinate
+    curve_y = curve(x)
+
+    # Compare the y-coordinate of the point with the curve's y-value
+    if curve_y > y:
+        return True  # The point is below the curve
+    else:
+        return False  # The point is on or above the curve
+
+
+def get_list_of_point_above_curve(
+        x_series: np.ndarray | pd.Series,
+        y_series: np.ndarray | pd.Series,
+        curve: callable
+) -> list[tuple[float, float]]:
+    """Filter points that lie above a specified curve.
+
+    Args:
+        x_series (array-like): The x-coordinates of the points.
+        y_series (array-like): The y-coordinates of the points.
+        curve (callable): A function representing the curve. Takes x as input
+                         and returns the y-value on the curve.
+
+    Returns:
+        list[tuple[float, float]]: List of (x, y) tuples for points above the curve.
+
+    Example:
+        >>> x = np.array([0.2, 0.5, 0.8])
+        >>> y = np.array([0.1, 0.3, 0.7])
+        >>> curve = lambda x: x**2
+        >>> points = get_list_of_point_above_curve(x, y, curve)
+        >>> # Returns points where y > x²
+    """
+    point_above = []
+
+    # Iterate through the x and y coordinates
+    for x, y in zip(x_series, y_series):
+        # Check if the point is above the curve
+        if point_is_above_curve(x, y, curve):
+            point_above.append((x, y))  # Add the point to the list
+
+    return point_above
+
+
+def get_list_of_point_below_curve(
+        x_series: np.ndarray | pd.Series,
+        y_series: np.ndarray | pd.Series,
+        curve: callable
+) -> list[tuple[float, float]]:
+    """Filter points that lie below a specified curve.
+
+    Args:
+        x_series (array-like): The x-coordinates of the points.
+        y_series (array-like): The y-coordinates of the points.
+        curve (callable): A function representing the curve. Takes x as input
+                         and returns the y-value on the curve.
+
+    Returns:
+        list[tuple[float, float]]: List of (x, y) tuples for points below the curve.
+
+    Example:
+        >>> x = np.array([0.2, 0.5, 0.8])
+        >>> y = np.array([0.01, 0.1, 0.3])
+        >>> curve = lambda x: x**2
+        >>> points = get_list_of_point_below_curve(x, y, curve)
+        >>> # Returns points where y < x²
+    """
+    point_below = []
+
+    # Iterate through the x and y coordinates
+    for x, y in zip(x_series, y_series):
+        # Check if the point is below the curve
+        if point_is_below_curve(x, y, curve):
+            point_below.append((x, y))  # Add the point to the list
+
+    return point_below
+
+
+def compute_bin_box_mask_color(
+        x: np.ndarray | pd.Series,
+        y: np.ndarray | pd.Series,
+        nb_boxes: int
+) -> tuple[np.ma.MaskedArray, np.ndarray, np.ndarray]:
+    """Compute a masked 2D histogram showing which bins contain data points.
+
+    Creates a 2D histogram over [0, 1] x [0, 1] space and masks empty bins.
+    This is used for bin box counting orthogonality metrics.
+
+    Args:
+        x (array-like): The x-coordinates of the data points.
+        y (array-like): The y-coordinates of the data points.
+        nb_boxes (int): The number of bins along each axis.
+
+    Returns:
+        tuple[np.ma.MaskedArray, np.ndarray, np.ndarray]: 
+            - Masked histogram (transposed), with empty bins masked
+            - x bin edges
+            - y bin edges
+
+    Example:
+        >>> x = np.random.rand(100)
+        >>> y = np.random.rand(100)
+        >>> hist, x_edges, y_edges = compute_bin_box_mask_color(x, y, 10)
+        >>> # hist.count() gives number of occupied bins
+    """
+    # Compute the 2D histogram edges based on the range [0, 1]
+    h, x_edges, y_edges = np.histogram2d([0, 1], [0, 1], bins=(nb_boxes, nb_boxes))
+
+    # Map each coordinate to its bin index (0 to nb_boxes-1) by digitizing
+    # against the inner bin edges only, so values across the full [0, 1]
+    # range -- including exactly 0 or 1 -- land in a valid bin
+    idx_x = np.digitize(x, x_edges[1:-1])
+    idx_y = np.digitize(y, y_edges[1:-1])
+
+    # Keep only points whose bin indices fall within the valid grid range
+    idx = np.logical_and(idx_x >= 0, idx_x < nb_boxes)
+    idx = np.logical_and(idx, idx_y >= 0)
+    idx = np.logical_and(idx, idx_y < nb_boxes)
+    idx_x = idx_x[idx]
+    idx_y = idx_y[idx]
+
+    # Create a mask for bins with no data points
+    mask = np.ones_like(h)
+    mask[idx_x, idx_y] = 0  # Set mask to 0 for bins with data points
+    mask = np.ma.masked_equal(mask, 1)  # Mask bins with no data points
+
+    # Apply the mask to the histogram
+    h_color = np.ma.masked_array(h, mask=mask)
+
+    return h_color.T, x_edges, y_edges
+
+
+def compute_percent_fit_for_set(
+        set_key: str,
+        set_data: dict
+) -> tuple[str, dict]:
+    """Compute the %FIT orthogonality metric for a single set.
+
+    The %FIT metric measures how well peaks fit to quadratic regression curves.
+    It evaluates both X vs Y and Y vs X regressions, computing minimal distances
+    for points above and below each curve.
+
+    Args:
+        set_key (str): Identifier for the set (e.g., 'Set 1').
+        set_data (dict): Dictionary containing 'x_values' and 'y_values' keys
+                        with retention time data.
+
+    Returns:
+        tuple[str, dict]: 
+            - set_key: The input set identifier
+            - result: Dictionary containing:
+                - 'quadratic_reg_xy': Quadratic model for X vs Y
+                - 'quadratic_reg_yx': Quadratic model for Y vs X
+                - 'percent_fit': Dict with delta values and final %FIT value
+
+    Note:
+        This function uses multithreading internally for peak optimization.
+        The %FIT value ranges from 0 (poor fit) to 1 (perfect fit).
+
+    Example:
+        >>> set_data = {'x_values': x_series, 'y_values': y_series}
+        >>> set_key, result = compute_percent_fit_for_set('Set 1', set_data)
+        >>> percent_fit_value = result['percent_fit']['value']
+    """
+
+    def objective(x: float, peak: tuple, curve: callable) -> float:
+        """Objective function for minimizing distance from peak to curve.
+
+        Args:
+            x (float): X-coordinate on curve to evaluate.
+            peak (tuple): (x, y) coordinates of the peak.
+            curve (callable): Curve function.
+
+        Returns:
+            float: Squared Euclidean distance from peak to curve at x.
+        """
+        y = curve(x)
+        return (x - peak[0]) ** 2 + (y - peak[1]) ** 2
+
+    def compute_minimal_distances(
+            peaks: list,
+            curve: callable,
+            num_points: int = 50,
+            fine_range: float = 0.01
+    ) -> list[float]:
+        """Compute minimal distance from each peak to curve with refinement.
+
+        Uses coarse grid search followed by fine optimization for efficiency.
+        Multithreaded for performance.
+
+        Args:
+            peaks (list): List of (x, y) peak coordinates.
+            curve (callable): Curve function.
+            num_points (int, optional): Number of points in coarse grid. Defaults to 50.
+            fine_range (float, optional): Range for fine optimization. Defaults to 0.01.
+
+        Returns:
+            list[float]: X-coordinates on curve closest to each peak.
+        """
+        xs = np.linspace(0, 1, num_points)
+
+        def optimize_peak(peak: tuple) -> float:
+            """Optimize distance for a single peak."""
+            ys = curve(xs)
+            dists = (xs - peak[0]) ** 2 + (ys - peak[1]) ** 2
+            min_idx = np.argmin(dists)
+            x0 = xs[min_idx]
+            left = max(0, x0 - fine_range)
+            right = min(1, x0 + fine_range)
+            res = minimize_scalar(
+                objective, method="bounded", bounds=(left, right), args=(peak, curve)
+            )
+
+            # Minimal Euclidean distance between the peak and the fitted curve,
+            # evaluated at the optimal point found by minimize_scalar
+            return np.sqrt(objective(res.x, peak, curve))
+
+        from concurrent.futures import ThreadPoolExecutor
+
+        with ThreadPoolExecutor() as executor:
+            results = list(executor.map(optimize_peak, peaks))
+        return results
+
+    x, y = set_data["x_values"], set_data["y_values"]
+
+    # Degree-2 polynomial fitted to the xy data (y as a function of x)
+    quadratic_model_xy = np.poly1d(np.polyfit(x, y, 2))
+    # Degree-2 polynomial fitted to the yx data (x as a function of y)
+    quadratic_model_yx = np.poly1d(np.polyfit(y, x, 2))
+
+    # Separate peaks above and below curves
+    peak_above_xy = get_list_of_point_above_curve(x, y, quadratic_model_xy)
+    peak_above_yx = get_list_of_point_above_curve(y, x, quadratic_model_yx)
+    peak_below_xy = get_list_of_point_below_curve(x, y, quadratic_model_xy)
+    peak_below_yx = get_list_of_point_below_curve(y, x, quadratic_model_yx)
+
+    # Compute minimal distances
+    minimal_distance_below_xy = compute_minimal_distances(
+        peak_below_xy, quadratic_model_xy
+    )
+    minimal_distance_below_yx = compute_minimal_distances(
+        peak_below_yx, quadratic_model_yx
+    )
+    minimal_distance_above_xy = compute_minimal_distances(
+        peak_above_xy, quadratic_model_xy
+    )
+    minimal_distance_above_yx = compute_minimal_distances(
+        peak_above_yx, quadratic_model_yx
+    )
+
+    # Compute statistics for distances
+    xy1_avg = tmean(minimal_distance_below_xy) if minimal_distance_below_xy else 0
+    yx1_avg = tmean(minimal_distance_below_yx) if minimal_distance_below_yx else 0
+    xy1_sd = (
+        tstd(minimal_distance_below_xy) if len(minimal_distance_below_xy) > 1 else 0
+    )
+    yx1_sd = (
+        tstd(minimal_distance_below_yx) if len(minimal_distance_below_yx) > 1 else 0
+    )
+
+    xy2_avg = tmean(minimal_distance_above_xy) if minimal_distance_above_xy else 0
+    yx2_avg = tmean(minimal_distance_above_yx) if minimal_distance_above_yx else 0
+    xy2_sd = (
+        tstd(minimal_distance_above_xy) if len(minimal_distance_above_xy) > 1 else 0
+    )
+    yx2_sd = (
+        tstd(minimal_distance_above_yx) if len(minimal_distance_above_yx) > 1 else 0
+    )
+
+    # Compute delta values (normalized fit metrics)
+    delta_xy_avg = ((1 - abs(1 - (xy1_avg * 4))) + (1 - abs(1 - (xy2_avg * 4)))) / 2
+    delta_xy_sd = ((1 - abs(1 - (xy1_sd * 7))) + (1 - abs(1 - (xy2_sd * 7)))) / 2
+    delta_yx_avg = ((1 - abs(1 - (yx1_avg * 4))) + (1 - abs(1 - (yx2_avg * 4)))) / 2
+    delta_yx_sd = ((1 - abs(1 - (yx1_sd * 7))) + (1 - abs(1 - (yx2_sd * 7)))) / 2
+
+    # Final %FIT metric (mean of all delta values)
+    percent_fit = (delta_xy_avg + delta_xy_sd + delta_yx_avg + delta_yx_sd) / 4
+
+    # Return all needed info to update set_data in main thread
+    result = {
+        "quadratic_reg_xy": quadratic_model_xy,
+        "quadratic_reg_yx": quadratic_model_yx,
+        "percent_fit": {
+            "delta_xy_avg": delta_xy_avg,
+            "delta_xy_sd": delta_xy_sd,
+            "delta_yx_avg": delta_yx_avg,
+            "delta_yx_sd": delta_yx_sd,
+            "value": percent_fit,
+        },
+    }
+    return set_key, result
+
+
+def build_box_count_curve(x, y, i_min=2, i_max=30, i_step=1):
+    """
+    Build the log-log data used for DBC.
+    Following Schure, epsilon_i = 1 / i.
+    Returns a list of dicts with:
+        i, epsilon, occupied_boxes, log_epsilon, log_N
+    """
+    if len(x) != len(y):
+        raise ValueError("x and y must have the same length.")
+    if len(x) == 0:
+        raise ValueError("Empty dataset.")
+
+    curve = []
+
+    for i in range(i_min, i_max + 1, i_step):
+        epsilon = 1.0 / i
+
+        h_color, _, _ = compute_bin_box_mask_color(
+            x, y, i
+        )
+
+        N = h_color.count()
+
+        # Keep only meaningful points for log-log plot
+        if N > 0:
+            curve.append({
+                "i": i,
+                "epsilon": epsilon,
+                "occupied_boxes": N,
+                "log_epsilon": log(epsilon),
+                "log_N": log(N),
+            })
+
+    return curve
+
+def linear_regression(x, y):
+    """Compute a simple least-squares regression for paired series.
+
+    This helper is currently retained for future metric work and is not called
+    by the active computation pipeline.
+
+    Returns:
+        tuple[float, float, float]: Slope, intercept, and coefficient of
+        determination (R²).
+    """
+    n = len(x)
+    if n < 2:
+        raise ValueError("Need at least 2 points for regression.")
+
+    x_mean = tmean(x)
+    y_mean = tmean(y)
+
+    ss_xx = sum((xi - x_mean) ** 2 for xi in x)
+    ss_xy = sum((xi - x_mean) * (yi - y_mean) for xi, yi in zip(x, y))
+    ss_yy = sum((yi - y_mean) ** 2 for yi in y)
+
+    if ss_xx == 0:
+        raise ValueError("Cannot regress: all x values are identical.")
+
+    slope = ss_xy / ss_xx
+    intercept = y_mean - slope * x_mean
+
+    # R^2
+    if ss_yy == 0:
+        r2 = 1.0
+    else:
+        y_pred = [intercept + slope * xi for xi in x]
+        ss_res = sum((yi - yhat) ** 2 for yi, yhat in zip(y, y_pred))
+        r2 = 1 - ss_res / ss_yy
+
+    return slope, intercept, r2
+
+def find_best_schure_segment(
+    curve,
+    min_points: int = 6,
+    max_points: int = 12,
+    min_x_range: float = 0.35,
+    min_abs_slope: float = 0.25,
+    max_abs_slope: float = 2.0,
+    min_r2: float = 0.97,
+    prefer_middle: bool = True,
+):
+    """
+    Find a meaningful linear scaling region for the Schure log-log curve.
+
+    The curve must be a list of dictionaries containing:
+        - "log_epsilon"
+        - "log_N"
+
+    Returns
+    -------
+    dict or None
+        Dictionary containing:
+        - slope
+        - intercept
+        - r2
+        - start
+        - end
+        - score
+        - n_points
+        - x_range
+        - max_abs_residual
+        - mean_abs_residual
+    """
+
+    if curve is None or len(curve) < min_points:
+        return None
+
+    n = len(curve)
+
+    x_all = np.array([p["log_epsilon"] for p in curve], dtype=float)
+
+    total_x_range = np.max(x_all) - np.min(x_all)
+
+    if total_x_range <= 0:
+        return None
+
+    best = None
+
+    # Avoid absurd max_points if the curve is short
+    max_points = min(max_points, n)
+
+    for start in range(0, n - min_points + 1):
+
+        for end in range(start + min_points, min(start + max_points, n) + 1):
+
+            segment = curve[start:end]
+
+            x = np.array([p["log_epsilon"] for p in segment], dtype=float)
+            y = np.array([p["log_N"] for p in segment], dtype=float)
+
+            n_points = len(segment)
+            x_range = np.max(x) - np.min(x)
+
+            if x_range < min_x_range:
+                continue
+
+            regression = linregress(x, y)
+
+            slope = regression.slope
+            intercept = regression.intercept
+            r2 = regression.rvalue ** 2
+
+            # In your representation, the Schure slope should be negative
+            if slope >= 0:
+                continue
+
+            abs_slope = abs(slope)
+
+            # Reject plateau-like regions
+            if abs_slope < min_abs_slope:
+                continue
+
+            # Reject unrealistic local slopes
+            if abs_slope > max_abs_slope:
+                continue
+
+            # Reject insufficiently linear segments
+            if r2 < min_r2:
+                continue
+
+            # Residual diagnostics
+            y_pred = slope * x + intercept
+            residuals = y - y_pred
+
+            max_abs_residual = float(np.max(np.abs(residuals)))
+            mean_abs_residual = float(np.mean(np.abs(residuals)))
+
+            # Reject visibly curved segments
+            # These thresholds are empirical, but useful for your plots.
+            if max_abs_residual > 0.18:
+                continue
+
+            if mean_abs_residual > 0.08:
+                continue
+
+            # --------------------------------------------------
+            # Scoring logic
+            # --------------------------------------------------
+            # We want:
+            # - high R²
+            # - enough x-range
+            # - enough points
+            # - small residuals
+            # - not necessarily the longest possible segment
+            # --------------------------------------------------
+
+            range_factor = np.sqrt(x_range / total_x_range)
+
+            # Gentle reward for more points, but capped.
+            # This avoids selecting the whole curve just because it is longer.
+            point_factor = np.sqrt(n_points / max_points)
+
+            residual_factor = 1.0 / (1.0 + 10.0 * mean_abs_residual)
+
+            score = r2 * range_factor * point_factor * residual_factor
+
+            if prefer_middle:
+                segment_center = (start + end - 1) / 2
+                normalized_center = segment_center / (n - 1)
+
+                # Penalize extreme beginning and extreme end,
+                # but not too aggressively.
+                middle_factor = 1.0 - 0.35 * abs(normalized_center - 0.5) / 0.5
+                score *= middle_factor
+
+            if best is None or score > best["score"]:
+                best = {
+                    "slope": slope,
+                    "intercept": intercept,
+                    "r2": r2,
+                    "start": start,
+                    "end": end,
+                    "score": score,
+                    "n_points": n_points,
+                    "x_range": x_range,
+                    "max_abs_residual": max_abs_residual,
+                    "mean_abs_residual": mean_abs_residual,
+                }
+
+    return best
+
+def cluster_and_fuse(data: list[tuple]) -> tuple[list[list[tuple]], list[list]]:
+    """Cluster tuples that share common items and fuse them into groups.
+
+    Uses breadth-first search (BFS) to identify connected components where
+    tuples are connected if they share at least one common item.
+
+    Args:
+        data (list[tuple]): List of tuples, where each tuple contains items
+                           (e.g., metric names) that may overlap with other tuples.
+
+    Returns:
+        tuple[list[list[tuple]], list[list]]:
+            - grouped: List of clusters, each containing the original tuples
+            - fused: List of clusters, each containing unique items in first-seen order
+
+    Example:
+        >>> data = [('A', 'B'), ('B', 'C'), ('D', 'E')]
+        >>> grouped, fused = cluster_and_fuse(data)
+        >>> # grouped = [[('A', 'B'), ('B', 'C')], [('D', 'E')]]
+        >>> # fused = [['A', 'B', 'C'], ['D', 'E']]
+
+    Note:
+        Used for grouping correlated orthogonality metrics that share common
+        correlations into coherent clusters.
+    """
+    # 1) Build a mapping: item → list of tuple-indices
+    item_to_idxs = {}
+    for idx, tpl in enumerate(data):
+        for item in tpl:
+            if item not in item_to_idxs:
+                item_to_idxs[item] = [idx]
+            elif idx not in item_to_idxs[item]:
+                item_to_idxs[item].append(idx)
+
+    visited = []  # indices we've already enqueued/seen
+    clusters = []  # list of connected components (each is a list of indices)
+
+    # 2) For each tuple-index, do a BFS (using a plain list as queue)
+    for start in range(len(data)):
+        if start in visited:
+            continue
+
+        queue = [start]
+        visited.append(start)
+        comp = []
+
+        while queue:
+            curr = queue.pop(0)  # dequeue
+            comp.append(curr)
+
+            # enqueue all neighbours sharing any item
+            for item in data[curr]:
+                for nbr in item_to_idxs[item]:
+                    if nbr not in visited:
+                        visited.append(nbr)
+                        queue.append(nbr)
+
+        clusters.append(comp)
+
+    # 3a) grouped: list of list of tuples
+    grouped = [[data[i] for i in comp] for comp in clusters]
+
+    # 3b) fused: list of list of unique items (in first-seen order)
+    fused = []
+    for comp in clusters:
+        seen = []
+        for idx in comp:
+            for item in data[idx]:
+                if item not in seen:
+                    seen.append(item)
+        fused.append(seen)
+
+    return grouped, fused

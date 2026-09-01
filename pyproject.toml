@@ -36,6 +36,8 @@ Homepage = "https://github.com/Chapel-Saint-Auret/2dcomboselector"
 
 [project.scripts]
 combo-selector = "combo_selector.main:main"
+combo-selector-advanced = "combo_selector.main:main_advanced"
+combo-selector-user = "combo_selector.main:main_user"
 
 [tool.setuptools]
 package-dir = {"" = "src"}

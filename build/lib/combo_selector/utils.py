@@ -1,0 +1,163 @@
+"""Utility helpers for resource resolution, file loading, and versioning.
+
+This module provides standalone helper functions used across the application:
+- Resource path resolution for dev, pip-installed, and PyInstaller builds
+- Excel table loading with automatic orientation detection
+- Application version reading from ``pyproject.toml``
+"""
+
+import logging
+import os
+import sys
+
+import pandas as pd
+
+
+def resource_path(relative_path):
+    """
+    Get absolute path to resource in dev, pip, or PyInstaller (frozen).
+    Example: resource_path("icons/close_window.svg")
+    """
+    if getattr(sys, "frozen", False):
+        # PyInstaller: resources bundled in _internal/resources
+        base = os.path.join(os.path.dirname(sys.executable), "_internal", "resources")
+        abs_path = os.path.join(base, relative_path)
+        if os.path.exists(abs_path):
+            return abs_path
+        raise FileNotFoundError(
+            f"Resource not found: {relative_path} (expected at {abs_path})"
+        )
+    else:
+        # Dev or pip: resources inside the installed package
+        try:
+            from importlib.resources import files
+
+            package = "combo_selector.resources"
+            resource_file = files(package) / relative_path
+            if resource_file.is_file():
+                return str(resource_file)
+        except Exception:
+            pass  # Fallback to direct path below
+
+        # fallback: directly from filesystem (for IDE, etc.)
+        dev_path = os.path.join(os.path.dirname(__file__), "resources", relative_path)
+        if os.path.exists(dev_path):
+            return dev_path
+        raise FileNotFoundError(
+            f"Resource not found: {relative_path} (checked {dev_path})"
+        )
+
+
+def load_simple_table(filepath, sheetname=0):
+    """Read a simple two-value table from an Excel sheet with no header row.
+
+    The table can be laid out either horizontally (first row is header, second
+    row contains values) or vertically (first column is header, second column
+    contains values).  Empty rows and columns are stripped before detection.
+
+    Args:
+        filepath (str | Path): Path to the Excel file.
+        sheetname (int | str): Sheet index or name to read. Defaults to 0.
+
+    Returns:
+        pd.DataFrame: Single-row DataFrame whose columns are the header labels
+            and whose values are the corresponding data values.
+
+    Raises:
+        ValueError: If the table shape is not recognized as either a horizontal
+            (2 rows × ≥2 cols) or vertical (≥2 rows × 2 cols) layout.
+    """
+    df = pd.read_excel(filepath, sheet_name=sheetname, header=None)
+    df = df.dropna(how="all").dropna(axis=1, how="all")
+    # Check shape to decide
+    if df.shape[0] == 2 and df.shape[1] >= 2:
+        # Horizontal: first row is header
+        columns = df.iloc[0]
+        values = df.iloc[1]
+        return pd.DataFrame([values.values], columns=columns)
+    elif df.shape[1] == 2 and df.shape[0] >= 2:
+        # Vertical: first col is header
+        table = df.iloc[:, :2].dropna()
+        columns = table.iloc[:, 0].astype(str).values
+        values = table.iloc[:, 1].values
+        return pd.DataFrame([values], columns=columns)
+    else:
+        raise ValueError("Table shape not recognized.")
+
+
+def load_table_with_header_anywhere(
+    filepath, sheetname=0, min_header_cols=2, auto_fix_duplicates=True
+):
+    """
+    Loads the first table in an Excel sheet, starting from the first row
+    with at least `min_header_cols` non-NaN values (assumed header).
+    Strips whitespace from column names and warns or fixes duplicates.
+    """
+    from collections import Counter
+
+    # Load all as raw (no header), strings to avoid type problems
+    raw = pd.read_excel(filepath, sheet_name=sheetname, header=None, dtype=str)
+    raw = raw.dropna(how="all", axis=0).dropna(how="all", axis=1)
+
+    # Find first row with enough non-NaN entries (potential header)
+    for i, row in raw.iterrows():
+        if row.notna().sum() >= min_header_cols:
+            header_row = i
+            break
+    else:
+        raise ValueError("No header row found with sufficient columns.")
+
+    # Now read again, skipping to that header row, using it as header
+    df = pd.read_excel(filepath, sheet_name=sheetname, header=header_row)
+    df = df.dropna(how="all")  # Drop fully empty rows
+    df = df.loc[:, ~df.columns.str.contains("^Unnamed")]  # Drop unnamed columns
+
+    # Strip all whitespace from columns
+    df.columns = df.columns.str.strip()
+
+    # Check for duplicates
+    duplicates = [item for item, count in Counter(df.columns).items() if count > 1]
+    if duplicates:
+        logging.warning("Duplicate columns found: %s", duplicates)
+        if auto_fix_duplicates:
+            # Pandas will already have renamed with .1, .2, etc. Keep those for now
+            # Optionally, you could further rename or alert here.
+            logging.debug("Duplicates were auto-renamed by pandas with .1, .2 etc.")
+        else:
+            raise ValueError(f"Duplicate column names found: {duplicates}")
+
+    return df
+
+
+def get_version():
+    """
+    Reads the 'version' from the [project] section of pyproject.toml
+    located two directories above this script.
+
+    Returns:
+        str: The version string if found, otherwise "Unknown".
+    """
+    # Get path to pyproject.toml (2 directories up)
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    pyproject_path = os.path.abspath(
+        os.path.join(current_dir, "..", "..", "pyproject.toml")
+    )
+
+    version = "Unknown"
+    in_project_section = False
+
+    try:
+        with open(pyproject_path, "r", encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if line == "[project]":
+                    in_project_section = True
+                elif line.startswith("[") and in_project_section:
+                    break  # Exit [project] section
+                elif in_project_section and line.startswith("version"):
+                    version = line.split("=", 1)[1].strip().strip('"')
+                    break
+    except Exception as e:
+        logging.warning("Failed to read version: %s", e)
+
+    return version

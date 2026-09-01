@@ -68,13 +68,25 @@ python -m pip install 2dcomboselector
 
 ## **If you installed with pip:**
 - Open Command Prompt (or Terminal on Mac/Linux).
-- Run:
+- Run the full-featured version:
     ```sh
     combo-selector
     ```
-    If that doesn’t work, try:
+    or:
     ```sh
-    python -m combo-selector
+    combo-selector-advanced
+    ```
+    To launch the simplified end-user version:
+    ```sh
+    combo-selector-user
+    ```
+    If the entry-point commands are unavailable, try:
+    ```sh
+    python -m combo_selector.main --profile advanced
+    ```
+    or:
+    ```sh
+    python -m combo_selector.main --profile user
     ```
 
 # ✅ Release Validation
