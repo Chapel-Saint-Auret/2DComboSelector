@@ -14,8 +14,8 @@ Features:
 
 import sys
 
-from PySide6.QtCore import QRect, QSize, Qt, Signal
-from PySide6.QtGui import QIcon
+from PySide6.QtCore import QRect, QSize, Qt, Signal,QPoint
+from PySide6.QtGui import QIcon,QColor,QPolygon,QBrush,QPen
 from PySide6.QtWidgets import (
     QApplication,
     QAbstractScrollArea,
@@ -83,6 +83,8 @@ class HeaderButton(QHeaderView):
         # Button storage
         self._buttons: dict[int, list[QToolButton]] = {}  # column_index -> buttons
         self._button_widget = {}  # column_index -> widget (dialog or widget)
+
+        self._filter_specs = {}  # {logicalIndex: spec_dict}
 
         # Auto-reposition buttons when sections change
         self.sectionResized.connect(self._reposition_buttons)
@@ -182,6 +184,14 @@ class HeaderButton(QHeaderView):
     # ------------------------------------------------------------------
     # Painting
     # ------------------------------------------------------------------
+    def show_filter_indicator(self, filter_spec_list):
+        """
+        filter_spec_list: list of dicts, e.g.
+            [{"column": 2, "active": True, "color": "#ffd54f"}, ...]
+        """
+        # Rebuild the lookup keyed by column for O(1) access in paintSection
+        self._filter_specs = {column: spec['patterns'] for spec in filter_spec_list for column in spec['filter_column']}
+        self.viewport().update()  # trigger a repaint of the whole header
 
     def paintSection(self, painter, rect: QRect, logical_index: int) -> None:
         """Paint a header section.
@@ -189,36 +199,98 @@ class HeaderButton(QHeaderView):
         For sections that have a button the label text is clipped to a
         narrowed rect so it can never overlap the button, regardless of
         column width. Sections without a button are painted normally.
+        Sections with an active filter get a small green triangle in the
+        top-left corner.
 
         Args:
             painter (QPainter): Active painter for the viewport.
             rect (QRect): Bounding rect of the section in viewport coordinates.
             logical_index (int): Logical index of the section being painted.
         """
+        # --- Case 1: plain section, no button widget attached -------------
+        # Qt calls paintSection() once per visible column every time the
+        # header repaints (resize, scroll, initial draw, explicit update()).
+        # If this column has no button registered, we just let Qt's normal
+        # header painting handle background + text + sort arrow, exactly
+        # like the default QHeaderView would.
         if logical_index not in self._buttons:
             super().paintSection(painter, rect, logical_index)
-            return
+        else:
+            # --- Case 2: section has one or more buttons -------------------
+            # We can't just call super().paintSection() here, because Qt
+            # would draw the label text across the FULL section width,
+            # which could overlap our button(s) sitting on top of it.
+            # So instead we draw the header "by hand" in two passes using
+            # QStyle.drawControl(), which is the same low-level call Qt
+            # itself uses internally to paint header sections.
+            gap = 4  # px between text right edge and button left edge
+            buttons = self._buttons.get(logical_index, [])
+            total_btn_w = sum(btn.sizeHint().width() for btn in buttons) + gap * len(buttons)
 
-        gap = 4  # px between text right edge and button left edge
-        buttons = self._buttons.get(logical_index, [])
-        total_btn_w = sum(btn.sizeHint().width() for btn in buttons) + gap * len(buttons)
+            # save/restore bracket every painter state change we make below,
+            # so we never leak brush/pen/font changes into whatever Qt
+            # paints next (the next section, the sort arrow, etc.)
+            painter.save()
 
-        painter.save()
+            # QStyleOptionHeader is a bundle of "how should this look"
+            # settings (rect, text, sort indicator state, sunken/hover state,
+            # etc.) that we hand to the style engine to actually draw.
+            # _make_style_option() presumably builds this based on the
+            # current state of this column (sorted? hovered? etc.)
+            opt = self._make_style_option(logical_index, rect)
 
-        opt = self._make_style_option(logical_index, rect)
+            # Pass 1: draw ONLY the background/frame/sort-arrow, no text.
+            # We blank out opt_bg.text so CE_Header doesn't draw any label
+            # here — we'll draw the label ourselves in pass 2, clipped.
+            opt_bg = QStyleOptionHeader(opt)
+            opt_bg.text = ""
+            self.style().drawControl(QStyle.CE_Header, opt_bg, painter, self)
 
-        # 1. Draw background (frame, highlight, etc.) without any text
-        opt_bg = QStyleOptionHeader(opt)
-        opt_bg.text = ""
-        self.style().drawControl(QStyle.CE_Header, opt_bg, painter, self)
+            # Pass 2: draw ONLY the label text, but using a narrowed rect
+            # that stops "total_btn_w" pixels before the right edge of the
+            # section — this is what guarantees the text can never run
+            # under the button(s), no matter how narrow the column gets.
+            text_rect = rect.adjusted(0, 0, -total_btn_w, 0)
+            opt_text = QStyleOptionHeader(opt)
+            opt_text.rect = text_rect
+            self.style().drawControl(QStyle.CE_Header, opt_text, painter, self)
 
-        # 2. Draw the label text clipped to the area left of the button
-        text_rect = rect.adjusted(0, 0, -total_btn_w, 0)
-        opt_text = QStyleOptionHeader(opt)
-        opt_text.rect = text_rect
-        self.style().drawControl(QStyle.CE_Header, opt_text, painter, self)
+            painter.restore()
 
-        painter.restore()
+        # --- Filter indicator overlay --------------------------------------
+        # This runs for EVERY section (button or not), after the section's
+        # normal content has already been painted above, so the triangle
+        # always ends up drawn on top rather than underneath.
+        #
+        # Condition breakdown:
+        #   - self._filter_specs is non-empty (some column has a filter)
+        #   - logical_index in self._filter_specs -> this specific column
+        #     has an entry at all
+        #   - the stored pattern isn't the "match everything" default ".*"
+        #     (a ".*" filter is effectively "no filter", so no indicator)
+        if (self._filter_specs
+                and logical_index in self._filter_specs
+                and self._filter_specs.get(logical_index) != ".*"):
+            # Build a small right-angled triangle anchored at the section's
+            # top-left corner (rect.x(), rect.y()):
+            #   point 0: 5px to the right along the top edge
+            #   point 1: the corner itself (top-left)
+            #   point 2: 5px down along the left edge
+            # These three points form a triangle that "cuts into" the
+            # top-left corner of the header cell.
+            polygon = QPolygon([
+                QPoint(rect.x() + 5, rect.y()),
+                QPoint(rect.x(), rect.y()),
+                QPoint(rect.x(), rect.y() + 5),
+            ])
+
+            # Scope the brush/pen change to just this drawing so it can't
+            # bleed into anything painted after this (next section, etc.)
+            painter.save()
+            painter.setBrush(QBrush(QColor(Qt.darkGreen)))
+            painter.setPen(QPen(QColor(Qt.darkGreen)))
+            painter.drawPolygon(polygon)
+            painter.restore()
 
     # ------------------------------------------------------------------
     # Public API

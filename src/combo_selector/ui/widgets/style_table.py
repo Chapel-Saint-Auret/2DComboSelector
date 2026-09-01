@@ -179,6 +179,8 @@ class TablePanel(QWidget):
 
         self.table.getProxyModel().set_multi_column_filters(filter_spec_list)
 
+        self.header.show_filter_indicator(filter_spec_list)
+
         self.filter_changed.emit(filter_spec_list)
 
     def get_header(self) -> HeaderButton:
