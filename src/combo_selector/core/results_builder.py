@@ -714,10 +714,10 @@ class ResultsBuilder:
 
         """
 
-        K_1  =  max(1,ceil(0.01*self.nb_condition))
-        K_5  =  max(1,ceil(0.05*self.nb_condition))
-        K_10 =  max(1,ceil(0.10*self.nb_condition))
-        K_70 =  max(1,ceil(0.70*self.nb_condition))
+        K_1  = ceil(0.01*self.nb_combination)
+        K_5  = ceil(0.05*self.nb_combination)
+        K_10 = ceil(0.10*self.nb_combination)
+        K_70 = ceil(0.70*self.nb_combination)
 
         def is_top_1(rank):
             """Return whether a rank falls within the top 1%."""
