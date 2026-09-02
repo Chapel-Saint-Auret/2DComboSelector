@@ -296,7 +296,7 @@ class DataManager:
         ]
 
     def _validate_optional_sheet_columns(
-        self, table_df: pd.DataFrame, label: str
+            self, table_df: pd.DataFrame, label: str
     ) -> list[str]:
         """Validate optional-sheet condition columns against loaded retention data."""
         expected_columns = self._get_expected_condition_names()
@@ -307,7 +307,13 @@ class DataManager:
                 "Number of condition does not match the number of condition in retention time data."
             )
 
-        if expected_columns != actual_columns:
+        def _normalize(name: str) -> str:
+            return str(name).replace(" ", "").lower()
+
+        normalized_expected = [_normalize(c) for c in expected_columns]
+        normalized_actual = [_normalize(c) for c in actual_columns]
+
+        if normalized_expected != normalized_actual:
             raise ValueError(
                 f"{label} condition names do not match the retention time data."
             )
