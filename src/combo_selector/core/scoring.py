@@ -120,6 +120,8 @@ class Scoring:
             Returns:
                 pd.Series: Rescaled values in [1, ``nb_combination``].
             """
+            if self.nb_combination <= 1 or col.max() == col.min():
+                return pd.Series(1.0, index=col.index)
             return ((col - col.min()) / (col.max() - col.min())) * (self.nb_combination - 1) + 1
 
         self.orthogonality_metric_ranking_df = self.orthogonality_metric_ranking_df.apply(force_scale).round(2)
@@ -273,9 +275,12 @@ class Scoring:
         consensus_orthogonality_ranking_df = consensus_orthogonality_ranking_df.rank(ascending=True, method='average')
 
         self.orthogonality_result_df['Orthogonality Rank'] = consensus_orthogonality_ranking_df
-        self.orthogonality_result_df['Orthogonality Utility'] = consensus_orthogonality_ranking_df.apply(
-            lambda x: 1 - ((x - 1) / (self.nb_combination - 1))
-        )
+        if self.nb_combination <= 1:
+            self.orthogonality_result_df['Orthogonality Utility'] = 1.0
+        else:
+            self.orthogonality_result_df['Orthogonality Utility'] = consensus_orthogonality_ranking_df.apply(
+                lambda x: 1 - ((x - 1) / (self.nb_combination - 1))
+            )
 
 
     def assess_metric_removal_impact_on_orthogonality_rank(self) -> pd.DataFrame:
@@ -534,7 +539,10 @@ class Scoring:
 
         agreement_index_df = self.orthogonality_group_ranking_df.apply(iqr, axis=1)
 
-        agreement_index_df = (1 - (agreement_index_df / (self.nb_combination - 1)))*100
+        if self.nb_combination <= 1:
+            agreement_index_df = pd.Series(100.0, index=self.orthogonality_group_ranking_df.index)
+        else:
+            agreement_index_df = (1 - (agreement_index_df / (self.nb_combination - 1)))*100
 
         self.orthogonality_result_df['Agreement Indicator'] = agreement_index_df.astype(int)
 
