@@ -351,6 +351,11 @@ def load_simple_table(filepath: str, sheetname: str = 0) -> pd.DataFrame:
 
     # Check shape to decide orientation
     if df.shape[0] == 2 and df.shape[1] >= 2:
+        first_header = df.iat[0, 0]
+        first_value = df.iat[1, 0]
+        if pd.isna(first_header) and not pd.isna(first_value):
+            df = df.iloc[:, 1:]
+
         # Horizontal: first row is header
         columns = df.iloc[0]
         values = df.iloc[1]
