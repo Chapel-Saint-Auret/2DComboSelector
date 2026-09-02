@@ -14,6 +14,9 @@ from combo_selector.core.results_builder import ResultsBuilder
 from combo_selector.core.scoring import Scoring
 
 
+FIXTURES_DIR = Path(__file__).resolve().parent / "fixtures"
+
+
 class DummyNanPolicyDialog:
     """Fail fast if a test fixture unexpectedly triggers the GUI NaN flow."""
 
@@ -56,6 +59,11 @@ def make_temp_workbook(sheets: dict[str, tuple[pd.DataFrame, bool] | pd.DataFram
     handle.close()
     write_workbook(Path(handle.name), sheets)
     return handle.name
+
+
+def get_fixture_path(filename: str) -> str:
+    """Return the absolute path to a checked-in workbook fixture."""
+    return str(FIXTURES_DIR / filename)
 
 
 def make_retention_df_three_conditions() -> pd.DataFrame:

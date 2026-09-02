@@ -283,6 +283,14 @@ class ResultsBuilder:
         Side Effects:
             - Updates ``self.orthogonality_result_df`` with all result columns.
         """
+        if self.orthogonality_metric_df.empty:
+            raise ValueError(
+                "Orthogonality metrics must be computed before updating table results."
+            )
+        if self.correlation_group_df.empty:
+            raise ValueError(
+                "Metric groups must be built before updating table results."
+            )
         self.compute_consensus_orthogonality_ranking()
         self.compute_custom_orthogonality_score()
         self.assess_metric_removal_impact_on_orthogonality_rank()

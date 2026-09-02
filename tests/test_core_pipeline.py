@@ -142,6 +142,42 @@ class CorePipelineTests(unittest.TestCase):
         self.assertIn("Final Rank", model.get_orthogonality_result_df().columns)
         self.assertIn("Final Recommendation", model.get_orthogonality_result_df().columns)
         self.assertTrue(model.get_orthogonality_result_df()["Final Rank"].notna().all())
+        self.assertTrue(
+            model.get_orthogonality_metric_df()["Convex hull relative area"].between(0, 1).all()
+        )
+        self.assertTrue(
+            model.get_orthogonality_metric_df()["Bin box counting"].between(0, 1).all()
+        )
+        self.assertGreaterEqual(
+            model.get_orthogonality_result_df()["Final Rank"].min(),
+            1,
+        )
+
+    def test_update_table_results_requires_metric_groups(self) -> None:
+        retention = make_retention_df_three_conditions()
+        workbook = self._track(make_temp_workbook({"Retention": retention}))
+        model = CoreTestModel()
+        metrics = ["Convex hull relative area", "Bin box counting"]
+
+        model.load_retention_time(workbook, "Retention")
+        model.normalize_retention_time("min_max")
+
+        for metric_name in metrics:
+            model.om_function_map[metric_name]["func"]()
+
+        model.update_metric_dataframes(metrics)
+        model.set_computed_score_dict(
+            {
+                "metric_list": metrics,
+                "aggregation_method": "Mean",
+                "score_used": "Default",
+            }
+        )
+
+        with self.assertRaisesRegex(
+            ValueError, "Metric groups must be built before updating table results"
+        ):
+            model.update_table_results()
 
 
 if __name__ == "__main__":

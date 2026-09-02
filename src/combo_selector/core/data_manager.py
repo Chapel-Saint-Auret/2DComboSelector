@@ -287,6 +287,40 @@ class DataManager:
             raise ValueError(f"{label} value for '{column_name}' is missing.")
         return value
 
+    def _get_expected_condition_names(self) -> list[str]:
+        """Return the current retention-time condition names after removals."""
+        return [
+            column_name
+            for column_name in self.column_names
+            if column_name not in self.removed_condition_list
+        ]
+
+    def _validate_optional_sheet_columns(
+        self, table_df: pd.DataFrame, label: str
+    ) -> list[str]:
+        """Validate optional-sheet condition columns against loaded retention data."""
+        expected_columns = self._get_expected_condition_names()
+        actual_columns = table_df.columns.tolist()
+
+        if len(expected_columns) != len(actual_columns):
+            raise ValueError(
+                "Number of condition does not match the number of condition in retention time data."
+            )
+
+        if expected_columns != actual_columns:
+            raise ValueError(
+                f"{label} condition names do not match the retention time data."
+            )
+
+        return actual_columns
+
+    @staticmethod
+    def _compute_relative_utility(value, minimum, maximum) -> float:
+        """Return a stable [0, 1] utility score even when the range collapses."""
+        if maximum == minimum:
+            return 1.0
+        return (value - minimum) / (maximum - minimum)
+
     # ------------------------------------------------------------------
     # NaN policy
     # ------------------------------------------------------------------
@@ -782,6 +816,10 @@ class DataManager:
             #[1:] is used because first column is compound name
             self.column_names = self.retention_time_df.columns.tolist()[1:]
             self.nb_condition = num_columns = len(self.column_names)
+            if num_columns < 2:
+                raise ValueError(
+                    "Retention time data must contain at least two condition columns."
+                )
             self.nb_peaks = len(self.retention_time_df.iloc[:, 0])
 
             self.compound_name_list = self.retention_time_df['Compound Name'].tolist()
@@ -912,12 +950,11 @@ class DataManager:
             if set(self.removed_condition_list).issubset(set(self.retention_time_df_2d_peaks.columns)):
                 self.retention_time_df_2d_peaks = self.retention_time_df_2d_peaks.drop(columns=self.removed_condition_list)
 
-            columns = self.retention_time_df_2d_peaks.columns.tolist()
+            columns = self._validate_optional_sheet_columns(
+                self.retention_time_df_2d_peaks, "Peak capacity"
+            )
             num_columns = len(columns)
             set_number = 1
-
-            if len(self.column_names) != num_columns:
-                raise ValueError("Number of condition does not match the number of condition in retention time data.")
 
 
             for col1_idx, col2_idx in combinations(range(num_columns), 2):
@@ -965,7 +1002,11 @@ class DataManager:
             self.orthogonality_result_df['Peak Capacity Rank'] = self.combination_df["Hypothetical 2D Peak Capacity"].rank(ascending=False, method='average').astype(int)
             p_min = self.combination_df["Hypothetical 2D Peak Capacity"].min()
             p_max = self.combination_df["Hypothetical 2D Peak Capacity"].max()
-            self.orthogonality_result_df['Peak Capacity Utility'] = self.combination_df["Hypothetical 2D Peak Capacity"].apply(lambda x:(x-p_min)/(p_max-p_min))
+            self.orthogonality_result_df['Peak Capacity Utility'] = self.combination_df[
+                "Hypothetical 2D Peak Capacity"
+            ].apply(
+                lambda x: self._compute_relative_utility(x, p_min, p_max)
+            )
             self.status = "loaded"
         except Exception as e:
             print(f"Error loading 2D peaks: {str(e)}")
@@ -997,12 +1038,11 @@ class DataManager:
                 self.load_elution_composition_df = self.load_elution_composition_df.drop(
                     columns=self.removed_condition_list)
 
-            columns = self.load_elution_composition_df.columns.tolist()
+            columns = self._validate_optional_sheet_columns(
+                self.load_elution_composition_df, "Elution-composition"
+            )
             num_columns = len(columns)
             set_number = 1
-
-            if len(self.column_names) != num_columns:
-                raise ValueError("Number of condition does not match the number of condition in retention time data.")
 
             for col1_idx, col2_idx in combinations(range(num_columns), 2):
                 set_key = f"Set {set_number}"
