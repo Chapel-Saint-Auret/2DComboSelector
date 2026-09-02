@@ -41,8 +41,8 @@ class CorePipelineTests(unittest.TestCase):
             model.get_combination_df()["2D Combination"].tolist(),
             [
                 "HILIC - BEH Amide - EtOH - pH 7 vs RPLC - C18 - ACN/H$_2$O - pH 3",
-                "HILIC - BEH Amide - EtOH - pH 7 vs IEX - SAX - Buffer - pH 6",
-                "RPLC - C18 - ACN/H$_2$O - pH 3 vs IEX - SAX - Buffer - pH 6",
+                "HILIC - BEH Amide - EtOH - pH 7 vs SFC - Torus - MeOH - pH 6",
+                "RPLC - C18 - ACN/H$_2$O - pH 3 vs SFC - Torus - MeOH - pH 6",
             ],
         )
 
@@ -80,8 +80,8 @@ class CorePipelineTests(unittest.TestCase):
                     "Retention": retention,
                     "Peak": (
                         make_peak_capacity_table(
-                            retention.columns.tolist()[1:2],
-                            [85],
+                            retention.columns.tolist()[1:3],
+                            [85, 112],
                         ),
                         False,
                     ),

@@ -38,7 +38,7 @@ class NormalizationTests(unittest.TestCase):
         expected = {
             "HILIC - BEH Amide - EtOH - pH 7": [0.0, 1 / 3, 2 / 3, 1.0],
             "RPLC - C18 - ACN/H$_2$O - pH 3": [0.0, 1 / 6, 2 / 3, 1.0],
-            "IEX - SAX - Buffer - pH 6": [0.0, 1 / 6, 0.5, 1.0],
+            "SFC - Torus - MeOH - pH 6": [0.0, 1 / 6, 0.5, 1.0],
         }
 
         self.assertEqual(model.get_status(), "normalized")
@@ -60,7 +60,7 @@ class NormalizationTests(unittest.TestCase):
         expected = {
             "HILIC - BEH Amide - EtOH - pH 7": [1 / 7, 3 / 7, 5 / 7, 1.0],
             "RPLC - C18 - ACN/H$_2$O - pH 3": [1 / 13, 3 / 13, 9 / 13, 1.0],
-            "IEX - SAX - Buffer - pH 6": [1 / 7, 2 / 7, 4 / 7, 1.0],
+            "SFC - Torus - MeOH - pH 6": [1 / 7, 2 / 7, 4 / 7, 1.0],
         }
 
         for column, values in expected.items():
@@ -78,8 +78,8 @@ class NormalizationTests(unittest.TestCase):
 
         expected = {
             "HILIC - BEH Amide - EtOH - pH 7": [1 / 9, 1 / 3, 5 / 9, 7 / 9],
-            "RPLC - C18 - ACN/H$_2$O - pH 3": [1 / 17, 3 / 17, 8 / 17, 13 / 17],
-            "IEX - SAX - Buffer - pH 6": [1 / 7, 2 / 7, 4 / 7, 1.0],
+            "RPLC - C18 - ACN/H$_2$O - pH 3": [1 / 17, 3 / 17, 9 / 17, 13 / 17],
+            "SFC - Torus - MeOH - pH 6": [1 / 7, 2 / 7, 4 / 7, 1.0],
         }
 
         for column, values in expected.items():

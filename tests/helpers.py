@@ -27,6 +27,10 @@ class CoreTestModel(DataManager, MetricEngine, Redundancy, Scoring, ResultsBuild
     def __init__(self) -> None:
         self.nan_policy_dialog = DummyNanPolicyDialog()
         self.init_data()
+
+    def init_data(self) -> None:
+        """Reset data and metric registry together, like the full app expects."""
+        DataManager.init_data(self)
         self.reset_om_status_computation_state()
 
 
@@ -61,7 +65,7 @@ def make_retention_df_three_conditions() -> pd.DataFrame:
             "Analyte": ["Caffeine", "Quinine", "Rutin", "Theobromine"],
             "HILIC - BEH Amide - EtOH - pH 7": [1.0, 2.0, 3.0, 4.0],
             "RPLC - C18 - ACN/H$_2$O - pH 3": [4.0, 5.0, 8.0, 10.0],
-            "IEX - SAX - Buffer - pH 6": [2.0, 3.0, 5.0, 8.0],
+            "SFC - Torus - MeOH - pH 6": [2.0, 3.0, 5.0, 8.0],
         }
     )
 
@@ -73,8 +77,8 @@ def make_retention_df_four_conditions() -> pd.DataFrame:
             "Analyte": ["Caffeine", "Quinine", "Rutin", "Theobromine", "Naringin"],
             "HILIC - BEH Amide - EtOH - pH 7": [1.0, 2.0, 3.0, 4.0, 5.0],
             "RPLC - C18 - ACN/H2O - pH 3": [5.0, 1.0, 4.0, 2.0, 3.0],
-            "IEX - SAX - Buffer - pH 6": [2.0, 4.0, 1.0, 5.0, 3.0],
-            "SEC - BioSep - Water - pH 7": [3.0, 5.0, 2.0, 1.0, 4.0],
+            "SFC - Torus - MeOH - pH 6": [2.0, 4.0, 1.0, 5.0, 3.0],
+            "RPLC - Phenyl - MeOH/H2O - pH 5": [3.0, 5.0, 2.0, 1.0, 4.0],
         }
     )
 
