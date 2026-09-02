@@ -441,6 +441,36 @@ def load_table_with_header_anywhere(
     return df
 
 
+def build_correlation_matrix_for_display(
+    source_df: pd.DataFrame, method: str
+) -> tuple[pd.DataFrame, str | None]:
+    """Build a correlation matrix safe for heatmap display.
+
+    Returns an identity fallback when correlations are undefined, such as when
+    only one combination exists and every pairwise correlation is NaN.
+    """
+    if source_df.empty or len(source_df.columns) < 2:
+        return pd.DataFrame(), None
+
+    corr_matrix = source_df.corr(method=method)
+    if corr_matrix.empty:
+        return corr_matrix, None
+
+    corr_values = corr_matrix.to_numpy(dtype=float, copy=False)
+    if np.isfinite(corr_values).any():
+        return corr_matrix, None
+
+    fallback_matrix = pd.DataFrame(
+        np.eye(len(corr_matrix.columns), dtype=float),
+        index=corr_matrix.index,
+        columns=corr_matrix.columns,
+    )
+    return (
+        fallback_matrix,
+        "Correlation values are unavailable with only one combination; showing identity fallback.",
+    )
+
+
 def extract_set_number(name: str) -> int | None:
     """Extract the numeric set number from a set name string.
 
