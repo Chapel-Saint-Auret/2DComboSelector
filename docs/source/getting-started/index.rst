@@ -8,7 +8,11 @@ You can install `2DComboSelector` using pip::
 
 To launch `2DComboSelector`::
 
-   $ python -m combo-selector
+   $ combo-selector
+
+If the console script is not on your PATH, the installed module launcher also works::
+
+   $ python -m combo_selector
 
 Dependencies for `2DComboSelector` are as follows:
 

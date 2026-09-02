@@ -10,9 +10,9 @@ from tests.helpers import CoreTestModel, get_fixture_path
 class WorkbookRegressionTests(unittest.TestCase):
     """Verify workbook layouts that mirror the documented release format."""
 
-    def _run_release_format_valid_pipeline(self) -> CoreTestModel:
+    def _run_release_format_pipeline(self, fixture_name: str) -> CoreTestModel:
         model = CoreTestModel()
-        workbook = get_fixture_path("release_format_valid.xlsx")
+        workbook = get_fixture_path(fixture_name)
         metrics = [
             "Convex hull relative area",
             "Bin box counting",
@@ -120,8 +120,30 @@ class WorkbookRegressionTests(unittest.TestCase):
                 workbook, "Elution-Composition Range Table"
             )
 
+    def test_release_format_workbook_rejects_duplicate_condition_names(self) -> None:
+        model = CoreTestModel()
+        workbook = get_fixture_path("release_format_duplicate_conditions.xlsx")
+
+        model.load_retention_time(workbook, "Retention Time Table")
+
+        self.assertEqual(model.get_status(), "error")
+        self.assertTrue(model.get_retention_time_df().empty)
+
+    def test_release_format_workbook_rejects_missing_condition_header(self) -> None:
+        model = CoreTestModel()
+        workbook = get_fixture_path("release_format_missing_condition_header.xlsx")
+
+        model.load_retention_time(workbook, "Retention Time Table")
+
+        self.assertEqual(model.get_status(), "error")
+        self.assertEqual(model.get_number_of_condition(), 1)
+        self.assertEqual(
+            model.get_retention_time_df().columns.tolist(),
+            ["Compound Name", "HILIC - BEH Amide - EtOH - pH 7"],
+        )
+
     def test_valid_release_format_ranking_regression_handles_single_combination(self) -> None:
-        model = self._run_release_format_valid_pipeline()
+        model = self._run_release_format_pipeline("release_format_valid.xlsx")
         results = model.get_orthogonality_result_df()
 
         self.assertEqual(
@@ -134,6 +156,55 @@ class WorkbookRegressionTests(unittest.TestCase):
         self.assertEqual(results["Final Rank (Utility)"].tolist(), [1.0])
         self.assertEqual(results["Agreement Indicator"].tolist(), [100])
         self.assertTrue(results["Final Recommendation"].notna().all())
+
+    def test_ranking_release_format_workbook_locks_pair_generation_and_ranking(self) -> None:
+        model = self._run_release_format_pipeline("release_format_ranking.xlsx")
+        combinations = model.get_combination_df()
+        results = model.get_orthogonality_result_df()
+
+        self.assertEqual(model.get_number_of_condition(), 4)
+        self.assertEqual(model.get_number_of_combination(), 6)
+        self.assertEqual(
+            combinations["2D Combination"].tolist(),
+            [
+                "HILIC - BEH Amide - EtOH - pH 7 vs RPLC - C18 - ACN/H2O - pH 3",
+                "HILIC - BEH Amide - EtOH - pH 7 vs SFC - Torus - MeOH - pH 6",
+                "HILIC - BEH Amide - EtOH - pH 7 vs RPLC - Phenyl - MeOH/H2O - pH 5",
+                "RPLC - C18 - ACN/H2O - pH 3 vs SFC - Torus - MeOH - pH 6",
+                "RPLC - C18 - ACN/H2O - pH 3 vs RPLC - Phenyl - MeOH/H2O - pH 5",
+                "SFC - Torus - MeOH - pH 6 vs RPLC - Phenyl - MeOH/H2O - pH 5",
+            ],
+        )
+        self.assertEqual(
+            combinations["Hypothetical 2D Peak Capacity"].tolist(),
+            [7600, 8000, 8800, 9500, 10450, 11000],
+        )
+        self.assertEqual(combinations["Elution Domain"].tolist(), [22, 24, 27, 27, 30, 33])
+        self.assertEqual(results["Final Rank"].tolist(), [6.0, 4.0, 3.0, 5.0, 2.0, 1.0])
+        self.assertEqual(
+            results["Final Rank (Utility)"].tolist(), [5.0, 4.0, 3.0, 6.0, 2.0, 1.0]
+        )
+
+        top_three = results.sort_values("Final Rank")["2D Combination"].head(3).tolist()
+        self.assertEqual(
+            top_three,
+            [
+                "SFC - Torus - MeOH - pH 6 vs RPLC - Phenyl - MeOH/H2O - pH 5",
+                "RPLC - C18 - ACN/H2O - pH 3 vs RPLC - Phenyl - MeOH/H2O - pH 5",
+                "HILIC - BEH Amide - EtOH - pH 7 vs RPLC - Phenyl - MeOH/H2O - pH 5",
+            ],
+        )
+
+        best = results.loc[results["Final Rank"].idxmin()]
+        self.assertEqual(
+            best["2D Combination"],
+            "SFC - Torus - MeOH - pH 6 vs RPLC - Phenyl - MeOH/H2O - pH 5",
+        )
+        self.assertAlmostEqual(best["Orthogonality Utility"], 0.9)
+        self.assertAlmostEqual(best["Coverage Score"], 0.734375)
+        self.assertAlmostEqual(best["Distribution Score"], 1.0)
+        self.assertAlmostEqual(best["Practical Peak Capacity"], 9429.0625)
+        self.assertEqual(int(best["Agreement Indicator"]), 100)
 
 
 if __name__ == "__main__":

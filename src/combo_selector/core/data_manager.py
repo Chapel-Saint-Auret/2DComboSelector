@@ -7,6 +7,7 @@ Qt dependency of its own (except for the :class:`NanPolicyDialog` that it
 instantiates on behalf of the Qt-aware facade).
 """
 
+import logging
 from itertools import combinations
 from math import sqrt
 
@@ -756,7 +757,7 @@ class DataManager:
             self.status = "loaded"
 
         except Exception as e:
-            print(f"Error loading gradient time: {str(e)}")
+            logging.exception("Error loading gradient time")
             self.status = "error"
             raise
 
@@ -782,7 +783,7 @@ class DataManager:
             self.status = "loaded"
 
         except Exception as e:
-            print(f"Error loading end time: {str(e)}")
+            logging.exception("Error loading void time")
             self.status = "error"
             raise
 
@@ -809,7 +810,7 @@ class DataManager:
             self.init_data()
 
             self.retention_time_df = load_table_with_header_anywhere(
-                filepath, sheetname
+                filepath, sheetname, auto_fix_duplicates=False
             )
 
             #rename automatically the first column (which should be the "Compound Name')
@@ -927,9 +928,8 @@ class DataManager:
             self.set_complexity()
 
             self.status = "loaded"
-        except Exception as e:
-            issue = str(e)
-            print(f"Error loading data: {issue}")
+        except Exception:
+            logging.exception("Error loading retention time data")
             self.status = "error"
 
     def load_hypothetical_2d_peak_capacity(self, filepath: str, sheetname: str) -> None:
@@ -1014,8 +1014,8 @@ class DataManager:
                 lambda x: self._compute_relative_utility(x, p_min, p_max)
             )
             self.status = "loaded"
-        except Exception as e:
-            print(f"Error loading 2D peaks: {str(e)}")
+        except Exception:
+            logging.exception("Error loading peak-capacity data")
             self.status = "error"
             raise
 
@@ -1071,8 +1071,8 @@ class DataManager:
             self.orthogonality_result_df['Elution Domain Utility'] = self.combination_df['Elution Domain'].apply(lambda x: x/100)
             self.status = self.elution_data_status = "elution_data_loaded"
 
-        except Exception as e:
-            print(f"Error loading Elution composition space area data: {str(e)}")
+        except Exception:
+            logging.exception("Error loading elution-composition data")
             self.status = "error"
             raise
 

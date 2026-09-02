@@ -11,6 +11,7 @@ This module provides:
 - Clustering correlated metrics
 """
 
+import logging
 import os
 import re
 import sys
@@ -419,6 +420,21 @@ def load_table_with_header_anywhere(
     else:
         raise ValueError("No header row found with sufficient columns.")
 
+    header_values = (
+        raw.iloc[header_row]
+        .dropna()
+        .astype(str)
+        .str.strip()
+    )
+    header_values = header_values[~header_values.str.contains(r"^Unnamed", regex=True)]
+    duplicates = [item for item, count in Counter(header_values).items() if count > 1]
+    if duplicates:
+        if auto_fix_duplicates:
+            logging.warning("Duplicate columns found: %s", duplicates)
+            logging.debug("Duplicates were auto-renamed by pandas with .1, .2 etc.")
+        else:
+            raise ValueError(f"Duplicate column names found: {duplicates}")
+
     # Now read again, skipping to that header row, using it as header
     # Fix: Use index_col=None to prevent pandas from guessing an index column
     df = pd.read_excel(filepath, sheet_name=sheetname, header=header_row, index_col=None)
@@ -427,16 +443,6 @@ def load_table_with_header_anywhere(
 
     # Strip all whitespace from columns
     df.columns = df.columns.str.strip()
-
-    # Check for duplicates
-    duplicates = [item for item, count in Counter(df.columns).items() if count > 1]
-    if duplicates:
-        print("⚠️ Warning: Duplicate columns found:", duplicates)
-        if auto_fix_duplicates:
-            # Pandas will already have renamed with .1, .2, etc. Keep those for now
-            print("Duplicates were auto-renamed by pandas with .1, .2 etc.")
-        else:
-            raise ValueError(f"Duplicate column names found: {duplicates}")
 
     return df
 

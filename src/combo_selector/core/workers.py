@@ -92,6 +92,7 @@ class ResultsWorkerSignals(QObject):
     """
     finished = Signal()
     progress = Signal(int)
+    error = Signal(str)
 
 
 class ResultsWorker(QRunnable):
@@ -130,6 +131,7 @@ class ResultsWorker(QRunnable):
             self.signals.finished.emit()
         except Exception as e:
             logging.exception(f"[ResultsWorker] Error: {e}")
+            self.signals.error.emit(str(e))
 
 
 class UpdateTableResultsWorker(QRunnable):
@@ -184,6 +186,7 @@ class UpdateTableResultsWorker(QRunnable):
             self.signals.finished.emit()
         except Exception as e:
             logging.exception(f"[UpdateTableResultsWorker] Error: {e}")
+            self.signals.error.emit(str(e))
 
 
 class OMWorkerSignals(QObject):

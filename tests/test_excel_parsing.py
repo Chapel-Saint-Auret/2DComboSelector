@@ -68,6 +68,21 @@ class ExcelParsingTests(unittest.TestCase):
         self.assertEqual(model.get_retention_time_df().columns[1], "Compound Name")
         self.assertEqual(model.get_compound_name_list(), ["Caffeine", "Quinine", "Rutin", "Theobromine"])
 
+    def test_load_table_with_header_anywhere_rejects_duplicate_headers_when_requested(self) -> None:
+        workbook = self._track(
+            make_temp_workbook(
+                {
+                    "Retention": pd.DataFrame(
+                        [["A", 1.0, 3.0], ["B", 2.0, 4.0]],
+                        columns=["Compound", "Cond A", "Cond A"],
+                    )
+                }
+            )
+        )
+
+        with self.assertRaisesRegex(ValueError, "Duplicate column names found"):
+            load_table_with_header_anywhere(workbook, "Retention", auto_fix_duplicates=False)
+
     def test_load_simple_table_accepts_optional_label_column_from_release_format(self) -> None:
         retention = make_retention_df_three_conditions()
         conditions = retention.columns.tolist()[1:]
