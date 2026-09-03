@@ -1,25 +1,29 @@
 [build-system]
-requires = ["setuptools>=61.0", "wheel"]
+requires = ["setuptools>=77.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "2dcomboselector"
-version = "0.2.1.beta"
+version = "1.0.0"
 description = "A Python tool for interactive 2D combination selection and analysis."
 readme = "README.md"
-requires-python = ">=3.8"
-license = { file = "LICENSE" }
+requires-python = ">=3.10"
+license = "MIT"
+license-files = ["LICENSE"]
 authors = [
-  { name="Chapel-Saint-Auret", email="jessy.saintauret@gmail.com" }
+  { name = "Chapel-Saint-Auret" }
 ]
 classifiers = [
     "Programming Language :: Python :: 3",
-    "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
     "Intended Audience :: Developers",
     "Intended Audience :: Science/Research",
     "Topic :: Software Development",
     "Topic :: Scientific/Engineering",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
 ]
 dependencies = [
     "PySide6",
@@ -28,11 +32,15 @@ dependencies = [
     "pandas",
     "scipy",
     "seaborn",
-	"openpyxl",
+    "openpyxl",
+    "markdown",
 ]
 
 [project.urls]
 Homepage = "https://github.com/Chapel-Saint-Auret/2dcomboselector"
+Documentation = "https://2dcomboselector-docs.readthedocs.io/"
+Issues = "https://github.com/Chapel-Saint-Auret/2dcomboselector/issues"
+Changelog = "https://github.com/Chapel-Saint-Auret/2dcomboselector/blob/main/CHANGELOG.md"
 
 [project.scripts]
 combo-selector = "combo_selector.main:main"
