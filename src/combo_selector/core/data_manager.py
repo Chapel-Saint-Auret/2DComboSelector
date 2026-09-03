@@ -322,6 +322,29 @@ class DataManager:
         return actual_columns
 
     @staticmethod
+    def _coerce_numeric_columns(
+        table_df: pd.DataFrame, columns: list[str], label: str
+    ) -> pd.DataFrame:
+        """Return a copy with selected columns coerced to numeric values."""
+        coerced_df = table_df.copy()
+        invalid_columns = []
+
+        for column_name in columns:
+            original = coerced_df[column_name]
+            numeric = pd.to_numeric(original, errors="coerce")
+            invalid_mask = original.notna() & numeric.isna()
+            if invalid_mask.any():
+                invalid_columns.append(str(column_name))
+            coerced_df[column_name] = numeric
+
+        if invalid_columns:
+            raise ValueError(
+                f"{label} contains non-numeric values in: {', '.join(invalid_columns)}."
+            )
+
+        return coerced_df
+
+    @staticmethod
     def _compute_relative_utility(value, minimum, maximum) -> float:
         """Return a stable [0, 1] utility score even when the range collapses."""
         if maximum == minimum:
@@ -817,6 +840,11 @@ class DataManager:
             self.retention_time_df = self.retention_time_df.rename(
                 columns={self.retention_time_df.columns[0]: 'Compound Name'}
             )
+            self.retention_time_df = self._coerce_numeric_columns(
+                self.retention_time_df,
+                self.retention_time_df.columns.tolist()[1:],
+                "Retention time data",
+            )
 
             # check there is nan value in data frame
             self.has_nan_value = self.retention_time_df.iloc[:,1:].isnull().any().any()
@@ -959,6 +987,11 @@ class DataManager:
             columns = self._validate_optional_sheet_columns(
                 self.retention_time_df_2d_peaks, "Peak capacity"
             )
+            self.retention_time_df_2d_peaks = self._coerce_numeric_columns(
+                self.retention_time_df_2d_peaks,
+                columns,
+                "Peak capacity data",
+            )
             num_columns = len(columns)
             set_number = 1
 
@@ -1046,6 +1079,11 @@ class DataManager:
 
             columns = self._validate_optional_sheet_columns(
                 self.load_elution_composition_df, "Elution-composition"
+            )
+            self.load_elution_composition_df = self._coerce_numeric_columns(
+                self.load_elution_composition_df,
+                columns,
+                "Elution-composition data",
             )
             num_columns = len(columns)
             set_number = 1

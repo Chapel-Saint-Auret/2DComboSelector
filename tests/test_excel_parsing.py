@@ -102,11 +102,103 @@ class ExcelParsingTests(unittest.TestCase):
         self.assertEqual(list(loaded.columns), conditions)
         self.assertEqual(loaded.iloc[0].tolist(), [85, 112, 96])
 
+    def test_load_simple_table_ignores_surrounding_empty_rows_and_columns(self) -> None:
+        workbook = self._track(
+            make_temp_workbook(
+                {
+                    "Peak": (
+                        pd.DataFrame(
+                            [
+                                [None, None, None, None, None],
+                                [None, None, "Cond A", "Cond B", None],
+                                [None, "Peak capacity", 85, 112, None],
+                                [None, None, None, None, None],
+                            ]
+                        ),
+                        False,
+                    )
+                }
+            )
+        )
+
+        loaded = load_simple_table(workbook, "Peak")
+
+        self.assertEqual(list(loaded.columns), ["Cond A", "Cond B"])
+        self.assertEqual(loaded.iloc[0].tolist(), [85, 112])
+
     def test_load_simple_table_rejects_unrecognized_shape(self) -> None:
         path = self._track(make_temp_workbook({"Invalid": (pd.DataFrame([[1], [2], [3]]), False)}))
 
         with self.assertRaisesRegex(ValueError, "Table shape not recognized"):
             load_simple_table(path, "Invalid")
+
+    def test_load_retention_time_rejects_non_numeric_condition_values(self) -> None:
+        workbook = self._track(
+            make_temp_workbook(
+                {
+                    "Retention": pd.DataFrame(
+                        {
+                            "Analyte": ["A", "B"],
+                            "Cond A": [1.0, "bad"],
+                            "Cond B": [2.0, 3.0],
+                        }
+                    )
+                }
+            )
+        )
+        model = CoreTestModel()
+
+        model.load_retention_time(workbook, "Retention")
+
+        self.assertEqual(model.get_status(), "error")
+
+    def test_load_peak_capacity_rejects_non_numeric_values(self) -> None:
+        retention = make_retention_df_three_conditions()
+        workbook = self._track(
+            make_temp_workbook(
+                {
+                    "Retention": retention,
+                    "Peak": (
+                        pd.DataFrame(
+                            [
+                                [None, *retention.columns.tolist()[1:]],
+                                ["Peak capacity", 85, "bad", 96],
+                            ]
+                        ),
+                        False,
+                    ),
+                }
+            )
+        )
+        model = CoreTestModel()
+        model.load_retention_time(workbook, "Retention")
+
+        with self.assertRaisesRegex(ValueError, "Peak capacity data contains non-numeric values"):
+            model.load_hypothetical_2d_peak_capacity(workbook, "Peak")
+
+    def test_load_elution_table_rejects_non_numeric_values(self) -> None:
+        retention = make_retention_df_three_conditions()
+        workbook = self._track(
+            make_temp_workbook(
+                {
+                    "Retention": retention,
+                    "Elution": (
+                        pd.DataFrame(
+                            [
+                                [None, *retention.columns.tolist()[1:]],
+                                ["Elution-Composition Ranges", 45, 60, "bad"],
+                            ]
+                        ),
+                        False,
+                    ),
+                }
+            )
+        )
+        model = CoreTestModel()
+        model.load_retention_time(workbook, "Retention")
+
+        with self.assertRaisesRegex(ValueError, "Elution-composition data contains non-numeric values"):
+            model.load_elution_composition_space_area_data(workbook, "Elution")
 
 
 if __name__ == "__main__":

@@ -66,6 +66,49 @@ def get_fixture_path(filename: str) -> str:
     return str(FIXTURES_DIR / filename)
 
 
+def build_ranked_model(
+    workbook: str,
+    retention_sheet: str = "Retention Time Table",
+    peak_capacity_sheet: str | None = None,
+    elution_sheet: str | None = None,
+    metrics: list[str] | None = None,
+) -> CoreTestModel:
+    """Build a computed core model from a workbook fixture."""
+    if metrics is None:
+        metrics = [
+            "Convex hull relative area",
+            "Bin box counting",
+            "Pearson Correlation",
+            "Spearman Correlation",
+            "Kendall Correlation",
+        ]
+
+    model = CoreTestModel()
+    model.load_retention_time(workbook, retention_sheet)
+    model.normalize_retention_time("min_max")
+
+    if peak_capacity_sheet:
+        model.load_hypothetical_2d_peak_capacity(workbook, peak_capacity_sheet)
+    if elution_sheet:
+        model.load_elution_composition_space_area_data(workbook, elution_sheet)
+
+    for metric_name in metrics:
+        model.om_function_map[metric_name]["func"]()
+
+    model.update_metric_dataframes(metrics)
+    model.create_correlation_group("Values", threshold=0.0, tol=0.0)
+    model.fill_correlation_group_average("Values")
+    model.set_computed_score_dict(
+        {
+            "metric_list": metrics,
+            "aggregation_method": "Mean",
+            "score_used": "Default",
+        }
+    )
+    model.update_table_results()
+    return model
+
+
 def make_retention_df_three_conditions() -> pd.DataFrame:
     """Return a small deterministic retention-time fixture."""
     return pd.DataFrame(
