@@ -515,8 +515,14 @@ class ExportPage(QFrame):
         if not select_directory:
             QMessageBox.warning(self, "Missing export folder", "Select an export folder first.")
             return
+        if not os.path.exists(select_directory):
+            QMessageBox.warning(self, "Invalid export folder", "The selected table export folder does not exist.")
+            return
 
-        file_path = f"{select_directory}/{self.export_filename.text()}"
+        file_name = self.export_filename.text().strip() or "export_table.xlsx"
+        if not file_name.lower().endswith(".xlsx"):
+            file_name = f"{file_name}.xlsx"
+        file_path = os.path.join(select_directory, file_name)
         table_to_export_list = self.table_selection.get_checked_items()
         if not table_to_export_list:
             QMessageBox.warning(self, "Nothing to export", "Select at least one table to export.")
@@ -561,10 +567,8 @@ class ExportPage(QFrame):
             └── ...
         """
         chosen_directory = self.figure_export_directory_lineEdit.text()
-        chosen_folder_name = (
-            # f"{chosen_directory}/{self.figure_folder_name_lineEdit.text()}"
-            f"{chosen_directory}/Figure"
-        )
+        folder_name = self.figure_folder_name_lineEdit.text().strip() or "Figure"
+        chosen_folder_name = os.path.join(chosen_directory, folder_name)
         figure_type_list = self.figure_type_chklist.get_checked_items()
         figure_list_chklist = self.figure_list_chklist.get_checked_items()
 
@@ -588,7 +592,7 @@ class ExportPage(QFrame):
             os.mkdir(chosen_folder_name)
 
         for plot_type in figure_type_list:
-            subdirectory_type_name = f"{chosen_folder_name}/{plot_type}"
+            subdirectory_type_name = os.path.join(chosen_folder_name, plot_type)
             if not os.path.exists(subdirectory_type_name):
                 os.mkdir(subdirectory_type_name)
 
@@ -628,7 +632,7 @@ class ExportPage(QFrame):
             self.plot_functions_map[plot_type](set_number=set_nb)
 
         # Save with high resolution
-        filename = f"{dirname}/{set_nb}.png"
+        filename = os.path.join(dirname, f"{set_nb}.png")
         self.canvas.figure.savefig(
             filename, dpi=600, bbox_inches="tight", transparent=True
         )

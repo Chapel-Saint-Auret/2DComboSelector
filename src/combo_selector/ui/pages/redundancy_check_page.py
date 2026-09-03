@@ -41,6 +41,7 @@ from combo_selector.ui.widgets.style_table import StyledTable
 from combo_selector.ui.widgets.section_help_button import SectionHelpButton
 from combo_selector.utils import resource_path
 from combo_selector.constants import METRIC_CORR_MAP
+from combo_selector.core.orthogonality_utils import build_correlation_matrix_for_display
 
 # Checkbox icon paths
 checked_icon_path = resource_path("icons/checkbox_checked.svg").replace("\\", "/")
@@ -99,6 +100,7 @@ class RedundancyCheckPage(QFrame):
         self.ranking_corr_matrix = None
         self.heatmap_mask = True
         self.highlight_heatmap_mask = False
+        self.correlation_heatmap_notice = None
 
         # --- Page frame & base layout --------------------------------------
         self.setFrameShape(QFrame.StyledPanel)
@@ -570,19 +572,25 @@ class RedundancyCheckPage(QFrame):
         source_df = self._get_selected_correlation_source_df()
         if source_df.empty or len(source_df.columns) < 2:
             self.selected_correlation_matrix = pd.DataFrame()
+            self.correlation_heatmap_notice = None
             self.fig.canvas.draw()
             return
 
         if self.select_correlation_matrix.currentText() == 'Values':
-            self.selected_correlation_matrix = source_df.corr(method='spearman')
+            self.selected_correlation_matrix, self.correlation_heatmap_notice = (
+                build_correlation_matrix_for_display(source_df, "spearman")
+            )
             self._ax.set_title('Value-Based',color='0.7')
 
         if self.select_correlation_matrix.currentText() == 'Rank':
-            self.selected_correlation_matrix = source_df.corr(method='pearson')
+            self.selected_correlation_matrix, self.correlation_heatmap_notice = (
+                build_correlation_matrix_for_display(source_df, "pearson")
+            )
             self._ax.set_title('Ranking-Based',color='0.7')
 
         if self.select_correlation_matrix.currentText() == 'coverage vs distribution':
             self.selected_correlation_matrix = source_df
+            self.correlation_heatmap_notice = None
 
         if self.selected_correlation_matrix.empty:
             return
@@ -653,6 +661,18 @@ class RedundancyCheckPage(QFrame):
 
         v.set_xticklabels(metric_list, fontsize=7)
         v.set_yticklabels(metric_list, rotation=0, fontsize=7)
+
+        if self.correlation_heatmap_notice:
+            self._ax.text(
+                0.5,
+                -0.12,
+                self.correlation_heatmap_notice,
+                transform=self._ax.transAxes,
+                ha="center",
+                va="top",
+                fontsize=7,
+                color="0.4",
+            )
 
         self.highlight_correlation_threshold()
 

@@ -26,6 +26,7 @@ from PySide6.QtWidgets import (
     QHBoxLayout,
     QLabel,
     QPushButton,
+    QMessageBox,
     QRadioButton,
     QScrollArea,
     QSizePolicy,
@@ -993,6 +994,7 @@ class ResultsPage(QFrame):
         worker = UpdateTableResultsWorker(self)
         worker.signals.progress.connect(self.handle_progress_update)
         worker.signals.finished.connect(self.handle_finished)
+        worker.signals.error.connect(self.handle_worker_error)
         self.threadpool.start(worker)
 
     def compute_score(self) -> None:
@@ -1090,6 +1092,16 @@ class ResultsPage(QFrame):
 
         self.vizualation_settings_group.set_chrom_mode_item(["All mode"]+self.model.get_chromatographic_mode_list())
         self.vizualation_settings_group._emit_state()
+
+    def handle_worker_error(self, message: str) -> None:
+        """Show a user-facing error when result recomputation fails."""
+        self._progress_animation_timer.stop()
+        self.hide_progress_overlay()
+        QMessageBox.critical(
+            self,
+            "Error",
+            f"Failed to update ranking results:\n{message}",
+        )
 
     def hide_progress_overlay(self) -> None:
         """Hide the progress overlay and return to main view."""

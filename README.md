@@ -74,7 +74,7 @@ python -m pip install 2dcomboselector
     ```
     If that doesn’t work, try:
     ```sh
-    python -m combo-selector
+    python -m combo_selector
     ```
 
 # ℹ️ Troubleshooting & Help

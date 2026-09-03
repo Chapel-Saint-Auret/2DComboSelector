@@ -18,6 +18,7 @@ Background workers are used for:
 - Results computation (score aggregation and ranking)
 """
 
+import logging
 import sys
 import time
 
@@ -306,11 +307,12 @@ def main():
     app.setWindowIcon(app_icon)
 
     # 2. Chargement direct avec la taille par défaut du SVG
-    pixmap = QPixmap(resource_path("icons/splash_log_ver.svg"))
+    splash_path = resource_path("icons/splash_log_ver.svg")
+    pixmap = QPixmap(splash_path)
 
     # Sécurité au cas où le fichier n'est pas trouvé ou corrompu
     if pixmap.isNull():
-        print(f"Erreur : Impossible de charger le SVG à l'adresse : {svg_path}")
+        logging.error("Unable to load splash image at %s", splash_path)
         # Optionnel : créer un pixmap de secours pour éviter un crash
         pixmap = QPixmap(300, 300)
         pixmap.fill(Qt.GlobalColor.darkGray)

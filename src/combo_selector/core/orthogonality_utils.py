@@ -11,6 +11,7 @@ This module provides:
 - Clustering correlated metrics
 """
 
+import logging
 import os
 import re
 import sys
@@ -351,6 +352,11 @@ def load_simple_table(filepath: str, sheetname: str = 0) -> pd.DataFrame:
 
     # Check shape to decide orientation
     if df.shape[0] == 2 and df.shape[1] >= 2:
+        first_header = df.iat[0, 0]
+        first_value = df.iat[1, 0]
+        if pd.isna(first_header) and not pd.isna(first_value):
+            df = df.iloc[:, 1:]
+
         # Horizontal: first row is header
         columns = df.iloc[0]
         values = df.iloc[1]
@@ -414,6 +420,21 @@ def load_table_with_header_anywhere(
     else:
         raise ValueError("No header row found with sufficient columns.")
 
+    header_values = (
+        raw.iloc[header_row]
+        .dropna()
+        .astype(str)
+        .str.strip()
+    )
+    header_values = header_values[~header_values.str.contains(r"^Unnamed", regex=True)]
+    duplicates = [item for item, count in Counter(header_values).items() if count > 1]
+    if duplicates:
+        if auto_fix_duplicates:
+            logging.warning("Duplicate columns found: %s", duplicates)
+            logging.debug("Duplicates were auto-renamed by pandas with .1, .2 etc.")
+        else:
+            raise ValueError(f"Duplicate column names found: {duplicates}")
+
     # Now read again, skipping to that header row, using it as header
     # Fix: Use index_col=None to prevent pandas from guessing an index column
     df = pd.read_excel(filepath, sheet_name=sheetname, header=header_row, index_col=None)
@@ -423,17 +444,37 @@ def load_table_with_header_anywhere(
     # Strip all whitespace from columns
     df.columns = df.columns.str.strip()
 
-    # Check for duplicates
-    duplicates = [item for item, count in Counter(df.columns).items() if count > 1]
-    if duplicates:
-        print("⚠️ Warning: Duplicate columns found:", duplicates)
-        if auto_fix_duplicates:
-            # Pandas will already have renamed with .1, .2, etc. Keep those for now
-            print("Duplicates were auto-renamed by pandas with .1, .2 etc.")
-        else:
-            raise ValueError(f"Duplicate column names found: {duplicates}")
-
     return df
+
+
+def build_correlation_matrix_for_display(
+    source_df: pd.DataFrame, method: str
+) -> tuple[pd.DataFrame, str | None]:
+    """Build a correlation matrix safe for heatmap display.
+
+    Returns an identity fallback when correlations are undefined, such as when
+    only one combination exists and every pairwise correlation is NaN.
+    """
+    if source_df.empty or len(source_df.columns) < 2:
+        return pd.DataFrame(), None
+
+    corr_matrix = source_df.corr(method=method)
+    if corr_matrix.empty:
+        return corr_matrix, None
+
+    corr_values = corr_matrix.to_numpy(dtype=float, copy=False)
+    if np.isfinite(corr_values).any():
+        return corr_matrix, None
+
+    fallback_matrix = pd.DataFrame(
+        np.eye(len(corr_matrix.columns), dtype=float),
+        index=corr_matrix.index,
+        columns=corr_matrix.columns,
+    )
+    return (
+        fallback_matrix,
+        "Correlation values are unavailable with only one combination; showing identity fallback.",
+    )
 
 
 def extract_set_number(name: str) -> int | None:

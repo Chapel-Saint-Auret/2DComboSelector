@@ -7,6 +7,7 @@ Qt dependency of its own (except for the :class:`NanPolicyDialog` that it
 instantiates on behalf of the Qt-aware facade).
 """
 
+import logging
 from itertools import combinations
 from math import sqrt
 
@@ -286,6 +287,69 @@ class DataManager:
             self.status = "error"
             raise ValueError(f"{label} value for '{column_name}' is missing.")
         return value
+
+    def _get_expected_condition_names(self) -> list[str]:
+        """Return the current retention-time condition names after removals."""
+        return [
+            column_name
+            for column_name in self.column_names
+            if column_name not in self.removed_condition_list
+        ]
+
+    def _validate_optional_sheet_columns(
+            self, table_df: pd.DataFrame, label: str
+    ) -> list[str]:
+        """Validate optional-sheet condition columns against loaded retention data."""
+        expected_columns = self._get_expected_condition_names()
+        actual_columns = table_df.columns.tolist()
+
+        if len(expected_columns) != len(actual_columns):
+            raise ValueError(
+                "Number of condition does not match the number of condition in retention time data."
+            )
+
+        def _normalize(name: str) -> str:
+            return str(name).replace(" ", "").lower()
+
+        normalized_expected = [_normalize(c) for c in expected_columns]
+        normalized_actual = [_normalize(c) for c in actual_columns]
+
+        if normalized_expected != normalized_actual:
+            raise ValueError(
+                f"{label} condition names do not match the retention time data."
+            )
+
+        return actual_columns
+
+    @staticmethod
+    def _coerce_numeric_columns(
+        table_df: pd.DataFrame, columns: list[str], label: str
+    ) -> pd.DataFrame:
+        """Return a copy with selected columns coerced to numeric values."""
+        coerced_df = table_df.copy()
+        invalid_columns = []
+
+        for column_name in columns:
+            original = coerced_df[column_name]
+            numeric = pd.to_numeric(original, errors="coerce")
+            invalid_mask = original.notna() & numeric.isna()
+            if invalid_mask.any():
+                invalid_columns.append(str(column_name))
+            coerced_df[column_name] = numeric
+
+        if invalid_columns:
+            raise ValueError(
+                f"{label} contains non-numeric values in: {', '.join(invalid_columns)}."
+            )
+
+        return coerced_df
+
+    @staticmethod
+    def _compute_relative_utility(value, minimum, maximum) -> float:
+        """Return a stable [0, 1] utility score even when the range collapses."""
+        if maximum == minimum:
+            return 1.0
+        return (value - minimum) / (maximum - minimum)
 
     # ------------------------------------------------------------------
     # NaN policy
@@ -716,7 +780,7 @@ class DataManager:
             self.status = "loaded"
 
         except Exception as e:
-            print(f"Error loading gradient time: {str(e)}")
+            logging.warning("Error loading gradient time: %s", e)
             self.status = "error"
             raise
 
@@ -742,7 +806,7 @@ class DataManager:
             self.status = "loaded"
 
         except Exception as e:
-            print(f"Error loading end time: {str(e)}")
+            logging.warning("Error loading void time: %s", e)
             self.status = "error"
             raise
 
@@ -769,12 +833,17 @@ class DataManager:
             self.init_data()
 
             self.retention_time_df = load_table_with_header_anywhere(
-                filepath, sheetname
+                filepath, sheetname, auto_fix_duplicates=False
             )
 
             #rename automatically the first column (which should be the "Compound Name')
             self.retention_time_df = self.retention_time_df.rename(
                 columns={self.retention_time_df.columns[0]: 'Compound Name'}
+            )
+            self.retention_time_df = self._coerce_numeric_columns(
+                self.retention_time_df,
+                self.retention_time_df.columns.tolist()[1:],
+                "Retention time data",
             )
 
             # check there is nan value in data frame
@@ -782,6 +851,10 @@ class DataManager:
             #[1:] is used because first column is compound name
             self.column_names = self.retention_time_df.columns.tolist()[1:]
             self.nb_condition = num_columns = len(self.column_names)
+            if num_columns < 2:
+                raise ValueError(
+                    "Retention time data must contain at least two condition columns."
+                )
             self.nb_peaks = len(self.retention_time_df.iloc[:, 0])
 
             self.compound_name_list = self.retention_time_df['Compound Name'].tolist()
@@ -884,8 +957,7 @@ class DataManager:
 
             self.status = "loaded"
         except Exception as e:
-            issue = str(e)
-            print(f"Error loading data: {issue}")
+            logging.warning("Error loading retention time data: %s", e)
             self.status = "error"
 
     def load_hypothetical_2d_peak_capacity(self, filepath: str, sheetname: str) -> None:
@@ -912,12 +984,16 @@ class DataManager:
             if set(self.removed_condition_list).issubset(set(self.retention_time_df_2d_peaks.columns)):
                 self.retention_time_df_2d_peaks = self.retention_time_df_2d_peaks.drop(columns=self.removed_condition_list)
 
-            columns = self.retention_time_df_2d_peaks.columns.tolist()
+            columns = self._validate_optional_sheet_columns(
+                self.retention_time_df_2d_peaks, "Peak capacity"
+            )
+            self.retention_time_df_2d_peaks = self._coerce_numeric_columns(
+                self.retention_time_df_2d_peaks,
+                columns,
+                "Peak capacity data",
+            )
             num_columns = len(columns)
             set_number = 1
-
-            if len(self.column_names) != num_columns:
-                raise ValueError("Number of condition does not match the number of condition in retention time data.")
 
 
             for col1_idx, col2_idx in combinations(range(num_columns), 2):
@@ -965,10 +1041,14 @@ class DataManager:
             self.orthogonality_result_df['Peak Capacity Rank'] = self.combination_df["Hypothetical 2D Peak Capacity"].rank(ascending=False, method='average').astype(int)
             p_min = self.combination_df["Hypothetical 2D Peak Capacity"].min()
             p_max = self.combination_df["Hypothetical 2D Peak Capacity"].max()
-            self.orthogonality_result_df['Peak Capacity Utility'] = self.combination_df["Hypothetical 2D Peak Capacity"].apply(lambda x:(x-p_min)/(p_max-p_min))
+            self.orthogonality_result_df['Peak Capacity Utility'] = self.combination_df[
+                "Hypothetical 2D Peak Capacity"
+            ].apply(
+                lambda x: self._compute_relative_utility(x, p_min, p_max)
+            )
             self.status = "loaded"
         except Exception as e:
-            print(f"Error loading 2D peaks: {str(e)}")
+            logging.warning("Error loading peak-capacity data: %s", e)
             self.status = "error"
             raise
 
@@ -997,12 +1077,16 @@ class DataManager:
                 self.load_elution_composition_df = self.load_elution_composition_df.drop(
                     columns=self.removed_condition_list)
 
-            columns = self.load_elution_composition_df.columns.tolist()
+            columns = self._validate_optional_sheet_columns(
+                self.load_elution_composition_df, "Elution-composition"
+            )
+            self.load_elution_composition_df = self._coerce_numeric_columns(
+                self.load_elution_composition_df,
+                columns,
+                "Elution-composition data",
+            )
             num_columns = len(columns)
             set_number = 1
-
-            if len(self.column_names) != num_columns:
-                raise ValueError("Number of condition does not match the number of condition in retention time data.")
 
             for col1_idx, col2_idx in combinations(range(num_columns), 2):
                 set_key = f"Set {set_number}"
@@ -1026,7 +1110,7 @@ class DataManager:
             self.status = self.elution_data_status = "elution_data_loaded"
 
         except Exception as e:
-            print(f"Error loading Elution composition space area data: {str(e)}")
+            logging.warning("Error loading elution-composition data: %s", e)
             self.status = "error"
             raise
 
