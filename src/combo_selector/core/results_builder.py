@@ -778,9 +778,6 @@ class ResultsBuilder:
                 return ''
 
 
-        elution_rank_is_numeric = (self.orthogonality_result_df['Elution Domain Rank'] != 'Not available').any()
-        peak_capacity_rank_is_numeric = (self.orthogonality_result_df['Peak Capacity Rank'] != 'Not available').any()
-
         score_used = self.score_computed_method_info['score_used']
 
         if score_used == 'Default':
@@ -788,34 +785,80 @@ class ResultsBuilder:
         else:
             orthogonality_rank = self.orthogonality_result_df['Computed Orthogonality Rank']
 
+        orthogonality_rank_numeric = pd.to_numeric(orthogonality_rank, errors='coerce')
+        elution_rank_numeric = pd.to_numeric(
+            self.orthogonality_result_df.get('Elution Domain Rank'),
+            errors='coerce',
+        )
+        peak_capacity_rank_numeric = pd.to_numeric(
+            self.orthogonality_result_df.get('Peak Capacity Rank'),
+            errors='coerce',
+        )
+
+        def build_rank_highlight(rank_series, criterion):
+            """Return per-row highlight text for numeric rank values only."""
+            if not isinstance(rank_series, pd.Series):
+                return pd.Series('', index=self.orthogonality_result_df.index, dtype=object)
+
+            return rank_series.apply(
+                lambda rank: set_criterion(rank, criterion=criterion)
+                if pd.notna(rank) else ''
+            )
 
         if 'Orthogonality Rank' in self.orthogonality_result_df.columns:
-            orthogonality_consensus_ranking = (orthogonality_rank.
-                                       apply(lambda rank: set_criterion(rank,criterion='O')))
+            orthogonality_consensus_ranking = build_rank_highlight(
+                orthogonality_rank_numeric, criterion='O'
+            )
         else:
             orthogonality_consensus_ranking = ''
 
-        if 'Elution Domain Rank' in self.orthogonality_result_df.columns and elution_rank_is_numeric:
-            elution_composition_space_area_ranking = (self.orthogonality_result_df['Elution Domain Rank'].
-                                               apply(lambda rank: set_criterion(rank, criterion='Δφ')))
+        if 'Elution Domain Rank' in self.orthogonality_result_df.columns and elution_rank_numeric.notna().any():
+            elution_composition_space_area_ranking = build_rank_highlight(
+                elution_rank_numeric, criterion='Δφ'
+            )
         else:
             elution_composition_space_area_ranking = ''
 
-        if 'Peak Capacity Rank' in self.orthogonality_result_df.columns and peak_capacity_rank_is_numeric:
-            hypothetical_2d_peak_capacity_ranking = (self.orthogonality_result_df['Peak Capacity Rank'].
-                                               apply(lambda rank: set_criterion(rank, criterion='nc')))
+        if 'Peak Capacity Rank' in self.orthogonality_result_df.columns and peak_capacity_rank_numeric.notna().any():
+            hypothetical_2d_peak_capacity_ranking = build_rank_highlight(
+                peak_capacity_rank_numeric, criterion='nc'
+            )
         else:
             hypothetical_2d_peak_capacity_ranking = ''
 
         if 'Agreement Indicator' in self.orthogonality_result_df.columns:
-            low_orthogonality_agreement = (self.orthogonality_result_df['Agreement Indicator'].
-                                                     apply(lambda x: 'Low Orthogonality Agreement' if x <0.8 else ''))
+            agreement_indicator = pd.to_numeric(
+                self.orthogonality_result_df['Agreement Indicator'],
+                errors='coerce',
+            )
+            low_orthogonality_agreement = agreement_indicator.apply(
+                lambda x: 'Low Orthogonality Agreement' if pd.notna(x) and x < 0.8 else ''
+            )
         else:
             low_orthogonality_agreement = ''
 
         if 'Elution Domain Utility' in self.orthogonality_result_df.columns and 'Orthogonality Utility' in self.orthogonality_result_df.columns:
             if score_used == 'Default':
-                penality_flag = self.orthogonality_result_df.apply(lambda x: set_penality_flag(x['Orthogonality Utility'],x['Elution Domain Utility']),axis=1)
+                orthogonality_utility = pd.to_numeric(
+                    self.orthogonality_result_df['Orthogonality Utility'],
+                    errors='coerce',
+                )
+                elution_utility = pd.to_numeric(
+                    self.orthogonality_result_df['Elution Domain Utility'],
+                    errors='coerce',
+                )
+                penality_flag = pd.Series('', index=self.orthogonality_result_df.index, dtype=object)
+                valid_penalty_rows = orthogonality_utility.notna() & elution_utility.notna()
+                penality_flag.loc[valid_penalty_rows] = self.orthogonality_result_df.loc[
+                    valid_penalty_rows,
+                    ['Orthogonality Utility', 'Elution Domain Utility'],
+                ].apply(
+                    lambda x: set_penality_flag(
+                        float(x['Orthogonality Utility']),
+                        float(x['Elution Domain Utility']),
+                    ),
+                    axis=1,
+                )
             else:
                 penality_flag = ''
         else:

@@ -153,6 +153,41 @@ class CorePipelineTests(unittest.TestCase):
             1,
         )
 
+    def test_core_pipeline_without_optional_sheets_still_updates_results(self) -> None:
+        retention = make_retention_df_three_conditions()
+        workbook = self._track(make_temp_workbook({"Retention": retention}))
+        model = CoreTestModel()
+        metrics = [
+            "Convex hull relative area",
+            "Bin box counting",
+            "Pearson Correlation",
+        ]
+
+        model.load_retention_time(workbook, "Retention")
+        model.normalize_retention_time("min_max")
+
+        for metric_name in metrics:
+            model.om_function_map[metric_name]["func"]()
+
+        model.update_metric_dataframes(metrics)
+        model.create_correlation_group("Values", threshold=0.0, tol=0.0)
+        model.fill_correlation_group_average("Values")
+        model.set_computed_score_dict(
+            {
+                "metric_list": metrics,
+                "aggregation_method": "Mean",
+                "score_used": "Default",
+            }
+        )
+
+        model.update_table_results()
+
+        results = model.get_orthogonality_result_df()
+        self.assertTrue(results["Final Rank"].notna().all())
+        self.assertTrue(results["Final Rank (Utility)"].notna().all())
+        self.assertTrue(results["Criterion Highlight"].notna().all())
+        self.assertTrue(results["Final Recommendation"].notna().all())
+
     def test_update_table_results_requires_metric_groups(self) -> None:
         retention = make_retention_df_three_conditions()
         workbook = self._track(make_temp_workbook({"Retention": retention}))

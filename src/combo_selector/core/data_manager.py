@@ -757,7 +757,7 @@ class DataManager:
             self.status = "loaded"
 
         except Exception as e:
-            logging.exception("Error loading gradient time")
+            logging.warning("Error loading gradient time: %s", e)
             self.status = "error"
             raise
 
@@ -783,7 +783,7 @@ class DataManager:
             self.status = "loaded"
 
         except Exception as e:
-            logging.exception("Error loading void time")
+            logging.warning("Error loading void time: %s", e)
             self.status = "error"
             raise
 
@@ -928,8 +928,8 @@ class DataManager:
             self.set_complexity()
 
             self.status = "loaded"
-        except Exception:
-            logging.exception("Error loading retention time data")
+        except Exception as e:
+            logging.warning("Error loading retention time data: %s", e)
             self.status = "error"
 
     def load_hypothetical_2d_peak_capacity(self, filepath: str, sheetname: str) -> None:
@@ -1014,8 +1014,8 @@ class DataManager:
                 lambda x: self._compute_relative_utility(x, p_min, p_max)
             )
             self.status = "loaded"
-        except Exception:
-            logging.exception("Error loading peak-capacity data")
+        except Exception as e:
+            logging.warning("Error loading peak-capacity data: %s", e)
             self.status = "error"
             raise
 
@@ -1071,8 +1071,8 @@ class DataManager:
             self.orthogonality_result_df['Elution Domain Utility'] = self.combination_df['Elution Domain'].apply(lambda x: x/100)
             self.status = self.elution_data_status = "elution_data_loaded"
 
-        except Exception:
-            logging.exception("Error loading elution-composition data")
+        except Exception as e:
+            logging.warning("Error loading elution-composition data: %s", e)
             self.status = "error"
             raise
 
