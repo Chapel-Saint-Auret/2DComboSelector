@@ -5,6 +5,10 @@ from __future__ import annotations
 import os
 import unittest
 
+import combo_selector
+
+from combo_selector.utils import get_version
+
 from tests.helpers import (
     CoreTestModel,
     make_elution_table,
@@ -17,6 +21,10 @@ from tests.helpers import (
 
 class CorePipelineTests(unittest.TestCase):
     """Cover pair generation, optional sheets, and non-GUI scoring flow."""
+
+    def test_application_reports_release_version(self) -> None:
+        self.assertEqual(combo_selector.__version__, "1.0.0")
+        self.assertEqual(get_version(), combo_selector.__version__)
 
     def tearDown(self) -> None:
         for path in getattr(self, "_temp_paths", []):

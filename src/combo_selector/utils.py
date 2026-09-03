@@ -129,35 +129,8 @@ def load_table_with_header_anywhere(
     return df
 
 
-def get_version():
-    """
-    Reads the 'version' from the [project] section of pyproject.toml
-    located two directories above this script.
+def get_version() -> str:
+    """Return the installed package version shown by the application UI."""
+    from combo_selector import __version__
 
-    Returns:
-        str: The version string if found, otherwise "Unknown".
-    """
-    # Get path to pyproject.toml (2 directories up)
-    current_dir = os.path.dirname(os.path.abspath(__file__))
-    pyproject_path = os.path.abspath(
-        os.path.join(current_dir, "..", "..", "pyproject.toml")
-    )
-
-    version = "Unknown"
-    in_project_section = False
-
-    try:
-        with open(pyproject_path, "r", encoding="utf-8") as f:
-            for line in f:
-                line = line.strip()
-                if line == "[project]":
-                    in_project_section = True
-                elif line.startswith("[") and in_project_section:
-                    break  # Exit [project] section
-                elif in_project_section and line.startswith("version"):
-                    version = line.split("=", 1)[1].strip().strip('"')
-                    break
-    except Exception as e:
-        logging.warning("Failed to read version: %s", e)
-
-    return version
+    return __version__

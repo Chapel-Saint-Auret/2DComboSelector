@@ -1,6 +1,8 @@
 
 # 2DComboSelector
 
+Current stable version: **1.0.0**
+
 <img width="982" height="615" alt="image" src="https://github.com/user-attachments/assets/5be01176-c9e8-4be7-9e4d-0594dbade9ed" />
 
 # 🛠️ Installation
@@ -14,6 +16,8 @@ We provide a Windows installer that bundles Python and all dependencies.
 
 - Double-click the downloaded `.exe` file.
 - Follow the on-screen instructions.
+
+The installer currently supports 64-bit Windows.
 
 
 ## **Option 2: Manual Installation via Python and pip**
