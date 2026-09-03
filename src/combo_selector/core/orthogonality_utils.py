@@ -432,8 +432,8 @@ def load_table_with_header_anywhere(
         if auto_fix_duplicates:
             logging.warning("Duplicate columns found: %s", duplicates)
             logging.debug("Duplicates were auto-renamed by pandas with .1, .2 etc.")
-        else:
-            raise ValueError(f"Duplicate column names found: {duplicates}")
+        # else:
+        #     raise ValueError(f"Duplicate column names found: {duplicates}")
 
     # Now read again, skipping to that header row, using it as header
     # Fix: Use index_col=None to prevent pandas from guessing an index column

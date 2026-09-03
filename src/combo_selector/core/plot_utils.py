@@ -2273,7 +2273,7 @@ class PlotUtils:
                         marker=mode_to_marker[mode],
                         color=recommendation_colors.get(rec_label, "#aaaaaa"),
                         edgecolors="k", linewidths=0.3,
-                        alpha=0.88, zorder=5, picker=5
+                        alpha=0.88, picker=5
                     )
 
                     # save the rows behind this scatter so on_pick can find them later.

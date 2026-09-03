@@ -832,9 +832,7 @@ class DataManager:
             # table_data should be reset when loading new normalized time
             self.init_data()
 
-            self.retention_time_df = load_table_with_header_anywhere(
-                filepath, sheetname, auto_fix_duplicates=False
-            )
+            self.retention_time_df = load_table_with_header_anywhere(filepath, sheetname)
 
             #rename automatically the first column (which should be the "Compound Name')
             self.retention_time_df = self.retention_time_df.rename(

@@ -456,8 +456,6 @@ class ResultsBuilder:
         """Create median utility values grouped by chromatographic mode."""
 
         column_name = [
-            "2D Combination",
-            "Combination #",
             "Orthogonality Utility",
             "Elution Domain Utility",
             "Peak Capacity Utility",
@@ -477,8 +475,6 @@ class ResultsBuilder:
         """Create utility-score groups keyed by chromatographic mode."""
 
         column_name = [
-            "2D Combination",
-            "Combination #",
             "Orthogonality Utility",
             "Final Recommendation",
             "Final Score (Utility)",
