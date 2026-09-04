@@ -442,7 +442,8 @@ class ExportPage(QFrame):
         self.figure_list_chklist.add_items(data_sets_list)
 
         self.figure_type_chklist.clear()
-        self.figure_type_chklist.add_items(["Scatter"]+om_list)
+        # self.figure_type_chklist.add_items(["Scatter"]+om_list)
+        self.figure_type_chklist.add_items(["Scatter"])
         self.figure_type_chklist.checked_all()
 
     def update_figure_set(self):
