@@ -22,7 +22,7 @@ No changes yet.
 - Documentation now points to supported launch commands.
 - Package metadata now declares the supported Python versions and complete runtime dependencies.
 - The application version is read from installed package metadata, including in the Windows build.
-- The packaged application now uses an early native splash screen and no longer adds an artificial startup delay.
+- The packaged application now shows a lightweight Qt splash before importing the full interface and no longer adds an artificial startup delay.
 
 ### Fixed
 

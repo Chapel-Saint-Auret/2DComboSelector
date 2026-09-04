@@ -43,7 +43,7 @@ Issues = "https://github.com/Chapel-Saint-Auret/2dcomboselector/issues"
 Changelog = "https://github.com/Chapel-Saint-Auret/2dcomboselector/blob/main/CHANGELOG.md"
 
 [project.scripts]
-combo-selector = "combo_selector.main:main"
+combo-selector = "combo_selector.launcher:main"
 
 [tool.setuptools]
 package-dir = {"" = "src"}

@@ -19,7 +19,7 @@ print("ICON FILES:", icon_files)
 print("COLORMAP FILES:", colormap_files)
 
 a = Analysis(
-    ['src/combo_selector/main.py'],
+    ['src/combo_selector/launcher.py'],
     pathex=['src/combo_selector'],
     binaries=[],
     datas = datas,
@@ -30,15 +30,9 @@ a = Analysis(
     noarchive=False,
 )
 pyz = PYZ(a.pure)
-splash = Splash(
-    'src/combo_selector/resources/icons/splash_log_ver.png',
-    binaries=a.binaries,
-    datas=a.datas,
-)
 exe = EXE(
     pyz,
     a.scripts,
-    splash,
     a.binaries,
     a.datas,
     [],

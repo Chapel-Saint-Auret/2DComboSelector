@@ -298,7 +298,7 @@ def main():
     """
     if sys.platform == "win32":
         ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(
-            "2DComboSelector.2DComboSelector"
+            "ChapelSaintAuret.2DComboSelector"
         )
 
     # Must be set BEFORE QApplication is created
@@ -312,13 +312,6 @@ def main():
 
     window = ComboSelectorMain()
     window.showMaximized()
-
-    try:
-        import pyi_splash
-
-        pyi_splash.close()
-    except ImportError:
-        pass
 
     sys.exit(app.exec())
 
