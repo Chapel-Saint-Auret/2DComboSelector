@@ -113,7 +113,7 @@ class CustomFilterDialog(QDialog):
         self._apply_styles()
 
         # --- Title ---
-        title_top = QLabel("<b>Define chromatographic mode combinations</b>")
+        title_top = QLabel(f"<b>{filter_name}</b>")
         main_layout.addWidget(title_top)
 
         # --- Tree View for defining combinations ---
