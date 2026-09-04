@@ -28,7 +28,8 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from combo_selector.utils import get_version, resource_path
+from combo_selector.resource_utils import resource_path
+from combo_selector.utils import get_version
 from combo_selector.constants import SIDEBAR_BG
 
 

@@ -5,6 +5,7 @@
 #define AppPublisher "2DComboSelector contributors"
 #define AppURL "https://github.com/Chapel-Saint-Auret/2DComboSelector"
 #define AppExeName "combo_selector.exe"
+#define AppIconName "_internal\resources\icons\app_icon.ico"
 
 [Setup]
 AppId={{918030FA-71F2-4B0A-997A-65536BBBEA20}
@@ -23,14 +24,16 @@ SolidCompression=yes
 WizardStyle=modern
 ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
-UninstallDisplayIcon={app}\{#AppExeName}
+UninstallDisplayIcon={app}\{#AppIconName}
+SetupIconFile=src\combo_selector\resources\icons\app_icon.ico
+WizardImageFile=src\combo_selector\resources\icons\installer_wizard.bmp
 
 [Files]
 Source: "dist\combo_selector\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [Icons]
-Name: "{autoprograms}\{#AppName}"; Filename: "{app}\{#AppExeName}"
-Name: "{autodesktop}\{#AppName}"; Filename: "{app}\{#AppExeName}"; Tasks: desktopicon
+Name: "{autoprograms}\{#AppName}"; Filename: "{app}\{#AppExeName}"; IconFilename: "{app}\{#AppIconName}"; AppUserModelID: "ChapelSaintAuret.2DComboSelector"
+Name: "{autodesktop}\{#AppName}"; Filename: "{app}\{#AppExeName}"; IconFilename: "{app}\{#AppIconName}"; AppUserModelID: "ChapelSaintAuret.2DComboSelector"; Tasks: desktopicon
 
 [Tasks]
 Name: "desktopicon"; Description: "Create a desktop shortcut"; GroupDescription: "Additional shortcuts:"

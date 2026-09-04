@@ -18,13 +18,12 @@ Background workers are used for:
 - Results computation (score aggregation and ranking)
 """
 
-import logging
+import ctypes
 import sys
-import time
 
 from PySide6.QtCore import Qt, QThreadPool, QSize
-from PySide6.QtWidgets import QApplication, QSplashScreen
-from PySide6.QtGui import QPixmap, QIcon
+from PySide6.QtWidgets import QApplication
+from PySide6.QtGui import QIcon
 
 from combo_selector.core.orthogonality import Orthogonality
 from combo_selector.core.workers import RedundancyWorker
@@ -37,7 +36,7 @@ from combo_selector.ui.pages.redundancy_check_page import RedundancyCheckPage
 from combo_selector.ui.pages.results_page import ResultsPage
 from combo_selector.ui.widgets.info_dialog import AboutDialog
 from combo_selector.ui.widgets.custom_main_window import CustomMainWindow
-from combo_selector.utils import resource_path
+from combo_selector.resource_utils import resource_path
 
 
 class ComboSelectorMain(CustomMainWindow):
@@ -297,40 +296,23 @@ def main():
     Returns:
         int: Application exit code (0 for success).
     """
+    if sys.platform == "win32":
+        ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(
+            "ChapelSaintAuret.2DComboSelector"
+        )
+
     # Must be set BEFORE QApplication is created
     QApplication.setHighDpiScaleFactorRoundingPolicy(
         Qt.HighDpiScaleFactorRoundingPolicy.PassThrough
     )
 
     app = QApplication(sys.argv)
-    app_icon = QIcon(resource_path("icons/app_logo.svg"))
+    app_icon = QIcon(resource_path("icons/app_icon.ico"))
     app.setWindowIcon(app_icon)
-
-    # 2. Chargement direct avec la taille par défaut du SVG
-    splash_path = resource_path("icons/splash_log_ver.svg")
-    pixmap = QPixmap(splash_path)
-
-    # Sécurité au cas où le fichier n'est pas trouvé ou corrompu
-    if pixmap.isNull():
-        logging.error("Unable to load splash image at %s", splash_path)
-        # Optionnel : créer un pixmap de secours pour éviter un crash
-        pixmap = QPixmap(300, 300)
-        pixmap.fill(Qt.GlobalColor.darkGray)
-
-    # 3. Affichage du Splash Screen
-    splash = QSplashScreen(pixmap)
-    splash.show()
-    app.processEvents()
-
-    # Simulation du chargement
-    for i in range(1, 4):
-        splash.showMessage(f"Chargement... {i * 33}%", Qt.AlignmentFlag.AlignBottom | Qt.AlignmentFlag.AlignHCenter, Qt.GlobalColor.black)
-        time.sleep(1)
-        app.processEvents()
 
     window = ComboSelectorMain()
     window.showMaximized()
-    splash.finish(window)
+
     sys.exit(app.exec())
 
 

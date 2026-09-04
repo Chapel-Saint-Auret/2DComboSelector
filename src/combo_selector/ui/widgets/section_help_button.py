@@ -32,7 +32,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from combo_selector.utils import resource_path
+from combo_selector.resource_utils import resource_path
 
 
 # =============================================================================

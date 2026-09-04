@@ -38,7 +38,7 @@ from combo_selector.ui.widgets.neumorphism import BoxShadow
 from combo_selector.ui.widgets.status_icon import Status
 from combo_selector.ui.widgets.style_table import StyledTable
 from combo_selector.ui.widgets.section_help_button import SectionHelpButton
-from combo_selector.utils import resource_path
+from combo_selector.resource_utils import resource_path
 from combo_selector.constants import ICON_SIZE
 
 # Checkbox icon paths
