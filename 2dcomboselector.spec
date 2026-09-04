@@ -30,13 +30,20 @@ a = Analysis(
     noarchive=False,
 )
 pyz = PYZ(a.pure)
+splash = Splash(
+    'src/combo_selector/resources/icons/splash_log_ver.png',
+    binaries=a.binaries,
+    datas=a.datas,
+)
 exe = EXE(
     pyz,
     a.scripts,
+    splash,
     a.binaries,
     a.datas,
     [],
     name='combo_selector',
+    icon='src/combo_selector/resources/icons/app_icon.ico',
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
