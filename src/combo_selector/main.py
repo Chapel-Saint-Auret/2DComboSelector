@@ -330,6 +330,7 @@ def main():
 
     window = ComboSelectorMain()
     window.showMaximized()
+    splash.finish(window)
     sys.exit(app.exec())
 
 
