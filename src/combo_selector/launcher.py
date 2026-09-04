@@ -30,7 +30,8 @@ def main() -> int:
     )
 
     app = QApplication(sys.argv)
-    app.setWindowIcon(QIcon(resource_path("icons/app_icon.ico")))
+    app_icon = QIcon(resource_path("icons/app_icon.ico"))
+    app.setWindowIcon(app_icon)
 
     splash = QSplashScreen(QPixmap(resource_path("icons/splash_log_ver.svg")))
     splash.show()
@@ -39,6 +40,7 @@ def main() -> int:
     from combo_selector.main import ComboSelectorMain
 
     window = ComboSelectorMain()
+    window.setWindowIcon(app_icon)
     window.showMaximized()
     splash.finish(window)
     return app.exec()
