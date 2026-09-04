@@ -22,16 +22,17 @@ from PySide6.QtGui import QFont
 
 from dataclasses import dataclass
 
+from combo_selector import edition
 from combo_selector.ui.widgets.flat_radio_grouped_button import FlatRadioGroupedButton
 from combo_selector.constants import (  # noqa: F401 – re-exported for callers
-    PLOT_TYPES,
+    ALL_PLOT_TYPES,
+    PUBLIC_ONLY_PLOT_TYPES,
     PLOT_DESCRIPTIONS,
     CRITERIA_ITEMS,
     RECOMMENDATION_ITEMS,
 )
 
 import sys
-
 
 # ---------------------------------------------------------------------------
 # Helper: thin horizontal separator
@@ -45,6 +46,16 @@ def _make_separator():
     line.setStyleSheet("color: #d0d5dd;")
     return line
 
+def get_plot_types() -> list[str]:
+    """Return the plot types available in the selected edition."""
+    if edition.is_internal_edition():
+        return ALL_PLOT_TYPES.copy()
+
+    return [
+        plot_type
+        for plot_type in ALL_PLOT_TYPES
+        if plot_type not in PUBLIC_ONLY_PLOT_TYPES
+    ]
 
 # ---------------------------------------------------------------------------
 # Helper: styled radio-button row inside a light rounded container
@@ -208,7 +219,8 @@ class VisualizationOptionsPanel(QGroupBox):
         plot_label.setContentsMargins(0, 0, 0, 0)
 
         self._plot_combo = QComboBox()
-        self._plot_combo.addItems(PLOT_TYPES)
+        self._plot_combo.addItems(get_plot_types())
+
         root.addWidget(self._plot_combo)
 
         # --- Description label ---
@@ -289,6 +301,7 @@ class VisualizationOptionsPanel(QGroupBox):
         self.chromatographic_mode_combo_widget.combo.currentTextChanged.connect(lambda _: self._emit_state())
         self.recommendation_combo_widget.combo.currentTextChanged.connect(lambda _: self._emit_state())
 
+
     # ------------------------------------------------------------------
     # Slots
     # ------------------------------------------------------------------
@@ -325,7 +338,7 @@ class VisualizationOptionsPanel(QGroupBox):
 
     def _on_plot_changed(self, index: int):
         """Handle plot type changes and update the visible option controls."""
-        plot = PLOT_TYPES[index]
+        plot = get_plot_types()[index]
 
         # Update description
         self._desc_label.setText(PLOT_DESCRIPTIONS.get(plot, ""))

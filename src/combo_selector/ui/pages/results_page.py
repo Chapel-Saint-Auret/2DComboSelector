@@ -35,7 +35,7 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
     QWidget,
 )
-
+from combo_selector import edition
 from combo_selector.ui.config.table_color_config import COLOR_CONFIG_TABLE_FEASIBILITY, COLOR_CONFIG_FINAL_EVALUATION
 from combo_selector.core.workers import UpdateTableResultsWorker
 from combo_selector.ui.widgets.visualization_option_panel import VisualizationOptionsPanel,PlotState
@@ -198,7 +198,8 @@ class ResultsPage(QFrame):
         self.practical_feasibility_table.filter_changed.connect(self.filter_table_changed)
         self.seperational_potential_table.filter_changed.connect(self.filter_table_changed)
         self.final_recommendation_table.filter_changed.connect(self.filter_table_changed)
-        self.old_approach_table.filter_changed.connect(self.filter_table_changed)
+        if edition.is_internal_edition():
+            self.old_approach_table.filter_changed.connect(self.filter_table_changed)
 
         # We use a lambda wrapper here because Matplotlib's 'mpl_connect' expects a function
         # reference that takes exactly one argument (the 'event' object).
@@ -664,10 +665,12 @@ class ResultsPage(QFrame):
                                     sheet_name='Final Evaluation',
                                     enable_decoration = True,
                                     has_tooltip = True)
-        self.styled_table.add_sheet(value_format={3:".2f",4:".1f",5:".2f",6:".1f"},
-                                    sheet_name='Old Approach',
-                                    enable_decoration = False,
-                                    has_tooltip = False)
+
+        if edition.is_internal_edition():
+            self.styled_table.add_sheet(value_format={3:".2f",4:".1f",5:".2f",6:".1f"},
+                                        sheet_name='Old Approach',
+                                        enable_decoration = False,
+                                        has_tooltip = False)
 
         self.orthogonality_table = self.styled_table.get_table_from_sheet(sheet_name='Orthogonality')
         self.orthogonality_table.selectionChanged.connect(self.show_combination_plot_pop_up)
@@ -772,22 +775,22 @@ class ResultsPage(QFrame):
                 "FLAG"
             ])
 
-        self.old_approach_table = self.styled_table.get_table_from_sheet(sheet_name='Old Approach')
-        self.old_approach_table.selectionChanged.connect(self.show_combination_plot_pop_up)
-        self.old_approach_table.add_header_button(column=2, tooltip="Custom filter",
-                                                           widget_to_show=self.chrom_mode_filter_dialog)
+        if edition.is_internal_edition():
+            self.old_approach_table = self.styled_table.get_table_from_sheet(sheet_name='Old Approach')
+            self.old_approach_table.selectionChanged.connect(self.show_combination_plot_pop_up)
+            self.old_approach_table.add_header_button(column=2, tooltip="Custom filter",
+                                                               widget_to_show=self.chrom_mode_filter_dialog)
 
-        self.old_approach_table.set_header_label(
-            [
-                "Combination #",
-                "2D Combination",
-                "Chromatographic Mode",
-                "Suggested Orthogonality Score",
-                "Suggested Orthogonality Rank",
-                "Practical Peak Capacity",
-                "Practical Peak Capacity Rank",
-            ])
-
+            self.old_approach_table.set_header_label(
+                [
+                    "Combination #",
+                    "2D Combination",
+                    "Chromatographic Mode",
+                    "Suggested Orthogonality Score",
+                    "Suggested Orthogonality Rank",
+                    "Practical Peak Capacity",
+                    "Practical Peak Capacity Rank",
+                ])
 
         table_frame_layout.addWidget(self.styled_table)
 
@@ -1316,10 +1319,11 @@ class ResultsPage(QFrame):
             tooltip = result_df['Final Recommendation tooltip']
             self.final_recommendation_table.set_tooltip_config({8: tooltip})
 
-        data = self.model.get_old_approach_table()
-        if not data.empty:
-            self.old_approach_table.async_set_table_data(data)
-            self.old_approach_table.set_table_proxy()
+        if edition.is_internal_edition():
+            data = self.model.get_old_approach_table()
+            if not data.empty:
+                self.old_approach_table.async_set_table_data(data)
+                self.old_approach_table.set_table_proxy()
 
         if self.not_filled:
             unique_mode = self.model.get_chromatographic_mode_list()

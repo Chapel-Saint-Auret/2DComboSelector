@@ -435,8 +435,6 @@ class ResultsBuilder:
         """Create median rank values grouped by chromatographic mode."""
 
         column_name = [
-            "2D Combination",
-            "Combination #",
             "Orthogonality Rank",
             "Elution Domain Rank",
             "Peak Capacity Rank",

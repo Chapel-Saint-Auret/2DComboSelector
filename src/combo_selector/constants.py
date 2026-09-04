@@ -338,7 +338,7 @@ COLORS = {
 }
 
 # Available plot types for the visualization options panel
-PLOT_TYPES = [
+ALL_PLOT_TYPES = [
     "Orthogonality Space",
     "Metric Removal Impact On Orthogonality Rank",
     "Metric Removal Impact On Practical Peak Capacity Rank",
@@ -354,7 +354,21 @@ PLOT_TYPES = [
     "Practical Peak Capacity Rank vs Final Consensus Rank",
     "Detected Compound Mode Distribution",
     "Detected Compound Combination Mode Distribution",
-    "Metric Agreement Combination Mode Distribution"
+    "Metric Agreement Combination Mode Distribution",
+]
+
+PUBLIC_ONLY_PLOT_TYPES = [
+    "Orthogonality Space",
+    "Metric Removal Impact On Practical Peak Capacity Rank",
+    "Final Rank vs Recommendation",
+    "Final Rank Shift Scatter",
+    "Final Rank Shift Distribution",
+    "Rank Shift by Combination",
+    "Top Rank Overlap",
+    "Practical Peak Capacity Rank vs Final Consensus Rank",
+    "Detected Compound Mode Distribution",
+    "Detected Compound Combination Mode Distribution",
+    "Metric Agreement Combination Mode Distribution",
 ]
 
 PLOT_DESCRIPTIONS = {
