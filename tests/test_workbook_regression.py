@@ -203,8 +203,19 @@ class WorkbookRegressionTests(unittest.TestCase):
         self.assertAlmostEqual(best["Orthogonality Utility"], 0.9)
         self.assertAlmostEqual(best["Coverage Score"], 0.734375)
         self.assertAlmostEqual(best["Distribution Score"], 1.0)
-        self.assertAlmostEqual(best["Practical Peak Capacity"], 9429.0625)
+        self.assertAlmostEqual(best["Suggested Orthogonality Score"], 0.88575)
+        self.assertAlmostEqual(best["Practical Peak Capacity"], 9743.25)
         self.assertEqual(int(best["Agreement Indicator"]), 100)
+
+        # Metric-removal diagnostics must not leave their temporary scores in
+        # the state used by the final practical peak-capacity calculation.
+        for row_index, data_set in enumerate(model.orthogonality_score):
+            expected_score = results["Suggested Orthogonality Score"].iloc[row_index]
+            self.assertAlmostEqual(
+                model.orthogonality_score[data_set]["suggested_score"],
+                expected_score,
+            )
+            self.assertAlmostEqual(model.table_data[row_index][26], expected_score)
 
 
 if __name__ == "__main__":

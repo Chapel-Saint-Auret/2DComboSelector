@@ -270,7 +270,7 @@ class ResultsBuilder:
         self.create_detected_compounds_grouped_by_combination_mode()
         self.create_metric_agreement_grouped_by_combination_mode()
 
-    def update_table_results(self) -> None:
+    def update_table_results(self, progress_callback=None) -> None:
         """Recompute all result columns and update the results table.
 
         Sequentially computes:
@@ -291,19 +291,33 @@ class ResultsBuilder:
             raise ValueError(
                 "Metric groups must be built before updating table results."
             )
+        def report(value: int, operation: str) -> None:
+            if progress_callback is not None:
+                progress_callback(value, operation)
+
+        report(5, "Computing consensus ranking")
         self.compute_consensus_orthogonality_ranking()
+        report(12, "Computing customized score")
         self.compute_custom_orthogonality_score()
+        report(20, "Assessing metric influence")
         self.assess_metric_removal_impact_on_orthogonality_rank()
+        report(42, "Computing reference score")
         self.compute_suggested_score()
+        report(50, "Assessing reference metric influence")
         self.assess_metric_removal_impact_on_orthogonality_rank_old_approach()
+        report(68, "Computing peak capacity")
         self.compute_practical_2d_peak_capacity()
+        report(74, "Computing orthogonality facets")
         self.compute_coverage_score()
         self.compute_distribution_score()
+        report(80, "Computing diagnostic indicators")
         self.compute_agreement_index()
         self.compute_outlier_metric_flag()
         self.compute_peak_detection_rate()
         self.compute_peak_selectivity_factor()
+        report(90, "Preparing result tables")
         self.compute_final_results()
+        report(98, "Finalizing results")
 
     def update_result_with_new_peak_capacity(self):
         """Update the results table with the most recent peak capacity data.

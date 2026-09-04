@@ -1013,7 +1013,7 @@ class ResultsPage(QFrame):
         """
         self.start_om_computation()
 
-    def handle_progress_update(self, value: int) -> None:
+    def handle_progress_update(self, value: int, operation: str = "") -> None:
         """Update progress bar during computation.
 
         Args:
@@ -1034,6 +1034,7 @@ class ResultsPage(QFrame):
                 self.progress_overlay.show()
 
             self._current_progress = value
+            self._current_operation = operation or "Updating results"
             self.progress_bar.rpb_setValue(value)
 
             # Update status message
@@ -1058,32 +1059,23 @@ class ResultsPage(QFrame):
 
     def _update_loading_message(self) -> None:
         """Update the %FIT progress message with animation."""
-        messages = [
-            "Updating tables ",
-        ]
-
         # Animated dots
         dots = "." * (self._animation_counter % 4)
-
-        # Rotating message
-        msg_index = (self._animation_counter // 21) % len(messages)  # Change message every 1.5 seconds
-
-        self.progress_status_label.setText(
-            f"{messages[msg_index]}{dots}"
-        )
+        operation = getattr(self, "_current_operation", "Updating results")
+        self.progress_status_label.setText(f"{operation}{dots} {self._current_progress}%")
 
     def handle_finished(self) -> None:
         """Handle computation completion.
 
         Side Effects:
             - Sets progress to 100%
-            - Schedules overlay hide after 800ms
+            - Schedules overlay hide after a short completion delay
             - Updates results table
         """
         logging.info("Computation done")
         self.progress_bar.rpb_setValue(100)
         self.progress_bar.repaint()
-        QTimer.singleShot(800, self.hide_progress_overlay)
+        QTimer.singleShot(200, self.hide_progress_overlay)
 
         self.update_results_table_view()
 

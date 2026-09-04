@@ -29,6 +29,8 @@ No changes yet.
 - Optional result columns no longer break ranking when peak-capacity or elution-domain data are absent.
 - Undefined correlation matrices no longer break heatmap rendering for a single combination.
 - Generated Python cache files are no longer tracked.
+- Result recomputation no longer performs quadratic table rebuilding or retains temporary metric-removal scores.
+- The result progress overlay now reports the actual scoring stage and closes promptly when computation finishes.
 
 ### Known limitations
 

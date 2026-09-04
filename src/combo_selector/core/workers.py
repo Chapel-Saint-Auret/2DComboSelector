@@ -88,10 +88,10 @@ class ResultsWorkerSignals(QObject):
 
     Attributes:
         finished (Signal): Emitted when computation is complete.
-        progress (Signal[int]): Emitted with progress percentage (0-100).
+        progress (Signal[int, str]): Emitted with progress percentage and operation.
     """
     finished = Signal()
-    progress = Signal(int)
+    progress = Signal(int, str)
     error = Signal(str)
 
 
@@ -161,25 +161,19 @@ class UpdateTableResultsWorker(QRunnable):
     def run(self):
         """Execute the results table update in a background thread.
 
-        Performs the following operations:
-        1. Gets checked metrics from the page
-        2. Emits 30% progress
-        3. Computes custom orthogonality score from checked metrics
-        4. Emits 70% progress
-        5. Calls model.update_table_results() to rebuild the results table
-        6. Emits finished signal so the page can call update_results_table()
+        Recomputes result scores and derived tables while forwarding detailed
+        progress emitted by the model.
 
         Side Effects:
-            - Emits progress signals at 30% and 70%
-            - Updates model's computed scores via compute_custom_orthogonality_score()
-            - Rebuilds the model results table via update_table_results()
+            - Emits progress signals for each scoring stage
+            - Rebuilds the model results tables via update_table_results()
             - Emits finished signal
             - Logs exceptions if errors occur
         """
         try:
-            self.signals.progress.emit(70)
-            self.page.get_model().update_table_results()
-            self.signals.progress.emit(100)
+            self.signals.progress.emit(2, "Preparing results")
+            self.page.get_model().update_table_results(self.signals.progress.emit)
+            self.signals.progress.emit(100, "Results ready")
 
 
             logging.debug("UpdateTableResultsWorker finished")
