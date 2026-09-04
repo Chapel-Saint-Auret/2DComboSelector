@@ -1,4 +1,7 @@
 # -*- mode: python ; coding: utf-8 -*-
+import os
+
+
 def collect_data_files(src_folder, dest_folder):
     import os, glob
     file_list = []
@@ -37,7 +40,7 @@ exe = EXE(
     a.datas,
     [],
     name='combo_selector',
-    icon='src/combo_selector/resources/icons/app_icon.ico',
+    icon=os.path.abspath('src/combo_selector/resources/icons/app_icon.ico'),
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
