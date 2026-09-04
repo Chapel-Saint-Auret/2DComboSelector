@@ -36,7 +36,7 @@ from combo_selector.ui.widgets.orthogonality_table import OrthogonalityTableView
 from combo_selector.ui.widgets.style_table import StyledTable
 from combo_selector.ui.widgets.info_dialog import InfoPopupDialog
 from combo_selector.ui.widgets.searchable_combobox import SearchableComboBox
-from combo_selector.utils import resource_path
+from combo_selector.resource_utils import resource_path
 from combo_selector.constants import TIPS
 
 # Dropdown arrow icon path

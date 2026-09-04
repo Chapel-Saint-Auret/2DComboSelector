@@ -7,20 +7,15 @@ the splash is already visible.
 
 import ctypes
 import sys
-from pathlib import Path
 
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QIcon, QPixmap
 from PySide6.QtWidgets import QApplication, QSplashScreen
 
+from combo_selector.resource_utils import resource_path
+
 
 APP_USER_MODEL_ID = "ChapelSaintAuret.2DComboSelector"
-
-
-def _resource_path(relative_path: str) -> str:
-    """Resolve a resource in both source and PyInstaller builds."""
-    base_path = Path(getattr(sys, "_MEIPASS", Path(__file__).resolve().parent))
-    return str(base_path / "resources" / relative_path)
 
 
 def main() -> int:
@@ -35,9 +30,9 @@ def main() -> int:
     )
 
     app = QApplication(sys.argv)
-    app.setWindowIcon(QIcon(_resource_path("icons/app_icon.ico")))
+    app.setWindowIcon(QIcon(resource_path("icons/app_icon.ico")))
 
-    splash = QSplashScreen(QPixmap(_resource_path("icons/splash_log_ver.svg")))
+    splash = QSplashScreen(QPixmap(resource_path("icons/splash_log_ver.svg")))
     splash.show()
     app.processEvents()
 

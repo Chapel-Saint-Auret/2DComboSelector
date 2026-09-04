@@ -36,7 +36,7 @@ from combo_selector.ui.pages.redundancy_check_page import RedundancyCheckPage
 from combo_selector.ui.pages.results_page import ResultsPage
 from combo_selector.ui.widgets.info_dialog import AboutDialog
 from combo_selector.ui.widgets.custom_main_window import CustomMainWindow
-from combo_selector.utils import resource_path
+from combo_selector.resource_utils import resource_path
 
 
 class ComboSelectorMain(CustomMainWindow):

@@ -12,7 +12,7 @@ import sys
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QApplication, QTreeWidget, QTreeWidgetItem, QVBoxLayout, QWidget
 
-from combo_selector.utils import resource_path
+from combo_selector.resource_utils import resource_path
 
 # Custom checkbox icon paths
 checked_icon_path = resource_path("icons/checkbox_checked.svg").replace("\\", "/")

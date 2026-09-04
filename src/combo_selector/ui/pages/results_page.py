@@ -50,7 +50,7 @@ from combo_selector.ui.widgets.neumorphism import BoxShadow
 from combo_selector.ui.widgets.plot_tile_selector import PlotTileSelector
 from combo_selector.ui.widgets.style_table import StyledTable
 from combo_selector.core.plot_utils import PlotUtils
-from combo_selector.utils import resource_path
+from combo_selector.resource_utils import resource_path
 
 # Dropdown arrow icon path
 drop_down_icon_path = resource_path("icons/drop_down_arrow.png").replace("\\", "/")

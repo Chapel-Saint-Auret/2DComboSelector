@@ -34,7 +34,7 @@ from PySide6.QtWidgets import (
 )
 
 from combo_selector.ui.widgets.modern_side_menu import ModernSidebar
-from combo_selector.utils import resource_path
+from combo_selector.resource_utils import resource_path
 from combo_selector.constants import MAIN_WINDOW_STYLESHEET
 
 

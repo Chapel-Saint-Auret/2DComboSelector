@@ -14,7 +14,7 @@ from PySide6.QtCore import QSize
 from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import QApplication, QComboBox
 
-from combo_selector.utils import resource_path
+from combo_selector.resource_utils import resource_path
 
 
 class QComboBoxCmap(QComboBox):

@@ -18,7 +18,7 @@ from PySide6.QtWidgets import (
     QVBoxLayout, QPushButton,
 )
 
-from combo_selector.utils import resource_path
+from combo_selector.resource_utils import resource_path
 from combo_selector.constants import (
     USER_GUIDE_TEXT,
     BEFORE_YOU_BEGIN_TEXT,

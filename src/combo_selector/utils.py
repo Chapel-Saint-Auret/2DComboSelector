@@ -1,51 +1,12 @@
-"""Utility helpers for resource resolution, file loading, and versioning.
+"""Utility helpers for file loading and versioning.
 
 This module provides standalone helper functions used across the application:
-- Resource path resolution for dev, pip-installed, and PyInstaller builds
 - Excel table loading with automatic orientation detection
 - Application version reading from ``pyproject.toml``
 """
 
 import logging
-import os
-import sys
-
 import pandas as pd
-
-
-def resource_path(relative_path):
-    """
-    Get absolute path to resource in dev, pip, or PyInstaller (frozen).
-    Example: resource_path("icons/close_window.svg")
-    """
-    if getattr(sys, "frozen", False):
-        # PyInstaller: resources bundled in _internal/resources
-        base = os.path.join(os.path.dirname(sys.executable), "_internal", "resources")
-        abs_path = os.path.join(base, relative_path)
-        if os.path.exists(abs_path):
-            return abs_path
-        raise FileNotFoundError(
-            f"Resource not found: {relative_path} (expected at {abs_path})"
-        )
-    else:
-        # Dev or pip: resources inside the installed package
-        try:
-            from importlib.resources import files
-
-            package = "combo_selector.resources"
-            resource_file = files(package) / relative_path
-            if resource_file.is_file():
-                return str(resource_file)
-        except Exception:
-            pass  # Fallback to direct path below
-
-        # fallback: directly from filesystem (for IDE, etc.)
-        dev_path = os.path.join(os.path.dirname(__file__), "resources", relative_path)
-        if os.path.exists(dev_path):
-            return dev_path
-        raise FileNotFoundError(
-            f"Resource not found: {relative_path} (checked {dev_path})"
-        )
 
 
 def load_simple_table(filepath, sheetname=0):
