@@ -113,7 +113,7 @@ class CustomFilterDialog(QDialog):
         self._apply_styles()
 
         # --- Title ---
-        title_top = QLabel(f"<b>{filter_name}</b>")
+        title_top = QLabel(f"<b>Select {filter_name} to filter</b>")
         main_layout.addWidget(title_top)
 
         # --- Tree View for defining combinations ---
@@ -146,10 +146,6 @@ class CustomFilterDialog(QDialog):
         self.filter_condition_tree_view.header().setStretchLastSection(False)
 
         # main_layout.addWidget(self.filter_condition_tree_view)
-
-        # --- Checkable list for selecting combinations ---
-        filter_title = QLabel("<b>Select Combinations to filter</b>")
-        main_layout.addWidget(filter_title)
 
         self.filtered_listview = FilteredListView()
         # self.update_combination_group()
