@@ -84,6 +84,7 @@ class MetricOptimizationTests(unittest.TestCase):
     }
 
     def setUp(self) -> None:
+        """Build the same deterministic six-combination model for every test."""
         self.workbook = make_temp_workbook(
             {"Retention": make_retention_df_four_conditions()}
         )
@@ -92,12 +93,15 @@ class MetricOptimizationTests(unittest.TestCase):
         self.model.normalize_retention_time("min_max")
 
     def tearDown(self) -> None:
+        """Remove the temporary workbook created for the test."""
         if os.path.exists(self.workbook):
             os.remove(self.workbook)
 
     def test_grid_metrics_share_one_mask_per_set_and_bin_setting(self) -> None:
+        """Grid metrics must reuse masks and rebuild them after a bin change."""
         set_count = len(self.model.orthogonality_dict)
 
+        # Count actual grid construction calls while the three metrics run.
         with patch.object(
             metric_engine,
             "compute_bin_box_mask_color",
@@ -107,15 +111,19 @@ class MetricOptimizationTests(unittest.TestCase):
             self.model.compute_gilar_watson_metric()
             self.model.compute_modeling_approach()
 
+            # One mask per set is sufficient for all three metrics.
             self.assertEqual(compute_mask.call_count, set_count)
 
+            # A new bin setting invalidates the cache and requires new masks.
             self.model.update_num_bins(self.model.bin_number + 1)
             self.model.compute_bin_box()
             self.assertEqual(compute_mask.call_count, 2 * set_count)
 
     def test_nnd_mean_reuses_computed_component_metrics(self) -> None:
+        """NND mean must not repeat distance calculations already completed."""
         self.model.compute_ndd()
 
+        # Monitor compute_ndd after its component values are available.
         with patch.object(
             self.model, "compute_ndd", wraps=self.model.compute_ndd
         ) as compute_ndd:
@@ -124,6 +132,7 @@ class MetricOptimizationTests(unittest.TestCase):
         compute_ndd.assert_not_called()
 
     def test_percent_fit_keeps_regression_value(self) -> None:
+        """The optimized %FIT path must preserve a known baseline value."""
         set_key, result = compute_percent_fit_for_set(
             "Set 1", self.model.orthogonality_dict["Set 1"]
         )
@@ -134,6 +143,8 @@ class MetricOptimizationTests(unittest.TestCase):
         )
 
     def test_all_optimized_metrics_match_baseline_values_and_ranks(self) -> None:
+        """All optimized metrics must retain baseline values and ranking ties."""
+        # Run every computation affected by the performance optimization.
         self.model.compute_bin_box()
         self.model.compute_gilar_watson_metric()
         self.model.compute_modeling_approach()
@@ -141,6 +152,7 @@ class MetricOptimizationTests(unittest.TestCase):
         self.model.compute_nnd_mean()
         self.model.compute_percent_fit()
 
+        # Compare raw values and derived ranks against pre-optimization output.
         set_keys = list(self.model.orthogonality_dict)
         for metric, expected_values in self.BASELINE_VALUES.items():
             actual_values = [

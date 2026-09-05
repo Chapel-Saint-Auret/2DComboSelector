@@ -22,11 +22,9 @@ from PySide6.QtGui import QFont
 
 from dataclasses import dataclass
 
-from combo_selector import edition
 from combo_selector.ui.widgets.flat_radio_grouped_button import FlatRadioGroupedButton
-from combo_selector.constants import (  # noqa: F401 – re-exported for callers
-    ALL_PLOT_TYPES,
-    PUBLIC_ONLY_PLOT_TYPES,
+from combo_selector.plot_types import get_plot_types
+from combo_selector.constants import (
     PLOT_DESCRIPTIONS,
     CRITERIA_ITEMS,
     RECOMMENDATION_ITEMS,
@@ -45,12 +43,6 @@ def _make_separator():
     line.setFrameShadow(QFrame.Sunken)
     line.setStyleSheet("color: #d0d5dd;")
     return line
-
-def get_plot_types() -> list[str]:
-    if edition.is_internal_edition():
-        return ALL_PLOT_TYPES.copy()
-
-    return PUBLIC_PLOT_TYPES.copy()
 
 # ---------------------------------------------------------------------------
 # Helper: styled radio-button row inside a light rounded container
