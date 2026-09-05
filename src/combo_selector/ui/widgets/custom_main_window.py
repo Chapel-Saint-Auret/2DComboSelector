@@ -80,7 +80,7 @@ class CustomMainWindow(QMainWindow):
         self.setWindowFlag(Qt.FramelessWindowHint)
         self.setAttribute(Qt.WA_TranslucentBackground)
         self.setContextMenuPolicy(Qt.CustomContextMenu)
-        self.customContextMenuRequested.connect(self.right_menu)
+        # self.customContextMenuRequested.connect(self.right_menu)
         self.setStyleSheet(MAIN_WINDOW_STYLESHEET)
 
         # --- Central widget ---
