@@ -47,15 +47,10 @@ def _make_separator():
     return line
 
 def get_plot_types() -> list[str]:
-    """Return the plot types available in the selected edition."""
     if edition.is_internal_edition():
         return ALL_PLOT_TYPES.copy()
 
-    return [
-        plot_type
-        for plot_type in ALL_PLOT_TYPES
-        if plot_type not in PUBLIC_ONLY_PLOT_TYPES
-    ]
+    return PUBLIC_PLOT_TYPES.copy()
 
 # ---------------------------------------------------------------------------
 # Helper: styled radio-button row inside a light rounded container
