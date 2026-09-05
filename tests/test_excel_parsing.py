@@ -25,6 +25,7 @@ class ExcelParsingTests(unittest.TestCase):
     """Cover workbook parsing and retention-import expectations."""
 
     def tearDown(self) -> None:
+        """Remove temporary spreadsheets created by parsing tests."""
         for path in getattr(self, "_temp_paths", []):
             if os.path.exists(path):
                 os.remove(path)
@@ -35,6 +36,7 @@ class ExcelParsingTests(unittest.TestCase):
         return path
 
     def test_load_table_with_header_anywhere_skips_leading_rows(self) -> None:
+        """Header detection must ignore explanatory rows above the real table."""
         workbook = self._track(
             make_temp_workbook(
                 {
@@ -59,6 +61,7 @@ class ExcelParsingTests(unittest.TestCase):
         self.assertEqual(len(loaded), 2)
 
     def test_load_retention_time_renames_first_column_to_compound_name(self) -> None:
+        """Retention import must standardize the first column as compound names."""
         workbook = self._track(make_temp_workbook({"Retention": make_retention_df_three_conditions()}))
         model = CoreTestModel()
 
@@ -69,6 +72,7 @@ class ExcelParsingTests(unittest.TestCase):
         self.assertEqual(model.get_compound_name_list(), ["Caffeine", "Quinine", "Rutin", "Theobromine"])
 
     def test_load_table_with_header_anywhere_rejects_duplicate_headers_when_requested(self) -> None:
+        """Strict header parsing must reject duplicated condition names."""
         workbook = self._track(
             make_temp_workbook(
                 {
@@ -84,6 +88,7 @@ class ExcelParsingTests(unittest.TestCase):
             load_table_with_header_anywhere(workbook, "Retention", auto_fix_duplicates=False)
 
     def test_load_simple_table_accepts_optional_label_column_from_release_format(self) -> None:
+        """Optional one-row inputs must accept the documented leading label column."""
         retention = make_retention_df_three_conditions()
         conditions = retention.columns.tolist()[1:]
         workbook = self._track(
@@ -103,6 +108,7 @@ class ExcelParsingTests(unittest.TestCase):
         self.assertEqual(loaded.iloc[0].tolist(), [85, 112, 96])
 
     def test_load_simple_table_ignores_surrounding_empty_rows_and_columns(self) -> None:
+        """Optional-table parsing must ignore blank rows and columns around data."""
         workbook = self._track(
             make_temp_workbook(
                 {
@@ -127,12 +133,14 @@ class ExcelParsingTests(unittest.TestCase):
         self.assertEqual(loaded.iloc[0].tolist(), [85, 112])
 
     def test_load_simple_table_rejects_unrecognized_shape(self) -> None:
+        """Optional input with an unsupported layout must raise a clear error."""
         path = self._track(make_temp_workbook({"Invalid": (pd.DataFrame([[1], [2], [3]]), False)}))
 
         with self.assertRaisesRegex(ValueError, "Table shape not recognized"):
             load_simple_table(path, "Invalid")
 
     def test_load_retention_time_rejects_non_numeric_condition_values(self) -> None:
+        """Retention-time condition columns must contain only numerical values."""
         workbook = self._track(
             make_temp_workbook(
                 {
@@ -153,6 +161,7 @@ class ExcelParsingTests(unittest.TestCase):
         self.assertEqual(model.get_status(), "error")
 
     def test_load_peak_capacity_rejects_non_numeric_values(self) -> None:
+        """Peak-capacity input must reject non-numerical condition values."""
         retention = make_retention_df_three_conditions()
         workbook = self._track(
             make_temp_workbook(
@@ -177,6 +186,7 @@ class ExcelParsingTests(unittest.TestCase):
             model.load_hypothetical_2d_peak_capacity(workbook, "Peak")
 
     def test_load_elution_table_rejects_non_numeric_values(self) -> None:
+        """Elution-composition input must reject non-numerical condition values."""
         retention = make_retention_df_three_conditions()
         workbook = self._track(
             make_temp_workbook(

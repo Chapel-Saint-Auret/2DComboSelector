@@ -23,10 +23,12 @@ class CorePipelineTests(unittest.TestCase):
     """Cover pair generation, optional sheets, and non-GUI scoring flow."""
 
     def test_application_reports_release_version(self) -> None:
+        """Package and utility APIs must report the same release version."""
         self.assertEqual(combo_selector.__version__, "1.0.0")
         self.assertEqual(get_version(), combo_selector.__version__)
 
     def tearDown(self) -> None:
+        """Remove every temporary workbook registered by the current test."""
         for path in getattr(self, "_temp_paths", []):
             if os.path.exists(path):
                 os.remove(path)
@@ -37,6 +39,7 @@ class CorePipelineTests(unittest.TestCase):
         return path
 
     def test_retention_import_creates_exact_expected_pairs(self) -> None:
+        """Three imported conditions must generate the three expected pairs."""
         retention = make_retention_df_three_conditions()
         workbook = self._track(make_temp_workbook({"Retention": retention}))
         model = CoreTestModel()
@@ -55,6 +58,7 @@ class CorePipelineTests(unittest.TestCase):
         )
 
     def test_optional_peak_capacity_and_elution_tables_update_results(self) -> None:
+        """Valid optional sheets must populate capacity and elution-domain values."""
         retention = make_retention_df_three_conditions()
         condition_names = retention.columns.tolist()[1:]
         workbook = self._track(
@@ -81,6 +85,7 @@ class CorePipelineTests(unittest.TestCase):
         self.assertEqual(model.get_combination_df()["Elution Domain"].tolist(), [27, 22, 30])
 
     def test_mismatched_peak_capacity_conditions_fail_cleanly(self) -> None:
+        """Peak-capacity data with missing conditions must raise a clear error."""
         retention = make_retention_df_three_conditions()
         workbook = self._track(
             make_temp_workbook(
@@ -103,6 +108,7 @@ class CorePipelineTests(unittest.TestCase):
             model.load_hypothetical_2d_peak_capacity(workbook, "Peak")
 
     def test_core_pipeline_builds_metrics_groups_scores_and_rankings(self) -> None:
+        """The complete core pipeline must produce valid metrics and final ranks."""
         retention = make_retention_df_four_conditions()
         condition_names = retention.columns.tolist()[1:]
         workbook = self._track(
@@ -162,6 +168,7 @@ class CorePipelineTests(unittest.TestCase):
         )
 
     def test_core_pipeline_without_optional_sheets_still_updates_results(self) -> None:
+        """Ranking must remain available when optional input sheets are absent."""
         retention = make_retention_df_three_conditions()
         workbook = self._track(make_temp_workbook({"Retention": retention}))
         model = CoreTestModel()
@@ -197,6 +204,7 @@ class CorePipelineTests(unittest.TestCase):
         self.assertTrue(results["Final Recommendation"].notna().all())
 
     def test_update_table_results_requires_metric_groups(self) -> None:
+        """Final result generation must reject a missing metric-group analysis."""
         retention = make_retention_df_three_conditions()
         workbook = self._track(make_temp_workbook({"Retention": retention}))
         model = CoreTestModel()

@@ -13,6 +13,7 @@ class CorrelationMatrixDisplayTests(unittest.TestCase):
     """Verify safe display behavior for degenerate correlation inputs."""
 
     def test_returns_identity_fallback_for_all_nan_correlation_matrix(self) -> None:
+        """An undefined correlation matrix must become a display-safe identity."""
         source_df = pd.DataFrame(
             {
                 "Metric A": [0.5],
@@ -29,6 +30,7 @@ class CorrelationMatrixDisplayTests(unittest.TestCase):
         self.assertIsNotNone(notice)
 
     def test_preserves_regular_correlation_matrix(self) -> None:
+        """A valid correlation matrix must be returned without numerical changes."""
         source_df = pd.DataFrame(
             {
                 "Metric A": [0.1, 0.4, 0.9],

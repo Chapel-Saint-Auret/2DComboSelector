@@ -31,6 +31,9 @@ No changes yet.
 - Generated Python cache files are no longer tracked.
 - Result recomputation no longer performs quadratic table rebuilding or retains temporary metric-removal scores.
 - The result progress overlay now reports the actual scoring stage and closes promptly when computation finishes.
+- Orthogonality metric computation now avoids nested `%FIT` thread pools,
+  duplicate NND calculations, and repeated grid construction shared by bin-based metrics.
+- Public builds now display the explicitly selected public plot list, while internal builds display all plots.
 
 ### Known limitations
 

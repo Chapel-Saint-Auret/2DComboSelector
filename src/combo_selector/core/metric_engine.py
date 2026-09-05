@@ -232,6 +232,13 @@ class MetricEngine:
 
         self.bin_number = nb_bin
 
+        # A different grid configuration must never reuse masks produced for
+        # the previous setting.  Input reloads rebuild orthogonality_dict, so
+        # they naturally start with an empty cache as well.
+        if self.orthogonality_dict:
+            for set_data in self.orthogonality_dict.values():
+                set_data.pop("_bin_box_cache", None)
+
         # reset function computed status in order to re compute with new bin number
         for metric in ["Bin box counting", "Modeling approach", "Gilar-Watson method"]:
             self.om_function_map[metric]["status"] = FuncStatus.NOT_COMPUTED
@@ -281,6 +288,21 @@ class MetricEngine:
     # ------------------------------------------------------------------
     # Metric computations
     # ------------------------------------------------------------------
+
+    @staticmethod
+    def _get_bin_box_result(set_data: dict, nb_boxes: int):
+        """Return a cached occupied-bin representation for one data set.
+
+        Several grid-based metrics use exactly the same normalized points and
+        number of boxes.  Keeping the result on ``set_data`` avoids rebuilding
+        the same histogram while preserving separate metric outputs.
+        """
+        cache = set_data.setdefault("_bin_box_cache", {})
+        if nb_boxes not in cache:
+            cache[nb_boxes] = compute_bin_box_mask_color(
+                set_data["x_values"], set_data["y_values"], nb_boxes
+            )
+        return cache[nb_boxes]
 
     def compute_convex_hull(self) -> None:
         """Compute the convex hull volume for each set of peak distribution.
@@ -345,8 +367,8 @@ class MetricEngine:
             set_data = self.orthogonality_dict[set_key]
             x, y = set_data["x_values"], set_data["y_values"]
 
-            h_color, x_edges, y_edges = compute_bin_box_mask_color(
-                x, y, self.bin_number
+            h_color, x_edges, y_edges = self._get_bin_box_result(
+                set_data, self.bin_number
             )
 
             bin_box_ratio = h_color.count() / (self.bin_number * self.bin_number)
@@ -726,7 +748,12 @@ class MetricEngine:
             - Updates nnd_mean metric in table_data
             - Sets 'NND mean' status to COMPUTED
         """
-        self.compute_ndd()
+        nnd_components = ("NND Arithm mean", "NND Geom mean", "NND Harm mean")
+        if any(
+            self.om_function_map[metric]["status"] != FuncStatus.COMPUTED
+            for metric in nnd_components
+        ):
+            self.compute_ndd()
 
         for set_key in self.orthogonality_dict.keys():
             set_data = self.orthogonality_dict[set_key]
@@ -801,7 +828,7 @@ class MetricEngine:
             percent_bin = 1 - ((sad_dev - sad_dev_fs) / (sad_dev_ns - sad_dev_fs))
 
             # Compute the bin box mask
-            h_color, x_edges, y_edges = compute_bin_box_mask_color(x, y, 5)
+            h_color, x_edges, y_edges = self._get_bin_box_result(set_data, 5)
 
             set_data["percent_bin"] = {
                 "value": percent_bin,
@@ -869,8 +896,8 @@ class MetricEngine:
             set_data = self.orthogonality_dict[set_key]
             x, y = set_data["x_values"], set_data["y_values"]
 
-            h_color, x_edges, y_edges = compute_bin_box_mask_color(
-                x, y, self.bin_number
+            h_color, x_edges, y_edges = self._get_bin_box_result(
+                set_data, self.bin_number
             )
             p_square = self.bin_number * self.bin_number
             sum_bin = h_color.count()
@@ -910,8 +937,8 @@ class MetricEngine:
             y = set_data["y_values"]
 
             # 1) Compute masked 2D histogram: bins with no data are masked
-            h_color, x_edges, y_edges = compute_bin_box_mask_color(
-                x, y, self.bin_number
+            h_color, x_edges, y_edges = self._get_bin_box_result(
+                set_data, self.bin_number
             )
 
             set_data["modeling_approach"] = {"color_mask": h_color, "edges": [x_edges, y_edges]}
