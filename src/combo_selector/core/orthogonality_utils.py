@@ -737,7 +737,8 @@ def compute_percent_fit_for_set(
                 - 'percent_fit': Dict with delta values and final %FIT value
 
     Note:
-        This function uses multithreading internally for peak optimization.
+        Combination-level parallelism is managed by the caller. Peak-distance
+        coarse searches are vectorized locally, followed by bounded refinement.
         The %FIT value ranges from 0 (poor fit) to 1 (perfect fit).
 
     Example:
@@ -769,7 +770,7 @@ def compute_percent_fit_for_set(
         """Compute minimal distance from each peak to curve with refinement.
 
         Uses coarse grid search followed by fine optimization for efficiency.
-        Multithreaded for performance.
+        The coarse search is vectorized across peaks before scalar refinement.
 
         Args:
             peaks (list): List of (x, y) peak coordinates.
@@ -780,14 +781,24 @@ def compute_percent_fit_for_set(
         Returns:
             list[float]: X-coordinates on curve closest to each peak.
         """
-        xs = np.linspace(0, 1, num_points)
+        if not peaks:
+            return []
 
-        def optimize_peak(peak: tuple) -> float:
-            """Optimize distance for a single peak."""
-            ys = curve(xs)
-            dists = (xs - peak[0]) ** 2 + (ys - peak[1]) ** 2
-            min_idx = np.argmin(dists)
-            x0 = xs[min_idx]
+        xs = np.linspace(0, 1, num_points)
+        ys = curve(xs)
+        peak_array = np.asarray(peaks, dtype=float)
+
+        # Evaluate the coarse grid for every peak in one NumPy operation.
+        # The bounded refinement below is intentionally unchanged so this is
+        # a performance optimization, not a change to the metric definition.
+        coarse_distances = (
+            (xs[None, :] - peak_array[:, 0, None]) ** 2
+            + (ys[None, :] - peak_array[:, 1, None]) ** 2
+        )
+        coarse_minima = xs[np.argmin(coarse_distances, axis=1)]
+
+        def optimize_peak(peak: tuple, x0: float) -> float:
+            """Refine the closest coarse-grid position for a single peak."""
             left = max(0, x0 - fine_range)
             right = min(1, x0 + fine_range)
             res = minimize_scalar(
@@ -798,11 +809,10 @@ def compute_percent_fit_for_set(
             # evaluated at the optimal point found by minimize_scalar
             return np.sqrt(objective(res.x, peak, curve))
 
-        from concurrent.futures import ThreadPoolExecutor
-
-        with ThreadPoolExecutor() as executor:
-            results = list(executor.map(optimize_peak, peaks))
-        return results
+        return [
+            optimize_peak(peak, x0)
+            for peak, x0 in zip(peaks, coarse_minima)
+        ]
 
     x, y = set_data["x_values"], set_data["y_values"]
 
