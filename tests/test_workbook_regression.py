@@ -45,6 +45,7 @@ class WorkbookRegressionTests(unittest.TestCase):
         return model
 
     def test_valid_release_format_workbook_loads_all_core_inputs(self) -> None:
+        """The reference workbook must load retention and both optional inputs."""
         model = CoreTestModel()
         workbook = get_fixture_path("release_format_valid.xlsx")
 
@@ -72,6 +73,7 @@ class WorkbookRegressionTests(unittest.TestCase):
         self.assertEqual(model.get_combination_df()["Elution Domain"].tolist(), [27])
 
     def test_retention_only_release_format_workbook_loads(self) -> None:
+        """The retention-only template must load without optional-sheet data."""
         model = CoreTestModel()
         workbook = get_fixture_path("release_format_retention_only.xlsx")
 
@@ -84,6 +86,7 @@ class WorkbookRegressionTests(unittest.TestCase):
         self.assertEqual(model.elution_data_status, "no_data")
 
     def test_bad_release_format_workbook_fails_on_insufficient_conditions(self) -> None:
+        """A workbook with fewer than two conditions must be rejected."""
         model = CoreTestModel()
         workbook = get_fixture_path("release_format_bad.xlsx")
 
@@ -94,6 +97,7 @@ class WorkbookRegressionTests(unittest.TestCase):
         self.assertEqual(model.get_retention_time_df().columns.tolist(), ["Compound Name", "HILIC - BEH Amide - EtOH - pH 7"])
 
     def test_bad_release_format_workbook_rejects_invalid_optional_sheet_shape(self) -> None:
+        """An optional sheet with an invalid layout must fail explicitly."""
         model = CoreTestModel()
         workbook = get_fixture_path("release_format_bad.xlsx")
 
@@ -103,6 +107,7 @@ class WorkbookRegressionTests(unittest.TestCase):
             model.load_hypothetical_2d_peak_capacity(workbook, "1D peak capacity table")
 
     def test_optional_sheet_condition_names_must_match_retention_sheet(self) -> None:
+        """Optional-sheet headers must match the retention conditions exactly."""
         model = CoreTestModel()
         workbook = get_fixture_path("release_format_mismatched_names.xlsx")
 
@@ -121,6 +126,7 @@ class WorkbookRegressionTests(unittest.TestCase):
             )
 
     def test_release_format_workbook_rejects_duplicate_condition_names(self) -> None:
+        """The release template must reject duplicated condition headers."""
         model = CoreTestModel()
         workbook = get_fixture_path("release_format_duplicate_conditions.xlsx")
 
@@ -130,6 +136,7 @@ class WorkbookRegressionTests(unittest.TestCase):
         self.assertTrue(model.get_retention_time_df().empty)
 
     def test_release_format_workbook_rejects_missing_condition_header(self) -> None:
+        """The release template must reject a missing condition header."""
         model = CoreTestModel()
         workbook = get_fixture_path("release_format_missing_condition_header.xlsx")
 
@@ -143,6 +150,7 @@ class WorkbookRegressionTests(unittest.TestCase):
         )
 
     def test_valid_release_format_ranking_regression_handles_single_combination(self) -> None:
+        """A valid two-condition workbook must rank its single combination safely."""
         model = self._run_release_format_pipeline("release_format_valid.xlsx")
         results = model.get_orthogonality_result_df()
 
@@ -158,6 +166,7 @@ class WorkbookRegressionTests(unittest.TestCase):
         self.assertTrue(results["Final Recommendation"].notna().all())
 
     def test_ranking_release_format_workbook_locks_pair_generation_and_ranking(self) -> None:
+        """The ranking fixture must preserve pairs, scores, diagnostics, and ranks."""
         model = self._run_release_format_pipeline("release_format_ranking.xlsx")
         combinations = model.get_combination_df()
         results = model.get_orthogonality_result_df()
