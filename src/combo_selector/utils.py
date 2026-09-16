@@ -134,3 +134,13 @@ def get_version() -> str:
     from combo_selector import __version__
 
     return __version__
+
+
+def get_display_version() -> str:
+    """Return the package version with its GitHub Actions build number."""
+    from combo_selector._build_info import BUILD_NUMBER
+
+    version = get_version()
+    if BUILD_NUMBER:
+        return f"{version} · Build {BUILD_NUMBER}"
+    return version
