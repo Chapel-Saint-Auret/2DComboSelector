@@ -191,7 +191,7 @@ class ResultsPage(QFrame):
         self.on_off_button.buttonClicked.connect(self.set_performance_penalty)
         self.orthogonality_threshold.editingFinished.connect(lambda: self.model.set_orthogonality_threshold_penalty(self.orthogonality_threshold.value()))
         self.elution_domain_threshold.editingFinished.connect(lambda: self.model.set_elution_threshold_penalty(self.elution_domain_threshold.value()))
-        self.elution_domain_threshold.editingFinished.connect(lambda: self.model.set_elution_threshold_penalty(self.peak_capacity_threshold.value()))
+        self.peak_capacity_threshold.editingFinished.connect(lambda: self.model.set_peak_capacity_threshold_penalty(self.peak_capacity_threshold.value()))
         self.apply_penalty_btn.clicked.connect(self.apply_performance_penalty)
         self.vizualation_settings_group.stateChanged.connect(self.plot_visualization_state_changed)
 
@@ -402,7 +402,7 @@ class ResultsPage(QFrame):
 
         form_layout.addRow("Orthogonality threshold", self.orthogonality_threshold)
         form_layout.addRow("Elution Domain threshold", self.elution_domain_threshold)
-        form_layout.addRow("Elution Domain threshold", self.peak_capacity_threshold)
+        form_layout.addRow("Peak Capacity threshold", self.peak_capacity_threshold)
 
         self.apply_penalty_btn = QPushButton("Apply")
 
