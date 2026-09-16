@@ -191,6 +191,7 @@ class ResultsPage(QFrame):
         self.on_off_button.buttonClicked.connect(self.set_performance_penalty)
         self.orthogonality_threshold.editingFinished.connect(lambda: self.model.set_orthogonality_threshold_penalty(self.orthogonality_threshold.value()))
         self.elution_domain_threshold.editingFinished.connect(lambda: self.model.set_elution_threshold_penalty(self.elution_domain_threshold.value()))
+        self.elution_domain_threshold.editingFinished.connect(lambda: self.model.set_elution_threshold_penalty(self.peak_capacity_threshold.value()))
         self.apply_penalty_btn.clicked.connect(self.apply_performance_penalty)
         self.vizualation_settings_group.stateChanged.connect(self.plot_visualization_state_changed)
 
@@ -387,13 +388,21 @@ class ResultsPage(QFrame):
         self.orthogonality_threshold = QDoubleSpinBox()
         self.orthogonality_threshold.setFixedWidth(100)
         self.orthogonality_threshold.setValue(0.30)
+        self.orthogonality_threshold.setRange(0,1)
 
         self.elution_domain_threshold = QDoubleSpinBox()
         self.elution_domain_threshold.setFixedWidth(100)
         self.elution_domain_threshold.setValue(0.25)
+        self.elution_domain_threshold.setRange(0,1)
+
+        self.peak_capacity_threshold = QDoubleSpinBox()
+        self.peak_capacity_threshold.setFixedWidth(100)
+        self.peak_capacity_threshold.setValue(0.3)
+        self.peak_capacity_threshold.setRange(0,1)
 
         form_layout.addRow("Orthogonality threshold", self.orthogonality_threshold)
         form_layout.addRow("Elution Domain threshold", self.elution_domain_threshold)
+        form_layout.addRow("Elution Domain threshold", self.peak_capacity_threshold)
 
         self.apply_penalty_btn = QPushButton("Apply")
 
@@ -685,21 +694,37 @@ class ResultsPage(QFrame):
             column=2, tooltip="Custom filter", widget_to_show=self.chrom_mode_filter_dialog
         )
 
-        self.orthogonality_table.add_help_button(column=3,title="Coverage Score",markdown_path="markdown/coverage_score.md")
-        self.orthogonality_table.add_help_button(column=4,title="Distribution Score",markdown_path="markdown/distribution_score.md")
-        self.orthogonality_table.add_help_button(column=5,title="Orthogonality Utility",markdown_path="markdown/orthogonality_utility.md")
-        self.orthogonality_table.add_help_button(column=6,title="Metric Agreement",markdown_path="markdown/agreement_indicator.md")
-        # self.orthogonality_table.add_help_button(column=7,title="Outlier Flag",markdown_path="markdown/outlier_flag.md")
-        self.orthogonality_table.set_header_label(
-            [
-                "Combination #",
-                "2D Combination",
-                "Chromatographic Mode",
-                "Coverage Score",
-                "Distribution Score",
-                "Orthogonality Utility",
-                "Metric Agreement"
-            ])
+        if edition.is_internal_edition():
+
+            self.orthogonality_table.add_help_button(column=3,title="Coverage Score",markdown_path="markdown/coverage_score.md")
+            self.orthogonality_table.add_help_button(column=4,title="Distribution Score",markdown_path="markdown/distribution_score.md")
+            self.orthogonality_table.add_help_button(column=5,title="Orthogonality Utility",markdown_path="markdown/orthogonality_utility.md")
+            self.orthogonality_table.add_help_button(column=6,title="Metric Group Agreement",markdown_path="markdown/metric_group_agreement.md")
+            # self.orthogonality_table.add_help_button(column=7,title="Outlier Flag",markdown_path="markdown/outlier_flag.md")
+            self.orthogonality_table.set_header_label(
+                [
+                    "Combination #",
+                    "2D Combination",
+                    "Chromatographic Mode",
+                    "Coverage Score",
+                    "Distribution Score",
+                    "Orthogonality Utility",
+                    "Metric Group Agreement"
+                ])
+        else:
+            self.orthogonality_table.add_help_button(column=4,title="Orthogonality Utility",markdown_path="markdown/orthogonality_utility.md")
+            self.orthogonality_table.add_help_button(column=5,title="Metric Agreement",markdown_path="markdown/metric_group_agreement.md")
+            # self.orthogonality_table.add_help_button(column=7,title="Outlier Flag",markdown_path="markdown/outlier_flag.md")
+            self.orthogonality_table.set_header_label(
+                [
+                    "Combination #",
+                    "2D Combination",
+                    "Chromatographic Mode",
+                    "Orthogonality Rank",
+                    "Orthogonality Utility",
+                    "Metric Agreement"
+                ])
+
 
         self.practical_feasibility_table = self.styled_table.get_table_from_sheet(sheet_name='Practical Feasibility')
         self.practical_feasibility_table.selectionChanged.connect(self.show_combination_plot_pop_up)

@@ -30,6 +30,7 @@ from PySide6.QtWidgets import (
     QMessageBox,
 )
 
+from combo_selector import edition
 from combo_selector.core.plot_utils import PlotUtils
 from combo_selector.ui.widgets.checkable_tree_list import CheckableTreeList
 from combo_selector.ui.widgets.custom_toolbar import CustomToolbar
@@ -313,20 +314,33 @@ class ExportPage(QFrame):
                 color: #3f4c5a;
             }
         """)
+        if edition.is_internal_edition():
+            table_list = [
+                "Normalized Retention Table",
+                "2D Combination Table",
+                "Metric Result Table",
+                "Metric Ranking Table",
+                "Grouped Metric Table",
+                "Orthogonality Table",
+                "Practical Feasibility Table",
+                "Separational Potential Table",
+                "Final Evaluation Table",
+                "Overall Results Table",
+                "Old Approach Table"
+            ]
+        else:
+            table_list = [
+                "Normalized Retention Table",
+                "2D Combination Table",
+                "Metric Result Table",
+                "Metric Ranking Table",
+                "Grouped Metric Table",
+                "Orthogonality Table",
+                "Practical Feasibility Table",
+                "Separational Potential Table",
+                "Final Evaluation Table",
+            ]
 
-        table_list = [
-            "Normalized Retention Table",
-            "2D Combination Table",
-            "Metric Result Table",
-            "Metric Ranking Table",
-            "Grouped Metric Table",
-            "Orthogonality Table",
-            "Practical Feasibility Table",
-            "Separational Potential Table",
-            "Final Evaluation Table",
-            "Overall Results Table",
-            "Old Approach Table"
-        ]
         self.table_selection = CheckableTreeList(table_list)
         self.table_selection.setFixedHeight(175)
 

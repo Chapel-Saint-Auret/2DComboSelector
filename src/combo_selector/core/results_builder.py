@@ -11,6 +11,7 @@ import pandas as pd
 
 from math import ceil
 
+from combo_selector import edition
 from combo_selector.core.orthogonality_utils import CHROM_MODE, METRIC_MAPPING,FEASABILITY
 from combo_selector.core.orthogonality_utils import get_symmetric_mode_dict
 
@@ -359,16 +360,28 @@ class ResultsBuilder:
 
         score_used = self.score_computed_method_info['score_used']
 
-        column_name = [
-            "Combination #",
-            "2D Combination",
-            "Chromatographic Mode",
-            "Coverage Score",
-            "Distribution Score",
-            # The ternary operator selects the correct string inline
-            "Orthogonality Utility" if score_used == 'Default' else "Computed Orthogonality Score",
-            "Agreement Indicator"
-        ]
+        if edition.is_internal_edition():
+            column_name = [
+                "Combination #",
+                "2D Combination",
+                "Chromatographic Mode",
+                "Coverage Score",
+                "Distribution Score",
+                # The ternary operator selects the correct string inline
+                "Orthogonality Utility" if score_used == 'Default' else "Computed Orthogonality Score",
+                "Agreement Indicator"
+            ]
+        else:
+            column_name = [
+                "Combination #",
+                "2D Combination",
+                "Chromatographic Mode",
+                # The ternary operator selects the correct string inline,
+                "Orthogonality Rank",
+                "Orthogonality Utility" if score_used == 'Default' else "Computed Orthogonality Score",
+                "Agreement Indicator"
+            ]
+
 
         self.orthogonality_table_df = self.filtered_result_df[column_name].copy()
 
@@ -624,6 +637,10 @@ class ResultsBuilder:
         """Set elution threshold penalty."""
         self.elution_threshold_penalty = threshold
 
+    def set_peak_capacity_threshold_penalty(self, threshold):
+        """Set peak capacity threshold penalty."""
+        self.peak_capacity_threshold_penalty = threshold
+
     def compute_final_results(self):
         """Compute final results."""
         self.compute_final_rank()
@@ -693,22 +710,31 @@ class ResultsBuilder:
         #   S_final = S_raw * P_O * P_D   (only when elution data is loaded
         #                                   AND penalty_is_on)
         # ------------------------------------------------------------------
+
+        # orthogonality penality
+        p_o = util_O.apply(lambda x: min(1, x / self.orthogonality_threshold_penalty))
+        df['p_o'] = p_o
+
+        # overal penality
+        penality_compenents = [p_o]
         utility_components = [util_O]
+
         if peak_capacity_available:
             utility_components.append(df['Peak Capacity Utility'])
+            p_p = df['Peak Capacity Utility'].apply(lambda x: min(1, x / self.peak_capacity_threshold_penalty))
+            df['p_p'] = p_p
+            penality_compenents.append(p_p)
+
         if elution_data_available:
             utility_components.append(df['Elution Domain Utility'])
+            p_d = df['Elution Domain Utility'].apply(lambda x: min(1, x / self.elution_threshold_penalty))
+            df['p_d'] = p_d
+            penality_compenents.append(p_d)
 
         s_raw = pd.concat(utility_components, axis=1).mean(axis=1)
+        penality = pd.concat(penality_compenents, axis=1).product(axis=1)
 
-        if elution_data_available and self.penalty_is_on:
-            p_o = util_O.apply(lambda x: min(1, x / self.orthogonality_threshold_penalty))
-            p_d = df['Elution Domain Utility'].apply(lambda x: min(1, x / self.elution_threshold_penalty))
-            df['p_o'] = p_o
-            df['p_d'] = p_d
-            s_final = s_raw * p_o * p_d
-        else:
-            s_final = s_raw
+        s_final = s_raw * penality
 
         df['S_raw'] = s_raw
         df['Final Score (Utility)'] = s_final
@@ -777,11 +803,11 @@ class ResultsBuilder:
         def set_penality_flag(ortho,elution):
             """Return the penalty-threshold message for a result row."""
             if ortho < 0.7 and elution < 0.30:
-                return "Below penalty threshold: O + Δφ"
+                return "Below penalty threshold: O + D"
             elif ortho<0.7:
                 return "Below penalty threshold: O"
             elif elution<0.3:
-                return "Below penalty threshold: Δφ"
+                return "Below penalty threshold: D"
             else:
                 return ''
 
@@ -822,14 +848,14 @@ class ResultsBuilder:
 
         if 'Elution Domain Rank' in self.orthogonality_result_df.columns and elution_rank_numeric.notna().any():
             elution_composition_space_area_ranking = build_rank_highlight(
-                elution_rank_numeric, criterion='Δφ'
+                elution_rank_numeric, criterion='D'
             )
         else:
             elution_composition_space_area_ranking = ''
 
         if 'Peak Capacity Rank' in self.orthogonality_result_df.columns and peak_capacity_rank_numeric.notna().any():
             hypothetical_2d_peak_capacity_ranking = build_rank_highlight(
-                peak_capacity_rank_numeric, criterion='nc'
+                peak_capacity_rank_numeric, criterion='P'
             )
         else:
             hypothetical_2d_peak_capacity_ranking = ''

@@ -18,12 +18,14 @@ The penalty factors are:
 
     - P_O = min(1,UO /0.3) 
 	
-	- P_D = min(1,UD/0.25) 
+	- P_D = min(1,UD/0.25)
+	
+	- P_P = min(1,UD/0.3) 
 	
 and the final score is:
   
-	- S_final = S_raw * P_O * P_D 
+	- S_final = S_raw * P_O * P_D * P_P
 	
-Therefore, no penalty is applied when **UO ≥ 0.30** and **UD ≥ 0.25**. Below these thresholds, the score is progressively reduced according to the corresponding utility value.
+Therefore, no penalty is applied when **UO ≥ 0.30** and **UD ≥ 0.25 and UP ≥ 0.30**. Below these thresholds, the score is progressively reduced according to the corresponding utility value.
 
 Higher values indicate better overall multi-criteria performance. The resulting scores are then reranked to obtain the final consensus rank.
