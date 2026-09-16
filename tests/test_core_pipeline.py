@@ -7,7 +7,7 @@ import unittest
 
 import combo_selector
 
-from combo_selector.utils import get_version
+from combo_selector.utils import get_display_version, get_version
 
 from tests.helpers import (
     CoreTestModel,
@@ -25,6 +25,17 @@ class CorePipelineTests(unittest.TestCase):
     def test_application_reports_release_version(self) -> None:
         self.assertEqual(combo_selector.__version__, "1.0.0")
         self.assertEqual(get_version(), combo_selector.__version__)
+
+    def test_display_version_includes_build_number_when_available(self):
+        """Display the workflow build number without changing the package version."""
+        from combo_selector import _build_info
+
+        previous_build_number = _build_info.BUILD_NUMBER
+        try:
+            _build_info.BUILD_NUMBER = "247"
+            self.assertEqual(get_display_version(), "1.0.0 · Build 247")
+        finally:
+            _build_info.BUILD_NUMBER = previous_build_number
 
     def tearDown(self) -> None:
         for path in getattr(self, "_temp_paths", []):
