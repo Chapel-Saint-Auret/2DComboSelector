@@ -28,7 +28,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from combo_selector.utils import get_version, resource_path
+from combo_selector.utils import get_display_version, resource_path
 from combo_selector.constants import SIDEBAR_BG
 
 
@@ -188,7 +188,7 @@ class SidebarFooter(QFrame):
         layout.addLayout(copyright_row)
 
         # Version label
-        version_lbl = QLabel(get_version())
+        version_lbl = QLabel(get_display_version())
         version_lbl.setStyleSheet("color: white; font-size: 11px;")
         version_lbl.setAlignment(Qt.AlignLeft)
         layout.addWidget(version_lbl)
