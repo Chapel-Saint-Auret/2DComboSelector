@@ -48,11 +48,11 @@ The installer currently supports 64-bit Windows systems.
 > **Windows security notice**
 >
 > Because the installer may not yet be digitally signed, Microsoft Defender SmartScreen may display a warning. If the installer was downloaded from the official GitHub repository, select **More info**, verify that the application name is **2DComboSelector**, and then select **Run anyway**.
-> <p align="center">
+<p align="center">
   <img
     src="docs/images/windows_protect.png"
     alt="windows_protect"
-    width="900"
+    width="600"
   >
 </p>
 
