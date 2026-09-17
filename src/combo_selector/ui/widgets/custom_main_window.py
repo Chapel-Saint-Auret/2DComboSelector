@@ -34,7 +34,7 @@ from PySide6.QtWidgets import (
 )
 
 from combo_selector.ui.widgets.modern_side_menu import ModernSidebar
-from combo_selector.utils import resource_path
+from combo_selector.resource_utils import resource_path
 from combo_selector.constants import MAIN_WINDOW_STYLESHEET
 
 
@@ -80,7 +80,7 @@ class CustomMainWindow(QMainWindow):
         self.setWindowFlag(Qt.FramelessWindowHint)
         self.setAttribute(Qt.WA_TranslucentBackground)
         self.setContextMenuPolicy(Qt.CustomContextMenu)
-        self.customContextMenuRequested.connect(self.right_menu)
+        # self.customContextMenuRequested.connect(self.right_menu)
         self.setStyleSheet(MAIN_WINDOW_STYLESHEET)
 
         # --- Central widget ---

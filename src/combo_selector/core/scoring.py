@@ -194,37 +194,39 @@ class Scoring:
             Updates suggested_score and orthogonality_value in orthogonality_score
             and table_data for each set.
         """
-        # Iterate through each set in the orthogonality dictionary
+        if self.correlation_group_df.empty:
+            return
+
+        suggested_score = self._suggested_score_for_groups(self.correlation_group_df)
+
+        # Keep the legacy dictionary/table representation synchronized once per
+        # combination.  Previously the complete result column was rebuilt and
+        # ranked inside this loop, making the operation quadratic in the number
+        # of combinations.
         for data_set in self.orthogonality_score:
-            # Reset the sum for each set
-
-            mean_sum = 0
-
-            for row in self.correlation_group_df.itertuples():
-                group_sum = 0
-                om_group = row[2]
-                group_size = len(om_group)
-
-                for metric in om_group:
-                    metric = UI_TO_MODEL_MAPPING[metric]
-                    group_sum += self.orthogonality_score[data_set][metric]
-
-                group_mean = group_sum / group_size
-                mean_sum += group_mean
-
-            # Compute the mean score
-            if len(self.correlation_group_df) == 0:
-                return
-            om_score = mean_sum / len(self.correlation_group_df)
-
-            set_number = extract_set_number(data_set)
-            # Update the orthogonality score and dictionary using the helper function
+            row_index = extract_set_number(data_set) - 1
             self.update_metrics(
-                data_set, "suggested_score", om_score, table_row_index=set_number - 1
+                data_set,
+                "suggested_score",
+                suggested_score.iloc[row_index],
+                table_row_index=row_index,
             )
 
-            self.orthogonality_result_df['Suggested Orthogonality Score'] = [row[26] for row in self.table_data]
-            self.orthogonality_result_df['Suggested Orthogonality Rank'] =self.orthogonality_result_df['Suggested Orthogonality Score'].rank(ascending=False, method='average')
+        self.orthogonality_result_df['Suggested Orthogonality Score'] = suggested_score
+        self.orthogonality_result_df['Suggested Orthogonality Rank'] = suggested_score.rank(
+            ascending=False, method='average'
+        )
+
+    def _suggested_score_for_groups(self, correlation_group_df: pd.DataFrame) -> pd.Series:
+        """Return vectorized mean-of-group-means scores for metric groups."""
+        group_scores = [
+            self.orthogonality_metric_df[metrics].mean(axis=1)
+            for metrics in correlation_group_df['Correlated Metrics']
+            if metrics
+        ]
+        if not group_scores:
+            return pd.Series(np.nan, index=self.orthogonality_metric_df.index)
+        return pd.concat(group_scores, axis=1).mean(axis=1)
 
     def compute_practical_2d_peak_capacity(self):
         """Compute the practical 2D peak capacity for each combination."""
@@ -260,19 +262,10 @@ class Scoring:
             - Populates ``self.orthogonality_group_ranking_df`` with per-group ranks.
             - Adds ``"Orthogonality ranking"`` column to ``self.orthogonality_result_df``.
         """
-        # Create a local dictionary instead of assigning column-by-column to an live instance DataFrame
-        group_ranks = {}
-        metric_rank_df = self.orthogonality_metric_ranking_df.copy()
-
-        for group, Correlated_Metrics_list in zip(self.correlation_group_df['Group'],
-                                                  self.correlation_group_df['Correlated Metrics']):
-            group_ranks[group] = metric_rank_df[Correlated_Metrics_list].median(axis=1)
-
-        # Instantiate cleanly in one single block - this completely bypasses shape caching bugs
-        self.orthogonality_group_ranking_df = pd.DataFrame(group_ranks)
-
-        consensus_orthogonality_ranking_df = self.orthogonality_group_ranking_df.sum(axis=1)
-        consensus_orthogonality_ranking_df = consensus_orthogonality_ranking_df.rank(ascending=True, method='average')
+        consensus_orthogonality_ranking_df, group_ranking_df = (
+            self._consensus_rank_for_groups(self.correlation_group_df)
+        )
+        self.orthogonality_group_ranking_df = group_ranking_df
 
         self.orthogonality_result_df['Orthogonality Rank'] = consensus_orthogonality_ranking_df
         if self.nb_combination <= 1:
@@ -281,6 +274,25 @@ class Scoring:
             self.orthogonality_result_df['Orthogonality Utility'] = consensus_orthogonality_ranking_df.apply(
                 lambda x: 1 - ((x - 1) / (self.nb_combination - 1))
             )
+
+    def _consensus_rank_for_groups(
+        self, correlation_group_df: pd.DataFrame
+    ) -> tuple[pd.Series, pd.DataFrame]:
+        """Return consensus ranks and group ranks without mutating model state."""
+        metric_rank_df = self.orthogonality_metric_ranking_df
+        group_ranks = {
+            group: metric_rank_df[metrics].median(axis=1)
+            for group, metrics in zip(
+                correlation_group_df['Group'],
+                correlation_group_df['Correlated Metrics'],
+            )
+            if metrics
+        }
+        group_ranking_df = pd.DataFrame(group_ranks, index=metric_rank_df.index)
+        consensus_rank = group_ranking_df.sum(axis=1).rank(
+            ascending=True, method='average'
+        )
+        return consensus_rank, group_ranking_df
 
 
     def assess_metric_removal_impact_on_orthogonality_rank(self) -> pd.DataFrame:
@@ -304,9 +316,6 @@ class Scoring:
             )
 
         original_correlation_group_df = self.correlation_group_df.copy(deep=True)
-        original_orthogonality_group_ranking_df = self.orthogonality_group_ranking_df.copy(deep=True)
-        original_orthogonality_result_df = self.orthogonality_result_df.copy(deep=True)
-
         original_rank = self.orthogonality_result_df["Orthogonality Rank"].copy()
 
         results = []
@@ -339,13 +348,7 @@ class Scoring:
                 })
                 continue
 
-            # temporarily replace correlation groups and recompute ranking
-            self.correlation_group_df = temp_correlation_group_df
-
-            # compute the orthoganlity rank with the removed metric
-            self.compute_consensus_orthogonality_ranking()
-
-            new_rank = self.orthogonality_result_df["Orthogonality Rank"].copy()
+            new_rank, _ = self._consensus_rank_for_groups(temp_correlation_group_df)
 
             rank_diff = abs(original_rank - new_rank)
             median_rank_diff = rank_diff.median()
@@ -354,11 +357,6 @@ class Scoring:
                 "Metric Removed": metric_to_remove,
                 "Median Orthogonality Rank Difference": median_rank_diff,
             })
-
-        # restore original state
-        self.correlation_group_df = original_correlation_group_df
-        self.orthogonality_group_ranking_df = original_orthogonality_group_ranking_df
-        self.orthogonality_result_df = original_orthogonality_result_df
 
         self. metric_removal_impact_df = pd.DataFrame(results).sort_values(
             by="Median Orthogonality Rank Difference",
@@ -389,9 +387,6 @@ class Scoring:
             )
 
         original_correlation_group_df = self.correlation_group_df.copy(deep=True)
-        original_orthogonality_group_ranking_df = self.orthogonality_group_ranking_df.copy(deep=True)
-        original_orthogonality_result_df = self.orthogonality_result_df.copy(deep=True)
-
         original_rank = self.orthogonality_result_df['Suggested Orthogonality Rank'].copy()
 
         results = []
@@ -424,13 +419,8 @@ class Scoring:
                 })
                 continue
 
-            # temporarily replace correlation groups and recompute ranking
-            self.correlation_group_df = temp_correlation_group_df
-
-            # compute the orthoganlity rank with the removed metric
-            self.compute_suggested_score()
-
-            new_rank = self.orthogonality_result_df['Suggested Orthogonality Rank'].copy()
+            new_score = self._suggested_score_for_groups(temp_correlation_group_df)
+            new_rank = new_score.rank(ascending=False, method='average')
 
             rank_diff = abs(original_rank - new_rank)
             median_rank_diff = rank_diff.median()
@@ -439,11 +429,6 @@ class Scoring:
                 "Metric Removed": metric_to_remove,
                 "Median Orthogonality Rank Difference": median_rank_diff,
             })
-
-        # restore original state
-        self.correlation_group_df = original_correlation_group_df
-        self.orthogonality_group_ranking_df = original_orthogonality_group_ranking_df
-        self.orthogonality_result_df = original_orthogonality_result_df
 
         self. metric_removal_impact_old_approach_df = pd.DataFrame(results).sort_values(
             by="Median Orthogonality Rank Difference",

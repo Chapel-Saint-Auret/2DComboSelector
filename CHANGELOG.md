@@ -14,6 +14,7 @@ No changes yet.
 - Headless export regression tests for Excel table export and PNG figure export.
 - Module launcher support for `python -m combo_selector`.
 - Automated builds for PyPI and the Windows installer when a version tag is pushed.
+- Branded Windows executable, installer, shortcuts, and taskbar icon.
 
 ### Changed
 - Retention, peak-capacity, and elution imports now fail earlier with clearer validation for duplicate headers, missing conditions, and non-numeric cells.
@@ -21,12 +22,18 @@ No changes yet.
 - Documentation now points to supported launch commands.
 - Package metadata now declares the supported Python versions and complete runtime dependencies.
 - The application version is read from installed package metadata, including in the Windows build.
+- The packaged application now shows a lightweight Qt splash before importing the full interface and no longer adds an artificial startup delay.
 
 ### Fixed
 
 - Optional result columns no longer break ranking when peak-capacity or elution-domain data are absent.
 - Undefined correlation matrices no longer break heatmap rendering for a single combination.
 - Generated Python cache files are no longer tracked.
+- Result recomputation no longer performs quadratic table rebuilding or retains temporary metric-removal scores.
+- The result progress overlay now reports the actual scoring stage and closes promptly when computation finishes.
+- Orthogonality metric computation now avoids nested `%FIT` thread pools,
+  duplicate NND calculations, and repeated grid construction shared by bin-based metrics.
+- Public builds now display the explicitly selected public plot list, while internal builds display all plots.
 
 ### Known limitations
 

@@ -32,9 +32,11 @@ class ExportPageTests(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls) -> None:
+        """Create one offscreen Qt application shared by all export tests."""
         cls.app = QApplication.instance() or QApplication([])
 
     def setUp(self) -> None:
+        """Create an isolated export directory and a minimal export-page stub."""
         self.temp_dir = tempfile.TemporaryDirectory()
         self.model = build_ranked_model(
             get_fixture_path("release_format_ranking.xlsx"),
@@ -45,10 +47,12 @@ class ExportPageTests(unittest.TestCase):
         self.page.init_page([])
 
     def tearDown(self) -> None:
+        """Remove the temporary export directory after each test."""
         self.page.deleteLater()
         self.temp_dir.cleanup()
 
     def test_export_tables_writes_selected_sheets(self) -> None:
+        """Table export must write only the selected DataFrames as Excel sheets."""
         self.page.table_export_directory_lineEdit.setText(self.temp_dir.name)
         self.page.export_filename.setText("results_export")
         _set_checked_items(
@@ -71,6 +75,7 @@ class ExportPageTests(unittest.TestCase):
         )
 
     def test_save_figure_list_creates_expected_png(self) -> None:
+        """Figure export must create a non-empty PNG with the expected name."""
         self.page.figure_export_directory_lineEdit.setText(self.temp_dir.name)
         self.page.figure_folder_name_lineEdit.setText("ReleaseFigures")
         _set_checked_items(self.page.figure_type_chklist, ["Scatter"])

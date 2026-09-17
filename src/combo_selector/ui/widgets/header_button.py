@@ -31,7 +31,7 @@ from PySide6.QtWidgets import (
 )
 
 from combo_selector.ui.widgets.section_help_button import SectionHelpButton
-from combo_selector.utils import resource_path
+from combo_selector.resource_utils import resource_path
 
 
 class HeaderButton(QHeaderView):

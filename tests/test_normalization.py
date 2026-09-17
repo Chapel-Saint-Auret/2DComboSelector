@@ -14,6 +14,7 @@ class NormalizationTests(unittest.TestCase):
     """Verify deterministic normalization outputs."""
 
     def tearDown(self) -> None:
+        """Remove temporary input workbooks created by normalization tests."""
         for path in getattr(self, "_temp_paths", []):
             if os.path.exists(path):
                 os.remove(path)
@@ -30,6 +31,7 @@ class NormalizationTests(unittest.TestCase):
         return model
 
     def test_min_max_normalization_matches_expected_values(self) -> None:
+        """Min–max normalization must reproduce expected zero-to-one values."""
         model = self._load_model()
 
         model.normalize_retention_time("min_max")
@@ -48,6 +50,7 @@ class NormalizationTests(unittest.TestCase):
                 self.assertAlmostEqual(actual, expected_value, places=7)
 
     def test_void_max_normalization_matches_expected_values(self) -> None:
+        """Void–max normalization must use the supplied void-time references."""
         model = self._load_model()
         model.void_time_df = pd.DataFrame(
             [[0.5, 3.5, 1.0]],
@@ -68,6 +71,7 @@ class NormalizationTests(unittest.TestCase):
                 self.assertAlmostEqual(actual, expected_value, places=7)
 
     def test_wosel_normalization_matches_expected_values(self) -> None:
+        """WOSEL normalization must use the supplied gradient-end references."""
         model = self._load_model()
         condition_names = model.get_retention_time_df().columns.tolist()[2:]
         model.void_time_df = pd.DataFrame([[0.5, 3.5, 1.0]], columns=condition_names)
@@ -87,12 +91,14 @@ class NormalizationTests(unittest.TestCase):
                 self.assertAlmostEqual(actual, expected_value, places=7)
 
     def test_void_max_requires_matching_void_time_data(self) -> None:
+        """Void–max normalization must reject missing void-time information."""
         model = self._load_model()
 
         with self.assertRaisesRegex(ValueError, "Void time data is not loaded"):
             model.normalize_retention_time("void_max")
 
     def test_wosel_requires_gradient_end_time_data(self) -> None:
+        """WOSEL normalization must reject missing gradient-end information."""
         model = self._load_model()
         condition_names = model.get_retention_time_df().columns.tolist()[2:]
         model.void_time_df = pd.DataFrame([[0.5, 3.5, 1.0]], columns=condition_names)

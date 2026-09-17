@@ -1,4 +1,7 @@
 # -*- mode: python ; coding: utf-8 -*-
+import os
+
+
 def collect_data_files(src_folder, dest_folder):
     import os, glob
     file_list = []
@@ -19,7 +22,7 @@ print("ICON FILES:", icon_files)
 print("COLORMAP FILES:", colormap_files)
 
 a = Analysis(
-    ['src/combo_selector/main.py'],
+    ['src/combo_selector/launcher.py'],
     pathex=['src/combo_selector'],
     binaries=[],
     datas = datas,
@@ -37,6 +40,7 @@ exe = EXE(
     a.datas,
     [],
     name='combo_selector',
+    icon=os.path.abspath('src/combo_selector/resources/icons/app_icon.ico'),
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
