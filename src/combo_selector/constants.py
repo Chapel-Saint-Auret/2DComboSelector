@@ -640,10 +640,12 @@ Required steps prior to using the tool:
 · Design and perform 1D scouting experiments under different chromatographic conditions (e.g., columns, mobile phase, pH, modifiers, modes)
 · Extract retention data for each compound and condition (peak widths can also be included if available, but are optional)
 · Calculate experimental peak capacities
+· Calculate experimental elution composition ranges 
+
 
 Once these data are collected and organized, they can be imported into the tool for orthogonality assessment and condition ranking.
 
-For more details on experimental design and gradient setup, please refer to the associated publication and to the documentation link in About section.\
+For more details on experimental design and gradient setup, please refer to the associated publications and to the documentation link in About section.\
 """
 
 USER_GUIDE_TEXT = """\

@@ -99,7 +99,12 @@ def get_version() -> str:
 
 def get_display_version() -> str:
     """Return the package version with its GitHub Actions build number."""
-    from combo_selector._build_info import BUILD_NUMBER
+    try:
+        from combo_selector._build_info import BUILD_NUMBER
+    except ModuleNotFoundError as err:
+        if err.name != "combo_selector._build_info":
+            raise
+        BUILD_NUMBER = None
 
     version = get_version()
     if BUILD_NUMBER:
