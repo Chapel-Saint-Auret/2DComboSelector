@@ -15,6 +15,8 @@ from tests.helpers import (
     CoreTestModel,
     make_retention_df_four_conditions,
     make_temp_workbook,
+    build_ranked_model,
+    get_fixture_path
 )
 
 
@@ -163,14 +165,64 @@ class MetricOptimizationTests(unittest.TestCase):
             for actual, expected in zip(actual_values, expected_values):
                 self.assertAlmostEqual(actual, expected, places=12, msg=metric)
 
-            actual_ranks = pd.Series(actual_values).rank(
-                ascending=False, method="average"
+            # Rank values at the same precision used by the numerical comparison.
+            # Numerically equivalent values are therefore treated as ties.
+            actual_ranks = (
+                pd.Series(actual_values)
+                .round(12)
+                .rank(ascending=False, method="average")
             )
-            expected_ranks = pd.Series(expected_values).rank(
-                ascending=False, method="average"
+
+            expected_ranks = (
+                pd.Series(expected_values)
+                .round(12)
+                .rank(ascending=False, method="average")
             )
             self.assertListEqual(actual_ranks.tolist(), expected_ranks.tolist())
 
+    def test_penalty_switch_controls_final_utility_score(self) -> None:
+        """The penalty switch controls whether penalties modify the final score."""
+        model = build_ranked_model(
+            get_fixture_path("release_format_ranking.xlsx"),
+            peak_capacity_sheet="1D peak capacity table",
+            elution_sheet="Elution-Composition Range Table",
+        )
+
+        # Calculate the result with penalties enabled.
+        model.set_performance_penalty("On")
+        model.compute_final_rank()
+
+        results = model.get_orthogonality_result_df()
+        penalized_scores = results["Final Score (Utility)"].copy()
+        expected_penalized_scores = (
+                results["S_raw"]
+                * results["p_o"]
+                * results["p_p"]
+                * results["p_d"]
+        )
+
+        pd.testing.assert_series_equal(
+            penalized_scores,
+            expected_penalized_scores,
+            check_names=False,
+        )
+
+        # Recalculate the same results with penalties disabled.
+        model.set_performance_penalty("Off")
+        model.compute_final_rank()
+
+        results = model.get_orthogonality_result_df()
+
+        pd.testing.assert_series_equal(
+            results["Final Score (Utility)"],
+            results["S_raw"],
+            check_names=False,
+        )
+
+        # Ensure that enabling the penalties has a real effect on this fixture.
+        self.assertTrue(
+            (penalized_scores < results["S_raw"]).any()
+        )
 
 if __name__ == "__main__":
     unittest.main()
