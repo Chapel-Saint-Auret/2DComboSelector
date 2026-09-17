@@ -734,7 +734,10 @@ class ResultsBuilder:
         s_raw = pd.concat(utility_components, axis=1).mean(axis=1)
         penality = pd.concat(penality_compenents, axis=1).product(axis=1)
 
-        s_final = s_raw * penality
+        if self.penalty_is_on == 'On':
+            s_final = s_raw * penality
+        else:
+            s_final = s_raw
 
         df['S_raw'] = s_raw
         df['Final Score (Utility)'] = s_final
