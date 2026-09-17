@@ -8,7 +8,7 @@ Current stable version: **1.0.0**
   <img
     src="docs/images/2dcomboselector-overview.png"
     alt="2DComboSelector interface"
-    width="900"
+    width="1500"
   >
 </p>
 
@@ -52,7 +52,7 @@ The installer currently supports 64-bit Windows systems.
   <img
     src="docs/images/windows_protect.png"
     alt="windows_protect"
-    width="600"
+    width="400"
   >
 </p>
 
