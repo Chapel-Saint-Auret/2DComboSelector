@@ -1,8 +1,9 @@
+## 2DComboSelector
 <p align="center">
   <img
     src="docs/images/full_logo.png"
     alt="2DComboSelector interface"
-    width="500"
+    width="600"
   >
 </p>
 
