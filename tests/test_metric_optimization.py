@@ -1,5 +1,12 @@
 """Regression tests for orthogonality-metric performance optimizations."""
 
+# Test inventory:
+# - Verify that three grid metrics share cached masks and invalidate them safely.
+# - Verify that NND mean reuses the already computed NND component metrics.
+# - Verify that optimized %FIT preserves its reference numerical value.
+# - Verify values and ranks for every metric affected by the optimization.
+# - Verify that the performance-penalty switch controls the final utility score.
+
 from __future__ import annotations
 
 import os
@@ -87,20 +94,24 @@ class MetricOptimizationTests(unittest.TestCase):
 
     def setUp(self) -> None:
         """Build the same deterministic six-combination model for every test."""
+        # Create a temporary workbook from the shared four-condition fixture.
         self.workbook = make_temp_workbook(
             {"Retention": make_retention_df_four_conditions()}
         )
+        # Load and normalize it once for each independent optimization test.
         self.model = CoreTestModel()
         self.model.load_retention_time(self.workbook, "Retention")
         self.model.normalize_retention_time("min_max")
 
     def tearDown(self) -> None:
         """Remove the temporary workbook created for the test."""
+        # Avoid leaving generated input files after successful or failed tests.
         if os.path.exists(self.workbook):
             os.remove(self.workbook)
 
     def test_grid_metrics_share_one_mask_per_set_and_bin_setting(self) -> None:
         """Grid metrics must reuse masks and rebuild them after a bin change."""
+        # Record how many pairwise sets should each require one cached mask.
         set_count = len(self.model.orthogonality_dict)
 
         # Count actual grid construction calls while the three metrics run.
@@ -123,6 +134,7 @@ class MetricOptimizationTests(unittest.TestCase):
 
     def test_nnd_mean_reuses_computed_component_metrics(self) -> None:
         """NND mean must not repeat distance calculations already completed."""
+        # Arrange all three NND component values before requesting their mean.
         self.model.compute_ndd()
 
         # Monitor compute_ndd after its component values are available.
@@ -131,14 +143,17 @@ class MetricOptimizationTests(unittest.TestCase):
         ) as compute_ndd:
             self.model.compute_nnd_mean()
 
+        # Assert that the aggregate reads existing values instead of recomputing.
         compute_ndd.assert_not_called()
 
     def test_percent_fit_keeps_regression_value(self) -> None:
         """The optimized %FIT path must preserve a known baseline value."""
+        # Act on one deterministic pair to isolate the optimized %FIT function.
         set_key, result = compute_percent_fit_for_set(
             "Set 1", self.model.orthogonality_dict["Set 1"]
         )
 
+        # Assert both result ownership and its pre-optimization reference value.
         self.assertEqual(set_key, "Set 1")
         self.assertAlmostEqual(
             result["percent_fit"]["value"], 0.5123728892197839, places=12
@@ -182,6 +197,7 @@ class MetricOptimizationTests(unittest.TestCase):
 
     def test_penalty_switch_controls_final_utility_score(self) -> None:
         """The penalty switch controls whether penalties modify the final score."""
+        # Arrange a complete three-criterion ranking model from the release fixture.
         model = build_ranked_model(
             get_fixture_path("release_format_ranking.xlsx"),
             peak_capacity_sheet="1D peak capacity table",
@@ -201,6 +217,7 @@ class MetricOptimizationTests(unittest.TestCase):
                 * results["p_d"]
         )
 
+        # Assert that the enabled path applies every available penalty component.
         pd.testing.assert_series_equal(
             penalized_scores,
             expected_penalized_scores,
@@ -213,6 +230,7 @@ class MetricOptimizationTests(unittest.TestCase):
 
         results = model.get_orthogonality_result_df()
 
+        # Assert that disabling penalties exposes the unmodified mean utility.
         pd.testing.assert_series_equal(
             results["Final Score (Utility)"],
             results["S_raw"],

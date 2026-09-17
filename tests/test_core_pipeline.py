@@ -1,5 +1,14 @@
 """Unit and integration-style tests for core pairing and scoring flows."""
 
+# Test inventory:
+# - Verify that all public version APIs report the release version.
+# - Verify the exact pair generation produced by three conditions.
+# - Verify loading and propagation of peak-capacity and elution-domain inputs.
+# - Verify clean rejection of mismatched peak-capacity condition names.
+# - Verify the complete metric, grouping, scoring, and ranking pipeline.
+# - Verify ranking when optional input sheets are unavailable.
+# - Verify that final results cannot be built before metric grouping.
+
 from __future__ import annotations
 
 import os
@@ -24,28 +33,38 @@ class CorePipelineTests(unittest.TestCase):
 
     def test_application_reports_release_version(self) -> None:
         """Package and utility APIs must report the same release version."""
+        # Verify the installed package exposes the release declared for the build.
         self.assertEqual(combo_selector.__version__, "1.0.0")
+        # Verify the utility accessor reads the same single version source.
         self.assertEqual(get_version(), combo_selector.__version__)
 
     def tearDown(self) -> None:
         """Remove every temporary workbook registered by the current test."""
+        # Iterate only over paths created by the currently completed test.
         for path in getattr(self, "_temp_paths", []):
+            # Avoid an error if the test already removed a temporary file.
             if os.path.exists(path):
                 os.remove(path)
 
     def _track(self, path: str) -> str:
+        """Register a temporary path for automatic cleanup and return it."""
+        # Create the per-test registry lazily because unittest creates new instances.
         self._temp_paths = getattr(self, "_temp_paths", [])
+        # Record the workbook so tearDown can remove it even after a failed assertion.
         self._temp_paths.append(path)
         return path
 
     def test_retention_import_creates_exact_expected_pairs(self) -> None:
         """Three imported conditions must generate the three expected pairs."""
+        # Arrange a workbook containing three deliberately distinct conditions.
         retention = make_retention_df_three_conditions()
         workbook = self._track(make_temp_workbook({"Retention": retention}))
         model = CoreTestModel()
 
+        # Act by importing the retention table and generating pairwise combinations.
         model.load_retention_time(workbook, "Retention")
 
+        # Assert the expected number of inputs and unique unordered pairs.
         self.assertEqual(model.get_number_of_condition(), 3)
         self.assertEqual(model.get_number_of_combination(), 3)
         self.assertEqual(
@@ -59,6 +78,7 @@ class CorePipelineTests(unittest.TestCase):
 
     def test_optional_peak_capacity_and_elution_tables_update_results(self) -> None:
         """Valid optional sheets must populate capacity and elution-domain values."""
+        # Arrange matching mandatory and optional input tables.
         retention = make_retention_df_three_conditions()
         condition_names = retention.columns.tolist()[1:]
         workbook = self._track(
@@ -73,9 +93,11 @@ class CorePipelineTests(unittest.TestCase):
         model = CoreTestModel()
         model.load_retention_time(workbook, "Retention")
 
+        # Act by loading both optional criteria after the retention table.
         model.load_hypothetical_2d_peak_capacity(workbook, "Peak")
         model.load_elution_composition_space_area_data(workbook, "Elution")
 
+        # Assert both load states and the pairwise values derived from each input.
         self.assertEqual(model.peak_capacity_status, "peak_capacity_loaded")
         self.assertEqual(model.elution_data_status, "elution_data_loaded")
         self.assertEqual(
@@ -86,6 +108,7 @@ class CorePipelineTests(unittest.TestCase):
 
     def test_mismatched_peak_capacity_conditions_fail_cleanly(self) -> None:
         """Peak-capacity data with missing conditions must raise a clear error."""
+        # Arrange peak-capacity data missing one imported condition.
         retention = make_retention_df_three_conditions()
         workbook = self._track(
             make_temp_workbook(
@@ -104,11 +127,13 @@ class CorePipelineTests(unittest.TestCase):
         model = CoreTestModel()
         model.load_retention_time(workbook, "Retention")
 
+        # Act and assert that validation fails with an informative message.
         with self.assertRaisesRegex(ValueError, "Number of condition does not match"):
             model.load_hypothetical_2d_peak_capacity(workbook, "Peak")
 
     def test_core_pipeline_builds_metrics_groups_scores_and_rankings(self) -> None:
         """The complete core pipeline must produce valid metrics and final ranks."""
+        # Arrange a four-condition workbook with all three ranking criteria.
         retention = make_retention_df_four_conditions()
         condition_names = retention.columns.tolist()[1:]
         workbook = self._track(
@@ -129,14 +154,17 @@ class CorePipelineTests(unittest.TestCase):
             "Kendall Correlation",
         ]
 
+        # Load and normalize the data exactly as the application pipeline does.
         model.load_retention_time(workbook, "Retention")
         model.normalize_retention_time("min_max")
         model.load_hypothetical_2d_peak_capacity(workbook, "Peak")
         model.load_elution_composition_space_area_data(workbook, "Elution")
 
+        # Compute the selected orthogonality metrics through the production registry.
         for metric_name in metrics:
             model.om_function_map[metric_name]["func"]()
 
+        # Group metrics, aggregate their scores, and build the final result table.
         model.update_metric_dataframes(metrics)
         groups = model.create_correlation_group("Values", threshold=0.0, tol=0.0)
         model.fill_correlation_group_average("Values")
@@ -149,6 +177,7 @@ class CorePipelineTests(unittest.TestCase):
         )
         model.update_table_results()
 
+        # Assert that every major pipeline output exists and contains valid values.
         self.assertFalse(model.get_orthogonality_metric_df().empty)
         self.assertFalse(groups.empty)
         self.assertIn("Average Group Correllation", model.get_correlation_group_df().columns)
@@ -169,6 +198,7 @@ class CorePipelineTests(unittest.TestCase):
 
     def test_core_pipeline_without_optional_sheets_still_updates_results(self) -> None:
         """Ranking must remain available when optional input sheets are absent."""
+        # Arrange retention data without peak-capacity or elution-domain sheets.
         retention = make_retention_df_three_conditions()
         workbook = self._track(make_temp_workbook({"Retention": retention}))
         model = CoreTestModel()
@@ -178,6 +208,7 @@ class CorePipelineTests(unittest.TestCase):
             "Pearson Correlation",
         ]
 
+        # Run the orthogonality-only metric and consensus pipeline.
         model.load_retention_time(workbook, "Retention")
         model.normalize_retention_time("min_max")
 
@@ -195,8 +226,10 @@ class CorePipelineTests(unittest.TestCase):
             }
         )
 
+        # Build final outputs without either optional criterion.
         model.update_table_results()
 
+        # Assert that all user-facing result columns remain populated.
         results = model.get_orthogonality_result_df()
         self.assertTrue(results["Final Rank"].notna().all())
         self.assertTrue(results["Final Rank (Utility)"].notna().all())
@@ -205,6 +238,7 @@ class CorePipelineTests(unittest.TestCase):
 
     def test_update_table_results_requires_metric_groups(self) -> None:
         """Final result generation must reject a missing metric-group analysis."""
+        # Arrange computed metrics but intentionally omit correlation grouping.
         retention = make_retention_df_three_conditions()
         workbook = self._track(make_temp_workbook({"Retention": retention}))
         model = CoreTestModel()
@@ -225,6 +259,7 @@ class CorePipelineTests(unittest.TestCase):
             }
         )
 
+        # Act and assert that the incomplete pipeline is rejected explicitly.
         with self.assertRaisesRegex(
             ValueError, "Metric groups must be built before updating table results"
         ):

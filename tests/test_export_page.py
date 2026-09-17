@@ -1,5 +1,9 @@
 """Headless regression tests for export flows."""
 
+# Test inventory:
+# - Verify that only selected result tables are exported as Excel sheets.
+# - Verify that a selected figure is exported as a non-empty PNG file.
+
 from __future__ import annotations
 
 import os
@@ -20,10 +24,14 @@ from tests.helpers import build_ranked_model, get_fixture_path
 
 def _set_checked_items(tree_widget, expected_items: list[str]) -> None:
     """Update a CheckableTreeList with the requested checked child labels."""
+    # Convert once so membership checks remain simple inside the widget loop.
     expected = set(expected_items)
+    # Suppress selection callbacks while the test configures the widget state.
     tree_widget.tree.blockSignals(True)
     for child in tree_widget.children:
+        # Check only the labels requested by the current export scenario.
         child.setCheckState(0, Qt.Checked if child.text(0) in expected else Qt.Unchecked)
+    # Restore normal signal delivery after the selection is complete.
     tree_widget.tree.blockSignals(False)
 
 
@@ -33,26 +41,32 @@ class ExportPageTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
         """Create one offscreen Qt application shared by all export tests."""
+        # Reuse an existing Qt application when the suite already created one.
         cls.app = QApplication.instance() or QApplication([])
 
     def setUp(self) -> None:
         """Create an isolated export directory and a minimal export-page stub."""
+        # Isolate generated files from the repository and other tests.
         self.temp_dir = tempfile.TemporaryDirectory()
+        # Build realistic results so export paths exercise production structures.
         self.model = build_ranked_model(
             get_fixture_path("release_format_ranking.xlsx"),
             peak_capacity_sheet="1D peak capacity table",
             elution_sheet="Elution-Composition Range Table",
         )
+        # Initialize the real export page without displaying a window.
         self.page = ExportPage(self.model)
         self.page.init_page([])
 
     def tearDown(self) -> None:
         """Remove the temporary export directory after each test."""
+        # Schedule Qt object cleanup before removing the temporary output folder.
         self.page.deleteLater()
         self.temp_dir.cleanup()
 
     def test_export_tables_writes_selected_sheets(self) -> None:
         """Table export must write only the selected DataFrames as Excel sheets."""
+        # Arrange an output name and select exactly two result tables.
         self.page.table_export_directory_lineEdit.setText(self.temp_dir.name)
         self.page.export_filename.setText("results_export")
         _set_checked_items(
@@ -60,12 +74,14 @@ class ExportPageTests(unittest.TestCase):
             ["2D Combination Table", "Overall Results Table"],
         )
 
+        # Act while converting any unexpected warning dialog into a test failure.
         with patch(
             "combo_selector.ui.pages.export_page.QMessageBox.warning",
             side_effect=AssertionError("Unexpected warning dialog"),
         ):
             self.page.export_tables()
 
+        # Assert that the workbook exists and contains only the selected sheets.
         output = Path(self.temp_dir.name) / "results_export.xlsx"
         self.assertTrue(output.exists())
         workbook = load_workbook(output)
@@ -76,17 +92,20 @@ class ExportPageTests(unittest.TestCase):
 
     def test_save_figure_list_creates_expected_png(self) -> None:
         """Figure export must create a non-empty PNG with the expected name."""
+        # Arrange one figure type and one combination in a named output folder.
         self.page.figure_export_directory_lineEdit.setText(self.temp_dir.name)
         self.page.figure_folder_name_lineEdit.setText("ReleaseFigures")
         _set_checked_items(self.page.figure_type_chklist, ["Scatter"])
         _set_checked_items(self.page.figure_list_chklist, ["Set 1"])
 
+        # Act while converting any unexpected warning dialog into a test failure.
         with patch(
             "combo_selector.ui.pages.export_page.QMessageBox.warning",
             side_effect=AssertionError("Unexpected warning dialog"),
         ):
             self.page.save_figure_list()
 
+        # Assert that the expected PNG exists and contains rendered image data.
         output = Path(self.temp_dir.name) / "ReleaseFigures" / "Scatter" / "Set 1.png"
         self.assertTrue(output.exists())
         self.assertGreater(output.stat().st_size, 0)
