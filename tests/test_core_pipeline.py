@@ -55,6 +55,11 @@ class CorePipelineTests(unittest.TestCase):
         with patch("builtins.__import__", side_effect=fake_import):
             self.assertEqual(get_display_version(), get_version())
 
+    def test_display_version_appends_build_number_when_available(self) -> None:
+        """Version display must include the stamped build suffix when present."""
+        with patch("combo_selector._build_info.BUILD_NUMBER", "12345"):
+            self.assertEqual(get_display_version(), f"{get_version()} · Build 12345")
+
     def tearDown(self) -> None:
         """Remove every temporary workbook registered by the current test."""
         # Iterate only over paths created by the currently completed test.
