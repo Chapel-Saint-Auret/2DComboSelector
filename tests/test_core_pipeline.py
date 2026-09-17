@@ -12,6 +12,8 @@
 from __future__ import annotations
 
 import os
+import sys
+import types
 import unittest
 from unittest.mock import patch
 
@@ -52,12 +54,16 @@ class CorePipelineTests(unittest.TestCase):
                 raise err
             return original_import(name, *args, **kwargs)
 
-        with patch("builtins.__import__", side_effect=fake_import):
-            self.assertEqual(get_display_version(), get_version())
+        with patch.dict(sys.modules, {}, clear=False):
+            sys.modules.pop("combo_selector._build_info", None)
+            with patch("builtins.__import__", side_effect=fake_import):
+                self.assertEqual(get_display_version(), get_version())
 
     def test_display_version_appends_build_number_when_available(self) -> None:
         """Version display must include the stamped build suffix when present."""
-        with patch("combo_selector._build_info.BUILD_NUMBER", "12345"):
+        build_info = types.ModuleType("combo_selector._build_info")
+        build_info.BUILD_NUMBER = "12345"
+        with patch.dict(sys.modules, {"combo_selector._build_info": build_info}):
             self.assertEqual(get_display_version(), f"{get_version()} · Build 12345")
 
     def tearDown(self) -> None:
