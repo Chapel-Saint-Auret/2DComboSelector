@@ -71,7 +71,7 @@ class ExportPageTests(unittest.TestCase):
         self.page.export_filename.setText("results_export")
         _set_checked_items(
             self.page.table_selection,
-            ["2D Combination Table", "Overall Results Table"],
+            ["2D Combination Table", "Final Evaluation Table"],
         )
 
         # Act while converting any unexpected warning dialog into a test failure.
@@ -87,7 +87,7 @@ class ExportPageTests(unittest.TestCase):
         workbook = load_workbook(output)
         self.assertEqual(
             workbook.sheetnames,
-            ["2D Combination Table", "Overall Results Table"],
+            ["2D Combination Table", "Final Evaluation Table"],
         )
 
     def test_save_figure_list_creates_expected_png(self) -> None:
