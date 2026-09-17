@@ -2,11 +2,9 @@
   <img
     src="docs/images/full_logo.png"
     alt="2DComboSelector interface"
-    width="900"
+    width="500"
   >
 </p>
-
-Current stable version: **1.0.0**
 
 2DComboSelector is a graphical application for evaluating, comparing, and ranking combinations of chromatographic conditions for comprehensive two-dimensional separations.
 
@@ -34,7 +32,6 @@ For most users on Windows, the all-in-one installer is recommended.
 The Windows installer contains the application and all required dependencies. A separate Python installation is not required.
 
 1. Open the [latest GitHub release](https://github.com/Chapel-Saint-Auret/2DComboSelector/releases/latest).
-
 2. Under **Assets**, download:
 
    ```text
@@ -42,11 +39,8 @@ The Windows installer contains the application and all required dependencies. A 
    ```
 
 3. Double-click the downloaded installer.
-
 4. Follow the installation wizard.
-
 5. Optionally select **Create a desktop shortcut**.
-
 6. Launch **2DComboSelector** from the Desktop or Windows Start menu.
 
 The installer currently supports 64-bit Windows systems.
