@@ -13,10 +13,11 @@ from __future__ import annotations
 
 import os
 import unittest
+from unittest.mock import patch
 
 import combo_selector
 
-from combo_selector.utils import get_version
+from combo_selector.utils import get_display_version, get_version
 
 from tests.helpers import (
     CoreTestModel,
@@ -37,6 +38,18 @@ class CorePipelineTests(unittest.TestCase):
         self.assertEqual(combo_selector.__version__, "1.0.0")
         # Verify the utility accessor reads the same single version source.
         self.assertEqual(get_version(), combo_selector.__version__)
+
+    def test_display_version_falls_back_when_build_info_is_missing(self) -> None:
+        """Version display must still work when build metadata is unavailable."""
+        original_import = __import__
+
+        def fake_import(name, *args, **kwargs):
+            if name == "combo_selector._build_info":
+                raise ModuleNotFoundError("No module named 'combo_selector._build_info'")
+            return original_import(name, *args, **kwargs)
+
+        with patch("builtins.__import__", side_effect=fake_import):
+            self.assertEqual(get_display_version(), get_version())
 
     def tearDown(self) -> None:
         """Remove every temporary workbook registered by the current test."""
