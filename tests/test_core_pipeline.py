@@ -45,7 +45,11 @@ class CorePipelineTests(unittest.TestCase):
 
         def fake_import(name, *args, **kwargs):
             if name == "combo_selector._build_info":
-                raise ModuleNotFoundError("No module named 'combo_selector._build_info'")
+                err = ModuleNotFoundError(
+                    "No module named 'combo_selector._build_info'"
+                )
+                err.name = "combo_selector._build_info"
+                raise err
             return original_import(name, *args, **kwargs)
 
         with patch("builtins.__import__", side_effect=fake_import):
