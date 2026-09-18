@@ -1,5 +1,5 @@
 ## 2DComboSelector
-<p align="LEFT">
+<p align="center">
   <img
     src="docs/images/full_logo.png"
     alt="2DComboSelector interface"
