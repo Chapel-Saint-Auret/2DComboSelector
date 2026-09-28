@@ -191,8 +191,11 @@ class DataManager:
         condition_columns = self.retention_time_df.columns.tolist()[2:]
         if not condition_columns:
             return "Retention time data does not contain any condition columns."
-        if require_pairs and len(condition_columns) < 2:
-            return "Retention time data must contain at least two condition columns."
+        if require_pairs and len(condition_columns) < 3:
+            return (
+                "Comparative analysis requires at least three condition columns "
+                "to generate multiple 2D combinations."
+            )
         if not self.is_normalized and check_normalized:
             return "Retention time data is not normalized."
         if not self.compound_name_list or len(self.compound_name_list) != len(self.retention_time_df):

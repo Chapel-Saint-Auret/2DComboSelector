@@ -719,6 +719,11 @@ class ResultsBuilder:
         penality_compenents = [p_o]
         utility_components = [util_O]
         N = self.nb_combination
+        if N <= 1:
+            raise ValueError(
+                "Final ranking requires at least two candidate combinations. "
+                "Provide at least three condition columns."
+            )
 
         if peak_capacity_available:
             percentile = self.peak_capacity_threshold_penalty

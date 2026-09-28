@@ -8,7 +8,8 @@
 # - Verify exact condition-name matching across input sheets.
 # - Verify rejection of duplicated condition headers.
 # - Verify rejection of a missing condition header.
-# - Verify safe ranking of a workbook containing one combination.
+# - Verify that comparative analysis rejects a single generated combination.
+# - Verify that final ranking defensively rejects a single candidate combination.
 # - Verify pair generation, scores, diagnostics, and ranks for six combinations.
 
 from __future__ import annotations
@@ -186,23 +187,30 @@ class WorkbookRegressionTests(unittest.TestCase):
             ["Compound Name", "HILIC - BEH Amide - EtOH - pH 7"],
         )
 
-    def test_valid_release_format_ranking_regression_handles_single_combination(self) -> None:
-        """A valid two-condition workbook must rank its single combination safely."""
-        # Act by running the complete pipeline on the two-condition fixture.
-        model = self._run_release_format_pipeline("release_format_valid.xlsx")
-        results = model.get_orthogonality_result_df()
+    def test_two_condition_workbook_is_rejected_for_comparative_analysis(self) -> None:
+        """Two conditions generate only one pair and cannot support comparison."""
+        # Arrange a structurally valid workbook containing exactly two conditions.
+        model = CoreTestModel()
+        workbook = get_fixture_path("release_format_valid.xlsx")
+        model.load_retention_time(workbook, "Retention Time Table")
 
-        # Assert the sole generated pair and all single-item ranking outputs.
+        # Assert that import succeeds but the comparative-analysis gate rejects it.
+        self.assertEqual(model.get_number_of_condition(), 2)
+        self.assertEqual(model.get_number_of_combination(), 1)
         self.assertEqual(
-            results["2D Combination"].tolist(),
-            ["HILIC - BEH Amide - EtOH - pH 7 vs RPLC - C18 - ACN/H2O - pH 3"],
+            model.get_retention_time_validation_error(require_pairs=True),
+            "Comparative analysis requires at least three condition columns "
+            "to generate multiple 2D combinations.",
         )
-        self.assertEqual(results["Orthogonality Rank"].tolist(), [1.0])
-        self.assertEqual(results["Orthogonality Utility"].tolist(), [1.0])
-        self.assertEqual(results["Final Rank"].tolist(), [1.0])
-        self.assertEqual(results["Final Consensus Rank"].tolist(), [1.0])
-        self.assertEqual(results["Agreement Indicator"].tolist(), [100])
-        self.assertTrue(results["Final Recommendation"].notna().all())
+
+    def test_final_ranking_rejects_single_candidate_combination(self) -> None:
+        """The ranking core must guard against an N minus one division by zero."""
+        # Run the pipeline directly to verify the defensive core-level check.
+        with self.assertRaisesRegex(
+            ValueError,
+            "Final ranking requires at least two candidate combinations",
+        ):
+            self._run_release_format_pipeline("release_format_valid.xlsx")
 
     def test_ranking_release_format_workbook_locks_pair_generation_and_ranking(self) -> None:
         """The ranking fixture must preserve pairs, scores, diagnostics, and ranks."""
@@ -231,10 +239,10 @@ class WorkbookRegressionTests(unittest.TestCase):
         )
         self.assertEqual(combinations["Elution Domain"].tolist(), [22, 24, 27, 27, 30, 33])
         self.assertEqual(results["Final Rank"].tolist(), [6.0, 4.0, 3.0, 5.0, 2.0, 1.0])
-        # The complete penalty product gives combinations 1 and 4 equal final
-        # utility scores, so pandas assigns both the average rank of 5.5.
+        # Lock the consensus ranking produced by the rank-percentile peak-capacity
+        # penalty together with the orthogonality and elution-domain penalties.
         self.assertEqual(
-            results["Final Consensus Rank"].tolist(), [5.5, 4.0, 3.0, 5.5, 2.0, 1.0]
+            results["Final Consensus Rank"].tolist(), [5.0, 2.0, 3.0, 6.0, 4.0, 1.0]
         )
 
         # Extract and verify the three best combinations under the final rank.
