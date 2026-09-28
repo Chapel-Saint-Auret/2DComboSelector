@@ -387,22 +387,22 @@ class ResultsPage(QFrame):
 
         self.orthogonality_threshold = QDoubleSpinBox()
         self.orthogonality_threshold.setFixedWidth(100)
-        self.orthogonality_threshold.setValue(0.30)
+        self.orthogonality_threshold.setValue(0.50)
         self.orthogonality_threshold.setRange(0,1)
 
         self.elution_domain_threshold = QDoubleSpinBox()
         self.elution_domain_threshold.setFixedWidth(100)
-        self.elution_domain_threshold.setValue(0.25)
+        self.elution_domain_threshold.setValue(0.20)
         self.elution_domain_threshold.setRange(0,1)
 
         self.peak_capacity_threshold = QDoubleSpinBox()
         self.peak_capacity_threshold.setFixedWidth(100)
-        self.peak_capacity_threshold.setValue(0.3)
+        self.peak_capacity_threshold.setValue(0.25)
         self.peak_capacity_threshold.setRange(0,1)
 
         form_layout.addRow("Orthogonality threshold", self.orthogonality_threshold)
         form_layout.addRow("Elution Domain threshold", self.elution_domain_threshold)
-        form_layout.addRow("Peak Capacity threshold", self.peak_capacity_threshold)
+        form_layout.addRow("Peak Capacity percentile", self.peak_capacity_threshold)
 
         self.apply_penalty_btn = QPushButton("Apply")
 
@@ -661,7 +661,8 @@ class ResultsPage(QFrame):
 
 
         self.styled_table.add_title_bar_info_button(markdown_path="markdown/evaluation_results_table.md")
-        self.styled_table.add_sheet(sheet_name='Orthogonality',value_format=".2f")
+        self.styled_table.add_sheet(sheet_name='Orthogonality',
+                                    value_format={3:".1f",4:".2f"})
         self.styled_table.add_sheet(value_format=".2f",
                                     color_config=COLOR_CONFIG_TABLE_FEASIBILITY,
                                     bold_columns=[3,4,6],
@@ -722,7 +723,7 @@ class ResultsPage(QFrame):
                     "Chromatographic Mode",
                     "Orthogonality Rank",
                     "Orthogonality Utility",
-                    "Metric Agreement"
+                    "Metric Group Agreement"
                 ])
 
 

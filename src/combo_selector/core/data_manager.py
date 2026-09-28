@@ -91,9 +91,9 @@ class DataManager:
         self.nb_condition = 0
         self.use_suggested_score = True
         self.penalty_is_on = 'On'
-        self.orthogonality_threshold_penalty = 0.3
-        self.elution_threshold_penalty = 0.25
-        self.peak_capacity_threshold_penalty = 0.3
+        self.orthogonality_threshold_penalty = 0.5
+        self.elution_threshold_penalty = 0.20
+        self.peak_capacity_threshold_penalty = 0.25
         # Status Indicators
         self.elution_data_status = "no_data"
         self.peak_capacity_status = "no_data"
