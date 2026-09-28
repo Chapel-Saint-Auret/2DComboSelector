@@ -200,7 +200,7 @@ class WorkbookRegressionTests(unittest.TestCase):
         self.assertEqual(results["Orthogonality Rank"].tolist(), [1.0])
         self.assertEqual(results["Orthogonality Utility"].tolist(), [1.0])
         self.assertEqual(results["Final Rank"].tolist(), [1.0])
-        self.assertEqual(results["Final Rank (Utility)"].tolist(), [1.0])
+        self.assertEqual(results["Final Consensus Rank"].tolist(), [1.0])
         self.assertEqual(results["Agreement Indicator"].tolist(), [100])
         self.assertTrue(results["Final Recommendation"].notna().all())
 
@@ -234,7 +234,7 @@ class WorkbookRegressionTests(unittest.TestCase):
         # The complete penalty product gives combinations 1 and 4 equal final
         # utility scores, so pandas assigns both the average rank of 5.5.
         self.assertEqual(
-            results["Final Rank (Utility)"].tolist(), [5.5, 4.0, 3.0, 5.5, 2.0, 1.0]
+            results["Final Consensus Rank"].tolist(), [5.5, 4.0, 3.0, 5.5, 2.0, 1.0]
         )
 
         # Extract and verify the three best combinations under the final rank.

@@ -225,7 +225,7 @@ class MetricOptimizationTests(unittest.TestCase):
         model.compute_final_rank()
 
         results = model.get_orthogonality_result_df()
-        penalized_scores = results["Final Score (Utility)"].copy()
+        penalized_scores = results["Final Consensus Score"].copy()
         expected_penalized_scores = (
                 results["S_raw"]
                 * results["p_o"]
@@ -248,7 +248,7 @@ class MetricOptimizationTests(unittest.TestCase):
 
         # Assert that disabling penalties exposes the unmodified mean utility.
         pd.testing.assert_series_equal(
-            results["Final Score (Utility)"],
+            results["Final Consensus Score"],
             results["S_raw"],
             check_names=False,
         )
