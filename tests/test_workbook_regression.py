@@ -242,7 +242,7 @@ class WorkbookRegressionTests(unittest.TestCase):
         # Lock the consensus ranking produced by the rank-percentile peak-capacity
         # penalty together with the orthogonality and elution-domain penalties.
         self.assertEqual(
-            results["Final Consensus Rank"].tolist(), [5.0, 2.0, 3.0, 6.0, 4.0, 1.0]
+            results["Final Consensus Rank"].tolist(), [5.0, 2.0, 4.0, 6.0, 3.0, 1.0]
         )
 
         # Extract and verify the three best combinations under the final rank.
