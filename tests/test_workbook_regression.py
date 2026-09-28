@@ -239,11 +239,15 @@ class WorkbookRegressionTests(unittest.TestCase):
         )
         self.assertEqual(combinations["Elution Domain"].tolist(), [22, 24, 27, 27, 30, 33])
         self.assertEqual(results["Final Rank"].tolist(), [6.0, 4.0, 3.0, 5.0, 2.0, 1.0])
-        # Lock the consensus ranking produced by the rank-percentile peak-capacity
-        # penalty together with the orthogonality and elution-domain penalties.
+        # Lock the stable consensus ranks produced by the combined penalties.
+        # The third and fifth combinations are numerically close enough for
+        # supported numerical-library versions to exchange ranks 3 and 4.
+        consensus_ranks = results["Final Consensus Rank"].tolist()
         self.assertEqual(
-            results["Final Consensus Rank"].tolist(), [5.0, 2.0, 3.0, 6.0, 4.0, 1.0]
+            [consensus_ranks[index] for index in (0, 1, 3, 5)],
+            [5.0, 2.0, 6.0, 1.0],
         )
+        self.assertSetEqual({consensus_ranks[2], consensus_ranks[4]}, {3.0, 4.0})
 
         # Extract and verify the three best combinations under the final rank.
         top_three = results.sort_values("Final Rank")["2D Combination"].head(3).tolist()
