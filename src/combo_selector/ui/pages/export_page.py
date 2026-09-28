@@ -464,8 +464,8 @@ class ExportPage(QFrame):
         """Update figure set."""
         self.figure_list_chklist.clear()
 
-        # df = self.model.get_filtered_result_df()[["Combination #", "Final Rank (Utility)"]].sort_values(
-        #     "Final Rank (Utility)")
+        # df = self.model.get_filtered_result_df()[["Combination #", "Final Consensus Rank"]].sort_values(
+        #     "Final Consensus Rank")
 
         df = self.model.get_combination_df()
 
@@ -479,13 +479,13 @@ class ExportPage(QFrame):
         # Subset filter — same logic as plot_multi_criteria_space
         # ------------------------------------------------------------------
 
-        df = self.model.get_filtered_result_df()[["Combination #","Final Rank (Utility)"]].sort_values("Final Rank (Utility)")
+        df = self.model.get_filtered_result_df()[["Combination #","Final Consensus Rank"]].sort_values("Final Consensus Rank")
 
         # Calculate how many rows equal 10% of the DataFrame
         top_10_percent_count = int(len(df) * 0.10)
 
         # Get the top 10% based on the 'Score' column
-        top_10_percent_df = df.nsmallest(top_10_percent_count, "Final Rank (Utility)")
+        top_10_percent_df = df.nsmallest(top_10_percent_count, "Final Consensus Rank")
 
         set_list = list(top_10_percent_df["Combination #"].apply(lambda x: f"Set {x}"))
 

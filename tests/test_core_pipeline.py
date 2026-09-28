@@ -260,7 +260,7 @@ class CorePipelineTests(unittest.TestCase):
         # Assert that all user-facing result columns remain populated.
         results = model.get_orthogonality_result_df()
         self.assertTrue(results["Final Rank"].notna().all())
-        self.assertTrue(results["Final Rank (Utility)"].notna().all())
+        self.assertTrue(results["Final Consensus Rank"].notna().all())
         self.assertTrue(results["Criterion Highlight"].notna().all())
         self.assertTrue(results["Final Recommendation"].notna().all())
 

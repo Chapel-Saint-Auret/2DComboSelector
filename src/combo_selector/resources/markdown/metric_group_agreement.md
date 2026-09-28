@@ -1,4 +1,4 @@
-## Metric Agreement
+## Metric Group Agreement
 
 Measures how consistently the selected orthogonality metrics groups rank a given combination.
 

@@ -19,6 +19,7 @@ import numpy as np
 import pandas as pd
 from PySide6.QtCore import QPoint
 from matplotlib.backend_bases import PickEvent
+from matplotlib.colors import BoundaryNorm
 from matplotlib.backends.backend_qtagg import FigureCanvas, FigureCanvasQTAgg
 from PySide6.QtWidgets import QDialog, QVBoxLayout
 from matplotlib import collections, patches, ticker
@@ -45,7 +46,7 @@ CRITERIA_COLUMN_MAP = {
     "Orthogonality":   ("Orthogonality Rank",       "Orthogonality"),
     "Elution Domain":  ("Elution Domain Rank",      "Elution Domain"),
     "Peak Capacity":   ("Peak Capacity Rank",       "Peak Capacity"),
-    "Final consensus": ("Final Rank (Utility)",              "Final Consensus Rank"),
+    "Final consensus": ("Final Consensus Rank",              "Final Consensus Rank"),
     "Peak rate":       ("Peak Detection Rate (%)",  "Peak rate (%)")},
 
     "Utility":{
@@ -53,7 +54,7 @@ CRITERIA_COLUMN_MAP = {
     "Orthogonality":   ("Orthogonality Utility",    "Orthogonality"),
     "Elution Domain":  ("Elution Domain Utility",   "Elution Domain"),
     "Peak Capacity":   ("Peak Capacity Utility",    "Peak Capacity"),
-    "Final consensus": ("Final Score (Utility)",     "Final Consensus Rank"),
+    "Final consensus": ("Final Consensus Score",     "Final Consensus Rank"),
     "Peak rate":       ("Peak Detection Rate (%)",  "Peak rate (%)")}
 }
 
@@ -1221,7 +1222,7 @@ class PlotUtils:
         df = self.model.get_filtered_result_df().copy()
 
         x = df['Practical Peak Capacity Rank']
-        y = df['Final Rank (Utility)']
+        y = df['Final Consensus Rank']
 
         peak_capacity_available = pd.to_numeric(x, errors='coerce').notna().any()
 
@@ -1283,7 +1284,7 @@ class PlotUtils:
         df = self.model.get_filtered_result_df().copy()
         n = self.model.get_number_of_combination()
 
-        final_rank = pd.to_numeric(df['Final Rank (Utility)'], errors='coerce')
+        final_rank = pd.to_numeric(df['Final Consensus Rank'], errors='coerce')
         orthogonality_rank = pd.to_numeric(df['Orthogonality Rank'], errors='coerce')
 
         if n <= 0:
@@ -1597,7 +1598,7 @@ class PlotUtils:
         # ------------------------------------------------------------------
         # Shared: rank-based subset filtering + coloring
         # ------------------------------------------------------------------
-        final_rank = pd.to_numeric(df['Final Rank (Utility)'], errors='coerce')
+        final_rank = pd.to_numeric(df['Final Consensus Rank'], errors='coerce')
         orthogonality_rank = pd.to_numeric(df['Orthogonality Rank'], errors='coerce')
         n = self.model.get_number_of_combination()
 
@@ -1766,19 +1767,12 @@ class PlotUtils:
                 y_display = y_raw.copy()
             y = y_display
 
-            scatter_bg = self.axe.scatter(x[background_mask], y_display[background_mask],
-                             c=colors_plot[background_mask], s=15,
+            scatter_bg = self.axe.scatter(x, y_display, s=15,
                              edgecolors='k', alpha=0.85,
-                             linewidths=0.3, picker=5, zorder=1)
-
-            scatter_fg = self.axe.scatter(x[~background_mask], y_display[~background_mask],
-                             c=colors[~background_mask], s=15,
-                             edgecolors='k', alpha=0.85,
-                             linewidths=0.3, picker=5, zorder=2)
+                             linewidths=0.3, picker=5)
 
             df_valid = df[valid].reset_index(drop=True)
-            self.scatter_metadata[scatter_bg] = df_valid[background_mask.values].reset_index(drop=True)
-            self.scatter_metadata[scatter_fg] = df_valid[background_mask.values].reset_index(drop=True)
+            self.scatter_metadata[scatter_bg] = df_valid
 
             # apply_scale(self.axe,subset , axis_scale)
             self.axe.tick_params(axis='y', labelsize=8)
@@ -1917,10 +1911,14 @@ class PlotUtils:
                 if peak_values.max().iloc[0] <= 1.0:
                     peak_values[peak_col] = peak_values[peak_col] * 100.0
 
+                boundaries = [0, 40, 60, 80, 100]
+                norm_peak = BoundaryNorm(boundaries, peak_cmap.N)
+
                 im_peak = ax_main.imshow(
                     peak_values.values.astype(float),
                     cmap=peak_cmap, aspect="auto",
-                    extent=[n_rank_cols - 0.5, n_rank_cols + 0.5, n_rows - 0.5, -0.5]
+                    extent=[n_rank_cols - 0.5, n_rank_cols + 0.5, n_rows - 0.5, -0.5],
+                    norm=norm_peak
                 )
 
             ax_main.set_xlim(-0.5, n_total_cols - 0.5)
@@ -2013,7 +2011,7 @@ class PlotUtils:
                 np.random.seed(42)
                 return y_data + np.random.normal(0, amplitude, size=len(y_data))
 
-            def _draw_single_boxplot(ax, col_name, title, show_title=True):
+            def _draw_single_boxplot(ax, col_name, title,view, show_title=True):
                 """Draw single boxplot."""
                 labels = []
                 values = []  # y-values per mode, feeds ax.boxplot
@@ -2095,7 +2093,10 @@ class PlotUtils:
                     if title in "Peak rate (%)":
                         ax.set_ylabel("Peak rate", fontsize=8)
                     else:
-                        ax.set_ylabel("Rank", fontsize=8)
+                        if view == "Rank":
+                            ax.set_ylabel("Rank", fontsize=8)
+                        else:
+                            ax.set_ylabel("Utility", fontsize=8)
 
                 ax.set_xticks(range(1, len(labels) + 1))
                 ax.set_xticklabels(labels, rotation=45, ha="right", fontsize=7)
@@ -2112,7 +2113,7 @@ class PlotUtils:
                 if view == "Rank":
                     metrics = [
                         ("Orthogonality Rank", "Orthogonality Rank"),
-                        ("Final Rank (Utility)", "Final Consensus Rank"),
+                        ("Final Consensus Rank", "Final Consensus Rank"),
                         ("Peak Detection Rate (%)", "Peak rate (%)"),
                     ]
                     if elution_domain_available:
@@ -2123,7 +2124,7 @@ class PlotUtils:
                 else:
                     metrics = [
                         ("Orthogonality Utility", "Orthogonality Utility"),
-                        ("Final Score (Utility)", "Final Consensus Score"),
+                        ("Final Consensus Score", "Final Consensus Score"),
                         ("Peak Detection Rate (%)", "Peak rate (%)"),
                     ]
                     if elution_domain_available:
@@ -2143,7 +2144,7 @@ class PlotUtils:
                 for i, (col_name, title) in enumerate(metrics):
                     self.axe = self.fig.add_subplot(gs[i // ncols, i % ncols])
                     created_axes.append(self.axe)
-                    _draw_single_boxplot(self.axe, col_name, title)
+                    _draw_single_boxplot(self.axe, col_name,title,view)
 
                 for i in range(n, nrows * ncols):
                     self.fig.add_subplot(gs[i // ncols, i % ncols]).axis("off")
@@ -2171,7 +2172,7 @@ class PlotUtils:
                     return
 
                 self.axe = self.fig.add_subplot(111)
-                _draw_single_boxplot(self.axe, col_name, title, show_title=False)
+                _draw_single_boxplot(self.axe, col_name, title, view, show_title=False)
 
                 self.axe.text(0.5, 1.10, "Chromatographic Mode Performance",
                               transform=self.axe.transAxes, ha="center", va="bottom",
@@ -2223,9 +2224,9 @@ class PlotUtils:
                 return
 
             rank_col = (
-                "Final Rank (Utility)"
-                if "Final Rank (Utility)" in df.columns
-                   and pd.to_numeric(df["Final Rank (Utility)"], errors="coerce").notna().any()
+                "Final Consensus Rank"
+                if "Final Consensus Rank" in df.columns
+                   and pd.to_numeric(df["Final Consensus Rank"], errors="coerce").notna().any()
                 else "Orthogonality Rank"
             )
 
@@ -2374,7 +2375,7 @@ class PlotUtils:
                         if subset.empty:
                             continue
                         scatter = self.axe.scatter(
-                            subset["Final Rank (Utility)"].astype(float),
+                            subset["Final Consensus Rank"].astype(float),
                             subset["Peak Detection Rate (%)"].astype(float),
                             s=15, c=color, marker=marker,
                             edgecolors="black", linewidths=0.3, alpha=0.85, picker=5
@@ -2430,7 +2431,7 @@ class PlotUtils:
                     if subset.empty:
                         continue
                     scatter = self.axe.scatter(
-                        subset["Final Rank (Utility)"].astype(float),
+                        subset["Final Consensus Rank"].astype(float),
                         subset["Peak Detection Rate (%)"].astype(float),
                         s=15, c=color, marker=marker,
                         edgecolors="black", linewidths=0.3, alpha=0.85, picker=5
@@ -2648,7 +2649,7 @@ class PlotUtils:
 
         if recommendation == 'All recommendation':
             values = [
-                available_groups[label]["Final Rank (Utility)"].dropna().astype(float).to_numpy()
+                available_groups[label]["Final Consensus Rank"].dropna().astype(float).to_numpy()
                 for label in plot_labels
             ]
             positions = np.arange(1, len(plot_labels) + 1)
@@ -2698,7 +2699,7 @@ class PlotUtils:
                             seen_modes.append(mode)
 
                         marker = mode_to_marker.get(mode, "o")
-                        y = mode_group["Final Rank (Utility)"].dropna().astype(float).to_numpy()
+                        y = mode_group["Final Consensus Rank"].dropna().astype(float).to_numpy()
                         if len(y) == 0:
                             continue
 
@@ -2709,7 +2710,7 @@ class PlotUtils:
                             alpha=0.95, zorder=3, picker=5
                         )
                 else:
-                    y = group["Final Rank (Utility)"].dropna().astype(float).to_numpy()
+                    y = group["Final Consensus Rank"].dropna().astype(float).to_numpy()
                     if len(y) > 0:
                         self.axe.scatter(
                             np.random.normal(loc=xpos, scale=0.06, size=len(y)), y,
@@ -2736,7 +2737,7 @@ class PlotUtils:
                 self._show_missing_data()
                 return
 
-            value = available_groups[recommendation]["Final Rank (Utility)"].dropna().astype(float).to_numpy()
+            value = available_groups[recommendation]["Final Consensus Rank"].dropna().astype(float).to_numpy()
 
             position = [1]
             # ------------------------------------------------------------------
@@ -2782,7 +2783,7 @@ class PlotUtils:
                         seen_modes.append(mode)
 
                     marker = mode_to_marker.get(mode, "o")
-                    y = mode_group["Final Rank (Utility)"].dropna().astype(float).to_numpy()
+                    y = mode_group["Final Consensus Rank"].dropna().astype(float).to_numpy()
                     if len(y) == 0:
                         continue
 
@@ -2793,7 +2794,7 @@ class PlotUtils:
                         alpha=0.95, zorder=3, picker=5
                     )
             else:
-                y = group["Final Rank (Utility)"].dropna().astype(float).to_numpy()
+                y = group["Final Consensus Rank"].dropna().astype(float).to_numpy()
                 if len(y) > 0:
                     self.axe.scatter(
                         np.random.normal(loc=position, scale=0.06, size=len(y)), y,
@@ -3772,7 +3773,7 @@ class PlotUtils:
 
         df_filtered = self.model.get_filtered_result_df()
         n = self.model.get_number_of_combination()
-        final_rank = pd.to_numeric(df_filtered['Final Rank (Utility)'], errors='coerce')
+        final_rank = pd.to_numeric(df_filtered['Final Consensus Rank'], errors='coerce')
         if n <= 0:
             return
         final_rank_pct = (final_rank / n) * 100

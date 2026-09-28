@@ -229,7 +229,16 @@ class VisualizationOptionsPanel(QGroupBox):
             items=["All", "Top 50%", "Top 20%", "Top 10%"]
         )
 
+        # --- Description label ---
+        self._subset_desc_label = QLabel()
+        self._subset_desc_label.setWordWrap(True)
+        self._subset_desc_label.setStyleSheet(
+            "color: #667085; font-size: 12px; padding: 0 2px;"
+        )
+        self._subset_desc_label.setText("Subset represents Top --% of Final Consensus Rank")
+
         root.addWidget(self._percentile_panel)
+        root.addWidget(self._subset_desc_label)
 
         # Axis scale panel (Multi-Criteria + Feasibility)
 
@@ -340,6 +349,7 @@ class VisualizationOptionsPanel(QGroupBox):
         show_recommendation = plot == "Final Rank vs Recommendation"
 
         self._percentile_panel.setVisible(show_subset)
+        self._subset_desc_label.setVisible(show_subset)
         self._axis_panel.setVisible(show_axis)
         self._type_panel.setVisible(show_type)
         self._view_panel.setVisible(show_view)

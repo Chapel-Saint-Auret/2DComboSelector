@@ -423,7 +423,7 @@ class ResultsBuilder:
         """Build the final recommendation sub-table from the results DataFrame.
 
         Side Effects:
-            - Creates ``self.final_recommendaFinal Rank (Utility)tion_table_df``.
+            - Creates ``self.final_recommendaFinal Consensus Ranktion_table_df``.
         """
         column_name = [
             "Combination #",
@@ -432,8 +432,8 @@ class ResultsBuilder:
             "Orthogonality Utility",
             "Peak Capacity Utility",
             "Elution Domain Utility",
-            "Final Score (Utility)",
-            "Final Rank (Utility)",
+            "Final Consensus Score",
+            "Final Consensus Rank",
             "Final Recommendation",
             "Criterion Highlight",
         ]
@@ -465,7 +465,7 @@ class ResultsBuilder:
             "Orthogonality Rank",
             "Elution Domain Rank",
             "Peak Capacity Rank",
-            "Final Rank (Utility)",
+            "Final Consensus Rank",
             "Peak Detection Rate (%)",
         ]
 
@@ -484,7 +484,7 @@ class ResultsBuilder:
             "Orthogonality Utility",
             "Elution Domain Utility",
             "Peak Capacity Utility",
-            "Final Score (Utility)",
+            "Final Consensus Score",
             "Peak Detection Rate (%)",
         ]
 
@@ -502,7 +502,7 @@ class ResultsBuilder:
         column_name = [
             "Orthogonality Utility",
             "Final Recommendation",
-            "Final Score (Utility)",
+            "Final Consensus Score",
             "Elution Domain Utility",
             "Peak Capacity Utility",
             "Peak Detection Rate (%)",
@@ -524,7 +524,7 @@ class ResultsBuilder:
             "Combination #",
             "Orthogonality Rank",
             "Final Recommendation",
-            "Final Rank (Utility)",
+            "Final Consensus Rank",
             "Elution Domain Rank",
             "Peak Capacity Rank",
             "Peak Detection Rate (%)",
@@ -543,7 +543,7 @@ class ResultsBuilder:
         column_name = [
             "2D Combination",
             "Combination #",
-            "Final Rank (Utility)",
+            "Final Consensus Rank",
             "Chromatographic Mode",
         ]
 
@@ -657,12 +657,12 @@ class ResultsBuilder:
         Orthogonality (O), Peak Capacity (P) and Elution Domain (D) - into:
           - 'Final Rank': average of the available *_Rank columns, re-ranked
             (kept as-is when Orthogonality is the only component available).
-          - 'Final Rank (Utility)': average of the available *_Utility columns
+          - 'Final Consensus Rank': average of the available *_Utility columns
             (S_raw), optionally penalized when elution data is available.
 
         Side Effects:
             - Adds 'Final Rank' to self.orthogonality_result_df.
-            - Adds 'S_raw', 'Final Score (Utility)' and 'Final Rank (Utility)'
+            - Adds 'S_raw', 'Final Consensus Score' and 'Final Consensus Rank'
               to self.orthogonality_result_df.
             - When the elution-domain penalty is applied, also adds 'p_o'/'p_d'.
         """
@@ -670,8 +670,8 @@ class ResultsBuilder:
 
         if 'Orthogonality Rank' not in df.columns:
             df['Final Rank'] = 'Not available'
-            df['Final Score (Utility)'] = 'Not available'
-            df['Final Rank (Utility)'] = 'Not available'
+            df['Final Consensus Score'] = 'Not available'
+            df['Final Consensus Rank'] = 'Not available'
             return
 
         # --- Orthogonality component (always available) ---
@@ -702,7 +702,7 @@ class ResultsBuilder:
             df['Final Rank'] = rank_components[0]
 
         # ------------------------------------------------------------------
-        # Final Rank (Utility): average of the available *_Utility columns
+        # Final Consensus Rank: average of the available *_Utility columns
         # (S_raw), optionally penalized when elution data is available.
         #
         #   P_O = min(1, U_O / orthogonality_threshold_penalty)
@@ -718,10 +718,17 @@ class ResultsBuilder:
         # overal penality
         penality_compenents = [p_o]
         utility_components = [util_O]
+        N = self.nb_combination
+        if N <= 1:
+            raise ValueError(
+                "Final ranking requires at least two candidate combinations. "
+                "Provide at least three condition columns."
+            )
 
         if peak_capacity_available:
+            percentile = self.peak_capacity_threshold_penalty
             utility_components.append(df['Peak Capacity Utility'])
-            p_p = df['Peak Capacity Utility'].apply(lambda x: min(1, x / self.peak_capacity_threshold_penalty))
+            p_p = df['Peak Capacity Utility'].apply(lambda x: min(1, (N-x) / (percentile*(N-1))))
             df['p_p'] = p_p
             penality_compenents.append(p_p)
 
@@ -740,8 +747,8 @@ class ResultsBuilder:
             s_final = s_raw
 
         df['S_raw'] = s_raw
-        df['Final Score (Utility)'] = s_final
-        df['Final Rank (Utility)'] = s_final.rank(ascending=False, method='average')
+        df['Final Consensus Score'] = s_final
+        df['Final Consensus Rank'] = s_final.rank(ascending=False, method='average')
 
     def compute_criterion_highlight(self):
         """
@@ -918,17 +925,17 @@ class ResultsBuilder:
             - Adds ``"Final Recommendation"`` column to ``self.orthogonality_result_df``.
         """
 
-        # Guard: compute_final_rank() sets 'Final Rank (Utility)' to the string
+        # Guard: compute_final_rank() sets 'Final Consensus Rank' to the string
         # 'Not available' when no peak capacity / elution data has been loaded yet.
         # Calling .quantile() on a non-numeric column raises TypeError, so bail early.
         if not pd.api.types.is_numeric_dtype(
-            self.orthogonality_result_df["Final Rank (Utility)"]
+            self.orthogonality_result_df["Final Consensus Rank"]
         ):
             self.orthogonality_result_df["Final Recommendation"] = "Not available"
             self.orthogonality_result_df["Final Recommendation tooltip"] = ""
             return
 
-        rank_col = self.orthogonality_result_df["Final Rank (Utility)"]
+        rank_col = self.orthogonality_result_df["Final Consensus Rank"]
         top_10_threshold = rank_col.quantile(0.1)
         top_30_threshold = rank_col.quantile(0.3)
         top_70_threshold = rank_col.quantile(0.7)
@@ -936,7 +943,7 @@ class ResultsBuilder:
         def is_highly_recommended(row):
             """Return whether a row meets the highly recommended criteria."""
             peak_rate = row['Peak Detection Rate (%)']
-            suggested_rank = row["Final Rank (Utility)"]
+            suggested_rank = row["Final Consensus Rank"]
             compatibility = row['Compatibility']
             complexity = row['Complexity']
 
@@ -951,7 +958,7 @@ class ResultsBuilder:
         def is_recommended(row):
             """Return whether a row meets the recommended criteria."""
             peak_rate = row['Peak Detection Rate (%)']
-            suggested_rank = row["Final Rank (Utility)"]
+            suggested_rank = row["Final Consensus Rank"]
             compatibility = row['Compatibility']
             complexity = row['Complexity']
 
@@ -966,7 +973,7 @@ class ResultsBuilder:
         def is_use_with_caution(row):
             """Return whether a row should be flagged for cautious use."""
             peak_rate = row['Peak Detection Rate (%)']
-            suggested_rank = row["Final Rank (Utility)"]
+            suggested_rank = row["Final Consensus Rank"]
             compatibility = row['Compatibility']
             complexity = row['Complexity']
 
@@ -980,7 +987,7 @@ class ResultsBuilder:
 
         def is_not_recommended(row):
             """Return whether a row should be marked as not recommended."""
-            suggested_rank = row["Final Rank (Utility)"]
+            suggested_rank = row["Final Consensus Rank"]
             peak_rate = row['Peak Detection Rate (%)']
 
             if peak_rate < 40 or suggested_rank >= top_70_threshold:
@@ -1015,7 +1022,7 @@ class ResultsBuilder:
             if is_not_recommended(row):
                 tooltip = (
                     f"<table>"
-                    f"<tr><td><b>Final Consensus Rank:</b></td><td style='color: black;'>{row['Final Rank (Utility)']}</td></tr>"
+                    f"<tr><td><b>Final Consensus Rank:</b></td><td style='color: black;'>{row['Final Consensus Rank']}</td></tr>"
                     f"<tr><td><b>Peak Detection Rate:</b></td><td style='color: bkack'>{row['Peak Detection Rate (%)']}%</td></tr>"
                     f"<tr><td><b>Complexity:</b></td><td style='color:black;'>{row['Complexity']}</td></tr>"
                     f"<tr><td><b>Compatibility:</b></td><td style='color: black;'>{row['Compatibility']}</td></tr>"
@@ -1026,7 +1033,7 @@ class ResultsBuilder:
             if is_highly_recommended(row):
                 tooltip = (
                     f"<table>"
-                    f"<tr><td><b>Final Consensus Rank:</b></td><td style='color: black;'>{row['Final Rank (Utility)']}</td></tr>"
+                    f"<tr><td><b>Final Consensus Rank:</b></td><td style='color: black;'>{row['Final Consensus Rank']}</td></tr>"
                     f"<tr><td><b>Peak Detection Rate:</b></td><td style='color: black;'>{row['Peak Detection Rate (%)']}%</td></tr>"
                     f"<tr><td><b>Complexity:</b></td><td style='color: black;'>{row['Complexity']}</td></tr>"
                     f"<tr><td><b>Compatibility:</b></td><td style='color: black;'>{row['Compatibility']}</td></tr>"
@@ -1037,7 +1044,7 @@ class ResultsBuilder:
             if is_recommended(row):
                 tooltip = (
                     f"<table>"
-                    f"<tr><td><b>Final Consensus Rank:</b></td><td style='color: black;'>{row['Final Rank (Utility)']}</td></tr>"
+                    f"<tr><td><b>Final Consensus Rank:</b></td><td style='color: black;'>{row['Final Consensus Rank']}</td></tr>"
                     f"<tr><td><b>Peak Detection Rate:</b></td><td style='color: black;'>{row['Peak Detection Rate (%)']}%</td></tr>"
                     f"<tr><td><b>Complexity:</b></td><td style='black'>{row['Complexity']}</td></tr>"
                     f"<tr><td><b>Compatibility:</b></td><td style='color: black'>{row['Compatibility']}</td></tr>"
@@ -1047,7 +1054,7 @@ class ResultsBuilder:
 
             if is_use_with_caution(row):
                 tooltip = (f"<table>"
-                    f"<tr><td><b>Final Consensus Rank:</b></td><td style='color: black;'>{row['Final Rank (Utility)']}</td></tr>"
+                    f"<tr><td><b>Final Consensus Rank:</b></td><td style='color: black;'>{row['Final Consensus Rank']}</td></tr>"
 			        f"<tr><td><b>Peak Detection Rate:</b></td><td style='color:black;'>{row['Peak Detection Rate (%)']}%</td></tr>"
 			        f"<tr><td><b>Complexity:</b></td><td style='color: black;'>{row['Complexity']}</td></tr>"
 			        f"<tr><td><b>Compatibility:</b></td><td style='color:black;'>{row['Compatibility']}</td></tr>"

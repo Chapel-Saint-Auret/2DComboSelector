@@ -91,9 +91,9 @@ class DataManager:
         self.nb_condition = 0
         self.use_suggested_score = True
         self.penalty_is_on = 'On'
-        self.orthogonality_threshold_penalty = 0.3
-        self.elution_threshold_penalty = 0.25
-        self.peak_capacity_threshold_penalty = 0.3
+        self.orthogonality_threshold_penalty = 0.5
+        self.elution_threshold_penalty = 0.20
+        self.peak_capacity_threshold_penalty = 0.25
         # Status Indicators
         self.elution_data_status = "no_data"
         self.peak_capacity_status = "no_data"
@@ -191,8 +191,11 @@ class DataManager:
         condition_columns = self.retention_time_df.columns.tolist()[2:]
         if not condition_columns:
             return "Retention time data does not contain any condition columns."
-        if require_pairs and len(condition_columns) < 2:
-            return "Retention time data must contain at least two condition columns."
+        if require_pairs and len(condition_columns) < 3:
+            return (
+                "Comparative analysis requires at least three condition columns "
+                "to generate multiple 2D combinations."
+            )
         if not self.is_normalized and check_normalized:
             return "Retention time data is not normalized."
         if not self.compound_name_list or len(self.compound_name_list) != len(self.retention_time_df):
